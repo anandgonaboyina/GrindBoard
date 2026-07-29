@@ -431,8 +431,12 @@ const performSave = async () => {
       const parsedLocal = JSON.parse(valueToSave);
 
       const mergedState = {
-        ...parsedCloud.state,
-        ...parsedLocal.state, // Local scalar settings win
+        ...parsedLocal.state,
+        ...parsedCloud.state, // Cloud wins for scalar settings and complex objects to prevent default overrides
+
+        // Deep merge tracking data to prevent data loss
+        history: { ...(parsedLocal.state.history || {}), ...(parsedCloud.state.history || {}) },
+        healthData: { ...(parsedLocal.state.healthData || {}), ...(parsedCloud.state.healthData || {}) },
 
         // Intelligently merge arrays to prevent data loss, prioritizing local changes
         tasks: [...(parsedLocal.state.tasks || []), ...(parsedCloud.state.tasks || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
