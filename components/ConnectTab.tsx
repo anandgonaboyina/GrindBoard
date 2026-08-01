@@ -1203,7 +1203,9 @@ export default function ConnectTab() {
 
                     return (
                       <div key={user.id} className={`flex flex-col gap-0.5 p-1 md:p-1.5 rounded border transition-all w-full min-w-0 ${user.isMe ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)] z-10' : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/10'}`}>
-                        <div className="flex items-center justify-between w-full min-w-0 gap-1">
+                        <div className="flex items-center justify-between w-full min-w-0 gap-1"
+                          onClick={() => setExpandedLeaderboardUserId(expandedLeaderboardUserId === user.id ? null : user.id)}
+                        >
                           <div className="flex items-center gap-1.5 min-w-0 pr-1">
                             <div className={`w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center font-bold text-[8px] md:text-[10px] border shrink-0 ${rankColor}`}>
                               {index + 1}
@@ -1235,23 +1237,23 @@ export default function ConnectTab() {
 
                         {/* Expanded Stats */}
                         {expandedLeaderboardUserId === user.id && (
-                          <div className="w-full mt-0.5 pt-0.5 border-t border-gray-300 dark:border-white/10 flex flex-col gap-0.5 animate-fade-in min-w-0">
-                            <div className="text-[7px] md:text-[8px] text-white/40 font-mono text-left bg-black/20 p-0.5 rounded select-all cursor-text flex items-center justify-between border border-white/5">
+                          <div className="w-full mt-0.5 pt-0.5 border-t border-white/10 flex flex-col gap-0.5 animate-fade-in min-w-0">
+                            <div className="text-[7px] md:text-[8px] text-white/70 font-mono text-left bg-black/20 p-0.5 rounded select-all cursor-text flex items-center justify-between border border-white/5">
                               <span className="uppercase tracking-widest font-semibold">ID:</span>
                               <span>{user.id}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-1 text-center min-w-0">
-                              <div className="flex flex-col bg-black/10 dark:bg-black/20 p-0.5 rounded border border-gray-300 dark:border-white/5 min-w-0">
-                                <span className="text-[6px] md:text-[7px] text-white dark:text-white uppercase tracking-widest truncate">Today</span>
-                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-yellow-600 dark:text-yellow-300 truncate">{Math.floor(user.todayFocused / 60)}h {user.todayFocused % 60}m</span>
+                              <div className="flex flex-col bg-black/20 p-0.5 rounded border border-white/5 min-w-0">
+                                <span className="text-[6px] md:text-[7px] text-white/70 uppercase tracking-widest truncate">Today</span>
+                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-yellow-400 truncate">{Math.floor(user.todayFocused / 60)}h {user.todayFocused % 60}m</span>
                               </div>
-                              <div className="flex flex-col bg-black/10 dark:bg-black/20 p-0.5 rounded border border-gray-300 dark:border-white/5 min-w-0">
-                                <span className="text-[6px] md:text-[7px] text-gray-500 dark:text-white/50 uppercase tracking-widest truncate">{leaderboardPeriod === 'current' ? 'Week' : 'L. Week'}</span>
-                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-purple-600 dark:text-purple-300 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) % 60}m</span>
+                              <div className="flex flex-col bg-black/20 p-0.5 rounded border border-white/5 min-w-0">
+                                <span className="text-[6px] md:text-[7px] text-white/50 uppercase tracking-widest truncate">{leaderboardPeriod === 'current' ? 'Week' : 'L. Week'}</span>
+                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-purple-400 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) % 60}m</span>
                               </div>
-                              <div className="flex flex-col bg-black/10 dark:bg-black/20 p-0.5 rounded border border-gray-300 dark:border-white/5 min-w-0">
-                                <span className="text-[6px] md:text-[7px] text-gray-500 dark:text-white/50 uppercase tracking-widest truncate">{leaderboardPeriod === 'current' ? 'Month' : 'L. Month'}</span>
-                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-emerald-600 dark:text-emerald-300 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) % 60}m</span>
+                              <div className="flex flex-col bg-black/20 p-0.5 rounded border border-white/5 min-w-0">
+                                <span className="text-[6px] md:text-[7px] text-white/50 uppercase tracking-widest truncate">{leaderboardPeriod === 'current' ? 'Month' : 'L. Month'}</span>
+                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-emerald-400 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) % 60}m</span>
                               </div>
                             </div>
                           </div>

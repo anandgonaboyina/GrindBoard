@@ -108,6 +108,7 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
     // Don't interfere with inputs or buttons
     if (e.button !== 0 || target.tagName.toLowerCase() === 'input' || target.tagName.toLowerCase() === 'textarea' || target.closest('button')) return;
 
+    e.stopPropagation(); // Prevent outer scrollables from capturing
     isDragging.current = true;
     hasMoved.current = false;
     if (scrollRef.current) {
@@ -129,11 +130,14 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging.current || !scrollRef.current) return;
+    
+    e.stopPropagation();
+    e.preventDefault(); // Stop native drag/selection immediately
 
     const y = e.pageY;
     const walk = y - startY.current;
 
-    if (!hasMoved.current && Math.abs(walk) > 5) {
+    if (!hasMoved.current) {
       hasMoved.current = true;
       if (dragMode.current === 'content') {
         scrollRef.current.style.cursor = 'grabbing';
@@ -144,20 +148,19 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
       }
     }
 
-    if (hasMoved.current) {
-      e.preventDefault();
-      if (dragMode.current === 'scrollbar') {
-        // Dragging native scrollbar thumb down -> content moves down
-        const ratio = scrollRef.current.scrollHeight / scrollRef.current.clientHeight;
-        scrollRef.current.scrollTop = startScrollTop.current + (walk * ratio);
-      } else {
-        // Panning content down -> content moves up
-        scrollRef.current.scrollTop = startScrollTop.current - (walk * 1.5);
-      }
+    if (dragMode.current === 'scrollbar') {
+      const ratio = scrollRef.current.scrollHeight / scrollRef.current.clientHeight;
+      scrollRef.current.scrollTop = startScrollTop.current + (walk * ratio);
+    } else {
+      // Natural panning: pull down to see top
+      scrollRef.current.scrollTop = startScrollTop.current - (walk * 1.5);
     }
   };
 
   const handlePointerUpOrLeave = (e: React.PointerEvent) => {
+    if (isDragging.current) {
+      e.stopPropagation();
+    }
     isDragging.current = false;
     hasMoved.current = false;
     if (scrollRef.current) {

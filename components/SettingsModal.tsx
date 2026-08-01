@@ -378,27 +378,7 @@ export default function SettingsModal() {
     }
   };
 
-  const [canSidebarScrollUp, setCanSidebarScrollUp] = useState(false);
-  const [canSidebarScrollDown, setCanSidebarScrollDown] = useState(false);
-  const [canContentScrollUp, setCanContentScrollUp] = useState(false);
-  const [canContentScrollDown, setCanContentScrollDown] = useState(false);
 
-  const checkScroll = (ref: React.RefObject<HTMLDivElement | null>, setUp: (v: boolean) => void, setDown: (v: boolean) => void) => {
-    if (ref.current) {
-      const { scrollTop, scrollHeight, clientHeight } = ref.current;
-      setUp(scrollTop > 0);
-      setDown(Math.ceil(scrollTop + clientHeight) < scrollHeight);
-    }
-  };
-
-  useEffect(() => {
-    if (isSettingsOpen) {
-      setTimeout(() => {
-        checkScroll(sidebarScrollRef, setCanSidebarScrollUp, setCanSidebarScrollDown);
-        checkScroll(settingsScrollRef, setCanContentScrollUp, setCanContentScrollDown);
-      }, 100);
-    }
-  }, [isSettingsOpen, settingsActiveTab]);
 
   useEffect(() => {
     if (settingsActiveTab === 'feedback') {
@@ -423,58 +403,7 @@ export default function SettingsModal() {
     };
   }, [setSettingsActiveTab]);
 
-  const isDragging = useRef(false);
-  const startY = useRef(0);
-  const startScrollTop = useRef(0);
-  const activeDragRef = useRef<HTMLElement | null>(null);
-  const dragMode = useRef<'content' | 'scrollbar'>('content');
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    const target = e.target as HTMLElement;
-    const currentTarget = e.currentTarget as HTMLElement;
-
-    if (e.button !== 0 || target.tagName.toLowerCase() === 'input' || target.tagName.toLowerCase() === 'textarea' || target.closest('button')) return;
-
-    isDragging.current = true;
-    activeDragRef.current = currentTarget;
-    if (activeDragRef.current) {
-      startY.current = e.pageY;
-      startScrollTop.current = activeDragRef.current.scrollTop;
-
-      const scrollbarWidth = currentTarget.offsetWidth - currentTarget.clientWidth;
-      if (scrollbarWidth > 0 && e.clientX >= currentTarget.getBoundingClientRect().right - scrollbarWidth) {
-        dragMode.current = 'scrollbar';
-      } else {
-        dragMode.current = 'content';
-        activeDragRef.current.style.cursor = 'grabbing';
-        activeDragRef.current.style.userSelect = 'none';
-      }
-    }
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging.current || !activeDragRef.current) return;
-    e.preventDefault();
-
-    const y = e.pageY;
-    const walk = y - startY.current;
-
-    if (dragMode.current === 'scrollbar') {
-      const ratio = activeDragRef.current.scrollHeight / activeDragRef.current.clientHeight;
-      activeDragRef.current.scrollTop = startScrollTop.current + (walk * ratio);
-    } else {
-      activeDragRef.current.scrollTop = startScrollTop.current - (walk * 1.5);
-    }
-  };
-
-  const handlePointerUpOrLeave = () => {
-    isDragging.current = false;
-    if (activeDragRef.current) {
-      activeDragRef.current.style.cursor = '';
-      activeDragRef.current.style.userSelect = '';
-      activeDragRef.current = null;
-    }
-  };
 
   const handleExportData = async () => {
     try {
@@ -690,17 +619,7 @@ export default function SettingsModal() {
           {/* Sidebar Tabs - Narrowed to w-48 on desktop */}
           <div className={`${isMobileDetailView ? 'hidden md:flex' : 'flex h-full'} flex-col w-full md:w-48 bg-black/20 border-r-0 md:border-r border-white/10 relative group shrink-0`}>
 
-            <div
-              ref={sidebarScrollRef}
-              onScroll={() => checkScroll(sidebarScrollRef, setCanSidebarScrollUp, setCanSidebarScrollDown)}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUpOrLeave}
-              onPointerLeave={handlePointerUpOrLeave}
-              onPointerCancel={handlePointerUpOrLeave}
-              className="flex-1 p-3 flex flex-col gap-2 overflow-y-auto arrow-scrollbar no-scrollbar"
-              onWheel={(e) => { e.stopPropagation(); e.currentTarget.scrollTop += e.deltaY; }}
-            >
+            <ScrollableWithArrows className="flex-1 p-3 flex flex-col gap-2 h-full pb-10">
               <button
                 onClick={() => handleTabClick('preferences')}
                 className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'preferences' && !isMobileDetailView ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
@@ -788,24 +707,14 @@ export default function SettingsModal() {
                   <span className="text-[9px] font-medium">Refresh App</span>
                 </button>
               </div>
-            </div>
+              </ScrollableWithArrows>
           </div>
 
           {/* Content Area */}
           <div className={`relative flex-1 overflow-hidden flex-col group/content ${isMobileDetailView ? 'flex' : 'hidden md:flex'}`}>
 
 
-            <div
-              ref={settingsScrollRef}
-              onScroll={() => checkScroll(settingsScrollRef, setCanContentScrollUp, setCanContentScrollDown)}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUpOrLeave}
-              onPointerLeave={handlePointerUpOrLeave}
-              onPointerCancel={handlePointerUpOrLeave}
-              className="flex-1 overflow-y-auto overflow-x-hidden p-2 pt-4 pb-8 md:p-4 md:pb-8 md:pt-4 arrow-scrollbar"
-              onWheel={(e) => { e.stopPropagation(); e.currentTarget.scrollTop += e.deltaY; }}
-            >
+            <ScrollableWithArrows className="flex-1 p-2 pt-4 pb-8 md:p-4 md:pb-8 md:pt-4 h-full pr-1">
 
               {settingsActiveTab === 'connect' && (
                 <ConnectTab />
@@ -2022,7 +1931,7 @@ export default function SettingsModal() {
                 </div>
               )}
 
-            </div>
+            </ScrollableWithArrows>
 
             {/* Content Scroll Down Button */}
 
