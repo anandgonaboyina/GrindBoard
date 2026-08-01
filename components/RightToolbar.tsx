@@ -116,9 +116,8 @@ export default function RightToolbar() {
 
   return (
     <div
-      className={`relative flex flex-col gap-2 md:gap-3 pointer-events-auto transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${
-        !enableRightToolbarPeek || isExpanded ? 'translate-x-0' : 'translate-x-[calc(100%-12px)] md:translate-x-[calc(100%-16px)] opacity-90 md:opacity-100 hover:opacity-100 cursor-pointer drop-shadow-md'
-      }`}
+      className={`relative flex flex-col gap-2 md:gap-3 pointer-events-auto transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${!enableRightToolbarPeek || isExpanded ? 'translate-x-0' : 'translate-x-[calc(100%-12px)] md:translate-x-[calc(100%-16px)] opacity-90 md:opacity-100 hover:opacity-100 cursor-pointer drop-shadow-md'
+        }`}
       onClick={enableRightToolbarPeek && !isExpanded ? () => setIsExpanded(true) : undefined}
     >
       {/* Invisible drag handle to the left of the toolbar for easier swipe-to-close on desktop */}
@@ -164,7 +163,7 @@ export default function RightToolbar() {
         )}
 
         {/* Calendar Toggle Button */}
-        {showCalendar && (
+        {/* {showCalendar && (
           <button
             onClick={toggleCalendar}
             className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isCalendarOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.calendar ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
@@ -172,10 +171,10 @@ export default function RightToolbar() {
           >
             <Calendar size={20} className="sm:w-6 sm:h-6" />
           </button>
-        )}
+        )} */}
 
         {/* Task Manager Toggle Button */}
-        {showTasks && (
+        {/* {showTasks && (
           <button
             onClick={toggleTaskManager}
             className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isTaskManagerOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.tasks ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
@@ -183,7 +182,7 @@ export default function RightToolbar() {
           >
             <ListTodo size={20} className="sm:w-6 sm:h-6" />
           </button>
-        )}
+        )} */}
 
         {/* Stats Toggle Button */}
         {showStats && (

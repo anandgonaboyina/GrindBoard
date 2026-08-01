@@ -178,9 +178,11 @@ interface DashboardState {
   isPlansOpen: boolean;
   togglePlans: () => void;
 
-  // Clock Format
+  // Clock Format & Size
   is24HourClock: boolean;
   toggle24HourClock: () => void;
+  clockScale: number;
+  setClockScale: (scale: number) => void;
 
   // Countdowns
   countdowns: { id: string; title: string; endDate: string | null }[];
@@ -938,9 +940,11 @@ export const useDashboardStore = create<DashboardState>()(
       isPlansOpen: false,
       togglePlans: () => set((state) => ({ isPlansOpen: !state.isPlansOpen })),
 
-      // Clock Format
+      // Clock Format & Size
       is24HourClock: false,
       toggle24HourClock: () => set((state) => ({ is24HourClock: !state.is24HourClock })),
+      clockScale: 1,
+      setClockScale: (scale) => set({ clockScale: scale }),
 
       // Countdowns
       countdowns: [

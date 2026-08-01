@@ -70,7 +70,7 @@ export default function ConnectTab() {
     isDestructive?: boolean;
     onConfirm: () => void;
   }>({
-    isOpen: false, title: '', message: '', onConfirm: () => {}
+    isOpen: false, title: '', message: '', onConfirm: () => { }
   });
 
   useEffect(() => {
@@ -1109,40 +1109,41 @@ export default function ConnectTab() {
 
       {/* Leaderboard Tab */}
       {activeTab === 'leaderboard' && (
-        <div className="flex flex-col gap-3 md:gap-6 w-full lg:max-w-3xl mx-auto min-w-0">
-          <div className="flex items-center justify-between mb-1 md:mb-2 border-b border-white/10 pb-2 md:pb-4 min-w-0 w-full">
-            <h4 className="text-sm md:text-xl font-bold flex items-center gap-1.5 md:gap-2 truncate">
-              <Trophy className="text-yellow-400 w-4 h-4 md:w-6 md:h-6 shrink-0" /> <span className="truncate">Global Leaderboard</span>
-              <button onClick={() => setShowInfoModal(true)} className="ml-1 p-1 md:p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors shrink-0">
-                <Info className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        <div className="flex flex-col gap-1 md:gap-2 w-full lg:max-w-3xl mx-auto min-w-0 h-full overflow-hidden">
+          <div className="flex items-center justify-between border-b border-white/10 pb-1 min-w-0 w-full shrink-0">
+            <h4 className="text-xs md:text-sm font-bold flex items-center gap-1 truncate">
+              <Trophy className="text-yellow-400 w-3 h-3 md:w-4 md:h-4 shrink-0" />
+              <span className="truncate">Global Leaderboard</span>
+              <button onClick={() => setShowInfoModal(true)} className="ml-1 p-0.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors shrink-0">
+                <Info className="w-3 h-3" />
               </button>
             </h4>
             <button
               onClick={fetchLeaderboard}
-              className="p-1.5 md:p-2 bg-white/5 hover:bg-white/10 rounded border border-white/10 shrink-0"
+              className="p-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 shrink-0"
             >
-              <RefreshCw className={`w-3.5 h-3.5 md:w-4 md:h-4 ${leaderboardLoading ? "animate-spin text-blue-400" : "text-white/60"}`} />
+              <RefreshCw className={`w-3 h-3 ${leaderboardLoading ? "animate-spin text-blue-400" : "text-white/60"}`} />
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 md:gap-4 mb-1 md:mb-2 bg-black/40 p-1.5 md:p-1 rounded-lg md:rounded-xl w-full border border-white/10 items-center justify-between min-w-0">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:w-fit overflow-x-auto sm:overflow-visible no-scrollbar">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 bg-black/40 p-1 rounded w-full border border-white/10 items-center justify-between min-w-0 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 w-full sm:w-fit overflow-x-auto sm:overflow-visible no-scrollbar">
               <div className="flex w-full sm:w-auto bg-black/40 border border-white/10 rounded overflow-hidden shrink-0">
                 <button
                   onClick={() => setLeaderboardFilter('today')}
-                  className={`px-2 py-1 md:px-4 md:py-2 rounded text-[9px] md:text-sm font-semibold transition-all whitespace-nowrap flex-1 sm:flex-none border ${leaderboardFilter === 'today' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-white/40'}`}
+                  className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap flex-1 sm:flex-none border ${leaderboardFilter === 'today' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-white/40'}`}
                 >
                   Today
                 </button>
                 <button
                   onClick={() => setLeaderboardFilter('week')}
-                  className={`px-2 py-1 md:px-4 md:py-2 rounded text-[9px] md:text-sm font-semibold transition-all whitespace-nowrap flex-1 sm:flex-none border ${leaderboardFilter === 'week' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-white/40'}`}
+                  className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap flex-1 sm:flex-none border ${leaderboardFilter === 'week' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-white/40'}`}
                 >
                   This Week
                 </button>
                 <button
                   onClick={() => setLeaderboardFilter('month')}
-                  className={`px-2 py-1 md:px-4 md:py-2 rounded text-[9px] md:text-sm font-semibold transition-all whitespace-nowrap flex-1 sm:flex-none border ${leaderboardFilter === 'month' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-white/40'}`}
+                  className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap flex-1 sm:flex-none border ${leaderboardFilter === 'month' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-white/40'}`}
                 >
                   This Month
                 </button>
@@ -1152,143 +1153,116 @@ export default function ConnectTab() {
                 <div className="flex w-full sm:w-auto bg-black/40 border border-white/10 rounded overflow-hidden shrink-0 ml-auto sm:ml-0">
                   <button
                     onClick={() => setLeaderboardPeriod('current')}
-                    className={`px-2 py-1 md:px-3 md:py-2 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'current' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
+                    className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'current' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
                   >
                     Current
                   </button>
                   <button
                     onClick={() => setLeaderboardPeriod('previous')}
-                    className={`px-2 py-1 md:px-3 md:py-2 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'previous' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
+                    className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'previous' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
                   >
                     Previous
                   </button>
                 </div>
               )}
             </div>
-            <div className="relative w-full sm:w-48 shrink-0 min-w-0">
-              <Search className="absolute left-2 md:left-3 top-1/2 transform -translate-y-1/2 text-white/30 w-3 h-3 md:w-3.5 md:h-3.5" />
+            <div className="relative w-full sm:w-36 shrink-0 min-w-0">
+              <Search className="absolute left-1.5 top-1/2 transform -translate-y-1/2 text-white/30 w-3 h-3" />
               <input
                 type="text"
                 placeholder="Search user..."
                 value={leaderboardSearch}
                 onChange={(e) => setLeaderboardSearch(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-md md:rounded-lg pl-6 md:pl-9 pr-2 py-1 md:py-1.5 text-[9px] md:text-sm outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full bg-black/50 border border-white/10 rounded pl-5 pr-1.5 py-0.5 text-[9px] md:text-xs outline-none focus:border-blue-500/50 transition-colors"
               />
             </div>
           </div>
 
           {leaderboardLoading && leaderboardData.length === 0 ? (
-            <p className="text-white/40 italic text-center py-6 md:py-10 text-[9px] md:text-base">Loading...</p>
+            <p className="text-white/40 italic text-center py-2 text-[9px] md:text-xs">Loading...</p>
           ) : (
-            <div className="flex flex-col gap-2 md:gap-3 w-full min-w-0">
-              {(() => {
-                const getVal = (u: any) => {
-                  if (leaderboardFilter === 'today') return u.todayFocused;
-                  if (leaderboardFilter === 'week') return leaderboardPeriod === 'current' ? u.thisWeekFocused : u.lastWeekFocused;
-                  return leaderboardPeriod === 'current' ? u.thisMonthFocused : u.lastMonthFocused;
-                };
+            <div className="flex-1 relative overflow-hidden min-h-0 w-full pb-1">
+              <ScrollableWithArrows className="flex flex-col gap-1 w-full min-w-0 pr-1 h-full pb-10">
+                {(() => {
+                  const getVal = (u: any) => {
+                    if (leaderboardFilter === 'today') return u.todayFocused;
+                    if (leaderboardFilter === 'week') return leaderboardPeriod === 'current' ? u.thisWeekFocused : u.lastWeekFocused;
+                    return leaderboardPeriod === 'current' ? u.thisMonthFocused : u.lastMonthFocused;
+                  };
 
-                const sortedData = [...leaderboardData].sort((a, b) => getVal(b) - getVal(a));
-                const filteredData = sortedData.filter(u => u.displayName.toLowerCase().includes(leaderboardSearch.toLowerCase()));
+                  const sortedData = [...leaderboardData].sort((a, b) => getVal(b) - getVal(a));
+                  const filteredData = sortedData.filter(u => u.displayName.toLowerCase().includes(leaderboardSearch.toLowerCase()));
 
-                if (filteredData.length === 0) return <p className="text-white/40 italic text-center py-6 md:py-10 text-[9px] md:text-base">No users found.</p>;
+                  if (filteredData.length === 0) return <p className="text-white/40 italic text-center py-2 text-[9px] md:text-xs">No users found.</p>;
 
-                return filteredData.map((user, index) => {
-                  const val = getVal(user);
-                  const isTop3 = index < 3 && val > 0;
-                  const rankColors = ['bg-yellow-500/20 text-yellow-400 border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.2)]', 'bg-gray-300/20 text-gray-300 border-gray-300/30', 'bg-amber-700/20 text-amber-500 border-amber-700/30'];
-                  const rankColor = isTop3 ? rankColors[index] : 'bg-white/5 text-white/50 border-white/10';
+                  return filteredData.map((user, index) => {
+                    const val = getVal(user);
+                    const isTop3 = index < 3 && val > 0;
+                    const rankColors = ['bg-yellow-500/20 text-yellow-400 border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]', 'bg-gray-300/20 text-gray-300 border-gray-300/30', 'bg-amber-700/20 text-amber-500 border-amber-700/30'];
+                    const rankColor = isTop3 ? rankColors[index] : 'bg-white/5 text-white/50 border-white/10';
 
-                  return (
-                    <div key={user.id} className={`flex flex-col gap-1.5 md:gap-2 p-2 md:p-4 rounded-lg md:rounded-2xl border transition-all w-full min-w-0 ${user.isMe ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)] scale-[1.02]' : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/10'}`}>
-                      <div className="flex items-center justify-between w-full min-w-0 gap-2">
-                        <div className="flex items-center gap-2 md:gap-4 min-w-0 pr-1">
-                          <div className={`w-6 h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-[10px] md:text-lg border shrink-0 ${rankColor}`}>
-                            {index + 1}
+                    return (
+                      <div key={user.id} className={`flex flex-col gap-0.5 p-1 md:p-1.5 rounded border transition-all w-full min-w-0 ${user.isMe ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)] z-10' : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/10'}`}>
+                        <div className="flex items-center justify-between w-full min-w-0 gap-1">
+                          <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                            <div className={`w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center font-bold text-[8px] md:text-[10px] border shrink-0 ${rankColor}`}>
+                              {index + 1}
+                            </div>
+                            <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-[8px] md:text-[10px] shrink-0 overflow-hidden border border-white/10">
+                              {user.profilePicture ? <img src={user.profilePicture} alt="" className="w-full h-full object-cover" /> : user.displayName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex flex-col min-w-0 overflow-hidden">
+                              <span className={`font-bold text-[9px] md:text-[11px] tracking-wide truncate w-full ${user.isMe ? 'text-blue-500 dark:text-blue-400' : 'text-white dark:text-white/90'}`}>
+                                {user.displayName}
+                              </span>
+                            </div>
                           </div>
-                          <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-xs md:text-base shrink-0 overflow-hidden border border-white/10">
-                            {user.profilePicture ? <img src={user.profilePicture} alt="" className="w-full h-full object-cover" /> : user.displayName.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex flex-col min-w-0 overflow-hidden">
-                            <span className={`font-bold text-[10px] md:text-lg tracking-wide truncate w-full ${user.isMe ? 'text-blue-500 dark:text-blue-400' : 'text-white dark:text-white/90'}`}>
-                              {user.displayName}
-                            </span>
+                          <div className="text-right flex items-center gap-1.5 shrink-0">
+                            <div className="flex flex-col items-end justify-center leading-none">
+                              <span className="font-mono font-bold text-[10px] md:text-sm tracking-tighter text-white dark:text-white/90">
+                                {Math.floor(val / 60)}<span className="text-[7px] md:text-[9px] ml-0.5 text-gray-500 dark:text-white/40 mr-0.5">h</span>{val % 60}<span className="text-[7px] md:text-[9px] ml-0.5 text-gray-500 dark:text-white/40">m</span>
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedLeaderboardUserId(expandedLeaderboardUserId === user.id ? null : user.id)}
+                              className="p-0.5 bg-gray-200 hover:bg-gray-300 dark:bg-white/5 dark:hover:bg-white/10 rounded transition-colors border border-transparent hover:border-gray-300 dark:hover:border-white/20 text-gray-500 dark:text-white/50 shrink-0"
+                            >
+                              {expandedLeaderboardUserId === user.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            </button>
                           </div>
                         </div>
-                        <div className="text-right flex items-center gap-1.5 md:gap-4 shrink-0">
-                          <div className="flex flex-col items-end justify-center">
-                            <span className="font-mono font-bold text-[10px] md:text-2xl tracking-tighter text-white dark:text-white/90">{Math.floor(val / 60)}<span className="text-[8px] md:text-sm ml-1 text-gray-500 dark:text-white/40 mr-1">hrs</span>{val % 60}<span className="text-[8px] ml-1 md:text-sm text-gray-500 dark:text-white/40">min</span></span>
-                            <span className="text-[7px] md:text-[10px] text-gray-500 dark:text-white/40 uppercase tracking-widest font-semibold">Focus</span>
+
+                        {/* Expanded Stats */}
+                        {expandedLeaderboardUserId === user.id && (
+                          <div className="w-full mt-0.5 pt-0.5 border-t border-gray-300 dark:border-white/10 flex flex-col gap-0.5 animate-fade-in min-w-0">
+                            <div className="text-[7px] md:text-[8px] text-white/40 font-mono text-left bg-black/20 p-0.5 rounded select-all cursor-text flex items-center justify-between border border-white/5">
+                              <span className="uppercase tracking-widest font-semibold">ID:</span>
+                              <span>{user.id}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-1 text-center min-w-0">
+                              <div className="flex flex-col bg-black/10 dark:bg-black/20 p-0.5 rounded border border-gray-300 dark:border-white/5 min-w-0">
+                                <span className="text-[6px] md:text-[7px] text-white dark:text-white uppercase tracking-widest truncate">Today</span>
+                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-yellow-600 dark:text-yellow-300 truncate">{Math.floor(user.todayFocused / 60)}h {user.todayFocused % 60}m</span>
+                              </div>
+                              <div className="flex flex-col bg-black/10 dark:bg-black/20 p-0.5 rounded border border-gray-300 dark:border-white/5 min-w-0">
+                                <span className="text-[6px] md:text-[7px] text-gray-500 dark:text-white/50 uppercase tracking-widest truncate">{leaderboardPeriod === 'current' ? 'Week' : 'L. Week'}</span>
+                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-purple-600 dark:text-purple-300 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) % 60}m</span>
+                              </div>
+                              <div className="flex flex-col bg-black/10 dark:bg-black/20 p-0.5 rounded border border-gray-300 dark:border-white/5 min-w-0">
+                                <span className="text-[6px] md:text-[7px] text-gray-500 dark:text-white/50 uppercase tracking-widest truncate">{leaderboardPeriod === 'current' ? 'Month' : 'L. Month'}</span>
+                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-emerald-600 dark:text-emerald-300 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) % 60}m</span>
+                              </div>
+                            </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setExpandedLeaderboardUserId(expandedLeaderboardUserId === user.id ? null : user.id)}
-                            className="p-1 bg-gray-200 hover:bg-gray-300 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors border border-transparent hover:border-gray-300 dark:hover:border-white/20 text-gray-500 dark:text-white/50 shrink-0"
-                          >
-                            {expandedLeaderboardUserId === user.id ? <ChevronUp className="w-3.5 h-3.5 md:w-5 md:h-5" /> : <ChevronDown className="w-3.5 h-3.5 md:w-5 md:h-5" />}
-                          </button>
-                        </div>
+                        )}
                       </div>
-
-                      {/* Expanded Stats */}
-                      {expandedLeaderboardUserId === user.id && (
-                        <div className="w-full mt-1.5 md:mt-2 pt-2 md:pt-3 border-t border-gray-300 dark:border-white/10 grid grid-cols-3 gap-1.5 md:gap-3 text-center animate-fade-in min-w-0">
-                          <div className="flex flex-col bg-black/10 dark:bg-black/20 p-1.5 md:p-2 rounded border border-gray-300 dark:border-white/5 min-w-0">
-                            <span className="text-[7px] md:text-[10px] text-white dark:text-white uppercase tracking-widest mb-0.5 md:mb-1 truncate">Today</span>
-                            <span className="font-mono text-[9px] md:text-base font-bold text-yellow-600 dark:text-yellow-300 truncate">{Math.floor(user.todayFocused / 60)}h {user.todayFocused % 60}m</span>
-                          </div>
-                          <div className="flex flex-col bg-black/10 dark:bg-black/20 p-1.5 md:p-2 rounded border border-gray-300 dark:border-white/5 min-w-0">
-                            <span className="text-[7px] md:text-[10px] text-gray-500 dark:text-white/50 uppercase tracking-widest mb-0.5 md:mb-1 truncate">{leaderboardPeriod === 'current' ? 'This Week' : 'Last Week'}</span>
-                            <span className="font-mono text-[9px] md:text-base font-bold text-purple-600 dark:text-purple-300 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) % 60}m</span>
-                          </div>
-                          <div className="flex flex-col bg-black/10 dark:bg-black/20 p-1.5 md:p-2 rounded border border-gray-300 dark:border-white/5 min-w-0">
-                            <span className="text-[7px] md:text-[10px] text-gray-500 dark:text-white/50 uppercase tracking-widest mb-0.5 md:mb-1 truncate">{leaderboardPeriod === 'current' ? 'This Month' : 'Last Month'}</span>
-                            <span className="font-mono text-[9px] md:text-base font-bold text-emerald-600 dark:text-emerald-300 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) % 60}m</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                });
-              })()}
+                    );
+                  });
+                })()}
+              </ScrollableWithArrows>
             </div>
           )}
-        </div>
-      )}
-
-
-
-      {/* Leaderboard Info Modal */}
-      {showInfoModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-sm flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-4 border-b border-white/5 bg-black/20">
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <Info className="w-4 h-4 text-blue-400" />
-                Leaderboard Rules
-              </h3>
-              <button
-                onClick={() => setShowInfoModal(false)}
-                className="text-white/50 hover:text-white p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-4 max-h-[60vh] overflow-y-auto arrow-scrollbar">
-              <div className="space-y-3 text-sm text-white/80 pb-2">
-                <p className="text-[11px] leading-relaxed">The global leaderboard tracks your total accumulated focus time via the Timer and ranks you against all other users.</p>
-                <p className="text-[11px] leading-relaxed">You can toggle between viewing the data for today, the current week (Monday-Sunday), or the current month. You can also view the previous period's performance using the "Previous" toggle.</p>
-              </div>
-            </div>
-            <div className="p-3 border-t border-white/5 bg-black/20">
-              <button
-                onClick={() => setShowInfoModal(false)}
-                className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl text-white text-xs font-semibold transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

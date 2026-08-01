@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Sun, Moon, Plus, X, StickyNote, Trash2, Undo, Redo, Bold, Italic, Underline, List, Download, ChevronLeft } from 'lucide-react';
+import { Sun, Moon, Plus, X, StickyNote, Trash2, Undo, Redo, Bold, Italic, Underline, List, Download, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -46,7 +46,7 @@ function EditorBlock({ isLight, date, initialHtml, onChange }: { isLight: boolea
   };
 
   return (
-    <div className="mb-4 md:mb-8 relative group">
+    <div id={`note-date-${date.replace(/\s+/g, '-')}`} className="mb-4 md:mb-8 relative group">
       <h3 className={`text-[10px] md:text-xl font-bold ${isLight ? 'text-slate-500 border-slate-200' : 'text-white/50 border-white/10'} pb-1 md:pb-2 mb-1.5 md:mb-3 select-none tracking-wide`}>
         {date}
       </h3>
@@ -95,9 +95,70 @@ export default function NotesManager() {
   );
 }
 
+function NoteCalendar({ existingDates, onSelectDate, isLight }: { existingDates: string[], onSelectDate: (dateStr: string) => void, isLight: boolean }) {
+  const dateMap = new Map<string, string>();
+  existingDates.forEach(dStr => {
+    const d = new Date(dStr);
+    if (!isNaN(d.getTime())) {
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      dateMap.set(iso, dStr);
+    }
+  });
+
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    if (existingDates.length > 0) {
+      const d = new Date(existingDates[existingDates.length - 1]);
+      if (!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), 1);
+    }
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
+
+  const blanks = Array.from({ length: firstDay });
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  return (
+    <div className={`p-3 w-72 ${isLight ? 'bg-white border-slate-200' : 'bg-black/90 border-white/20 backdrop-blur-xl text-white'} rounded-xl shadow-xl border z-50 animate-in fade-in zoom-in-95 duration-200`}>
+      <div className="flex justify-between items-center mb-3">
+        <button onClick={prevMonth} className={`p-1.5 rounded-lg transition-colors ${isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/10 text-white/80'}`}><ChevronLeft className="w-4 h-4" /></button>
+        <span className="font-semibold text-sm">{currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
+        <button onClick={nextMonth} className={`p-1.5 rounded-lg transition-colors ${isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/10 text-white/80'}`}><ChevronRight className="w-4 h-4" /></button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-xs mb-2 font-medium">
+        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <div key={d} className={`opacity-50 ${isLight ? 'text-slate-600' : 'text-white/60'}`}>{d}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-sm">
+        {blanks.map((_, i) => <div key={`blank-${i}`} />)}
+        {days.map(day => {
+          const iso = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const hasNote = dateMap.has(iso);
+          return (
+            <button
+              key={day}
+              disabled={!hasNote}
+              onClick={() => hasNote && onSelectDate(dateMap.get(iso)!)}
+              className={`p-1.5 rounded-full transition-colors w-8 h-8 flex items-center justify-center mx-auto
+                ${hasNote ? (isLight ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold shadow-sm' : 'bg-blue-500 text-white hover:bg-blue-600 font-bold shadow-md') : `opacity-40 cursor-default ${isLight ? 'text-slate-400' : 'text-white/40'}`}`}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote }: any) {
   const [format, setFormat] = useState({ bold: false, italic: false, underline: false, list: false });
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const [showDateDropdown, setShowDateDropdown] = useState(false);
 
   // Controls mobile drill-down view
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
@@ -109,7 +170,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
     isDestructive?: boolean;
     onConfirm: () => void;
   }>({
-    isOpen: false, title: '', message: '', onConfirm: () => {}
+    isOpen: false, title: '', message: '', onConfirm: () => { }
   });
 
   useEffect(() => {
@@ -229,7 +290,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
           </div>
 
           <div className="relative flex-1 overflow-hidden flex flex-col">
-            <ScrollableWithArrows className="p-1.5 md:p-2 flex flex-col gap-1 pr-1">
+            <ScrollableWithArrows className="p-1 md:p-2 flex flex-col gap-1 pr-1">
               {notes.map((note: any) => (
                 <div
                   key={note.id}
@@ -299,7 +360,36 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
                 />
               </div>
 
-              <div className="flex items-center gap-1 md:gap-2 shrink-0">
+              <div className="flex items-center gap-1 md:gap-2 shrink-0 relative">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDateDropdown(!showDateDropdown)}
+                    className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors flex items-center gap-1.5 md:gap-2 ${isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-200' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                    title="Jump to Date"
+                  >
+                    <Calendar className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+
+                  {showDateDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowDateDropdown(false)} />
+                      <div className="absolute right-0 top-full mt-2 z-50 origin-top-right">
+                        <NoteCalendar
+                          isLight={isLight}
+                          existingDates={existingDates}
+                          onSelectDate={(date) => {
+                            const el = document.getElementById(`note-date-${date.replace(/\s+/g, '-')}`);
+                            if (el) {
+                              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                            setShowDateDropdown(false);
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <button
                   onClick={() => setNotesThemeOverride(isLight ? 'dark' : 'light')}
                   className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors shrink-0 ${isLight ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
@@ -322,7 +412,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
 
           {activeNote && (
             <div className="flex-1 flex flex-col relative overflow-hidden">
-              <ScrollableWithArrows className="px-3 md:px-6 pt-3 md:pt-6 pb-20 md:pb-32" downArrowOffset="bottom-16 md:bottom-24">
+              <ScrollableWithArrows persistKey={`note-scroll-${activeNote.id}`} className="px-3 md:px-6 pt-3 md:pt-6 pb-20 md:pb-32" downArrowOffset="bottom-16 md:bottom-24">
                 {existingDates.map((date) => (
                   <EditorBlock
                     isLight={isLight}

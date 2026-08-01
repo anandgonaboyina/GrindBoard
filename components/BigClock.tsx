@@ -16,6 +16,7 @@ export default function BigClock() {
   const toggle24HourClock = useDashboardStore((state) => state.toggle24HourClock);
   const showClock = useDashboardStore((state) => state.showClock);
   const showTodayWork = useDashboardStore((state) => state.showTodayWork);
+  const clockScale = useDashboardStore((state) => state.clockScale || 1);
 
   const timerEndAt = useDashboardStore((state) => state.timerEndAt);
   const deadlines = useDashboardStore((state) => state.deadlines);
@@ -187,7 +188,10 @@ export default function BigClock() {
   }).length > 0;
 
   return (
-    <div className={`flex flex-col w-fit h-fit justify-center pointer-events-none transition-all duration-700 items-center select-none`}>
+    <div 
+      className={`flex flex-col w-fit h-fit justify-center pointer-events-none transition-all duration-700 items-center select-none`}
+      style={{ zoom: clockScale }}
+    >
       {clockVisible && (
         <>
           <div

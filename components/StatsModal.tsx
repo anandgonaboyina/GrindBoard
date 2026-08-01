@@ -75,13 +75,22 @@ export default function StatsModal() {
   };
 
   const thisWeekDays: string[] = [];
+  const lastWeekDays: string[] = [];
   const currentDayOfWeek = todayDate.getDay() === 0 ? 7 : todayDate.getDay();
   const mondayDate = new Date(todayDate);
   mondayDate.setDate(todayDate.getDate() - currentDayOfWeek + 1);
+
+  const lastWeekMonday = new Date(mondayDate);
+  lastWeekMonday.setDate(mondayDate.getDate() - 7);
+
   for (let i = 0; i < 7; i++) {
     const d = new Date(mondayDate);
     d.setDate(mondayDate.getDate() + i);
     thisWeekDays.push(getLocalDateStr(d));
+
+    const ld = new Date(lastWeekMonday);
+    ld.setDate(lastWeekMonday.getDate() + i);
+    lastWeekDays.push(getLocalDateStr(ld));
   }
 
   // Calculate "This Month"
@@ -93,8 +102,11 @@ export default function StatsModal() {
   }
 
   const thisWeekTotal = calculateTotalForDates(thisWeekDays);
+  const lastWeekTotal = calculateTotalForDates(lastWeekDays);
   const thisMonthTotal = calculateTotalForDates(thisMonthDays);
+
   const thisWeekAvg = Math.round(thisWeekTotal / currentDayOfWeek); // average based on days passed this week so far
+  const lastWeekAvg = Math.round(lastWeekTotal / 7); // full 7 days for last week
   const thisMonthAvg = Math.round(thisMonthTotal / todayDate.getDate()); // average based on days passed this month so far
 
   // Group by month
@@ -182,23 +194,23 @@ export default function StatsModal() {
                 <div className="p-2 sm:p-3 rounded-lg bg-emerald-500/10 border border-emerald-400/30 flex flex-col items-center justify-center text-center relative overflow-hidden group">
                   <div className="absolute -left-2 -bottom-2 w-8 h-8 bg-emerald-500/20 rounded-full blur-xl group-hover:bg-emerald-500/30 transition-colors" />
                   <Calendar className="mb-0.5 text-emerald-300 w-4 h-4 sm:w-5 sm:h-5" />
-                  
+
                   {prevYearTotal > 0 ? (
-                     <div className="flex items-center justify-center gap-2 mt-0.5">
-                        <div className="flex flex-col items-center">
-                           <span className="text-base sm:text-lg font-black text-white leading-tight">{formatMinutes(currentYearTotal)}</span>
-                           <span className="text-[7px] text-emerald-200/50 uppercase">{currentYear}</span>
-                        </div>
-                        <div className="w-px h-6 bg-white/10"></div>
-                        <div className="flex flex-col items-center opacity-70">
-                           <span className="text-sm font-bold text-white leading-tight">{formatMinutes(prevYearTotal)}</span>
-                           <span className="text-[7px] text-emerald-200/50 uppercase">{currentYear - 1}</span>
-                        </div>
-                     </div>
+                    <div className="flex items-center justify-center gap-2 mt-0.5">
+                      <div className="flex flex-col items-center">
+                        <span className="text-base sm:text-lg font-black text-white leading-tight">{formatMinutes(currentYearTotal)}</span>
+                        <span className="text-[7px] text-emerald-200/50 uppercase">{currentYear}</span>
+                      </div>
+                      <div className="w-px h-6 bg-white/10"></div>
+                      <div className="flex flex-col items-center opacity-70">
+                        <span className="text-sm font-bold text-white leading-tight">{formatMinutes(prevYearTotal)}</span>
+                        <span className="text-[7px] text-emerald-200/50 uppercase">{currentYear - 1}</span>
+                      </div>
+                    </div>
                   ) : (
-                     <span className="text-base sm:text-xl font-black text-white leading-tight mt-0.5">{formatMinutes(currentYearTotal)}</span>
+                    <span className="text-base sm:text-xl font-black text-white leading-tight mt-0.5">{formatMinutes(currentYearTotal)}</span>
                   )}
-                  
+
                   <p className="text-[8px] sm:text-[9px] text-emerald-200/70 uppercase tracking-widest mt-1 font-bold">Yearly Total</p>
                 </div>
               </div>
@@ -212,16 +224,26 @@ export default function StatsModal() {
                     <span className="font-bold text-white px-1.5 py-px rounded bg-white/10">{dates.length}</span>
                   </div>
                   <div className="flex justify-between items-center bg-black/20 p-1 sm:p-1.5 rounded border border-white/5">
-                    <span className="text-white/70 font-medium">This Week Total</span>
-                    <span className="font-bold text-white px-1.5 py-px rounded bg-blue-500/20 text-blue-200 border border-blue-400/30">
-                      {formatMinutes(thisWeekTotal)}
-                    </span>
+                    <span className="text-white/70 font-medium">This Week</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-white px-1.5 py-px rounded bg-blue-500/20 text-blue-200 border border-blue-400/30" title="Total">
+                        total : {formatMinutes(thisWeekTotal)}
+                      </span>
+                      <span className="font-bold text-white px-1.5 py-px rounded bg-emerald-500/20 text-emerald-200 border border-emerald-400/30" title="Daily Avg">
+                        daily avg : {formatMinutes(thisWeekAvg)}/d
+                      </span>
+                    </div>
                   </div>
                   <div className="flex justify-between items-center bg-black/20 p-1 sm:p-1.5 rounded border border-white/5">
-                    <span className="text-white/70 font-medium">This Week Avg</span>
-                    <span className="font-bold text-white px-1.5 py-px rounded bg-blue-500/20 text-blue-200 border border-blue-400/30">
-                      {formatMinutes(thisWeekAvg)}
-                    </span>
+                    <span className="text-white/70 font-medium">Last Week</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-white px-1.5 py-px rounded bg-purple-500/20 text-purple-200 border border-purple-400/30" title="Total">
+                        total : {formatMinutes(lastWeekTotal)}
+                      </span>
+                      <span className="font-bold text-white px-1.5 py-px rounded bg-emerald-500/20 text-emerald-200 border border-emerald-400/30" title="Daily Avg">
+                        daily avg : {formatMinutes(lastWeekAvg)}/d
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
