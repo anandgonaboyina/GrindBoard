@@ -1210,10 +1210,11 @@ export default function ConnectTab() {
                             <div className={`w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center font-bold text-[8px] md:text-[10px] border shrink-0 ${rankColor}`}>
                               {index + 1}
                             </div>
-                            <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-[8px] md:text-[10px] shrink-0 overflow-hidden border border-white/10">
+                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-[8px] md:text-[10px] shrink-0 overflow-hidden border border-white/10">
                               {user.profilePicture ? <img src={user.profilePicture} alt="" className="w-full h-full object-cover" /> : user.displayName.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex flex-col min-w-0 overflow-hidden">
+
                               <span className={`font-bold text-[9px] md:text-[11px] tracking-wide truncate w-full ${user.isMe ? 'text-blue-500 dark:text-blue-400' : 'text-white dark:text-white/90'}`}>
                                 {user.displayName}
                               </span>

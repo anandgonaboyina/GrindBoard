@@ -16,6 +16,7 @@ export default function Timer() {
     timerPausedLeft, setTimerPausedLeft,
     timerInitialMins, setTimerInitialMins,
     timerLastSavedChunks, setTimerLastSavedChunks,
+    timerLastAlertedChunks, setTimerLastAlertedChunks, taskIntervalAlertMins,
     isAlarmPlaying, setIsAlarmPlaying,
     addMins,
     showQuotePopup, isHidden,
@@ -89,6 +90,7 @@ export default function Timer() {
 
     setActiveTask(null, null);
     setTimerLastSavedChunks(0);
+    setTimerLastAlertedChunks(0);
   };
 
   // Main tick interval
@@ -111,6 +113,24 @@ export default function Timer() {
               addMins(today, minsToSave);
               updateTaskDuration(activeTaskId, minsToSave);
               setTimerLastSavedChunks(chunks);
+            }
+
+            // Interval Alert Beep
+            if (taskIntervalAlertMins > 0) {
+              const alertIntervalSecs = taskIntervalAlertMins * 60;
+              const alertChunks = Math.floor(elapsedSeconds / alertIntervalSecs);
+              if (alertChunks > timerLastAlertedChunks && alertChunks > 0) {
+                setTimerLastAlertedChunks(alertChunks);
+                if (enableAlarmSound) {
+                  const audio = new Audio(alarmSound);
+                  const vol = alarmVolume !== undefined ? alarmVolume : 1;
+                  audio.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
+                  audio.play().catch(e => console.log('Interval beep failed:', e));
+                  setTimeout(() => {
+                    audio.pause();
+                  }, 1500); // 1.5 seconds short beep!
+                }
+              }
             }
           }
         }
@@ -172,7 +192,7 @@ export default function Timer() {
     }
 
     return () => clearInterval(interval);
-  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask]);
+  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound]);
 
   // Listen for timer triggers from other components
   useEffect(() => {
@@ -302,6 +322,7 @@ export default function Timer() {
     setTimerPausedLeft(null);
     setTimerEndAt(Date.now() + seconds * 1000);
     setTimerLastSavedChunks(0);
+    setTimerLastAlertedChunks(0);
     stopAlarm();
     updateInteraction();
 

@@ -18,6 +18,7 @@ interface ConfirmationModalProps {
   requireText?: string;
   isPrompt?: boolean;
   promptPlaceholder?: string;
+  hideCancel?: boolean;
 }
 
 export default function ConfirmationModal({
@@ -33,6 +34,7 @@ export default function ConfirmationModal({
   isPrompt = false,
   promptPlaceholder = "Enter text...",
   onCancel,
+  hideCancel = false,
 }: ConfirmationModalProps) {
   const theme = useDashboardStore((state) => state.theme);
   const [inputText, setInputText] = useState("");
@@ -145,19 +147,21 @@ export default function ConfirmationModal({
 
         {/* Footer */}
         <div className={`flex items-center justify-end gap-2 p-4 pt-2`}>
-          <button
-            onClick={() => {
-              if (onCancel) onCancel();
-              onClose();
-            }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              isDark 
-                ? "bg-white/5 hover:bg-white/10 text-white/80 hover:text-white" 
-                : "bg-black/5 hover:bg-black/10 text-slate-600 hover:text-slate-800"
-            }`}
-          >
-            {cancelText}
-          </button>
+          {!hideCancel && (
+            <button
+              onClick={() => {
+                if (onCancel) onCancel();
+                onClose();
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                isDark 
+                  ? "bg-white/5 hover:bg-white/10 text-white/80 hover:text-white" 
+                  : "bg-black/5 hover:bg-black/10 text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              {cancelText}
+            </button>
+          )}
           <button
             onClick={handleConfirm}
             disabled={!isConfirmed}

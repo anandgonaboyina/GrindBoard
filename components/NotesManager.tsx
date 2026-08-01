@@ -46,10 +46,13 @@ function EditorBlock({ isLight, date, initialHtml, onChange }: { isLight: boolea
   };
 
   return (
-    <div id={`note-date-${date.replace(/\s+/g, '-')}`} className="mb-4 md:mb-8 relative group">
-      <h3 className={`text-[10px] md:text-xl font-bold ${isLight ? 'text-slate-500 border-slate-200' : 'text-white/50 border-white/10'} pb-1 md:pb-2 mb-1.5 md:mb-3 select-none tracking-wide`}>
-        {date}
-      </h3>
+    <div id={`note-date-${date.replace(/\s+/g, '-')}`} className="mb-4 md:mb-5 relative group">
+      <div className='flex justify-center '>
+        <h3 className={`text-[10px] text-center bg-blue-300 px-5 rounded-xl md:text-xl font-bold ${isLight ? 'text-slate-500 border-slate-200' : 'text-white/50 border-white/10'} pb-1 md:pb-2 mb-1.5 md:mb-3 select-none tracking-wide`}>
+          {date}
+        </h3>
+
+      </div>
       <div
         ref={editorRef}
         contentEditable
@@ -63,7 +66,7 @@ function EditorBlock({ isLight, date, initialHtml, onChange }: { isLight: boolea
             if (anchor.href) window.open(anchor.href, '_blank');
           }
         }}
-        className={`select-text cursor-text outline-none ${isLight ? 'text-slate-800 focus:bg-slate-50 focus:border-slate-200' : 'text-white/90 focus:bg-white/5 focus:border-white/10'} min-h-[40px] md:min-h-[60px] text-xs md:text-lg leading-relaxed transition-all p-2 md:p-4 rounded-lg md:rounded-2xl border border-transparent [&_h1]:text-lg md:[&_h1]:text-4xl [&_h1]:font-bold [&_h1]:mb-1.5 md:[&_h1]:mb-4 [&_h2]:text-base md:[&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-1 md:[&_h2]:mb-3 [&_p]:mb-1 md:[&_p]:mb-2 [&_ul]:list-disc [&_ul]:ml-4 md:[&_ul]:ml-6 [&_b]:font-bold [&_i]:italic [&_u]:underline [&_a]:text-blue-400 [&_a]:underline`}
+        className={`select-text cursor-text outline ${isLight ? 'text-slate-800 focus:bg-slate-50 focus:border-slate-200' : 'text-white/90 focus:bg-white/5 focus:border-white/10'} min-h-[40px] md:min-h-[60px] text-xs md:text-lg leading-relaxed transition-all p-2 md:p-4 rounded-lg md:rounded-2xl border border-transparent [&_h1]:text-lg md:[&_h1]:text-4xl [&_h1]:font-bold [&_h1]:mb-1.5 md:[&_h1]:mb-4 [&_h2]:text-base md:[&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mb-1 md:[&_h2]:mb-3 [&_p]:mb-1 md:[&_p]:mb-2 [&_ul]:list-disc [&_ul]:ml-4 md:[&_ul]:ml-6 [&_b]:font-bold [&_i]:italic [&_u]:underline [&_a]:text-blue-400 [&_a]:underline`}
       />
     </div>
   );
@@ -230,7 +233,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
         }}
       />
 
-      <div className={`relative w-full max-w-6xl h-[80vh] md:h-[70vh] flex flex-col md:flex-row rounded-2xl md:rounded-3xl ${isLight ? 'bg-white/90 border-slate-200' : 'bg-black/80 border-white/20'} backdrop-blur-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300`}>
+      <div className={`relative w-full max-w-6xl h-[80vh] md:h-[85vh] flex flex-col md:flex-row rounded-2xl md:rounded-3xl ${isLight ? 'bg-white/90 border-slate-200' : 'bg-black/80 border-white/20'} backdrop-blur-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300`}>
 
         {/* Top/Left Sidebar: Notes List */}
         <div className={`${isMobileDetailView ? 'hidden md:flex' : 'flex'} w-full md:w-1/4 md:max-w-[300px] h-full ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'} border-r flex-col shrink-0`}>
