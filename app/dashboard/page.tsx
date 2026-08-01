@@ -26,7 +26,7 @@ import VideoBackground from "@/components/VideoBackground";
 import LoadingScreen from "@/components/LoadingScreen";
 
 import { useEffect, useState, useRef } from "react";
-import { ChevronDown, ChevronUp, CalendarDays, Settings, ChevronLeft, ChevronRight, EyeOff, Image as ImageIcon } from "lucide-react";
+import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon } from "lucide-react";
 import { useDashboardStore, hasUnsavedChanges } from "@/store/dashboardStore";
 import { fetchQuote } from "@/utils/quoteEngine";
 
@@ -327,7 +327,7 @@ export default function Dashboard() {
                 onClick={handleCalendarExpand}
                 title="Open Calendar"
               >
-                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 transition-colors" />
+                <Calendar size={20} className="sm:w-6 sm:h-6" />
               </div>
 
               <div
@@ -371,14 +371,14 @@ export default function Dashboard() {
                 onClick={() => { if (!isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: true }) }}
                 title="Open Tasks"
               >
-                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 transition-colors" />
+                <ListTodo size={20} className="sm:w-6 sm:h-6" />
               </div>
 
               <div
                 className={`fixed top-[140px] right-0 h-auto max-h-[calc(100vh-200px)] w-[320px] sm:w-[340px] max-w-[85vw] pb-4 pr-2 pl-0 sm:pr-4 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] ${isTaskManagerOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}
                 onTouchStart={(e) => setEdgeTouchStartX(e.touches[0].clientX)}
                 onTouchEnd={(e) => {
-                  if (edgeTouchStartX !== null && e.changedTouches[0].clientX - edgeTouchStartX > 15) {
+                  if (edgeTouchStartX !== null && e.changedTouches[0].clientX - edgeTouchStartX > 60) {
                     if (isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: false });
                   }
                   setEdgeTouchStartX(null);
@@ -386,17 +386,12 @@ export default function Dashboard() {
                 onTouchCancel={() => setEdgeTouchStartX(null)}
                 onMouseDown={(e) => setEdgeTouchStartX(e.clientX)}
                 onMouseUp={(e) => {
-                  if (edgeTouchStartX !== null && e.clientX - edgeTouchStartX > 15) {
+                  if (edgeTouchStartX !== null && e.clientX - edgeTouchStartX > 60) {
                     if (isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: false });
                   }
                   setEdgeTouchStartX(null);
                 }}
-                onMouseLeave={(e) => {
-                  if (edgeTouchStartX !== null && e.clientX - edgeTouchStartX > 15) {
-                    if (isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: false });
-                  }
-                  setEdgeTouchStartX(null);
-                }}
+                onMouseLeave={() => setEdgeTouchStartX(null)}
               >
                 <div className="w-full h-full relative">
                   <TaskManager />

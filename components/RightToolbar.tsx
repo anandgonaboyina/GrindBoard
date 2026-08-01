@@ -12,6 +12,7 @@ export default function RightToolbar() {
 
   const isTaskManagerOpen = useDashboardStore((state) => state.isTaskManagerOpen);
   const toggleTaskManager = useDashboardStore((state) => state.toggleTaskManager);
+  const showTasks = useDashboardStore((state) => state.showTasks);
 
   const isStatsOpen = useDashboardStore((state) => state.isStatsOpen);
   const toggleStats = useDashboardStore((state) => state.toggleStats);
@@ -87,7 +88,6 @@ export default function RightToolbar() {
   const hideConfig = isMobile ? mobileHideConfig : baseHideConfig;
 
   const showPlans = useDashboardStore((state) => state.showPlans);
-  const showTasks = useDashboardStore((state) => state.showTasks);
   const showStats = useDashboardStore((state) => state.showStats);
   const showNotes = useDashboardStore((state) => state.showNotes);
   const enablePanicButton = useDashboardStore((state) => state.enablePanicButton);
@@ -174,7 +174,7 @@ export default function RightToolbar() {
         )} */}
 
         {/* Task Manager Toggle Button */}
-        {/* {showTasks && (
+        {showTasks && (
           <button
             onClick={toggleTaskManager}
             className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isTaskManagerOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.tasks ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
@@ -182,7 +182,7 @@ export default function RightToolbar() {
           >
             <ListTodo size={20} className="sm:w-6 sm:h-6" />
           </button>
-        )} */}
+        )}
 
         {/* Stats Toggle Button */}
         {showStats && (

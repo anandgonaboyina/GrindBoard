@@ -71,15 +71,19 @@ interface DashboardState {
 
   history: Record<string, number>;
   tasks: Task[];
+  tomorrowTasks: Task[];
+  tasksDate: string;
+  checkTasksRollover: () => void;
+  reorderTasks: (tab: 'today' | 'tomorrow', startIndex: number, endIndex: number) => void;
   isHidden: boolean;
   lockedWallpaper: string | null;
   setLockedWallpaper: (filename: string | null) => void;
   setWallpaper: (url: string) => void;
   addMins: (dateKey: string, mins: number) => void;
-  setTasks: (tasks: Task[]) => void;
-  addTask: (task: Task) => void;
-  toggleTask: (id: string) => void;
-  deleteTask: (id: string) => void;
+  setTasks: (tasks: Task[], tab?: 'today' | 'tomorrow') => void;
+  addTask: (title: string, duration: number, tab?: 'today' | 'tomorrow') => void;
+  toggleTask: (id: string, tab?: 'today' | 'tomorrow') => void;
+  deleteTask: (id: string, tab?: 'today' | 'tomorrow') => void;
   toggleHide: () => void;
 
   isTaskManagerOpen: boolean;
@@ -108,14 +112,15 @@ interface DashboardState {
   activeTaskTitle: string | null;
   setActiveTask: (id: string | null, title: string | null) => void;
   updateTaskDuration: (id: string, decreaseMins: number) => void;
-  editTaskDuration: (id: string, newDuration: number) => void;
-  updateTaskTitle: (id: string, newTitle: string) => void;
+  editTaskDuration: (id: string, newDuration: number, tab?: 'today' | 'tomorrow') => void;
+  updateTaskTitle: (id: string, title: string, tab?: 'today' | 'tomorrow') => void;
 
   // Global Timer State
   timerEndAt: number | null;
   timerPausedLeft: number | null; // Keeps track of remaining time if paused
   timerInitialMins: number | null;
   timerLastSavedChunks: number;
+  timerLastAlertedChunks: number;
   timerLastUpdated: number;
   isAlarmPlaying: boolean;
   alarmSound: string;
@@ -124,6 +129,8 @@ interface DashboardState {
   enableAlarmVibration: boolean;
   enablePanicButton: boolean;
   panicButtonMode: 'redirect' | 'hide';
+  alarmDurationSecs: number;
+  taskIntervalAlertMins: number;
   setEnableAlarmSound: (enabled: boolean) => void;
   setEnableAlarmVibration: (enabled: boolean) => void;
   setEnablePanicButton: (enabled: boolean) => void;
@@ -132,11 +139,12 @@ interface DashboardState {
   setTimerPausedLeft: (time: number | null) => void;
   setTimerInitialMins: (mins: number | null) => void;
   setTimerLastSavedChunks: (chunks: number) => void;
+  setTimerLastAlertedChunks: (chunks: number) => void;
   setIsAlarmPlaying: (playing: boolean) => void;
   setAlarmSound: (sound: string) => void;
-  alarmDurationSecs: number;
   setAlarmDurationSecs: (secs: number) => void;
   setAlarmVolume: (vol: number) => void;
+  setTaskIntervalAlertMins: (mins: number) => void;
 
   // Quotes State
   currentQuote: { text: string; author: string } | null;
@@ -244,6 +252,7 @@ interface DashboardState {
   lockedWidgets: string[];
   toggleWidgetLock: (widgetId: string) => void;
   resetAllOffsets: (bgSrc: string) => void;
+
   widgetZIndices: Record<string, number>;
   bringToFront: (widgetId: string) => void;
 
@@ -623,6 +632,8 @@ export const useDashboardStore = create<DashboardState>()(
       lockedWallpaper: null,
       history: {},
       tasks: [],
+      tomorrowTasks: [],
+      tasksDate: getLocalDateString(),
       isHidden: false,
       _hasHydrated: false,
       theme: 'dark',
@@ -633,6 +644,7 @@ export const useDashboardStore = create<DashboardState>()(
       setTimetableThemeOverride: (theme) => set({ timetableThemeOverride: theme }),
       setHasHydrated: (state) => set({ _hasHydrated: state }),
 
+      toggleLockWallpaper: () => set((state) => ({ lockedWallpaper: state.lockedWallpaper ? null : state.wallpaper })),
       setLockedWallpaper: (filename) => set({ lockedWallpaper: filename }),
       setWallpaper: (url) => set({ wallpaper: url }),
       cycleBackground: () => set((state) => {
@@ -666,37 +678,70 @@ export const useDashboardStore = create<DashboardState>()(
           },
         })),
 
-      setTasks: (tasks) => set({ tasks }),
+      setTasks: (tasks, tab = 'today') => set(tab === 'today' ? { tasks } : { tomorrowTasks: tasks }),
 
-      addTask: (task) =>
-        set((state) => ({
-          tasks: [...state.tasks, task],
-        })),
-
-      toggleTask: (id) =>
-        set((state) => ({
-          tasks: state.tasks.map((t) =>
-            t.id === id ? { ...t, completed: !t.completed } : t
-          ),
-        })),
-
-      deleteTask: (id) =>
+      addTask: (title, duration, tab = 'today') =>
         set((state) => {
-          const isCurrentlyActive = state.activeTaskId === id;
+          const newTask = {
+            id: Date.now().toString(),
+            title,
+            duration,
+            completed: false,
+            timeSpent: 0
+          };
+          if (tab === 'today') {
+            return { tasks: [...state.tasks, newTask] };
+          }
+          return { tomorrowTasks: [...state.tomorrowTasks, newTask] };
+        }),
+
+      toggleTask: (id, tab = 'today') =>
+        set((state) => {
+          if (tab === 'today') {
+            return {
+              tasks: state.tasks.map((t) =>
+                t.id === id ? { ...t, completed: !t.completed } : t
+              ),
+            };
+          }
           return {
-            tasks: state.tasks.filter((t) => t.id !== id),
-            ...(isCurrentlyActive && { activeTaskId: null, activeTaskTitle: null }),
+            tomorrowTasks: state.tomorrowTasks.map((t) =>
+              t.id === id ? { ...t, completed: !t.completed } : t
+            ),
           };
         }),
 
-      updateTaskTitle: (id, newTitle) =>
+      deleteTask: (id, tab = 'today') =>
         set((state) => {
           const isCurrentlyActive = state.activeTaskId === id;
+          if (tab === 'today') {
+            return { 
+              tasks: state.tasks.filter((t) => t.id !== id),
+              ...(isCurrentlyActive && { activeTaskId: null, activeTaskTitle: null })
+            };
+          }
+          return { 
+            tomorrowTasks: state.tomorrowTasks.filter((t) => t.id !== id),
+            ...(isCurrentlyActive && { activeTaskId: null, activeTaskTitle: null })
+          };
+        }),
+
+      updateTaskTitle: (id, title, tab = 'today') =>
+        set((state) => {
+          const isCurrentlyActive = state.activeTaskId === id;
+          if (tab === 'today') {
+            return {
+              tasks: state.tasks.map((t) =>
+                t.id === id ? { ...t, title } : t
+              ),
+              ...(isCurrentlyActive && { activeTaskTitle: title }),
+            };
+          }
           return {
-            tasks: state.tasks.map((t) =>
-              t.id === id ? { ...t, title: newTitle } : t
+            tomorrowTasks: state.tomorrowTasks.map((t) =>
+              t.id === id ? { ...t, title } : t
             ),
-            ...(isCurrentlyActive && { activeTaskTitle: newTitle }),
+            ...(isCurrentlyActive && { activeTaskTitle: title }),
           };
         }),
 
@@ -781,14 +826,44 @@ export const useDashboardStore = create<DashboardState>()(
           timeSpent: (t.timeSpent || 0) + decreaseMins
         } : t)
       })),
-      editTaskDuration: (id, newDuration) => set((state) => ({
-        tasks: state.tasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t)
-      })),
+      editTaskDuration: (id, newDuration, tab = 'today') => set((state) => {
+        if (tab === 'today') {
+          return { tasks: state.tasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
+        }
+        return { tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
+      }),
+      reorderTasks: (tab, startIndex, endIndex) => set((state) => {
+        const list = tab === 'today' ? Array.from(state.tasks) : Array.from(state.tomorrowTasks);
+        const [removed] = list.splice(startIndex, 1);
+        list.splice(endIndex, 0, removed);
+        return tab === 'today' ? { tasks: list } : { tomorrowTasks: list };
+      }),
+      checkTasksRollover: () => set((state) => {
+        const todayStr = getLocalDateString();
+        if (!state.tasksDate || state.tasksDate !== todayStr) {
+          if (!state.tomorrowTasks || state.tomorrowTasks.length === 0) {
+             return { tasksDate: todayStr };
+          }
+          const newToday = state.tomorrowTasks.map(t => ({
+            ...t,
+            completed: false,
+            timeSpent: 0,
+            id: Date.now().toString() + Math.random() // Unique ID
+          }));
+          return {
+            tasksDate: todayStr,
+            tasks: [...state.tasks, ...newToday], // Append tomorrow's tasks to any existing today tasks
+            // Keep tomorrowTasks intact so they can be re-used the next day without rewriting.
+          };
+        }
+        return {};
+      }),
 
       timerEndAt: null,
       timerPausedLeft: null,
       timerInitialMins: null,
       timerLastSavedChunks: 0,
+      timerLastAlertedChunks: 0,
       timerLastUpdated: 0,
       isAlarmPlaying: false,
       alarmSound: '/ringtones/alarm.mp3',
@@ -797,6 +872,7 @@ export const useDashboardStore = create<DashboardState>()(
       setTimerPausedLeft: (time) => set({ timerPausedLeft: time, timerLastUpdated: Date.now() }),
       setTimerInitialMins: (mins) => set({ timerInitialMins: mins, timerLastUpdated: Date.now() }),
       setTimerLastSavedChunks: (chunks) => set({ timerLastSavedChunks: chunks }),
+      setTimerLastAlertedChunks: (chunks) => set({ timerLastAlertedChunks: chunks }),
       setIsAlarmPlaying: (playing) => set({ isAlarmPlaying: playing }),
       setAlarmSound: (sound) => set({ alarmSound: sound }),
       alarmDurationSecs: 60,
@@ -806,8 +882,10 @@ export const useDashboardStore = create<DashboardState>()(
       enableAlarmVibration: true,
       enablePanicButton: true,
       panicButtonMode: 'hide',
+      taskIntervalAlertMins: 10,
       setEnableAlarmSound: (val) => set({ enableAlarmSound: val }),
       setEnableAlarmVibration: (val) => set({ enableAlarmVibration: val }),
+      setTaskIntervalAlertMins: (mins) => set({ taskIntervalAlertMins: mins }),
       setEnablePanicButton: (val) => set({ enablePanicButton: val }),
       setPanicButtonMode: (val) => set({ panicButtonMode: val }),
 
@@ -1146,6 +1224,8 @@ export const useDashboardStore = create<DashboardState>()(
         return { isTimetableOpen: isOpen, ...extra };
       }),
 
+
+
       viewingFriend: null,
       setViewingFriend: (friend) => set({ viewingFriend: friend }),
 
@@ -1467,6 +1547,7 @@ export const useDashboardStore = create<DashboardState>()(
           persistedState.activeTaskId = currentState.activeTaskId;
           persistedState.activeTaskTitle = currentState.activeTaskTitle;
           persistedState.timerLastSavedChunks = currentState.timerLastSavedChunks;
+          persistedState.timerLastAlertedChunks = currentState.timerLastAlertedChunks;
           persistedState.timerLastUpdated = currentState.timerLastUpdated;
         }
 
@@ -1491,12 +1572,20 @@ export const useDashboardStore = create<DashboardState>()(
           });
         }
 
+        if (!persistedState.tomorrowTasks) {
+          persistedState.tomorrowTasks = [];
+        }
+        if (!persistedState.tasksDate) {
+          persistedState.tasksDate = getLocalDateString();
+        }
+
         // Create a safe merged state that defaults to current state
         const safeState = { ...currentState, ...persistedState };
 
         // Defensive fallbacks: Ensure critical arrays and objects are NEVER overwritten with undefined or null
         // due to schema mismatches, and always retain their expected types.
         safeState.tasks = Array.isArray(persistedState.tasks) ? persistedState.tasks : currentState.tasks;
+        safeState.tomorrowTasks = Array.isArray(persistedState.tomorrowTasks) ? persistedState.tomorrowTasks : currentState.tomorrowTasks;
         safeState.notes = Array.isArray(persistedState.notes) ? persistedState.notes : currentState.notes;
         safeState.roadmaps = Array.isArray(persistedState.roadmaps) ? persistedState.roadmaps : currentState.roadmaps;
         
