@@ -42,8 +42,9 @@ export async function GET(request: Request) {
     const settingsRecord = await db.collection('Settings').findOne({ userId: friendId });
     const tasksRecord = await db.collection('Tasks').findOne({ userId: friendId });
     const statsRecord = await db.collection('Stats').findOne({ userId: friendId });
+    const dailyRoutineRecord = await db.collection('DailyRoutine').findOne({ userId: friendId });
 
-    if (!friendDashboard && !settingsRecord && !tasksRecord && !statsRecord) {
+    if (!friendDashboard && !settingsRecord && !tasksRecord && !statsRecord && !dailyRoutineRecord) {
       return NextResponse.json({ data: null });
     }
 
@@ -57,7 +58,7 @@ export async function GET(request: Request) {
         ...(settingsRecord?.displaySettings || legacyDS || {}),
         ...(settingsRecord?.generalSettings || legacyGS || {})
       };
-      
+
       const SETTING_ARRAY_KEYS = [
         'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
         'hiddenWallpapers', 'customDesktopWallpapers', 'customMobileWallpapers'
@@ -71,12 +72,22 @@ export async function GET(request: Request) {
         if (tasksRecord && tasksRecord[key] !== undefined) parsedData[key] = tasksRecord[key];
       });
 
-      const STATS_KEYS = ['history', 'healthData', 'stopwatchSessions'];
+      const STATS_KEYS = ['history', 'stopwatchSessions'];
       STATS_KEYS.forEach(key => {
         if (statsRecord && statsRecord[key] !== undefined) parsedData[key] = statsRecord[key];
       });
+
+      const DAILY_ROUTINE_KEYS = ['dailyTimes'];
+      DAILY_ROUTINE_KEYS.forEach(key => {
+        if (dailyRoutineRecord && dailyRoutineRecord[key] !== undefined) parsedData[key] = dailyRoutineRecord[key];
+      });
+      
+      // Backward compat
+      if (statsRecord && statsRecord.dailyTimes !== undefined && parsedData.dailyTimes === undefined) {
+        parsedData.dailyTimes = statsRecord.dailyTimes;
+      }
     }
-    
+
     const { ObjectId } = require('mongodb');
     let userQuery;
     try {
@@ -89,7 +100,7 @@ export async function GET(request: Request) {
     const publicStats = {
       username: friendAccount?.username || friendId,
       history: parsedData.history || {},
-      healthData: parsedData.healthData || {},
+      dailyTimes: parsedData.dailyTimes || {},
       tasksCompleted: (parsedData.tasks || []).filter((t: any) => t.completed).length,
       tasks: parsedData.tasks || [],
       deadlines: parsedData.deadlines || [],

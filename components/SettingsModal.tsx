@@ -68,7 +68,7 @@ const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, aspec
 };
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, is24HourClock, toggle24HourClock, clockScale, setClockScale, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showHealth, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, enableRightToolbarPeek, setEnableRightToolbarPeek } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, is24HourClock, toggle24HourClock, clockScale, setClockScale, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, enableRightToolbarPeek, setEnableRightToolbarPeek } = useDashboardStore();
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
 
@@ -117,8 +117,8 @@ export default function SettingsModal() {
             <li><strong>Countdowns:</strong> Swipe left or right on the widget to switch between your countdowns. Swipe <strong>UP</strong> directly on the widget to close/hide it.  You can also do a right or left swipe on the top Focus Pill to toggle the Countdowns widget open or closed.</li>
             <li><strong>Calendar:</strong> Swipe left or right near top-left edge on screen to show or hide calendar quickly without calender button you can hide it from settings if you want.</li>
             <li><strong>Task Manager:</strong> Swipe left or right near top-right edge on screen to show or hide the tasks quickly without calender button you can hide it from settings if you want.</li>
-            <li><strong>Menus & Modals:</strong> You can use mouse click and drag (or swipe on touch screens) to close or navigate the Settings side menu and the Health & Habits modal.</li>
-            <li><strong>Edge Panels:</strong> The Health Rings (bottom-left) and Right Toolbar hide at the screen edges. Click or hover the exposed edge to expand them. Swipe right on the Toolbar to hide it, while the Health Rings will auto-hide after 8 seconds.</li>
+            <li><strong>Menus & Modals:</strong> You can use mouse click and drag (or swipe on touch screens) to close or navigate the Settings side menu.</li>
+            <li><strong>Edge Panels:</strong> The Right Toolbar hide at the screen edges. Click or hover the exposed edge to expand them. Swipe right on the Toolbar to hide it.</li>
           </ul>
         </div>
       )
@@ -252,7 +252,7 @@ export default function SettingsModal() {
             <li><strong>Countdowns:</strong> Swipe left or right on the widget to switch between your countdowns. Swipe <strong>UP</strong> directly on the widget to close/hide it.  You can also do a right or left swipe on the top Focus Pill to toggle the Countdowns widget open or closed.</li>
             <li><strong>Calendar:</strong> Swipe left or right near top-left edge on screen to show or hide calendar quickly without calender button you can hide it from settings if you want.</li>
             <li><strong>Task Manager:</strong> Swipe left or right near top-right edge on screen to show or hide the tasks quickly without calender button you can hide it from settings if you want.</li>
-            <li><strong>Menus & Modals:</strong> You can use mouse click and drag (or swipe on touch screens) to close or navigate the Settings side menu and the Health & Habits modal.</li>
+            <li><strong>Menus & Modals:</strong> You can use mouse click and drag (or swipe on touch screens) to close or navigate the Settings side menu.</li>
           </ul>
         </div>
       )
@@ -463,7 +463,7 @@ export default function SettingsModal() {
       // Prevent cheating: Strip out stats/history from imported data so users cannot fake leaderboard times
       if (parsed.state) {
         delete parsed.state.history;
-        delete parsed.state.healthData;
+        delete parsed.state.dailyTimes;
         delete parsed.state.stopwatchSessions;
         delete parsed.state.timerLastSavedChunks;
       }
@@ -920,7 +920,7 @@ export default function SettingsModal() {
 
                       <div className="grid grid-cols-2 gap-1.5 md:gap-2">
                         {[
-                          { key: 'showHealth', icon: Activity, label: 'Health', color: 'text-red-400', state: showHealth },
+
                           { key: 'showQuote', icon: MessageSquare, label: 'Quote', color: 'text-purple-400', state: showQuote },
                           { key: 'showTimer', icon: TimerIcon, label: 'Timer', color: 'text-yellow-400', state: showTimer },
                           { key: 'showStopwatch', icon: Clock, label: 'Stopwatch', color: 'text-blue-400', state: showStopwatch },
@@ -1594,7 +1594,7 @@ export default function SettingsModal() {
                       {Object.entries({
                         quote: 'Daily Quote', stats: 'Stats Modal', plans: 'Roadmap & Plans',
                         countdowns: 'Countdowns', tasks: 'Tasks', notes: 'Quick Notes',
-                        calendar: 'Calendar', timetable: 'Timetable', health: 'Health Rings',
+                        calendar: 'Calendar', timetable: 'Timetable',
                         timer: 'Session Timer', dock: 'Bottom Dock', clock: 'Big Clock',
                         todayFocusPill: 'Focus Pill', timerPill: 'Timer Pill',
                         deadlineAlerts: 'Alerts', bgSwitcher: 'Bg Switcher', stopwatch: 'Stopwatch',

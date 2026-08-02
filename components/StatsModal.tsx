@@ -7,12 +7,12 @@ import ScrollableWithArrows from './ScrollableWithArrows';
 import Timetable from './Timetable';
 
 export default function StatsModal() {
-  const { history: myHistory, healthData: myHealthData, isStatsOpen, toggleStats, viewingFriend, setViewingFriend } = useDashboardStore();
+  const { history: myHistory, dailyTimes: myDailyTimes, isStatsOpen, toggleStats, viewingFriend, setViewingFriend } = useDashboardStore();
   const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
   const [showFriendTimetable, setShowFriendTimetable] = useState(false);
 
   const history = viewingFriend ? viewingFriend.stats.history || {} : myHistory;
-  const healthData = viewingFriend ? viewingFriend.stats.healthData || {} : myHealthData;
+  const dailyTimes = viewingFriend ? viewingFriend.stats.dailyTimes || {} : myDailyTimes;
 
   useEffect(() => {
     // When modal opens, auto-expand the current month
@@ -116,19 +116,13 @@ export default function StatsModal() {
     const monthName = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
     if (!acc[monthKey]) {
-      acc[monthKey] = { name: monthName, total: 0, academic: 0, reading: 0, english: 0, days: [] };
+      acc[monthKey] = { name: monthName, total: 0, days: [] };
     }
 
     acc[monthKey].total += history[date] || 0;
-    const hData = healthData[date];
-    if (hData) {
-      acc[monthKey].academic += hData.academic || 0;
-      acc[monthKey].reading += hData.reading || 0;
-      acc[monthKey].english += hData.english || 0;
-    }
     acc[monthKey].days.push(date);
     return acc;
-  }, {} as Record<string, { name: string, total: number, academic: number, reading: number, english: number, days: string[] }>);
+  }, {} as Record<string, { name: string, total: number, days: string[] }>);
 
   const sortedMonths = Object.keys(monthlyData).sort((a, b) => b.localeCompare(a));
 
@@ -371,32 +365,11 @@ export default function StatsModal() {
                           </div>
                         </div>
 
-                        {/* Monthly Health Totals */}
-                        {isMonthExpanded && (
-                          <div className="grid grid-cols-3 gap-1 px-1.5 pb-1.5 bg-black/40 border-t border-white/10 pt-1.5">
-                            <div className="flex flex-col items-center gap-0.5 p-1 rounded-md bg-purple-500/10 border border-purple-400/20 text-center">
-                              <GraduationCap className="text-purple-300 w-2.5 h-2.5" />
-                              <span className="text-[7px] sm:text-[8px] text-purple-200/70 uppercase tracking-widest font-bold">Acad</span>
-                              <span className="text-[9px] sm:text-[10px] font-bold text-purple-200 leading-none">{formatMinutes(data.academic)}</span>
-                            </div>
-                            <div className="flex flex-col items-center gap-0.5 p-1 rounded-md bg-pink-500/10 border border-pink-400/20 text-center">
-                              <BookOpen className="text-pink-300 w-2.5 h-2.5" />
-                              <span className="text-[7px] sm:text-[8px] text-pink-200/70 uppercase tracking-widest font-bold">Read</span>
-                              <span className="text-[9px] sm:text-[10px] font-bold text-pink-200 leading-none">{formatMinutes(data.reading)}</span>
-                            </div>
-                            <div className="flex flex-col items-center gap-0.5 p-1 rounded-md bg-yellow-500/10 border border-yellow-400/20 text-center">
-                              <MessageCircle className="text-yellow-300 w-2.5 h-2.5" />
-                              <span className="text-[7px] sm:text-[8px] text-yellow-200/70 uppercase tracking-widest font-bold">Vocab</span>
-                              <span className="text-[9px] sm:text-[10px] font-bold text-yellow-200 leading-none">{data.english}w</span>
-                            </div>
-                          </div>
-                        )}
-
                         {/* Days inside Month */}
                         {isMonthExpanded && (
                           <div className="flex flex-col p-1 sm:p-1.5 bg-black/20 gap-0.5 sm:gap-1 border-t border-white/5">
                             {data.days.map((date: string) => {
-                              const hData = healthData[date];
+                              const dTime = dailyTimes[date];
                               return (
                                 <div key={date} className="flex flex-row items-center justify-between p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition-colors border border-white/10 gap-1.5 sm:gap-2">
 
@@ -408,17 +381,18 @@ export default function StatsModal() {
                                   </div>
 
                                   <div className="flex items-center justify-end w-full gap-1.5 sm:gap-2">
-                                    {hData ? (
+                                    {dTime ? (
                                       <div className="flex items-center gap-0.5 sm:gap-1">
-                                        <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-purple-200 bg-purple-500/20 px-1 py-px rounded border border-purple-400/30">
-                                          <GraduationCap className="w-2.5 h-2.5" /> <span className="font-bold leading-none">{formatMinutes(hData.academic || 0)}</span>
-                                        </div>
-                                        <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-pink-200 bg-pink-500/20 px-1 py-px rounded border border-pink-400/30">
-                                          <BookOpen className="w-2.5 h-2.5" /> <span className="font-bold leading-none">{formatMinutes(hData.reading || 0)}</span>
-                                        </div>
-                                        <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-yellow-200 bg-yellow-500/20 px-1 py-px rounded border border-yellow-400/30">
-                                          <MessageCircle className="w-2.5 h-2.5" /> <span className="font-bold leading-none">{hData.english || 0}</span>
-                                        </div>
+                                        {dTime.wakeupTime && (
+                                          <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-blue-200 bg-blue-500/20 px-1 py-px rounded border border-blue-400/30">
+                                            <span className="font-bold leading-none">Wake: {new Date(dTime.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                          </div>
+                                        )}
+                                        {dTime.bedTime && (
+                                          <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-indigo-200 bg-indigo-500/20 px-1 py-px rounded border border-indigo-400/30">
+                                            <span className="font-bold leading-none">Bed: {new Date(dTime.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                          </div>
+                                        )}
                                       </div>
                                     ) : <div className="flex-1" />}
 

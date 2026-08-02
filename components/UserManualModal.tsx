@@ -4,34 +4,12 @@ import { BookOpen, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { manualData } from './manualData';
+import ScrollableWithArrows from './ScrollableWithArrows';
 
 export default function UserManualModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const [activeSectionIdx, setActiveSectionIdx] = useState<number>(0);
     const [isMobileDetailView, setIsMobileDetailView] = useState(false);
     
-    // Drag to scroll logic
-    const contentRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [startY, setStartY] = useState(0);
-    const [scrollTop, setScrollTop] = useState(0);
-
-    const handlePointerDown = (e: React.PointerEvent) => {
-        if (!contentRef.current) return;
-        setIsDragging(true);
-        setStartY(e.pageY - contentRef.current.offsetTop);
-        setScrollTop(contentRef.current.scrollTop);
-    };
-
-    const handlePointerUp = () => setIsDragging(false);
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!isDragging || !contentRef.current) return;
-        e.preventDefault();
-        const y = e.pageY - contentRef.current.offsetTop;
-        const walk = (y - startY) * 1.5;
-        contentRef.current.scrollTop = scrollTop - walk;
-    };
-
     if (!isOpen) return null;
 
     return (
@@ -54,7 +32,7 @@ export default function UserManualModal({ isOpen, onClose }: { isOpen: boolean; 
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-2 md:p-3 flex flex-col gap-1 custom-scrollbar">
+                    <ScrollableWithArrows className="flex-1 p-2 md:p-3 flex flex-col gap-1 pb-10">
                         {manualData.map((section, idx) => (
                             <button
                                 key={idx}
@@ -70,7 +48,7 @@ export default function UserManualModal({ isOpen, onClose }: { isOpen: boolean; 
                                 <ChevronRight className={`w-4 h-4 shrink-0 ${activeSectionIdx === idx ? 'text-blue-400' : 'text-slate-100/20'}`} />
                             </button>
                         ))}
-                    </div>
+                    </ScrollableWithArrows>
                 </div>
 
                 {/* Right Content Area */}
@@ -99,20 +77,15 @@ export default function UserManualModal({ isOpen, onClose }: { isOpen: boolean; 
                     </div>
 
                     {/* Markdown Content */}
-                    <div 
-                        ref={contentRef}
-                        onPointerDown={handlePointerDown}
-                        onPointerUp={handlePointerUp}
-                        onPointerLeave={handlePointerUp}
-                        onPointerMove={handlePointerMove}
-                        className={`flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-slate-900/30 touch-pan-y ${isDragging ? 'cursor-grabbing select-none' : 'cursor-auto'}`}
+                    <ScrollableWithArrows 
+                        className="flex-1 p-4 md:p-8 bg-slate-900/30"
                     >
-                        <div className="prose prose-invert prose-sm md:prose-base max-w-3xl mx-auto prose-headings:text-blue-300 prose-a:text-blue-400 prose-blockquote:border-l-blue-500 prose-blockquote:bg-blue-500/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-table:border-collapse prose-th:border prose-th:border-slate-100/20 prose-th:bg-slate-100/5 prose-th:p-2 prose-td:border prose-td:border-slate-100/10 prose-td:p-2 prose-tr:border-b-0 text-slate-200">
+                        <div className="prose prose-invert prose-sm md:prose-base max-w-3xl mx-auto prose-headings:text-blue-300 prose-a:text-blue-400 prose-blockquote:border-l-blue-500 prose-blockquote:bg-blue-500/5 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-table:border-collapse prose-th:border prose-th:border-slate-100/20 prose-th:bg-slate-100/5 prose-th:p-2 prose-td:border prose-td:border-slate-100/10 prose-td:p-2 prose-tr:border-b-0 text-slate-200 pb-10">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                 {manualData[activeSectionIdx]?.content || ''}
                             </ReactMarkdown>
                         </div>
-                    </div>
+                    </ScrollableWithArrows>
 
                 </div>
 

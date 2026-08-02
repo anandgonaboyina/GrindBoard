@@ -49,9 +49,20 @@ export async function GET(request: Request) {
       projection: { userId: 1, history: 1 }
     }).toArray();
 
+    // 4. Fetch all daily routines to get wake/sleep times
+    const dailyRoutines = await db.collection('DailyRoutine').find({}, {
+      projection: { userId: 1, dailyTimes: 1 }
+    }).toArray();
+
     const userHistories: Record<string, Record<string, number>> = {};
+    const userDailyTimes: Record<string, Record<string, any>> = {};
+    
     stats.forEach(stat => {
       userHistories[stat.userId] = stat.history || {};
+    });
+
+    dailyRoutines.forEach(routine => {
+      userDailyTimes[routine.userId] = routine.dailyTimes || {};
     });
 
     const getLocalDateString = (d: Date) => {
@@ -98,6 +109,8 @@ export async function GET(request: Request) {
     const leaderboard = users.map((u, index) => {
       const uIdStr = u._id.toString();
       const history = userHistories[uIdStr] || {};
+      const dailyTimes = userDailyTimes[uIdStr] || {};
+      const todayDaily = dailyTimes[todayStr] || {};
       
       const todayFocused = history[todayStr] || 0;
       const thisWeekFocused = thisWeekDays.reduce((acc, date) => acc + (history[date] || 0), 0);
@@ -126,6 +139,9 @@ export async function GET(request: Request) {
         lastWeekFocused,
         thisMonthFocused,
         lastMonthFocused,
+        wakeupTime: todayDaily.wakeupTime || null,
+        workStartedTime: todayDaily.workStartedTime || null,
+        bedTime: todayDaily.bedTime || null,
         profilePicture: u.profilePicture || null
       };
     });

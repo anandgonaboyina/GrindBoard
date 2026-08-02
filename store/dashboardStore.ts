@@ -38,12 +38,10 @@ export type Roadmap = {
   nodes: RoadmapItem[];
 };
 
-export interface HealthData {
-  water: number;
-  stretch: number;
-  reading: number;
-  academic: number;
-  english: number;
+export interface DailyTime {
+  wakeupTime?: number;
+  workStartedTime?: number;
+  bedTime?: number;
 }
 
 export type TimetableGrid = Record<string, Record<string, string>>;
@@ -99,8 +97,10 @@ interface DashboardState {
   isClockOpen: boolean;
   toggleClock: () => void;
   isSettingsOpen: boolean;
+  isDayStartModalOpen: boolean;
   settingsActiveTab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'feedback' | 'update' | 'wallpaper' | 'quotes';
   toggleSettings: () => void;
+  toggleDayStartModal: () => void;
   setSettingsActiveTab: (tab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'feedback' | 'update' | 'wallpaper' | 'quotes') => void;
   connectInitialTab?: 'profile' | 'friends' | 'broadcasts' | 'leaderboard';
   setConnectInitialTab: (tab?: 'profile' | 'friends' | 'broadcasts' | 'leaderboard') => void;
@@ -234,12 +234,11 @@ interface DashboardState {
   viewingFriend: { username: string, stats: any } | null;
   setViewingFriend: (friend: { username: string, stats: any } | null) => void;
 
-  // Health Rings
-  healthData: Record<string, HealthData>;
-  fetchHealthData: () => Promise<void>;
-  updateHealth: (dateKey: string, type: keyof HealthData, value: number) => void;
-  isHealthModalOpen: boolean;
-  toggleHealthModal: () => void;
+  // Daily Times (Wake up, Work start, Bed time)
+  dailyTimes: Record<string, DailyTime>;
+  updateDailyTime: (dateKey: string, field: keyof DailyTime, timestamp: number) => void;
+  isDayStartModalOpen: boolean;
+  toggleDayStartModal: () => void;
 
   clockOffsets: Record<string, { x: number, y: number }>;
   updateClockOffset: (bgSrc: string, x: number, y: number) => void;
@@ -399,23 +398,25 @@ const performSave = async () => {
     if (lastSavedValue) {
       const oldState = JSON.parse(lastSavedValue).state || {};
       const newState = JSON.parse(valueToSave).state || {};
-      
+
       const TASK_KEYS = ['tasks', 'countdowns', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
-      const STATS_KEYS = ['history', 'stopwatchSessions', 'healthData'];
+      const STATS_KEYS = ['history', 'stopwatchSessions'];
+      const DAILY_ROUTINE_KEYS = ['dailyTimes'];
       const NOTES_KEYS = ['notes'];
       const ROADMAPS_KEYS = ['roadmaps'];
-      
+
       Object.keys(newState).forEach(key => {
         if (JSON.stringify(newState[key]) !== JSON.stringify(oldState[key])) {
           if (TASK_KEYS.includes(key)) modifiedCollections.push('Tasks');
           else if (STATS_KEYS.includes(key)) modifiedCollections.push('Stats');
+          else if (DAILY_ROUTINE_KEYS.includes(key)) modifiedCollections.push('DailyRoutine');
           else if (NOTES_KEYS.includes(key)) modifiedCollections.push('Notes');
           else if (ROADMAPS_KEYS.includes(key)) modifiedCollections.push('Roadmaps');
           else if (!key.startsWith('is') && !key.startsWith('show')) modifiedCollections.push('Settings');
         }
       });
       modifiedCollections = [...new Set(modifiedCollections)];
-      
+
       // If we literally changed nothing persistent, just cancel the save!
       if (modifiedCollections.length === 0) {
         isSaving = false;
@@ -447,7 +448,9 @@ const performSave = async () => {
 
         // Deep merge tracking data to prevent data loss
         history: { ...(parsedLocal.state.history || {}), ...(parsedCloud.state.history || {}) },
-        healthData: { ...(parsedLocal.state.healthData || {}), ...(parsedCloud.state.healthData || {}) },
+        dailyTimes: { ...(parsedLocal.state.dailyTimes || {}), ...(parsedCloud.state.dailyTimes || {}) },
+        timetableGrid: { ...(parsedLocal.state.timetableGrid || {}), ...(parsedCloud.state.timetableGrid || {}) },
+        timetableColors: { ...(parsedLocal.state.timetableColors || {}), ...(parsedCloud.state.timetableColors || {}) },
 
         // Intelligently merge arrays to prevent data loss, prioritizing local changes
         tasks: [...(parsedLocal.state.tasks || []), ...(parsedCloud.state.tasks || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
@@ -593,7 +596,7 @@ const fileStorage = createJSONStorage(() => ({
   setItem: async (_name: string, value: string): Promise<void> => {
     if (typeof window === 'undefined' || isSyncingFromCloud || isAuthTransition) return;
     if (value === lastSavedValue) return; // Prevent overwriting DB with unchanged hydration state
-    
+
     // Safety check: NEVER save to DB if hydration hasn't finished, to prevent overwriting with initial defaults!
     if (useDashboardStore.getState && !useDashboardStore.getState()._hasHydrated) {
       console.warn("Blocked save attempt before hydration!");
@@ -631,6 +634,7 @@ export const useDashboardStore = create<DashboardState>()(
       currentBgType: null,
       lockedWallpaper: null,
       history: {},
+      dailyTimes: {},
       tasks: [],
       tomorrowTasks: [],
       tasksDate: getLocalDateString(),
@@ -715,12 +719,12 @@ export const useDashboardStore = create<DashboardState>()(
         set((state) => {
           const isCurrentlyActive = state.activeTaskId === id;
           if (tab === 'today') {
-            return { 
+            return {
               tasks: state.tasks.filter((t) => t.id !== id),
               ...(isCurrentlyActive && { activeTaskId: null, activeTaskTitle: null })
             };
           }
-          return { 
+          return {
             tomorrowTasks: state.tomorrowTasks.filter((t) => t.id !== id),
             ...(isCurrentlyActive && { activeTaskId: null, activeTaskTitle: null })
           };
@@ -796,9 +800,11 @@ export const useDashboardStore = create<DashboardState>()(
         return { isClockOpen: next, ...extra };
       }),
       isSettingsOpen: false,
+      isDayStartModalOpen: false,
       settingsActiveTab: 'preferences',
       connectInitialTab: undefined,
       toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
+      toggleDayStartModal: () => set((state) => ({ isDayStartModalOpen: !state.isDayStartModalOpen })),
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
       setConnectInitialTab: (tab) => set({ connectInitialTab: tab }),
       timerTrigger: null,
@@ -842,7 +848,7 @@ export const useDashboardStore = create<DashboardState>()(
         const todayStr = getLocalDateString();
         if (!state.tasksDate || state.tasksDate !== todayStr) {
           if (!state.tomorrowTasks || state.tomorrowTasks.length === 0) {
-             return { tasksDate: todayStr };
+            return { tasksDate: todayStr };
           }
           const newToday = state.tomorrowTasks.map(t => ({
             ...t,
@@ -1230,48 +1236,22 @@ export const useDashboardStore = create<DashboardState>()(
       viewingFriend: null,
       setViewingFriend: (friend) => set({ viewingFriend: friend }),
 
-      // Health Rings
-      healthData: {},
-      fetchHealthData: async () => {
-        try {
-          const res = await fetch('/api/health', {
-            headers: { 'Authorization': `Bearer ${getSyncToken()}` }
-          });
-          if (res.ok) {
-            const json = await res.json();
-            if (json.data) {
-              set({ healthData: json.data });
-            }
-          }
-        } catch (err) {
-          console.error('Failed to fetch health data', err);
-        }
-      },
-      isHealthModalOpen: false,
-      toggleHealthModal: () => set((state) => ({ isHealthModalOpen: !state.isHealthModalOpen })),
-      updateHealth: (dateKey, metric, incrementValue) => {
-        // Optimistic UI update
+      // Daily Times
+      dailyTimes: {},
+      isDayStartModalOpen: false,
+      toggleDayStartModal: () => set((state) => ({ isDayStartModalOpen: !state.isDayStartModalOpen })),
+      updateDailyTime: (dateKey, field, timestamp) => {
         set((state) => {
-          const newData = { ...state.healthData };
+          const newData = { ...state.dailyTimes };
           if (!newData[dateKey]) {
-            newData[dateKey] = { water: 0, stretch: 0, reading: 0, academic: 0, english: 0 };
+            newData[dateKey] = {};
           }
           newData[dateKey] = {
             ...newData[dateKey],
-            [metric]: Math.max(0, newData[dateKey][metric] + incrementValue)
+            [field]: timestamp
           };
-          return { healthData: newData };
+          return { dailyTimes: newData };
         });
-
-        // Background API sync
-        fetch('/api/health', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getSyncToken()}`
-          },
-          body: JSON.stringify({ dateKey, metric, incrementValue })
-        }).catch(err => console.error("Failed to sync health data", err));
       },
 
       clockOffsets: {},
@@ -1357,7 +1337,6 @@ export const useDashboardStore = create<DashboardState>()(
       upiId: '',
       setUpiId: (id) => set({ upiId: id }),
 
-      showHealth: true,
       showQuote: true,
       showTimer: true,
       showCountdowns: true,
@@ -1378,7 +1357,7 @@ export const useDashboardStore = create<DashboardState>()(
       toggleVisibility: (key) => set((state) => ({ [key]: !state[key] })),
 
       hideConfig: {
-        quote: true, health: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
       },
       setHideConfig: (key, value) => {
         set((state) => ({ hideConfig: { ...state.hideConfig, [key]: value } }));
@@ -1387,7 +1366,7 @@ export const useDashboardStore = create<DashboardState>()(
         if (hide) {
           set({
             hideConfig: {
-              quote: true, health: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
             }
           });
         } else {
@@ -1396,7 +1375,7 @@ export const useDashboardStore = create<DashboardState>()(
       },
 
       mobileHideConfig: {
-        quote: true, health: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
       },
       setMobileHideConfig: (key, value) => {
         set((state) => ({ mobileHideConfig: { ...state.mobileHideConfig, [key]: value } }));
@@ -1405,7 +1384,7 @@ export const useDashboardStore = create<DashboardState>()(
         if (hide) {
           set({
             mobileHideConfig: {
-              quote: true, health: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
             }
           });
         } else {
@@ -1455,15 +1434,15 @@ export const useDashboardStore = create<DashboardState>()(
               }
             });
 
-            // Also clear healthData locally
-            const newHealthData = { ...state.healthData };
-            Object.keys(newHealthData).forEach((key) => {
+            // Also clear dailyTimes locally
+            const newDailyTimes = { ...state.dailyTimes };
+            Object.keys(newDailyTimes).forEach((key) => {
               if (key < cutoffDateStr) {
-                delete newHealthData[key];
+                delete newDailyTimes[key];
               }
             });
 
-            return { history: newHistory, healthData: newHealthData };
+            return { history: newHistory, dailyTimes: newDailyTimes };
           });
         } catch (err) {
           console.error("Failed to clear old data", err);
@@ -1517,7 +1496,7 @@ export const useDashboardStore = create<DashboardState>()(
       partialize: (state) => Object.fromEntries(
         Object.entries(state).filter(([key]) => ![
           'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
-          'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isHealthModalOpen', 'healthData',
+          'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
           'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
           'widgetZIndices', 'isAlarmPlaying'
         ].includes(key))
@@ -1532,7 +1511,7 @@ export const useDashboardStore = create<DashboardState>()(
           persistedState.activeTaskId = null;
           persistedState.activeTaskTitle = null;
         }
-        
+
         // Prevent alarm from persisting and triggering continuously on reload/focus
         persistedState.isAlarmPlaying = false;
 
@@ -1589,22 +1568,22 @@ export const useDashboardStore = create<DashboardState>()(
         safeState.tomorrowTasks = Array.isArray(persistedState.tomorrowTasks) ? persistedState.tomorrowTasks : currentState.tomorrowTasks;
         safeState.notes = Array.isArray(persistedState.notes) ? persistedState.notes : currentState.notes;
         safeState.roadmaps = Array.isArray(persistedState.roadmaps) ? persistedState.roadmaps : currentState.roadmaps;
-        
+
         // Deep merge records/objects to ensure we don't drop newly added default keys
         if (persistedState.history && typeof persistedState.history === 'object') {
-           safeState.history = { ...currentState.history, ...persistedState.history };
+          safeState.history = { ...currentState.history, ...persistedState.history };
         }
         if (persistedState.timetableGrid && typeof persistedState.timetableGrid === 'object') {
-           safeState.timetableGrid = { ...currentState.timetableGrid, ...persistedState.timetableGrid };
+          safeState.timetableGrid = { ...currentState.timetableGrid, ...persistedState.timetableGrid };
         }
-        if (persistedState.healthData && typeof persistedState.healthData === 'object') {
-           safeState.healthData = { ...currentState.healthData, ...persistedState.healthData };
+        if (persistedState.dailyTimes && typeof persistedState.dailyTimes === 'object') {
+          safeState.dailyTimes = { ...currentState.dailyTimes, ...persistedState.dailyTimes };
         }
         if (persistedState.clockOffsets && typeof persistedState.clockOffsets === 'object') {
-           safeState.clockOffsets = { ...currentState.clockOffsets, ...persistedState.clockOffsets };
+          safeState.clockOffsets = { ...currentState.clockOffsets, ...persistedState.clockOffsets };
         }
         if (persistedState.widgetOffsets && typeof persistedState.widgetOffsets === 'object') {
-           safeState.widgetOffsets = { ...currentState.widgetOffsets, ...persistedState.widgetOffsets };
+          safeState.widgetOffsets = { ...currentState.widgetOffsets, ...persistedState.widgetOffsets };
         }
 
         return safeState;

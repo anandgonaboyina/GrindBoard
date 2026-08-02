@@ -37,8 +37,9 @@ export async function GET(request: Request) {
     const tasksRecord = await db.collection('Tasks').findOne({ userId: user.userId });
     const roadmapsRecord = await db.collection('Roadmaps').findOne({ userId: user.userId });
     const statsRecord = await db.collection('Stats').findOne({ userId: user.userId });
+    const dailyRoutineRecord = await db.collection('DailyRoutine').findOne({ userId: user.userId });
     
-    if (!existing && !notesRecord && !settingsRecord && !tasksRecord && !roadmapsRecord && !statsRecord) {
+    if (!existing && !notesRecord && !settingsRecord && !tasksRecord && !roadmapsRecord && !statsRecord && !dailyRoutineRecord) {
       return NextResponse.json({ data: null, lastModified: 0 });
     }
 
@@ -49,7 +50,8 @@ export async function GET(request: Request) {
     ];
     
     const TASK_KEYS = ['tasks', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
-    const STATS_KEYS = ['history', 'stopwatchSessions', 'healthData'];
+    const STATS_KEYS = ['history', 'stopwatchSessions'];
+    const DAILY_ROUTINE_KEYS = ['dailyTimes'];
 
     let returnedData: any = null;
     // Backwards compatibility for old stringified format
@@ -86,7 +88,16 @@ export async function GET(request: Request) {
           if (statsRecord[key] !== undefined) returnedData.state[key] = statsRecord[key];
         });
       }
-    } else if (existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord) {
+      if (dailyRoutineRecord) {
+        DAILY_ROUTINE_KEYS.forEach(key => {
+          if (dailyRoutineRecord[key] !== undefined) returnedData.state[key] = dailyRoutineRecord[key];
+        });
+      }
+      // Backward compatibility: If dailyTimes is still inside Stats, grab it
+      if (statsRecord && statsRecord.dailyTimes !== undefined && returnedData.state.dailyTimes === undefined) {
+        returnedData.state.dailyTimes = statsRecord.dailyTimes;
+      }
+    } else if (existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord) {
       const { _id, userId, lastModified, updatedAt, version, displaySettings: legacyDS, generalSettings: legacyGS, ...coreData } = (existing || {}) as any;
       const reconstructedState = {
         ...coreData,
@@ -111,6 +122,16 @@ export async function GET(request: Request) {
           reconstructedState[key] = statsRecord[key];
         }
       });
+
+      DAILY_ROUTINE_KEYS.forEach(key => {
+        if (dailyRoutineRecord && dailyRoutineRecord[key] !== undefined) {
+          reconstructedState[key] = dailyRoutineRecord[key];
+        }
+      });
+      // Backward compatibility: If dailyTimes is still inside Stats, grab it
+      if (statsRecord && statsRecord.dailyTimes !== undefined && reconstructedState.dailyTimes === undefined) {
+        reconstructedState.dailyTimes = statsRecord.dailyTimes;
+      }
       
       if (notesRecord && notesRecord.notes) {
         reconstructedState.notes = notesRecord.notes;
@@ -134,14 +155,15 @@ export async function GET(request: Request) {
       settingsRecord?.lastModified ? Number(settingsRecord.lastModified) : 0,
       tasksRecord?.lastModified ? Number(tasksRecord.lastModified) : 0,
       roadmapsRecord?.lastModified ? Number(roadmapsRecord.lastModified) : 0,
-      statsRecord?.lastModified ? Number(statsRecord.lastModified) : 0
+      statsRecord?.lastModified ? Number(statsRecord.lastModified) : 0,
+      dailyRoutineRecord?.lastModified ? Number(dailyRoutineRecord.lastModified) : 0
     );
 
     console.log('GET /api/store returning for user', user.userId, ':', { 
       hasExisting: !!existing, 
       hasSettings: !!settingsRecord,
       hasTasks: !!tasksRecord,
-      hitElseBlock: !(existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord)
+      hitElseBlock: !(existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord)
     });
     return NextResponse.json({ 
       data: returnedData,
@@ -172,6 +194,7 @@ export async function POST(request: Request) {
     const existingTasks = await db.collection('Tasks').findOne({ userId: user.userId });
     const existingRoadmaps = await db.collection('Roadmaps').findOne({ userId: user.userId });
     const existingStats = await db.collection('Stats').findOne({ userId: user.userId });
+    const existingDailyRoutine = await db.collection('DailyRoutine').findOne({ userId: user.userId });
 
     const SETTING_ARRAY_KEYS = [
       'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
@@ -180,10 +203,11 @@ export async function POST(request: Request) {
     ];
     
     const TASK_KEYS = ['tasks', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
-    const STATS_KEYS = ['history', 'stopwatchSessions', 'healthData'];
+    const STATS_KEYS = ['history', 'stopwatchSessions'];
+    const DAILY_ROUTINE_KEYS = ['dailyTimes'];
 
     let existingCloudData: any = null;
-    if (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats) {
+    if (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine) {
       if (existing && existing.data && typeof existing.data === 'string') {
         try {
           existingCloudData = JSON.parse(existing.data);
@@ -212,6 +236,14 @@ export async function POST(request: Request) {
             if (existingStats[key] !== undefined) existingCloudData.state[key] = existingStats[key];
           });
         }
+        if (existingDailyRoutine) {
+          DAILY_ROUTINE_KEYS.forEach(key => {
+            if (existingDailyRoutine[key] !== undefined) existingCloudData.state[key] = existingDailyRoutine[key];
+          });
+        }
+        if (existingStats && existingStats.dailyTimes !== undefined && existingCloudData.state.dailyTimes === undefined) {
+          existingCloudData.state.dailyTimes = existingStats.dailyTimes;
+        }
       } else {
         const { _id, userId, lastModified, updatedAt, version, displaySettings: legacyDS, generalSettings: legacyGS, ...coreData } = (existing || {}) as any;
         const reconstructedState = {
@@ -237,6 +269,16 @@ export async function POST(request: Request) {
             reconstructedState[key] = existingStats[key];
           }
         });
+        
+        DAILY_ROUTINE_KEYS.forEach(key => {
+          if (existingDailyRoutine && existingDailyRoutine[key] !== undefined) {
+            reconstructedState[key] = existingDailyRoutine[key];
+          }
+        });
+        
+        if (existingStats && existingStats.dailyTimes !== undefined && reconstructedState.dailyTimes === undefined) {
+          reconstructedState.dailyTimes = existingStats.dailyTimes;
+        }
 
         if (existingNotes && existingNotes.notes) {
           reconstructedState.notes = existingNotes.notes;
@@ -254,7 +296,8 @@ export async function POST(request: Request) {
       existingSettings?.lastModified ? Number(existingSettings.lastModified) : 0,
       existingTasks?.lastModified ? Number(existingTasks.lastModified) : 0,
       existingRoadmaps?.lastModified ? Number(existingRoadmaps.lastModified) : 0,
-      existingStats?.lastModified ? Number(existingStats.lastModified) : 0
+      existingStats?.lastModified ? Number(existingStats.lastModified) : 0,
+      existingDailyRoutine?.lastModified ? Number(existingDailyRoutine.lastModified) : 0
     );
 
     const modifiedCollections = body.modifiedCollections;
@@ -263,7 +306,7 @@ export async function POST(request: Request) {
     let hasConflict = false;
     if (!body.forceSync) {
       if (isFullSync) {
-        if (cloudLastModified > incomingLastModified && (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats)) {
+        if (cloudLastModified > incomingLastModified && (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine)) {
           hasConflict = true;
         }
       } else {
@@ -272,6 +315,7 @@ export async function POST(request: Request) {
         if (modifiedCollections.includes('Roadmaps') && existingRoadmaps?.lastModified > incomingLastModified) hasConflict = true;
         if (modifiedCollections.includes('Stats') && existingStats?.lastModified > incomingLastModified) hasConflict = true;
         if (modifiedCollections.includes('Settings') && existingSettings?.lastModified > incomingLastModified) hasConflict = true;
+        if (modifiedCollections.includes('DailyRoutine') && existingDailyRoutine?.lastModified > incomingLastModified) hasConflict = true;
       }
     }
 
@@ -291,7 +335,8 @@ export async function POST(request: Request) {
         db.collection('Notes').deleteOne({ userId: user.userId }),
         db.collection('Tasks').deleteOne({ userId: user.userId }),
         db.collection('Roadmaps').deleteOne({ userId: user.userId }),
-        db.collection('Stats').deleteOne({ userId: user.userId })
+        db.collection('Stats').deleteOne({ userId: user.userId }),
+        db.collection('DailyRoutine').deleteOne({ userId: user.userId })
       ]);
       return NextResponse.json({ success: true, message: 'All data cleared' });
     }
@@ -323,6 +368,17 @@ export async function POST(request: Request) {
         delete state[key]; // Extract from state BEFORE it hits generalSettings/coreData
       }
       unsetStatsKeys[key] = ""; // Ensure removed from monolithic
+    });
+
+    const dailyRoutineSpecificData: Record<string, any> = {};
+    const unsetDailyRoutineKeys: Record<string, string> = {};
+
+    DAILY_ROUTINE_KEYS.forEach(key => {
+      if (state && state[key] !== undefined) {
+        dailyRoutineSpecificData[key] = state[key];
+        delete state[key]; // Extract from state BEFORE it hits generalSettings/coreData
+      }
+      unsetDailyRoutineKeys[key] = ""; // Ensure removed from monolithic
     });
 
     const displaySettings: Record<string, any> = {};
@@ -381,7 +437,7 @@ export async function POST(request: Request) {
     const { notes, roadmaps, ...restCoreData } = coreData;
 
     const settingsSpecificData: Record<string, any> = {};
-    const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys };
+    const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys, ...unsetDailyRoutineKeys };
 
     SETTING_ARRAY_KEYS.forEach(key => {
       if (restCoreData[key] !== undefined) {
@@ -477,6 +533,19 @@ export async function POST(request: Request) {
         { userId: user.userId },
         { 
           $set: statsDoc,
+          $setOnInsert: { userId: user.userId }
+        },
+        { upsert: true }
+      );
+    }
+    
+    // 7. Save DailyRoutines to the isolated DailyRoutine collection
+    if ((isFullSync || modifiedCollections.includes('DailyRoutine')) && Object.keys(dailyRoutineSpecificData).length > 0) {
+      const dailyRoutineDoc = { ...dailyRoutineSpecificData, lastModified: newLastModified };
+      await db.collection('DailyRoutine').updateOne(
+        { userId: user.userId },
+        { 
+          $set: dailyRoutineDoc,
           $setOnInsert: { userId: user.userId }
         },
         { upsert: true }

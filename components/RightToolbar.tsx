@@ -161,7 +161,7 @@ export default function RightToolbar() {
             <Map size={20} className="sm:w-6 sm:h-6" />
           </button>
         )}
-
+        {/* removed as from right toolbar since kept as edge peek toggle */}
         {/* Calendar Toggle Button */}
         {/* {showCalendar && (
           <button
@@ -174,7 +174,7 @@ export default function RightToolbar() {
         )} */}
 
         {/* Task Manager Toggle Button */}
-        {showTasks && (
+        {/* {showTasks && (
           <button
             onClick={toggleTaskManager}
             className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isTaskManagerOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.tasks ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
@@ -182,7 +182,7 @@ export default function RightToolbar() {
           >
             <ListTodo size={20} className="sm:w-6 sm:h-6" />
           </button>
-        )}
+        )} */}
 
         {/* Stats Toggle Button */}
         {showStats && (

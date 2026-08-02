@@ -1213,11 +1213,18 @@ export default function ConnectTab() {
                             <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-[8px] md:text-[10px] shrink-0 overflow-hidden border border-white/10">
                               {user.profilePicture ? <img src={user.profilePicture} alt="" className="w-full h-full object-cover" /> : user.displayName.charAt(0).toUpperCase()}
                             </div>
-                            <div className="flex flex-col min-w-0 overflow-hidden">
+                            <div className="flex flex-col min-w-0 overflow-hidden justify-center gap-0.5">
 
-                              <span className={`font-bold text-[9px] md:text-[11px] tracking-wide truncate w-full ${user.isMe ? 'text-blue-500 dark:text-blue-400' : 'text-white dark:text-white/90'}`}>
+                              <span className={`font-bold text-[9px] md:text-[11px] tracking-wide truncate w-full leading-none mt-0.5 ${user.isMe ? 'text-blue-500 dark:text-blue-400' : 'text-white dark:text-white/90'}`}>
                                 {user.displayName}
                               </span>
+                              
+                              {(user.wakeupTime || user.workStartedTime) && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  {user.wakeupTime && <span className="text-[7px] md:text-[8px] text-blue-300 font-bold bg-blue-500/20 px-1 py-0.5 rounded leading-none truncate">Wake: {new Date(user.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                  {user.workStartedTime && <span className="text-[7px] md:text-[8px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded leading-none truncate">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="text-right flex items-center gap-1.5 shrink-0">
@@ -1243,6 +1250,23 @@ export default function ConnectTab() {
                               <span className="uppercase tracking-widest font-semibold">ID:</span>
                               <span>{user.id}</span>
                             </div>
+
+                            {/* Sleep Schedule */}
+                            {(user.wakeupTime || user.bedTime) && (
+                              <div className="flex flex-row items-center justify-between bg-black/30 p-1 rounded border border-white/5 min-w-0 gap-1 my-0.5">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {user.wakeupTime && <span className="text-[8px] md:text-[9px] text-blue-300 font-bold bg-blue-500/20 px-1 py-0.5 rounded">Wake: {new Date(user.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                  {user.workStartedTime && <span className="text-[8px] md:text-[9px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                  {user.bedTime && <span className="text-[8px] md:text-[9px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded">Bed: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                </div>
+                                {user.wakeupTime && user.bedTime && user.bedTime > user.wakeupTime && (
+                                  <span className="text-[8px] md:text-[9px] text-purple-300 font-bold">
+                                    Sleep: {Math.floor((user.bedTime - user.wakeupTime) / (1000 * 60 * 60))}h {Math.floor(((user.bedTime - user.wakeupTime) % (1000 * 60 * 60)) / (1000 * 60))}m
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
                             <div className="grid grid-cols-3 gap-1 text-center min-w-0">
                               <div className="flex flex-col bg-black/20 p-0.5 rounded border border-white/5 min-w-0">
                                 <span className="text-[6px] md:text-[7px] text-white/70 uppercase tracking-widest truncate">Today</span>

@@ -12,8 +12,7 @@ import RoadmapManager from "@/components/RoadmapManager";
 import MiniCalendar from "@/components/MiniCalendar";
 import Countdown from "@/components/Countdown";
 import Timetable from "@/components/Timetable";
-import HealthRings from "@/components/HealthRings";
-import HealthModal from "@/components/HealthModal";
+import DayStartModal from "@/components/DayStartModal";
 import DraggableClock from "@/components/DraggableClock";
 import DraggableWidget from "@/components/DraggableWidget";
 import SettingsModal from "@/components/SettingsModal";
@@ -73,7 +72,6 @@ export default function Dashboard() {
   const [edgeTouchStartX, setEdgeTouchStartX] = useState<number | null>(null);
   const [isMobileToolbarOpen, setIsMobileToolbarOpen] = useState(false);
 
-  const showHealth = useDashboardStore((state) => state.showHealth);
   const showQuote = useDashboardStore((state) => state.showQuote);
   const showTimer = useDashboardStore((state) => state.showTimer);
   const showStopwatch = useDashboardStore((state) => state.showStopwatch);
@@ -256,8 +254,8 @@ export default function Dashboard() {
           {/* Stats Modal */}
           {(!isHidden || !hideConfig.stats) && showStats && <StatsModal />}
 
-          {/* Health Modal */}
-          {(!isHidden || !hideConfig.health) && showHealth && <HealthModal />}
+          {/* Day Start Modal / Indicator */}
+          <DayStartModal />
 
           {/* Quick Notes */}
           {(!isHidden || !hideConfig.notes) && showNotes && <NotesManager />}
@@ -458,12 +456,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Bottom Left: Health Rings */}
-          {(!isHidden || !hideConfig.health) && showHealth && (
-            <div className="absolute bottom-28 left-0 md:bottom-12 md:left-12 z-50 scale-[0.65] md:scale-100 origin-bottom-left">
-              <HealthRings />
-            </div>
-          )}
+
 
           {/* Bottom Right Container */}
           <div

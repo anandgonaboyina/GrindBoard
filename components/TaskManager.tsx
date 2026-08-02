@@ -144,7 +144,7 @@ export default function TaskManager() {
     };
 
     return (
-        <div className="w-full h-full mr-24 rounded-2xl bg-black/40 backdrop-blur-2xl border border-white/10 shadow-xl  flex flex-col overflow-hidden text-white pointer-events-auto transition-all duration-300">
+        <div className="w-full h-full z-10 mr-24 rounded-2xl bg-black/40 backdrop-blur-2xl border border-white/10 shadow-xl  flex flex-col overflow-hidden text-white pointer-events-auto transition-all duration-300">
             <div className="border-b border-white/5 bg-black/20 flex flex-col pt-3 pb-2 px-3 gap-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -168,9 +168,9 @@ export default function TaskManager() {
                                     <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest border-b border-white/10 pb-1.5">Interval Alert</span>
                                     <p className="text-[9px] text-white/50 leading-tight normal-case">Plays a short beep every X minutes while a task timer is running.</p>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <input 
-                                            type="number" 
-                                            min="0" 
+                                        <input
+                                            type="number"
+                                            min="0"
                                             max="60"
                                             value={taskIntervalAlertMins}
                                             onChange={(e) => {
@@ -248,14 +248,14 @@ export default function TaskManager() {
                                 >
                                     <div className="flex items-start gap-1.5 flex-1 min-w-0">
                                         <div className="flex flex-col items-center opacity-30 hover:opacity-100 transition-opacity justify-center mt-0.5 shrink-0 -ml-0.5">
-                                            <button 
+                                            <button
                                                 onClick={() => { if (index > 0) reorderTasks(activeTab, index, index - 1); }}
                                                 disabled={index === 0}
                                                 className="p-[1px] hover:text-sky-300 disabled:opacity-10 transition-colors"
                                             >
                                                 <ChevronUp className="w-2.5 h-2.5" strokeWidth={3} />
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={() => { if (index < filteredTasks.length - 1) reorderTasks(activeTab, index, index + 1); }}
                                                 disabled={index === filteredTasks.length - 1}
                                                 className="p-[1px] hover:text-sky-300 disabled:opacity-10 transition-colors"
@@ -452,7 +452,7 @@ export default function TaskManager() {
                             <h4 className="font-bold text-emerald-400 mb-1 text-base">⏱️ Focus Timer</h4>
                             <p>Click the play button next to a task to start a focus timer. The duration can be adjusted by double-clicking the time on a task.</p>
                             <div className="mt-2 p-2 bg-emerald-500/10 rounded-md border border-emerald-500/20 text-emerald-100/80 text-[11px] leading-relaxed">
-                                <strong className="text-emerald-300">Why are stats updated in 10-minute blocks?</strong><br/>
+                                <strong className="text-emerald-300">Why are stats updated in 10-minute blocks?</strong><br />
                                 Focus time is saved in 10-minute spans. This ensures you maintain deep, uninterrupted focus on a task for a meaningful amount of time before it counts towards your daily completed statistics!
                             </div>
                         </div>

@@ -875,7 +875,7 @@ function DurationCell({
             </span>
           </div>
 
-          <span className={`absolute bottom-[2px] text-[68x] md:text-[10px] font-bold uppercase tracking-wider group-hover:text-violet-500 transition-colors ${isDark ? 'text-violet-300/60' : 'text-violet-600/70'}`}>
+          <span className={`absolute bottom-[2px] text-[8px] md:text-[10px] font-bold uppercase tracking-wider group-hover:text-violet-500 transition-colors ${isDark ? 'text-violet-300/60' : 'text-violet-600/70'}`}>
             {block.duration > 60 ? Math.floor(block.duration / 60) + "hr " + block.duration % 60 + "m" : block.duration + "m"}
           </span>
         </div>
