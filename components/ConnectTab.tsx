@@ -1249,7 +1249,7 @@ export default function ConnectTab() {
                           <div className="w-full mt-0.5 pt-0.5 border-t border-white/10 flex flex-col gap-0.5 animate-fade-in min-w-0">
                             <div className="text-[7px] md:text-[8px] text-white/70 font-mono text-left bg-black/20 p-0.5 rounded select-all cursor-text flex items-center justify-between border border-white/5">
                               <span className="uppercase tracking-widest font-semibold">ID:</span>
-                              <span>{user.id}</span>
+                              <span>{user.id.slice(0, 5)}...{user.id.slice(-4)}</span>
                             </div>
 
                             {/* Sleep Schedule */}
