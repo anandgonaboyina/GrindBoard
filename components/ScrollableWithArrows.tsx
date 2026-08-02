@@ -105,8 +105,8 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
     const target = e.target as HTMLElement;
     const currentTarget = e.currentTarget as HTMLElement;
 
-    // Don't interfere with inputs or buttons
-    if (e.button !== 0 || target.tagName.toLowerCase() === 'input' || target.tagName.toLowerCase() === 'textarea' || target.closest('button')) return;
+    // Don't interfere with inputs or textareas (allow buttons so we can drag lists of buttons)
+    if (e.button !== 0 || target.tagName.toLowerCase() === 'input' || target.tagName.toLowerCase() === 'textarea') return;
 
     e.stopPropagation(); // Prevent outer scrollables from capturing
     isDragging.current = true;
