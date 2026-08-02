@@ -72,7 +72,7 @@ export default function DayStartModal() {
     <>
       {/* Toggle Button (Always mounted to allow seamless morphing) */}
       <div
-        className={`fixed z-[999] transition-all duration-[1500ms] ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col items-center gap-4 ${isMissing
+        className={`fixed ${isMissing ? 'z-[999]' : 'z-[90]'} transition-all duration-[1500ms] ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col items-center gap-4 ${isMissing
           ? "top-[50vh] left-[50vw] -translate-x-[50%] -translate-y-[50%] scale-100 opacity-100"
           : "top-[calc(20vh+45px)] sm:top-[calc(20vh+55px)] left-[100vw] -translate-x-[100%] translate-y-0 scale-100 opacity-100"
           } ${isDayStartModalOpen ? 'opacity-0 pointer-events-none scale-90' : ''}`}
@@ -80,7 +80,7 @@ export default function DayStartModal() {
         <button
           onClick={toggleDayStartModal}
           className={`relative group flex items-center justify-center transition-all duration-[1500ms] ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden ${isMissing
-            ? "rounded-full shadow-[0_0_50px_rgba(249,115,22,0.8)] border-2 sm:border-4 border-orange-400 animate-[pulse_2s_ease-in-out_infinite] hover:scale-105 w-32 h-32 sm:w-40 sm:h-40 md:w-50 md:h-40 bg-black"
+            ? "rounded-full shadow-[0_0_50px_rgba(249,115,22,0.8)] border-2 sm:border-4 border-orange-400 animate-[pulse_2s_ease-in-out_infinite] hover:scale-105 w-60 h-60 sm:w-60 sm:h-60 md:w-[250px] md:h-[250px] bg-black"
             : "glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl shadow-xl hover:-translate-x-[4px] w-8 h-10 sm:w-10 sm:h-12 bg-black/40 backdrop-blur-md"
             }`}
           title="Daily Routine"
@@ -117,7 +117,7 @@ export default function DayStartModal() {
       {/* The Popup Modal */}
       {isDayStartModalOpen && (
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) toggleDayStartModal();
           }}

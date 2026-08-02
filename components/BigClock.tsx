@@ -188,7 +188,7 @@ export default function BigClock() {
   }).length > 0;
 
   return (
-    <div 
+    <div
       className={`flex flex-col w-fit h-fit justify-center pointer-events-none transition-all duration-700 items-center select-none`}
       style={{ zoom: clockScale }}
     >
@@ -276,7 +276,7 @@ export default function BigClock() {
                         useDashboardStore.getState().toggleStopwatch();
                       }
                     }}
-                    className={`relative flex items-center gap-1.5 text-[12px] md:text-sm font-bold tracking-widest bg-black/80 border border-blue-500/40 backdrop-blur-xl px-4 py-1.5 rounded-full shadow-[0_5px_20px_rgba(59,130,246,0.3)] cursor-pointer pointer-events-auto active:scale-95 transition-transform shrink-0 hover:bg-black/90 ${activeTimerSecs !== null ? 'text-timer-pill' : 'text-stopwatch-pill'}`}
+                    className={`relative flex items-center gap-1.5 text-[12px] md:text-sm font-bold tracking-widest bg-black/80 border border-blue-500/40 backdrop-blur-xl px-2 py-1.5 rounded-full shadow-[0_5px_20px_rgba(59,130,246,0.3)] cursor-pointer pointer-events-auto active:scale-95 transition-transform shrink-0 hover:bg-black/90 ${activeTimerSecs !== null ? 'text-timer-pill' : 'text-stopwatch-pill'}`}
                   >
                     {activeTimerSecs !== null ? (
                       <Timer className="w-3.5 h-3.5 md:w-4 md:h-4 icon-timer-pill animate-pulse" />

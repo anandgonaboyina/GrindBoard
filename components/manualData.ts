@@ -65,7 +65,7 @@ export const manualData = [
   },
   {
     "title": "14. Daily Routine",
-    "content": "Open via the Morning/Night icon on the right toolbar or dashboard.\n\nLog your daily routine schedule alongside your focus sessions:\n\n| Field | What it means |\n|---|---|\n| **Wake Up Time** | When you woke up today. Once logged, this is permanent for the day. |\n| **Start Work Time** | When you began your first focus block. Once logged, this is permanent. |\n| **Bed Time** | When you plan to sleep or went to sleep. You can update this multiple times during the day. |\n\nThese appear in the **Monthly Breakdown in Stats** alongside your Focus Timer data and also on your **Leaderboard User Card**, letting you and your friends see your daily schedule.\n\n---"
+    "content": "Open via the Morning/Night icon on the right toolbar or dashboard.\n\nLog your daily routine schedule alongside your focus sessions:\n\n| Field | What it means |\n|---|---|\n| **Wake Up Time** | When you woke up today. Once logged, this is permanent for the day. |\n| **Start Work Time** | When you began your first focus block. Once logged, this is permanent. |\n| **Bed Time** | When you plan to sleep or went to sleep. You can update this multiple times during the day. |\n\nThese appear in the **Monthly Breakdown in Stats** alongside your Focus Timer data and also on your **Leaderboard User Card**, letting you and your friends see your daily schedule. Your daily sleep duration is accurately calculated and displayed using your wake time today and your bed time from yesterday.\n\n---"
   },
   {
     "title": "15. Stopwatch",

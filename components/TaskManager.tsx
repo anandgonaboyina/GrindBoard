@@ -32,22 +32,19 @@ export default function TaskManager() {
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
-                setIsSettingsOpen(false);
-            }
             if (infoRef.current && !infoRef.current.contains(event.target as Node)) {
                 setIsInfoOpen(false);
             }
         }
-        if (isSettingsOpen || isInfoOpen) {
+        if (isInfoOpen) {
             document.addEventListener("mousedown", handleClickOutside);
         }
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [isSettingsOpen, isInfoOpen]);
+    }, [isInfoOpen]);
 
-    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins } = useDashboardStore();
+    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled } = useDashboardStore();
 
     useEffect(() => {
         checkTasksRollover();
@@ -145,90 +142,88 @@ export default function TaskManager() {
 
     return (
         <div className="w-full h-full z-10 mr-24 rounded-2xl bg-black/40 backdrop-blur-2xl border border-white/10 shadow-xl  flex flex-col overflow-hidden text-white pointer-events-auto transition-all duration-300">
-            <div className="border-b border-white/5 bg-black/20 flex flex-col pt-3 pb-2 px-3 gap-3">
+            <div className="border-b border-white/5 bg-black/20 flex flex-col pt-2 pb-1 px-3 gap-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <h2 className="text-xs sm:text-sm font-bold tracking-wider text-white drop-shadow-md">Plan your Day</h2>
+                        <h2 className="text-xs sm:text-sm font-bold tracking-wider text-white drop-shadow-md"><pre>Plan your Day</pre></h2>
                         <button
                             onClick={() => setIsInfoOpen(true)}
-                            className={`transition-colors rounded-full p-0.5 text-white/40 hover:text-white hover:bg-white/10`}
+                            className={`transition-colors rounded-full p-0.5 text-blue-300 hover:text-white hover:bg-white/10`}
                         >
                             <Info size={14} />
                         </button>
-                        <div ref={settingsRef} className="relative flex items-center">
-                            <button
-                                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                                className={`transition-colors rounded-full p-0.5 ${taskIntervalAlertMins > 0 ? 'text-sky-300 bg-sky-500/20 hover:bg-sky-500/30' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                                title="Timer Interval Alert"
-                            >
-                                <BellRing size={14} />
-                            </button>
-                            {isSettingsOpen && (
-                                <div className="absolute left-0 top-full mt-2 w-48 bg-black/95 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 cursor-default flex flex-col gap-2">
-                                    <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest border-b border-white/10 pb-1.5">Interval Alert</span>
-                                    <p className="text-[9px] text-white/50 leading-tight normal-case">Plays a short beep every X minutes while a task timer is running.</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="60"
-                                            value={taskIntervalAlertMins}
-                                            onChange={(e) => {
-                                                const val = parseInt(e.target.value);
-                                                setTaskIntervalAlertMins(isNaN(val) ? 0 : val);
-                                            }}
-                                            className="w-14 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        />
-                                        <span className="text-[10px] text-white/60 lowercase">minutes</span>
-                                    </div>
-                                    <span className="text-[8px] text-white/40 mt-0.5 normal-case">Set to 0 to disable.</span>
-                                </div>
-                            )}
-                        </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 text-[8px] font-bold tracking-widest text-white/60 uppercase">
 
 
-                        {totalRemainingMinutes > 0 && (
-                            <>
-                                <span className="hidden w-1 h-1 rounded-full bg-white/20" />
-                                <span className="text-sky-300/90 flex items-center gap-0.5 bg-sky-500/10 px-1.5 py-0.5 rounded-md border border-sky-500/20">
-                                    <Clock className="w-2.5 h-2.5 mb-[1px]" /> {formatRemainingTime(totalRemainingMinutes)}
-                                </span>
-                            </>
-                        )}
                         <button onClick={() => useDashboardStore.getState().toggleTaskManager()} className="ml-0.5 p-1 text-white/30 hover:text-white/70 hover:bg-white/10 rounded-full transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                         </button>
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between mt-1">
-                    <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10">
-                        <button
-                            onClick={() => setActiveTab('today')}
-                            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'today' ? 'bg-sky-500/20 text-sky-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shrink-0">
+                            <button
+                                onClick={() => setActiveTab('today')}
+                                className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'today' ? 'bg-sky-500/20 text-sky-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                            >
+                                Today
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('tomorrow')}
+                                className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'tomorrow' ? 'bg-purple-500/20 text-purple-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                            >
+                                Tomorrow
+                            </button>
+                        </div>
+                        <div
+                            className="relative flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors shrink-0"
+                            title="Plays a short beep every X minutes while a task timer is running (Configure in Settings -> Sound)"
+                            onClick={() => {
+                                if (isTaskIntervalAlertEnabled) {
+                                    setIsTaskIntervalAlertEnabled(false);
+                                } else {
+                                    setIsTaskIntervalAlertEnabled(true);
+                                    if (taskIntervalAlertMins === 0) {
+                                        setTaskIntervalAlertMins(10);
+                                    }
+                                }
+                            }}
                         >
-                            Today
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('tomorrow')}
-                            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'tomorrow' ? 'bg-purple-500/20 text-purple-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
-                        >
-                            Tomorrow
-                        </button>
-                    </div>
+                            <BellRing size={12} className={isTaskIntervalAlertEnabled ? "text-sky-300" : "text-white/40"} />
+                            <span className="text-[9px] font-medium text-white/70">Interval</span>
+                            <button
+                                className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTaskIntervalAlertEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
+                            >
+                                <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isTaskIntervalAlertEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
+                            </button>
+                        </div>
+                        <div className="flex flex-col gap-0.75 items-center text-[6px] font-bold tracking-widest text-white/60 uppercase">
 
-                    {currentTasks.some(isTaskCompleted) && (
-                        <button
-                            onClick={handleRestartAllCompleted}
-                            className="flex items-center gap-1 px-1.5 py-1 bg-orange-500/20 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-colors active:scale-95 text-[9px] font-bold uppercase tracking-wider"
-                            title="Restart all completed"
-                        >
-                            <RotateCcw className="w-3 h-3 " /> <span className="hidden sm:inline">Reset All</span>
-                        </button>
-                    )}
+                            {currentTasks.some(isTaskCompleted) && (
+                                <button
+                                    onClick={handleRestartAllCompleted}
+                                    className="flex items-center gap-0.25 p-0.75 py-0.5 bg-orange-500/20 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-colors active:scale-95 text-[6px] font-bold uppercase tracking-wider"
+                                    title="Restart all completed"
+                                >
+                                    <RotateCcw className="w-2.5 h-2.5 " /> <span className="hidden sm:inline">Reset All</span>
+                                </button>
+                            )}
+
+                            {totalRemainingMinutes > 0 && (
+                                <>
+                                    <span className="hidden w-1 h-1 rounded-full bg-white/20" />
+                                    <span className="text-sky-300/90 flex items-center gap-0.25 px-0.75 bg-sky-500/10 rounded-md border border-sky-500/20">
+                                        <Clock className="w-2.5 h-2.5 " /> {formatRemainingTime(totalRemainingMinutes)}
+                                    </span>
+                                </>
+                            )}
+
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -452,13 +447,13 @@ export default function TaskManager() {
                             <h4 className="font-bold text-emerald-400 mb-1 text-base">⏱️ Focus Timer</h4>
                             <p>Click the play button next to a task to start a focus timer. The duration can be adjusted by double-clicking the time on a task.</p>
                             <div className="mt-2 p-2 bg-emerald-500/10 rounded-md border border-emerald-500/20 text-emerald-100/80 text-[11px] leading-relaxed">
-                                <strong className="text-emerald-300">Why are stats updated in 10-minute blocks?</strong><br />
-                                Focus time is saved in 10-minute spans. This ensures you maintain deep, uninterrupted focus on a task for a meaningful amount of time before it counts towards your daily completed statistics!
+                                <strong className="text-emerald-300">Why are stats updated in 5-minute blocks?</strong><br />
+                                Focus time is saved in 5-minute spans. This ensures you maintain deep, uninterrupted focus on a task for a meaningful amount of time before it counts towards your daily completed statistics!
                             </div>
                         </div>
                         <div>
                             <h4 className="font-bold text-purple-400 mb-1 text-base flex items-center gap-1"><BellRing size={16} /> Interval Alert</h4>
-                            <p className="mb-2">Plays a short beep every X minutes while a task timer is running. Set this using the bell icon at the top of the Task Manager.</p>
+                            <p className="mb-2">Plays a short beep every X minutes while a task timer is running. Toggle this using the bell icon at the top of the Task Manager. You can configure the interval time and beep duration under <strong>Settings &rarr; Sound</strong>.</p>
                         </div>
                         <div className="text-white/40 mt-2 text-xs italic border-t border-white/10 pt-3">
                             Tip: Use the Up/Down arrows to reorder tasks. Double-click any task title to edit it.

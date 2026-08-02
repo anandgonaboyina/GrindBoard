@@ -68,7 +68,7 @@ const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, aspec
 };
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, is24HourClock, toggle24HourClock, clockScale, setClockScale, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, enableRightToolbarPeek, setEnableRightToolbarPeek } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, is24HourClock, toggle24HourClock, clockScale, setClockScale, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, enableRightToolbarPeek, setEnableRightToolbarPeek, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs } = useDashboardStore();
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
 
@@ -1030,6 +1030,48 @@ export default function SettingsModal() {
                       </button>
                     </div>
 
+                    <div className="flex flex-col gap-2 md:gap-3 bg-white/5 border border-white/10 rounded-md p-3 md:p-4">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs md:text-sm font-semibold text-white/80">Task Timer Interval Alert</label>
+                        <span className="text-[9px] md:text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/60">{taskIntervalAlertMins} Mins</span>
+                      </div>
+                      <p className="text-[8px] md:text-[10px] text-white/40 leading-tight">Plays a short beep every X minutes while a task timer is actively running to keep you focused.</p>
+                      <input
+                        type="range"
+                        min="1"
+                        max="60"
+                        step="1"
+                        value={taskIntervalAlertMins || 10}
+                        onChange={(e) => setTaskIntervalAlertMins(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 mt-1"
+                      />
+                      <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
+                        <span>1m</span>
+                        <span>30m</span>
+                        <span>60m</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center mt-3">
+                        <label className="text-xs md:text-sm font-semibold text-white/80">Interval Beep Duration</label>
+                        <span className="text-[9px] md:text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/60">{taskIntervalRingSecs} Secs</span>
+                      </div>
+                      <p className="text-[8px] md:text-[10px] text-white/40 leading-tight">How long the interval alert should ring before automatically stopping.</p>
+                      <input
+                        type="range"
+                        min="1"
+                        max="30"
+                        step="1"
+                        value={taskIntervalRingSecs || 5}
+                        onChange={(e) => setTaskIntervalRingSecs(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 mt-1"
+                      />
+                      <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
+                        <span>1s</span>
+                        <span>15s</span>
+                        <span>30s</span>
+                      </div>
+                    </div>
+
                     <div className="flex flex-col gap-2 md:gap-3">
                       <div className="flex items-center justify-between">
                         <label className="text-xs md:text-sm font-semibold text-white/80">Select Alarm Sound</label>
@@ -1253,7 +1295,7 @@ export default function SettingsModal() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <h3 className="text-sm md:text-base font-semibold">Custom Wallpapers</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Provide external image URLs.</p>
+                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Upload a photo/video or provide an external image URL to set your wallpaper.</p>
 
                       <button
                         onClick={() => setInfoModalKey('liveWallpaper')}

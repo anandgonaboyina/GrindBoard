@@ -17,6 +17,7 @@ export default function Timer() {
     timerInitialMins, setTimerInitialMins,
     timerLastSavedChunks, setTimerLastSavedChunks,
     timerLastAlertedChunks, setTimerLastAlertedChunks, taskIntervalAlertMins,
+    taskIntervalRingSecs, isTaskIntervalAlertEnabled,
     isAlarmPlaying, setIsAlarmPlaying,
     addMins,
     showQuotePopup, isHidden,
@@ -77,8 +78,9 @@ export default function Timer() {
 
       const elapsedSeconds = (timerInitialMins * 60) - currentRemaining;
       if (elapsedSeconds > 0) {
-        const finalUnsavedSeconds = elapsedSeconds - (timerLastSavedChunks * 600);
-        const finalUnsavedMins = Math.round(finalUnsavedSeconds / 60);
+        const finalUnsavedSeconds = elapsedSeconds - (timerLastSavedChunks * 300);
+        const additionalChunks = Math.floor(finalUnsavedSeconds / 300);
+        const finalUnsavedMins = additionalChunks * 5;
 
         if (finalUnsavedMins > 0) {
           const today = getLocalDateString();
@@ -105,10 +107,10 @@ export default function Timer() {
         if (timerInitialMins && activeTaskId) {
           const elapsedSeconds = (timerInitialMins * 60) - remaining;
           if (elapsedSeconds >= 0) {
-            const chunks = Math.floor(elapsedSeconds / 600); // 10 minutes = 600 seconds
+            const chunks = Math.floor(elapsedSeconds / 300); // 5 minutes = 300 seconds
             if (chunks > timerLastSavedChunks) {
               const diff = chunks - timerLastSavedChunks;
-              const minsToSave = diff * 10;
+              const minsToSave = diff * 5;
               const today = getLocalDateString();
               addMins(today, minsToSave);
               updateTaskDuration(activeTaskId, minsToSave);
@@ -116,7 +118,7 @@ export default function Timer() {
             }
 
             // Interval Alert Beep
-            if (taskIntervalAlertMins > 0) {
+            if (isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0) {
               const alertIntervalSecs = taskIntervalAlertMins * 60;
               const alertChunks = Math.floor(elapsedSeconds / alertIntervalSecs);
               if (alertChunks > timerLastAlertedChunks && alertChunks > 0) {
@@ -126,9 +128,10 @@ export default function Timer() {
                   const vol = alarmVolume !== undefined ? alarmVolume : 1;
                   audio.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
                   audio.play().catch(e => console.log('Interval beep failed:', e));
+                  const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
                   setTimeout(() => {
                     audio.pause();
-                  }, 1500); // 1.5 seconds short beep!
+                  }, duration);
                 }
               }
             }
@@ -169,8 +172,9 @@ export default function Timer() {
             const today = getLocalDateString();
             if (activeTaskId) {
               const elapsedSeconds = timerInitialMins * 60;
-              const finalUnsavedSeconds = elapsedSeconds - (timerLastSavedChunks * 600);
-              const finalUnsavedMins = Math.round(finalUnsavedSeconds / 60);
+              const finalUnsavedSeconds = elapsedSeconds - (timerLastSavedChunks * 300);
+              const additionalChunks = Math.floor(finalUnsavedSeconds / 300);
+              const finalUnsavedMins = additionalChunks * 5;
               if (finalUnsavedMins > 0) {
                 addMins(today, finalUnsavedMins);
                 updateTaskDuration(activeTaskId, finalUnsavedMins);

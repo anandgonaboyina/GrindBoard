@@ -33,6 +33,7 @@ export default function ConnectTab() {
   // Friends state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string, username: string, profilePicture?: string, alias?: string }[]>([]);
+  const [hasSearchedFriends, setHasSearchedFriends] = useState(false);
   const [friends, setFriends] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string } }[]>([]);
   const [pendingRequests, setPendingRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string } }[]>([]);
   const [sentRequests, setSentRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string } }[]>([]);
@@ -372,6 +373,7 @@ export default function ConnectTab() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery || searchQuery.length < 1) return;
+    setHasSearchedFriends(true);
     const token = localStorage.getItem('dashboard_sync_token');
     try {
       const res = await fetch(`/api/friends/search?q=${encodeURIComponent(searchQuery)}`, {
@@ -379,7 +381,8 @@ export default function ConnectTab() {
       });
       const data = await res.json();
       if (res.ok) setSearchResults(data.users || []);
-    } catch (err) { }
+      else setSearchResults([]);
+    } catch (err) { setSearchResults([]); }
   };
 
   const sendFriendRequest = async (receiverId: string) => {
@@ -948,9 +951,15 @@ export default function ConnectTab() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Find user..."
+                placeholder="Find with User Name..."
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  if (e.target.value === '') {
+                    setSearchResults([]);
+                    setHasSearchedFriends(false);
+                  }
+                }}
                 className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2 outline-none focus:border-blue-500 transition-colors text-xs"
               />
             </div>
@@ -958,6 +967,10 @@ export default function ConnectTab() {
               Search
             </button>
           </form>
+
+          {hasSearchedFriends && searchResults.length === 0 && (
+            <p className="text-white/40 italic text-[10px] md:text-xs pl-2">No user found.</p>
+          )}
 
           {searchResults.length > 0 && (
             <div className="bg-white/5 rounded-xl border border-white/10 p-3 w-full min-w-0">
@@ -1115,15 +1128,15 @@ export default function ConnectTab() {
               <Trophy className="text-yellow-400 w-3 h-3 md:w-4 md:h-4 shrink-0" />
               <span className="truncate">Global Leaderboard</span>
               <button onClick={() => setShowInfoModal(true)} className="ml-1 px-1.5 py-0.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors shrink-0 flex items-center gap-1" title="About Leaderboard">
-                <span className="text-[9px] font-semibold hidden md:inline">About Leaderboard</span>
-                <Info className="w-3 h-3" />
+                <span className="text-[12px] font-semibold hidden md:inline">About Leaderboard</span>
+                <Info className="w-4 h-4" />
               </button>
             </h4>
             <button
               onClick={fetchLeaderboard}
               className="p-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 shrink-0"
             >
-              <RefreshCw className={`w-3 h-3 ${leaderboardLoading ? "animate-spin text-blue-400" : "text-white/60"}`} />
+              <RefreshCw className={`w-4 h-4 ${leaderboardLoading ? "animate-spin text-blue-400" : "text-white/60"}`} />
             </button>
           </div>
 
@@ -1194,7 +1207,7 @@ export default function ConnectTab() {
                   const sortedData = [...leaderboardData].sort((a, b) => getVal(b) - getVal(a));
                   const filteredData = sortedData.filter(u => u.displayName.toLowerCase().includes(leaderboardSearch.toLowerCase()));
 
-                  if (filteredData.length === 0) return <p className="text-white/40 italic text-center py-2 text-[9px] md:text-xs">No users found.</p>;
+                  if (filteredData.length === 0) return <p className="text-white/40 italic text-center py-2 text-[9px] md:text-xs">No user found.</p>;
 
                   return filteredData.map((user, index) => {
                     const val = getVal(user);
@@ -1234,12 +1247,12 @@ export default function ConnectTab() {
                                     {user.workStartedTime && <span className="text-[7px] md:text-[8px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                                   </div>
                                 )}
-                                {user.bedTime && (
+                                {(user.bedTime || (user.wakeupTime && user.yesterdayBedTime)) && (
                                   <div className="flex flex-wrap items-center gap-1">
-                                    <span className="text-[7px] md:text-[8px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Bed: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    {user.wakeupTime && user.bedTime > user.wakeupTime && (
-                                      <span className="text-[7px] md:text-[8px] text-purple-300 font-bold bg-purple-500/20 px-1 py-0.5 rounded leading-none shrink-0">
-                                        Sleep: {Math.floor((user.bedTime - user.wakeupTime) / (1000 * 60 * 60))}h {Math.floor(((user.bedTime - user.wakeupTime) % (1000 * 60 * 60)) / (1000 * 60))}m
+                                    {user.bedTime && <span className="text-[7px] md:text-[8px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Bed: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                    {user.wakeupTime && user.yesterdayBedTime && user.wakeupTime > user.yesterdayBedTime && (
+                                      <span className="text-[7px] md:text-[8px] text-purple-300 font-bold bg-purple-500/20 px-1 py-0.5 rounded leading-none shrink-0" title="Sleep based on yesterday's bed time">
+                                        Sleep: {Math.floor((user.wakeupTime - user.yesterdayBedTime) / (1000 * 60 * 60))}h {Math.floor(((user.wakeupTime - user.yesterdayBedTime) % (1000 * 60 * 60)) / (1000 * 60))}m
                                       </span>
                                     )}
                                   </div>
@@ -1334,7 +1347,7 @@ export default function ConnectTab() {
                 <Clock className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="text-xs font-bold text-blue-300">Sleep Schedule</h4>
-                  <p className="text-[10px] md:text-xs text-white/50 mt-0.5 leading-relaxed">Your Wake, Work, and Bed times are automatically captured when you first interact with the dashboard during those periods.</p>
+                  <p className="text-[10px] md:text-xs text-white/50 mt-0.5 leading-relaxed">Your Wake, Work, and Bed times are captured via the Daily Routine modal. Daily sleep duration is calculated using your wake time today and your bed time from yesterday.</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 bg-black/30 p-2.5 rounded-lg border border-white/5">

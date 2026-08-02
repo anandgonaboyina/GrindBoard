@@ -143,6 +143,10 @@ interface DashboardState {
   setAlarmDurationSecs: (secs: number) => void;
   setAlarmVolume: (vol: number) => void;
   setTaskIntervalAlertMins: (mins: number) => void;
+  isTaskIntervalAlertEnabled: boolean;
+  setIsTaskIntervalAlertEnabled: (enabled: boolean) => void;
+  taskIntervalRingSecs: number;
+  setTaskIntervalRingSecs: (secs: number) => void;
 
   // Quotes State
   currentQuote: { text: string; author: string } | null;
@@ -905,7 +909,11 @@ export const useDashboardStore = create<DashboardState>()(
       taskIntervalAlertMins: 10,
       setEnableAlarmSound: (val) => set({ enableAlarmSound: val }),
       setEnableAlarmVibration: (val) => set({ enableAlarmVibration: val }),
+      isTaskIntervalAlertEnabled: false,
+      setIsTaskIntervalAlertEnabled: (enabled) => set({ isTaskIntervalAlertEnabled: enabled }),
       setTaskIntervalAlertMins: (mins) => set({ taskIntervalAlertMins: mins }),
+      taskIntervalRingSecs: 5,
+      setTaskIntervalRingSecs: (secs) => set({ taskIntervalRingSecs: secs }),
       setEnablePanicButton: (val) => set({ enablePanicButton: val }),
       setPanicButtonMode: (val) => set({ panicButtonMode: val }),
 
