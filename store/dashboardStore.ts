@@ -956,7 +956,8 @@ export const useDashboardStore = create<DashboardState>()(
         return { isStopwatchOpen: next, ...extra };
       }),
       addStopwatchSession: (title, secs, addToStats) => set((state) => {
-        const mins = Math.floor(secs / 60);
+        const validSecs = Math.max(0, secs);
+        const mins = Math.floor(validSecs / 60);
 
         const today = getLocalDateString();
 

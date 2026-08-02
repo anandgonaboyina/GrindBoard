@@ -57,12 +57,12 @@ export default function Stopwatch() {
         setStopwatchStartTime(null);
       } else {
         setIsRunning(true);
-        setElapsedSecs(Math.floor((now - stopwatchStartTime) / 1000));
+        setElapsedSecs(Math.max(0, Math.floor((now - stopwatchStartTime) / 1000)));
         // We do NOT update interaction here, otherwise just opening the tab keeps it alive.
       }
     } else if (pausedSecs) {
       setIsRunning(false);
-      setElapsedSecs(parseInt(pausedSecs));
+      setElapsedSecs(Math.max(0, parseInt(pausedSecs)));
     } else {
       setIsRunning(false);
       setElapsedSecs(0);
@@ -88,7 +88,7 @@ export default function Stopwatch() {
             setShowContinuePrompt(true);
             updateInteraction();
             
-            const cappedElapsed = Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000);
+            const cappedElapsed = Math.max(0, Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000));
             if (typeof window !== 'undefined') {
               localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
             }
@@ -96,7 +96,7 @@ export default function Stopwatch() {
             
             return cappedElapsed;
           }
-          return Math.floor((now - stopwatchStartTime) / 1000);
+          return Math.max(0, Math.floor((now - stopwatchStartTime) / 1000));
         });
       }, 250); 
     }

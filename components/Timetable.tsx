@@ -9,7 +9,7 @@ const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const WEEKENDS = ["Sat", "Sun"];
 
 // Exact sizing to guarantee perfect alignment across columns
-const CELL_HEIGHT = 32; // Tighter 32px per block height for ultra-compact views
+const CELL_HEIGHT = 40; // Tighter 32px per block height for ultra-compact views
 const CELL_GAP = 4;     // 4px gap between blocks
 const TOTAL_HEIGHT = CELL_HEIGHT + CELL_GAP;
 
@@ -343,7 +343,7 @@ export default function Timetable() {
   };
 
   return (
-    <div suppressHydrationWarning className={`transition-colors duration-500 rounded-[20px] md:rounded-[24px] p-1.5 md:p-2.5 w-full max-w-[100vw] md:w-fit overflow-hidden md:overflow-visible relative mx-auto
+    <div suppressHydrationWarning className={` transition-colors duration-500 rounded-[20px] md:rounded-[24px] p-1.5 md:p-2.5 w-full max-w-[100vw] md:w-fit overflow-hidden md:overflow-visible relative mx-auto
         ${isDark ? 'bg-gradient-to-br from-[#12121a] to-[#0a0a0c] border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.4)] text-white/90'
         : 'bg-gradient-to-br from-slate-50 to-slate-100 border border-black/10 shadow-[0_8px_30px_rgb(0,0,0,0.1)] text-slate-800'}`}>
 
@@ -353,7 +353,7 @@ export default function Timetable() {
       )}
 
       {/* Header Area */}
-      <div className={`flex items-center justify-between mb-1.5 md:mb-2 pb-1.5 border-b px-1 min-w-0 md:min-w-[300px] ${isDark ? 'border-white/5' : 'border-black/5'}`}>
+      <div className={`flex items-center justify-between mb-1.5 md:mb-2 pb-1.5 border-b px-1 min-w-0 md:min-w-[400px] lg:min-w-[700px]  ${isDark ? 'border-white/5' : 'border-black/5'}`}>
         <div className="flex gap-1 items-center">
           <button
             onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
@@ -424,7 +424,7 @@ export default function Timetable() {
       {/* Compact Start Time Trigger & Copy Mode Toggle */}
       <div className="mb-2 grid grid-cols-3 w-full items-center px-1">
         <div></div> {/* Empty spacer for perfect centering */}
-        
+
         <div className="flex justify-center w-full">
           <button
             onClick={() => !viewingFriend && setIsEditingStartTime(true)}
@@ -444,7 +444,7 @@ export default function Timetable() {
               className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm active:scale-95 ${isCopyMode ? (isDark ? 'text-white bg-red-500 border-red-500' : 'text-white bg-red-500 border-red-600') : (isDark ? 'text-white/40 bg-white/5 border-white/10 hover:bg-white/10' : 'text-slate-500 bg-slate-100 border-slate-200 hover:bg-slate-200')}`}
               title="Toggle Copy Mode"
             >
-              <Copy size={10} className="shrink-0" /> 
+              <Copy size={10} className="shrink-0" />
               <span className="whitespace-nowrap">{!isCopyMode ? 'Duplicate Day' : 'Cancel Mode'}</span>
             </button>
           )}
@@ -851,7 +851,7 @@ function DurationCell({
                   value={durStr}
                   onChange={e => setDurStr(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && save()}
-                  className="w-5 text-center bg-transparent outline-none text-[8px] font-bold tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-5 text-center bg-transparent outline-none text-[10px] font-bold tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className={`text-[7px] -ml-0.5 ${isDark ? 'text-white/40' : 'text-slate-500'}`}>m</span>
               </div>
@@ -865,7 +865,7 @@ function DurationCell({
           onClick={() => setEditingOverride(true)}
           className="w-full h-full flex flex-col items-center justify-center cursor-pointer transition-colors leading-none"
         >
-          <div className={`absolute top-1 flex flex-col md:flex-row items-center justify-center gap-[1px] md:gap-0.5 text-[7px] md:text-[10px] tracking-tight font-semibold font-mono select-none w-full px-0.5 ${isDark ? 'text-white/70' : 'text-slate-600'}`}>
+          <div className={`absolute top-1 flex flex-col md:flex-row items-center justify-center gap-[1px] md:gap-0.5 text-[8px] md:text-[12px] tracking-tight font-semibold font-mono select-none w-full px-0.5 ${isDark ? 'text-white/70' : 'text-slate-600'}`}>
             <span className="transition-colors group-hover:text-violet-400">
               {block.startStr.replace(" AM", "AM").replace(" PM", "PM")}
             </span>
@@ -875,7 +875,7 @@ function DurationCell({
             </span>
           </div>
 
-          <span className={`absolute bottom-[2px] text-[6px] md:text-[7px] font-bold uppercase tracking-wider group-hover:text-violet-500 transition-colors ${isDark ? 'text-violet-300/60' : 'text-violet-600/70'}`}>
+          <span className={`absolute bottom-[2px] text-[68x] md:text-[10px] font-bold uppercase tracking-wider group-hover:text-violet-500 transition-colors ${isDark ? 'text-violet-300/60' : 'text-violet-600/70'}`}>
             {block.duration > 60 ? Math.floor(block.duration / 60) + "hr " + block.duration % 60 + "m" : block.duration + "m"}
           </span>
         </div>

@@ -110,9 +110,9 @@ export async function GET(request: Request) {
       
       let displayName = `User${index + 1000}`;
       if (isMe) {
-        displayName = `${u.username} (You)`;
+        displayName = u.alias ? `${u.alias} (You)` : `${u.username} (You)`;
       } else if (isFriend) {
-        displayName = u.username;
+        displayName = u.alias ? `${u.alias} (${u.username})` : u.username;
       } else if (u.alias) {
         displayName = u.alias;
       }
