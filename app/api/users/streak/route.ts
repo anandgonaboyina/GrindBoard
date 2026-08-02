@@ -39,12 +39,71 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const streak = user.streak || { lastUpdate: dateStr, currentStreak: 1, maxStreak: 1 };
-    
-    // If it's a new streak object, we might not need to update further if it's the first time
+    let streak = user.streak;
     let updated = false;
 
-    if (!user.streak) {
+    if (!streak) {
+      // Fetch history from DashboardStorage to calculate accurate historical streaks
+      const storage = await db.collection('DashboardStorage').findOne({ userId: decoded.userId }, { projection: { 'state.history': 1 } });
+      const history = storage?.state?.history || {};
+      
+      let maxStreak = 0;
+      let tempStreak = 0;
+      const sortedDates = Object.keys(history).sort((a, b) => a.localeCompare(b));
+      
+      for (let i = 0; i < sortedDates.length; i++) {
+        const dStr = sortedDates[i];
+        if (history[dStr] >= 60) {
+          if (i > 0) {
+            const prevDate = new Date(sortedDates[i-1]);
+            const currDate = new Date(dStr);
+            const diffDays = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 3600 * 24));
+            if (diffDays === 1) {
+              tempStreak++;
+            } else {
+              tempStreak = 1;
+            }
+          } else {
+            tempStreak = 1;
+          }
+          if (tempStreak > maxStreak) maxStreak = tempStreak;
+        } else {
+          tempStreak = 0;
+        }
+      }
+
+      // Calculate current streak tracing back from dateStr
+      let currentStreak = 0;
+      const reqDate = new Date(dateStr);
+      reqDate.setHours(0,0,0,0);
+      
+      let activeDate = new Date(reqDate);
+      if (!history[dateStr] || history[dateStr] < 60) {
+        // Technically this API is called when minutes >= 60, but just in case
+        if (minutes >= 60) {
+          history[dateStr] = minutes;
+        } else {
+          activeDate.setDate(activeDate.getDate() - 1);
+        }
+      }
+
+      while (true) {
+        const activeStr = `${activeDate.getFullYear()}-${String(activeDate.getMonth() + 1).padStart(2, '0')}-${String(activeDate.getDate()).padStart(2, '0')}`;
+        if (history[activeStr] && history[activeStr] >= 60) {
+          currentStreak++;
+          activeDate.setDate(activeDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+
+      if (currentStreak > maxStreak) maxStreak = currentStreak;
+      if (currentStreak === 0 && minutes >= 60) {
+        currentStreak = 1; // At minimum 1 since they just did 60 mins
+        if (maxStreak === 0) maxStreak = 1;
+      }
+
+      streak = { lastUpdate: dateStr, currentStreak, maxStreak };
       updated = true;
     } else {
       const reqDate = new Date(dateStr);

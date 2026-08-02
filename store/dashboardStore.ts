@@ -982,9 +982,24 @@ export const useDashboardStore = create<DashboardState>()(
         const today = getLocalDateString();
 
         let newHistory = state.history;
-        if (addToStats) {
+        if (addToStats && mins > 0) {
           newHistory = { ...state.history };
-          newHistory[today] = (newHistory[today] || 0) + mins;
+          const newTotal = (newHistory[today] || 0) + mins;
+          newHistory[today] = newTotal;
+
+          if (newTotal >= 60 && typeof window !== 'undefined') {
+            const token = localStorage.getItem('token');
+            if (token) {
+              fetch('/api/users/streak', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ dateStr: today, minutes: newTotal })
+              }).catch(err => console.error("Streak sync error:", err));
+            }
+          }
         }
 
         return {
