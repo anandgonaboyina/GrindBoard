@@ -672,7 +672,8 @@ export const useDashboardStore = create<DashboardState>()(
 
       addMins: (dateKey, mins) => {
         set((state) => {
-          const newTotal = (state.history[dateKey] || 0) + mins;
+          const oldTotal = state.history[dateKey] || 0;
+          const newTotal = oldTotal + mins;
           
           if (newTotal >= 60 && typeof window !== 'undefined') {
             const token = localStorage.getItem('token');

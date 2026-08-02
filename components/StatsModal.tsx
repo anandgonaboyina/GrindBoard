@@ -137,7 +137,33 @@ export default function StatsModal() {
     return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`;
   };
 
-  // Calculate Streak dynamically from history (>= 60 mins per day)
+  // Calculate Max Streak from all history
+  let maxStreak = 0;
+  let tempStreak = 0;
+  const sortedDates = Object.keys(history).sort((a, b) => a.localeCompare(b));
+  
+  for (let i = 0; i < sortedDates.length; i++) {
+    const dStr = sortedDates[i];
+    if (history[dStr] >= 60) {
+      if (i > 0) {
+        const prevDate = new Date(sortedDates[i-1]);
+        const currDate = new Date(dStr);
+        const diffDays = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 3600 * 24));
+        if (diffDays === 1) {
+          tempStreak++;
+        } else {
+          tempStreak = 1;
+        }
+      } else {
+        tempStreak = 1;
+      }
+      if (tempStreak > maxStreak) maxStreak = tempStreak;
+    } else {
+      tempStreak = 0;
+    }
+  }
+
+  // Calculate current streak
   let currentStreak = 0;
   const streakCheckDate = new Date();
   streakCheckDate.setHours(0, 0, 0, 0);
@@ -159,6 +185,8 @@ export default function StatsModal() {
       break;
     }
   }
+
+  if (currentStreak > maxStreak) maxStreak = currentStreak;
 
   return (
     <div
@@ -183,7 +211,13 @@ export default function StatsModal() {
             {currentStreak > 0 && (
               <div className="px-2 py-0.5 bg-red-500/20 border border-red-500/30 rounded flex items-center gap-1 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
                 <Flame className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 animate-pulse" />
-                <span className="text-xs sm:text-sm font-bold text-red-300">{currentStreak} Day{currentStreak !== 1 ? 's' : ''}</span>
+                <span className="text-xs sm:text-sm font-bold text-red-300" title={`Max Streak: ${maxStreak}`}>{currentStreak} Day{currentStreak !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+            {maxStreak > 0 && currentStreak === 0 && (
+              <div className="px-2 py-0.5 bg-white/5 border border-white/10 rounded flex items-center gap-1">
+                <Flame className="w-3 h-3 sm:w-4 sm:h-4 text-white/40" />
+                <span className="text-xs sm:text-sm font-bold text-white/50">Max: {maxStreak}</span>
               </div>
             )}
           </div>
