@@ -1215,13 +1215,19 @@ export default function ConnectTab() {
                             </div>
                             <div className="flex flex-col min-w-0 overflow-hidden justify-center gap-0.5">
 
-                              <span className={`font-bold text-[9px] md:text-[11px] tracking-wide truncate w-full leading-none mt-0.5 ${user.isMe ? 'text-blue-500 dark:text-blue-400' : 'text-white dark:text-white/90'}`}>
-                                {user.displayName}
-                              </span>
+                              <div className="flex items-center gap-1.5 mt-0.5 w-full overflow-hidden">
+                                <span className={`font-bold text-[9px] md:text-[11px] tracking-wide truncate leading-none ${user.isMe ? 'text-blue-500 dark:text-blue-400' : 'text-white dark:text-white/90'}`}>
+                                  {user.displayName}
+                                </span>
+                                {user.streak > 0 && (
+                                  <span className="text-[7px] md:text-[8px] text-red-300 font-bold bg-red-500/20 px-1 py-0.5 rounded leading-none flex items-center gap-0.5 shrink-0" title={`Max Streak: ${user.maxStreak || 0}`}>
+                                    <Flame className="w-2.5 h-2.5 text-red-400" /> {user.streak} Streak
+                                  </span>
+                                )}
+                              </div>
 
-                              {(user.wakeupTime || user.workStartedTime || user.streak > 0) && (
+                              {(user.wakeupTime || user.workStartedTime) && (
                                 <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                                  {user.streak > 0 && <span className="text-[7px] md:text-[8px] text-red-300 font-bold bg-red-500/20 px-1 py-0.5 rounded leading-none flex items-center gap-0.5 shrink-0" title={`Max Streak: ${user.maxStreak || 0}`}><Flame className="w-2.5 h-2.5 text-red-400" /> {user.streak}</span>}
                                   {user.wakeupTime && <span className="text-[7px] md:text-[8px] text-blue-300 font-bold bg-blue-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Wake: {new Date(user.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                                   {user.workStartedTime && <span className="text-[7px] md:text-[8px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                                 </div>
@@ -1256,7 +1262,6 @@ export default function ConnectTab() {
                             {(user.wakeupTime || user.bedTime) && (
                               <div className="flex flex-row items-center justify-between bg-black/30 p-1 rounded border border-white/5 min-w-0 gap-1 my-0.5">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  {user.maxStreak > 0 && <span className="text-[8px] md:text-[9px] text-red-300 font-bold bg-red-500/20 px-1 py-0.5 rounded flex items-center gap-0.5 shrink-0"><Flame className="w-3 h-3 text-red-400" /> Max Streak: {user.maxStreak}</span>}
                                   {user.bedTime && <span className="text-[8px] md:text-[9px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded shrink-0">Bed: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                                 </div>
                                 {user.wakeupTime && user.bedTime && user.bedTime > user.wakeupTime && (
