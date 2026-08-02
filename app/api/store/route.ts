@@ -395,44 +395,6 @@ export async function POST(request: Request) {
       }
     });
 
-    const MAX_STORAGE_BYTES = 51200; // 50KB free limit per user
-    const payloadSize = Buffer.byteLength(JSON.stringify(body), 'utf8');
-
-    if (payloadSize > MAX_STORAGE_BYTES) {
-      await db.collection('User').updateOne(
-        { _id: new ObjectId(user.userId) },
-        { $set: { 
-          deletionScheduledAt: new Date(), 
-          deletionReason: `Storage quota exceeded (${(payloadSize/1024).toFixed(1)}KB / 50KB limit). Please export and clear old notes within 7 days to prevent account deletion.` 
-        }}
-      );
-
-      let notes = coreData.notes || [];
-      const existingWarning = notes.find((n: any) => n.id === 'quota-warning');
-      if (!existingWarning) {
-        notes.push({
-          id: 'quota-warning',
-          text: `⚠️ STORAGE LIMIT EXCEEDED ⚠️\n\nYour dashboard data is ${(payloadSize/1024).toFixed(1)}KB, exceeding the 50KB free tier limit.\n\nTo ensure fair database usage across 5000+ active users, your account is scheduled for deletion in 7 days.\n\nPlease use the "Export Notes" button in the Notes Manager to backup your data, then safely delete old notes to drop below 50KB. Once below the limit, this deletion will automatically cancel.`,
-          color: 'bg-red-400',
-          x: 50,
-          y: 50,
-          isPinned: true
-        });
-        coreData.notes = notes;
-      }
-    } else {
-      // User is under quota, check if we need to cancel an existing quota warning
-      const dbUser = await db.collection('User').findOne({ _id: new ObjectId(user.userId) });
-      if (dbUser && dbUser.deletionScheduledAt && dbUser.deletionReason && dbUser.deletionReason.includes('Storage quota exceeded')) {
-        await db.collection('User').updateOne(
-          { _id: new ObjectId(user.userId) },
-          { $unset: { deletionScheduledAt: "", deletionReason: "" } }
-        );
-        if (coreData.notes) {
-          coreData.notes = coreData.notes.filter((n: any) => n.id !== 'quota-warning');
-        }
-      }
-    }
 
     const { notes, roadmaps, ...restCoreData } = coreData;
 
