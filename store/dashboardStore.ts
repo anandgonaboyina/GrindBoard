@@ -97,10 +97,8 @@ interface DashboardState {
   isClockOpen: boolean;
   toggleClock: () => void;
   isSettingsOpen: boolean;
-  isDayStartModalOpen: boolean;
   settingsActiveTab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'feedback' | 'update' | 'wallpaper' | 'quotes';
   toggleSettings: () => void;
-  toggleDayStartModal: () => void;
   setSettingsActiveTab: (tab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'feedback' | 'update' | 'wallpaper' | 'quotes') => void;
   connectInitialTab?: 'profile' | 'friends' | 'broadcasts' | 'leaderboard';
   setConnectInitialTab: (tab?: 'profile' | 'friends' | 'broadcasts' | 'leaderboard') => void;
@@ -282,7 +280,6 @@ interface DashboardState {
   setTimetableThemeOverride: (theme: 'light' | 'dark' | null) => void;
 
   // Widget Visibility Preferences
-  showHealth: boolean;
   showQuote: boolean;
   showTimer: boolean;
   showCountdowns: boolean;
@@ -300,7 +297,7 @@ interface DashboardState {
   showBgSwitcher: boolean;
   showSettingsBtn: boolean;
   showStopwatch: boolean;
-  toggleVisibility: (key: 'showHealth' | 'showQuote' | 'showTimer' | 'showCountdowns' | 'showVideoControls' | 'showClock' | 'showTasks' | 'showCalendar' | 'showTodayWork' | 'showStats' | 'showPlans' | 'showNotes' | 'showTimetable' | 'showDock' | 'showDeadlineAlerts' | 'showBgSwitcher' | 'showSettingsBtn' | 'showStopwatch') => void;
+  toggleVisibility: (key: 'showQuote' | 'showTimer' | 'showCountdowns' | 'showVideoControls' | 'showClock' | 'showTasks' | 'showCalendar' | 'showTodayWork' | 'showStats' | 'showPlans' | 'showNotes' | 'showTimetable' | 'showDock' | 'showDeadlineAlerts' | 'showBgSwitcher' | 'showSettingsBtn' | 'showStopwatch') => void;
 
   // Custom Hide Configuration (Panic Mode / Focus Mode)
   hideConfig: Record<string, boolean>;
@@ -634,7 +631,6 @@ export const useDashboardStore = create<DashboardState>()(
       currentBgType: null,
       lockedWallpaper: null,
       history: {},
-      dailyTimes: {},
       tasks: [],
       tomorrowTasks: [],
       tasksDate: getLocalDateString(),
@@ -800,11 +796,9 @@ export const useDashboardStore = create<DashboardState>()(
         return { isClockOpen: next, ...extra };
       }),
       isSettingsOpen: false,
-      isDayStartModalOpen: false,
       settingsActiveTab: 'preferences',
       connectInitialTab: undefined,
       toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
-      toggleDayStartModal: () => set((state) => ({ isDayStartModalOpen: !state.isDayStartModalOpen })),
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
       setConnectInitialTab: (tab) => set({ connectInitialTab: tab }),
       timerTrigger: null,

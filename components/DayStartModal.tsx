@@ -59,7 +59,7 @@ export default function DayStartModal() {
     setPendingTime(null);
   };
 
-  const formatTime = (ts?: number) => {
+  const formatTime = (ts?: number | null) => {
     if (!ts) return null;
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
