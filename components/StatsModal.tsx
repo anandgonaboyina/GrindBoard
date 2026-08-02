@@ -1,6 +1,6 @@
 'use client';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { X, Flame, Calendar, Clock, BookOpen, GraduationCap, MessageCircle, ChevronDown, CalendarDays, Trophy, ChevronRight, Users } from 'lucide-react';
+import { X, Flame, Calendar, Clock, BookOpen, GraduationCap, MessageCircle, ChevronDown, CalendarDays, Trophy, ChevronRight, Users, BarChart2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getLocalDateString } from '@/utils/date';
 import ScrollableWithArrows from './ScrollableWithArrows';
@@ -137,6 +137,29 @@ export default function StatsModal() {
     return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`;
   };
 
+  // Calculate Streak dynamically from history (>= 60 mins per day)
+  let currentStreak = 0;
+  const streakCheckDate = new Date();
+  streakCheckDate.setHours(0, 0, 0, 0);
+
+  const yesterdayCheck = new Date(streakCheckDate);
+  yesterdayCheck.setDate(yesterdayCheck.getDate() - 1);
+
+  let activeDate = streakCheckDate;
+  if (!history[getLocalDateStr(streakCheckDate)] || history[getLocalDateStr(streakCheckDate)] < 60) {
+    activeDate = yesterdayCheck; // Allow missing today if yesterday was done
+  }
+
+  while (true) {
+    const dStr = getLocalDateStr(activeDate);
+    if (history[dStr] && history[dStr] >= 60) {
+      currentStreak++;
+      activeDate.setDate(activeDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-[1000] flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300"
@@ -153,9 +176,17 @@ export default function StatsModal() {
 
         {/* Header */}
         <div className="flex-none p-2 sm:p-3 flex justify-between items-center border-b border-white/10 bg-black/20 relative z-10">
-          <h2 className="text-sm sm:text-lg font-black tracking-tight flex items-center gap-1.5 text-white">
-            <Flame className="text-orange-500 w-4 h-4 sm:w-5 sm:h-5" /> {viewingFriend ? `${viewingFriend.username}'s Stats` : 'Focus History'}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm sm:text-lg font-black tracking-tight flex items-center gap-1.5 text-white">
+              <BarChart2 className="text-orange-500 w-4 h-4 sm:w-5 sm:h-5" /> {viewingFriend ? `${viewingFriend.username}'s Stats` : 'Focus History'}
+            </h2>
+            {currentStreak > 0 && (
+              <div className="px-2 py-0.5 bg-red-500/20 border border-red-500/30 rounded flex items-center gap-1 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                <Flame className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 animate-pulse" />
+                <span className="text-xs sm:text-sm font-bold text-red-300">{currentStreak} Day{currentStreak !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-1.5">
 
             <button

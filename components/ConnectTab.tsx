@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore, setAuthTransition } from '@/store/dashboardStore';
-import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff } from 'lucide-react';
+import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -1219,8 +1219,9 @@ export default function ConnectTab() {
                                 {user.displayName}
                               </span>
                               
-                              {(user.wakeupTime || user.workStartedTime) && (
+                              {(user.wakeupTime || user.workStartedTime || user.streak > 0) && (
                                 <div className="flex items-center gap-1 mt-0.5">
+                                  {user.streak > 0 && <span className="text-[7px] md:text-[8px] text-red-300 font-bold bg-red-500/20 px-1 py-0.5 rounded leading-none flex items-center gap-0.5 shrink-0"><Flame className="w-2.5 h-2.5 text-red-400" /> {user.streak}</span>}
                                   {user.wakeupTime && <span className="text-[7px] md:text-[8px] text-blue-300 font-bold bg-blue-500/20 px-1 py-0.5 rounded leading-none truncate">Wake: {new Date(user.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                                   {user.workStartedTime && <span className="text-[7px] md:text-[8px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded leading-none truncate">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                                 </div>

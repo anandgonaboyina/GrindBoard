@@ -670,13 +670,32 @@ export const useDashboardStore = create<DashboardState>()(
       activeMobileCustomIndex: null,
       setActiveMobileCustomIndex: (index) => set({ activeMobileCustomIndex: index }),
 
-      addMins: (dateKey, mins) =>
-        set((state) => ({
-          history: {
-            ...state.history,
-            [dateKey]: (state.history[dateKey] || 0) + mins,
-          },
-        })),
+      addMins: (dateKey, mins) => {
+        set((state) => {
+          const newTotal = (state.history[dateKey] || 0) + mins;
+          
+          if (newTotal >= 60 && typeof window !== 'undefined') {
+            const token = localStorage.getItem('token');
+            if (token) {
+              fetch('/api/users/streak', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ dateStr: dateKey, minutes: newTotal })
+              }).catch(err => console.error("Streak sync error:", err));
+            }
+          }
+
+          return {
+            history: {
+              ...state.history,
+              [dateKey]: newTotal,
+            },
+          };
+        });
+      },
 
       setTasks: (tasks, tab = 'today') => set(tab === 'today' ? { tasks } : { tomorrowTasks: tasks }),
 
