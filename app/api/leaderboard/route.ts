@@ -131,17 +131,17 @@ export async function GET(request: Request) {
       }
 
       let streakCount = 0;
-      if (u.streak && u.streak.startDay && u.streak.lastDay) {
+      let maxStreak = 0;
+      if (u.streak && u.streak.lastUpdate && u.streak.currentStreak) {
         const reqDate = new Date(todayStr);
-        const lastDayDate = new Date(u.streak.lastDay);
-        const diffTime = reqDate.getTime() - lastDayDate.getTime();
+        const lastUpdateDate = new Date(u.streak.lastUpdate);
+        const diffTime = reqDate.getTime() - lastUpdateDate.getTime();
         const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
         
         if (diffDays <= 1) { // Valid if today or yesterday
-          const startDate = new Date(u.streak.startDay);
-          const streakTime = lastDayDate.getTime() - startDate.getTime();
-          streakCount = Math.round(streakTime / (1000 * 3600 * 24)) + 1;
+          streakCount = u.streak.currentStreak;
         }
+        maxStreak = u.streak.maxStreak || 0;
       }
 
       return {
@@ -157,7 +157,8 @@ export async function GET(request: Request) {
         workStartedTime: todayDaily.workStartedTime || null,
         bedTime: todayDaily.bedTime || null,
         profilePicture: u.profilePicture || null,
-        streak: streakCount
+        streak: streakCount,
+        maxStreak: maxStreak
       };
     });
 
