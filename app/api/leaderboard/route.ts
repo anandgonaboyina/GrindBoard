@@ -110,7 +110,21 @@ export async function GET(request: Request) {
       const uIdStr = u._id.toString();
       const history = userHistories[uIdStr] || {};
       const dailyTimes = userDailyTimes[uIdStr] || {};
+      
+      const yesterdayDate = new Date(todayDate);
+      yesterdayDate.setDate(todayDate.getDate() - 1);
+      const yesterdayStr = getLocalDateString(yesterdayDate);
+      
       const todayDaily = dailyTimes[todayStr] || {};
+      const yesterdayDaily = dailyTimes[yesterdayStr] || {};
+      
+      let yesterdayBedTime = yesterdayDaily.bedTime || null;
+      if (!yesterdayBedTime) {
+        const y10pm = new Date(yesterdayDate);
+        y10pm.setHours(22, 0, 0, 0);
+        yesterdayBedTime = y10pm.getTime();
+      }
+
       
       const todayFocused = history[todayStr] || 0;
       const thisWeekFocused = thisWeekDays.reduce((acc, date) => acc + (history[date] || 0), 0);
@@ -156,6 +170,7 @@ export async function GET(request: Request) {
         wakeupTime: todayDaily.wakeupTime || null,
         workStartedTime: todayDaily.workStartedTime || null,
         bedTime: todayDaily.bedTime || null,
+        yesterdayBedTime: yesterdayBedTime,
         profilePicture: u.profilePicture || null,
         streak: streakCount,
         maxStreak: maxStreak

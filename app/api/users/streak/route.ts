@@ -43,9 +43,21 @@ export async function POST(request: Request) {
     let updated = false;
 
     if (!streak) {
-      // Fetch history from DashboardStorage to calculate accurate historical streaks
-      const storage = await db.collection('DashboardStorage').findOne({ userId: decoded.userId }, { projection: { 'state.history': 1 } });
-      const history = storage?.state?.history || {};
+      // Fetch history from Stats to calculate accurate historical streaks
+      const storage = await db.collection('Stats').findOne({ userId: decoded.userId }, { projection: { history: 1 } });
+      const legacyStorage = await db.collection('DashboardStorage').findOne({ userId: decoded.userId }, { projection: { 'state.history': 1, data: 1 } });
+      
+      let history = storage?.history;
+      if (!history && legacyStorage?.state?.history) {
+        history = legacyStorage.state.history;
+      }
+      if (!history && legacyStorage?.data) {
+        try {
+          const parsed = JSON.parse(legacyStorage.data);
+          history = parsed?.state?.history;
+        } catch(e){}
+      }
+      history = history || {};
       
       let maxStreak = 0;
       let tempStreak = 0;

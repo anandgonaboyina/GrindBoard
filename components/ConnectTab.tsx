@@ -1234,12 +1234,12 @@ export default function ConnectTab() {
                                     {user.workStartedTime && <span className="text-[7px] md:text-[8px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                                   </div>
                                 )}
-                                {user.bedTime && (
+                                {(user.bedTime || (user.wakeupTime && user.yesterdayBedTime)) && (
                                   <div className="flex flex-wrap items-center gap-1">
-                                    <span className="text-[7px] md:text-[8px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Bed: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    {user.wakeupTime && user.bedTime > user.wakeupTime && (
-                                      <span className="text-[7px] md:text-[8px] text-purple-300 font-bold bg-purple-500/20 px-1 py-0.5 rounded leading-none shrink-0">
-                                        Sleep: {Math.floor((user.bedTime - user.wakeupTime) / (1000 * 60 * 60))}h {Math.floor(((user.bedTime - user.wakeupTime) % (1000 * 60 * 60)) / (1000 * 60))}m
+                                    {user.bedTime && <span className="text-[7px] md:text-[8px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Bed: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                    {user.wakeupTime && user.yesterdayBedTime && user.wakeupTime > user.yesterdayBedTime && (
+                                      <span className="text-[7px] md:text-[8px] text-purple-300 font-bold bg-purple-500/20 px-1 py-0.5 rounded leading-none shrink-0" title="Sleep based on yesterday's bed time">
+                                        Sleep: {Math.floor((user.wakeupTime - user.yesterdayBedTime) / (1000 * 60 * 60))}h {Math.floor(((user.wakeupTime - user.yesterdayBedTime) % (1000 * 60 * 60)) / (1000 * 60))}m
                                       </span>
                                     )}
                                   </div>
