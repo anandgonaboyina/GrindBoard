@@ -72,10 +72,10 @@ export default function DayStartModal() {
     <>
       {/* Toggle Button (Always mounted to allow seamless morphing) */}
       <div
-        className={`fixed ${isMissing ? 'z-[999]' : 'z-[90]'} transition-all duration-[1500ms] ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col items-center gap-4 ${isMissing
+        className={`fixed ${isDayStartModalOpen ? '-z-50 hidden' : 'z-0'} transition-all duration-[1500ms] ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col items-center gap-4 ${isMissing
           ? "top-[50vh] left-[50vw] -translate-x-[50%] -translate-y-[50%] scale-100 opacity-100"
           : "top-[calc(20vh+45px)] sm:top-[calc(20vh+55px)] left-[100vw] -translate-x-[100%] translate-y-0 scale-100 opacity-100"
-          } ${isDayStartModalOpen ? 'opacity-0 pointer-events-none scale-90' : ''}`}
+          } ${isDayStartModalOpen ? 'opacity-0 pointer-events-none scale-90 hidden' : ''}`}
       >
         <button
           onClick={toggleDayStartModal}
