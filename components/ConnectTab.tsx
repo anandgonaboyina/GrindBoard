@@ -55,6 +55,9 @@ export default function ConnectTab() {
   const [aliasUnlockError, setAliasUnlockError] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const [profilePictureLoading, setProfilePictureLoading] = useState(false);
+  const [profilePictureSuccess, setProfilePictureSuccess] = useState('');
+  
+  const [aliasSuccess, setAliasSuccess] = useState('');
 
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [leaderboardFilter, setLeaderboardFilter] = useState<'today' | 'week' | 'month'>('today');
@@ -159,6 +162,7 @@ export default function ConnectTab() {
 
   const updateProfilePicture = async (url: string) => {
     setProfilePictureLoading(true);
+    setProfilePictureSuccess('');
     try {
       const token = localStorage.getItem('dashboard_sync_token');
       const res = await fetch('/api/users', {
@@ -173,6 +177,8 @@ export default function ConnectTab() {
         } else {
           localStorage.removeItem('dashboard_profile_picture');
         }
+        setProfilePictureSuccess('Saved!');
+        setTimeout(() => setProfilePictureSuccess(''), 3000);
       }
     } catch (err) { }
     setProfilePictureLoading(false);
@@ -692,19 +698,6 @@ export default function ConnectTab() {
                 >
                   Sign Out
                 </button>
-                <button
-                  onClick={() => {
-                    if (!isAliasUnlocked) {
-                      alert("Please enter your password in the Security settings below to unlock Account Deletion.");
-                      return;
-                    }
-                    handleDeleteAccount();
-                  }}
-                  className={`flex-1 px-2 ${!isAliasUnlocked ? 'bg-red-900/10 text-red-400/40 border-red-900/20 cursor-not-allowed' : 'bg-red-900/30 hover:bg-red-900/50 text-red-400 border-red-900/50'} rounded-xl transition-colors border font-semibold text-[10px] md:text-xs flex items-center justify-center gap-1.5`}
-                >
-                  {isAliasUnlocked ? <Trash size={12} /> : <Lock size={12} />}
-                  <span>Delete Account</span>
-                </button>
               </div>
             </div>
           </div>
@@ -719,9 +712,12 @@ export default function ConnectTab() {
 
           {/* Profile Pic Settings */}
           <div className="bg-white/5 border border-white/10 p-3 rounded-xl w-full flex flex-col gap-2 shadow-sm">
-            <label className="text-[10px] md:text-xs font-bold text-white/60 flex items-center gap-1.5 uppercase tracking-wider">
-              <UserCircle className="text-blue-400 w-3.5 h-3.5" /> Avatar URL
-            </label>
+            <div className="flex items-center justify-between w-full">
+              <label className="text-[10px] md:text-xs font-bold text-white/60 flex items-center gap-1.5 uppercase tracking-wider">
+                <UserCircle className="text-blue-400 w-3.5 h-3.5" /> Avatar URL
+              </label>
+              {profilePictureSuccess && <span className="text-green-400 text-[10px] font-bold animate-pulse">{profilePictureSuccess}</span>}
+            </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full">
               <input
                 type="url"
@@ -757,22 +753,66 @@ export default function ConnectTab() {
             </div>
           </div>
 
-          {/* Alias & Security Settings */}
+          {/* Alias Settings */}
           <div className="bg-white/5 border border-white/10 p-3 rounded-xl w-full flex flex-col gap-2 shadow-sm">
-            <label className="text-[10px] md:text-xs font-bold text-white/60 flex items-center justify-between uppercase tracking-wider w-full">
-              <div className="flex items-center gap-1.5">
-                <ShieldAlert className={`${isAliasUnlocked ? "text-green-400" : "text-yellow-400"} w-3.5 h-3.5`} /> Security & Alias
+            <div className="flex items-center justify-between w-full">
+              <label className="text-[10px] md:text-xs font-bold text-white/60 flex items-center gap-1.5 uppercase tracking-wider">
+                <ShieldAlert className="text-purple-400 w-3.5 h-3.5" /> Anonymous Alias
+              </label>
+              {aliasSuccess && <span className="text-green-400 text-[10px] font-bold animate-pulse">{aliasSuccess}</span>}
+            </div>
+            
+            <div className="flex flex-col gap-1.5 w-full">
+              <div className="flex gap-1.5 w-full mt-0.5">
+                <input
+                  type="text"
+                  placeholder="Anonymous alias..."
+                  value={alias}
+                  onChange={e => setAlias(e.target.value)}
+                  className="flex-1 min-w-0 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 outline-none focus:border-purple-500 transition-colors text-[10px] md:text-xs text-white/90 placeholder:text-white/30"
+                />
+                <button
+                  onClick={async () => {
+                    setAliasLoading(true);
+                    setAliasSuccess('');
+                    const token = localStorage.getItem('dashboard_sync_token');
+                    const res = await fetch('/api/users', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                      body: JSON.stringify({ alias })
+                    });
+                    if (res.ok) {
+                      setAliasSuccess('Saved!');
+                      setTimeout(() => setAliasSuccess(''), 3000);
+                    }
+                    setAliasLoading(false);
+                  }}
+                  disabled={aliasLoading}
+                  className="px-4 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors font-semibold text-[10px] md:text-xs shadow-md shrink-0"
+                >
+                  {aliasLoading ? 'Wait' : 'Save'}
+                </button>
               </div>
+              <p className="text-white/40 text-[9px] leading-tight">Shown on the global leaderboard instead of your real username.</p>
+            </div>
+          </div>
+
+          {/* Security & Danger Zone */}
+          <div className="bg-white/5 border border-white/10 p-3 rounded-xl w-full flex flex-col gap-2 shadow-sm">
+            <div className="flex items-center justify-between w-full">
+              <label className="text-[10px] md:text-xs font-bold text-white/60 flex items-center gap-1.5 uppercase tracking-wider">
+                <ShieldAlert className={`${isAliasUnlocked ? "text-green-400" : "text-red-400"} w-3.5 h-3.5`} /> Danger Zone
+              </label>
               {isAliasUnlocked && (
                 <button onClick={() => setIsAliasUnlocked(false)} className="text-[9px] text-white/40 hover:text-white transition-colors underline underline-offset-2 capitalize">
                   Lock
                 </button>
               )}
-            </label>
+            </div>
 
             {!isAliasUnlocked ? (
               <div className="flex flex-col gap-1.5 w-full">
-                <p className="text-white/40 text-[9px] leading-tight">Enter your password to unlock alias settings and account deletion.</p>
+                <p className="text-white/40 text-[9px] leading-tight">Enter your password to unlock account deletion.</p>
                 <div className="flex gap-1.5 w-full mt-0.5 relative">
                   <input
                     type={showAliasPassword ? "text" : "password"}
@@ -802,7 +842,7 @@ export default function ConnectTab() {
                         }
                       }
                     }}
-                    className="flex-1 min-w-0 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 outline-none focus:border-yellow-500 transition-colors text-[10px] md:text-xs text-white/90 placeholder:text-white/30 pr-8"
+                    className="flex-1 min-w-0 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 outline-none focus:border-red-500 transition-colors text-[10px] md:text-xs text-white/90 placeholder:text-white/30 pr-8"
                   />
                   <button
                     type="button"
@@ -834,7 +874,7 @@ export default function ConnectTab() {
                       }
                     }}
                     disabled={aliasUnlockLoading || !aliasPassword}
-                    className="px-4 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border border-yellow-500/30 rounded-lg transition-colors font-semibold text-[10px] md:text-xs disabled:opacity-50 shrink-0"
+                    className="px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-lg transition-colors font-semibold text-[10px] md:text-xs disabled:opacity-50 shrink-0"
                   >
                     {aliasUnlockLoading ? '...' : 'Unlock'}
                   </button>
@@ -842,41 +882,22 @@ export default function ConnectTab() {
                 {aliasUnlockError && <p className="text-red-400 text-[9px] mt-0.5 font-medium">{aliasUnlockError}</p>}
               </div>
             ) : (
-              <div className="flex flex-col gap-1.5 w-full">
-                <div className="flex gap-1.5 w-full mt-0.5">
-                  <input
-                    type="text"
-                    placeholder="Anonymous alias..."
-                    value={alias}
-                    onChange={e => setAlias(e.target.value)}
-                    className="flex-1 min-w-0 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 outline-none focus:border-green-500 transition-colors text-[10px] md:text-xs text-white/90 placeholder:text-white/30"
-                  />
-                  <button
-                    onClick={async () => {
-                      setAliasLoading(true);
-                      const token = localStorage.getItem('dashboard_sync_token');
-                      await fetch('/api/users', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({ alias })
-                      });
-                      setAliasLoading(false);
-                    }}
-                    disabled={aliasLoading}
-                    className="px-4 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors font-semibold text-[10px] md:text-xs shadow-md shrink-0"
-                  >
-                    {aliasLoading ? 'Wait' : 'Save'}
-                  </button>
-                </div>
-                <div className="flex justify-between items-center mt-1">
-                  <p className="text-white/40 text-[10px] leading-tight">Shown on leaderboard.</p>
-                  <button
-                    onClick={() => setIsAliasUnlocked(false)}
-                    className="text-white/40 hover:text-white text-[10px] underline underline-offset-2"
-                  >
-                    Lock Settings
-                  </button>
-                </div>
+              <div className="flex flex-col gap-1.5 w-full mt-1">
+                <button
+                  onClick={() => {
+                    setConfirmModal({
+                      isOpen: true,
+                      title: 'Delete Account',
+                      message: 'Are you sure you want to delete your account? This action cannot be undone.',
+                      isDestructive: true,
+                      requireText: 'DELETE',
+                      onConfirm: handleDeleteAccount
+                    });
+                  }}
+                  className="w-full px-3 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900/50 rounded-xl transition-colors font-bold text-xs flex items-center justify-center gap-2"
+                >
+                  <Trash size={14} /> Delete Account Permanently
+                </button>
               </div>
             )}
           </div>
@@ -916,7 +937,7 @@ export default function ConnectTab() {
                         {f.user.lastActive ? (
                           <span className="text-[10px] text-white/60 flex items-center gap-1.5 mt-0.5 truncate w-full">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span className="truncate">Active: {new Date(f.user.lastActive).toLocaleDateString()}</span>
+                            <span className="truncate">Active: {new Date(f.user.lastActive).toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </span>
                         ) : (
                           <span className="text-[10px] text-white/40 flex items-center gap-1.5 mt-0.5 truncate w-full">
