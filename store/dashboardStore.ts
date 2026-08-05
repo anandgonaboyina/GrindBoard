@@ -323,8 +323,7 @@ interface DashboardState {
   setFocusShortcutKey: (key: string) => void;
   panicWallpaperSwitch: boolean;
   setPanicWallpaperSwitch: (val: boolean) => void;
-  enableRightToolbarPeek: boolean;
-  setEnableRightToolbarPeek: (val: boolean) => void;
+
 
   // Custom Placement
   rightWidgetsOffset: number;
@@ -644,8 +643,8 @@ export const useDashboardStore = create<DashboardState>()(
       isHidden: false,
       _hasHydrated: false,
       theme: 'dark',
-      notesThemeOverride: null,
-      timetableThemeOverride: null,
+      notesThemeOverride: 'light',
+      timetableThemeOverride: 'light',
       setTheme: (theme) => set({ theme, notesThemeOverride: null, timetableThemeOverride: null }),
       setNotesThemeOverride: (theme) => set({ notesThemeOverride: theme }),
       setTimetableThemeOverride: (theme) => set({ timetableThemeOverride: theme }),
@@ -1459,8 +1458,6 @@ export const useDashboardStore = create<DashboardState>()(
       setFocusShortcutKey: (key) => set({ focusShortcutKey: key.toLowerCase() }),
       panicWallpaperSwitch: false,
       setPanicWallpaperSwitch: (val) => set({ panicWallpaperSwitch: val }),
-      enableRightToolbarPeek: true,
-      setEnableRightToolbarPeek: (val) => set({ enableRightToolbarPeek: val }),
 
       rightWidgetsOffset: 48, // Default corresponds to bottom-12 (48px)
       setRightWidgetsOffset: (offset) => set({ rightWidgetsOffset: Math.max(0, offset) }),

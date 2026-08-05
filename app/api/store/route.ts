@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     const SETTING_ARRAY_KEYS = [
       'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
       'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
-      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton', 'enableRightToolbarPeek'
+      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton'
     ];
     
     const TASK_KEYS = ['tasks', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
@@ -199,7 +199,7 @@ export async function POST(request: Request) {
     const SETTING_ARRAY_KEYS = [
       'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
       'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
-      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton', 'enableRightToolbarPeek'
+      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton'
     ];
     
     const TASK_KEYS = ['tasks', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];

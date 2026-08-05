@@ -34,49 +34,10 @@ export default function RightToolbar() {
 
   const toggleSettings = useDashboardStore((state) => state.toggleSettings);
   const showSettingsBtn = useDashboardStore((state) => state.showSettingsBtn);
-  const enableRightToolbarPeek = useDashboardStore((state) => state.enableRightToolbarPeek);
 
   const baseHideConfig = useDashboardStore((state) => state.hideConfig);
   const mobileHideConfig = useDashboardStore((state) => state.mobileHideConfig);
   const [isMobile, setIsMobile] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const startX = useRef<number | null>(null);
-
-  useEffect(() => {
-    const handleGlobalMouseUp = (e: MouseEvent) => {
-      if (startX.current !== null) {
-        if (e.clientX - startX.current > 2) setIsExpanded(false);
-        startX.current = null;
-      }
-    };
-    const handleGlobalTouchEnd = (e: TouchEvent) => {
-      if (startX.current !== null) {
-        if (e.changedTouches[0].clientX - startX.current > 15) setIsExpanded(false);
-        startX.current = null;
-      }
-    };
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    window.addEventListener('touchend', handleGlobalTouchEnd);
-    return () => {
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-      window.removeEventListener('touchend', handleGlobalTouchEnd);
-    };
-  }, []);
-
-  const handleDragStart = (clientX: number) => {
-    startX.current = clientX;
-  };
-
-  const handleDragEnd = (clientX: number) => {
-    if (startX.current !== null) {
-      const deltaX = clientX - startX.current;
-      // Drag right to close (since it's on the right edge)
-      if (deltaX > 15) {
-        setIsExpanded(false);
-      }
-      startX.current = null;
-    }
-  };
 
   useEffect(() => {
     setIsMobile(window.innerWidth <= 768);
@@ -116,31 +77,11 @@ export default function RightToolbar() {
 
   return (
     <div
-      className={`relative flex flex-col gap-2 md:gap-3 pointer-events-auto transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${!enableRightToolbarPeek || isExpanded ? 'translate-x-0' : 'translate-x-[calc(100%-12px)] md:translate-x-[calc(100%-16px)] opacity-90 md:opacity-100 hover:opacity-100 cursor-pointer drop-shadow-md'
-        }`}
-      onClick={enableRightToolbarPeek && !isExpanded ? () => setIsExpanded(true) : undefined}
+      className="relative flex flex-col gap-2 md:gap-3 pointer-events-auto transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] translate-x-0"
     >
-      {/* Invisible drag handle to the left of the toolbar for easier swipe-to-close on desktop */}
-      {enableRightToolbarPeek && isExpanded && (
-        <div
-          className="absolute right-full top-0 w-24 md:w-48 h-full cursor-e-resize z-10"
-          onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
-          onTouchEnd={(e) => handleDragEnd(e.changedTouches[0].clientX)}
-          onTouchCancel={() => { startX.current = null; }}
-          onMouseDown={(e) => handleDragStart(e.clientX)}
-          onMouseUp={(e) => handleDragEnd(e.clientX)}
-          onMouseLeave={(e) => handleDragEnd(e.clientX)}
-        />
-      )}
 
       <div
-        className={`relative z-20 flex flex-col gap-2 md:gap-3 ${(!isExpanded && enableRightToolbarPeek) ? 'pointer-events-none' : ''}`}
-        onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
-        onTouchEnd={(e) => handleDragEnd(e.changedTouches[0].clientX)}
-        onTouchCancel={() => { startX.current = null; }}
-        onMouseDown={(e) => handleDragStart(e.clientX)}
-        onMouseUp={(e) => handleDragEnd(e.clientX)}
-        onMouseLeave={(e) => handleDragEnd(e.clientX)}
+        className={`relative z-20 flex flex-col gap-2 md:gap-3`}
       >
         {/* Panic Button - Mobile Only */}
         <button
