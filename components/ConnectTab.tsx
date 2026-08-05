@@ -980,10 +980,17 @@ export default function ConnectTab() {
                   <div key={u.id} className="flex items-center justify-between bg-black/40 p-2 rounded-lg min-w-0 gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border border-white/10 overflow-hidden">
-                        {u.profilePicture ? <img src={u.profilePicture} alt="" className="w-full h-full object-cover" /> : u.username.charAt(0).toUpperCase()}
+                        {u.profilePicture ? <img src={u.profilePicture} alt="" className="w-full h-full object-cover" /> : (u.username.toLowerCase().includes(searchQuery.toLowerCase()) ? u.username : u.alias || u.username).charAt(0).toUpperCase()}
                       </div>
-                      <span className="font-medium text-sm truncate">
-                        {u.username} {u.alias && <span className="text-white/40 text-[10px]">({u.alias})</span>}
+                      <span className="font-medium text-sm truncate flex items-center gap-1.5">
+                        {u.username.toLowerCase().includes(searchQuery.toLowerCase()) ? (
+                          <>
+                            <span>{u.username}</span>
+                            {u.alias && <span className="text-white/40 text-[10px]">({u.alias})</span>}
+                          </>
+                        ) : (
+                          <span>{u.alias}</span>
+                        )}
                       </span>
                     </div>
                     <button onClick={() => sendFriendRequest(u.id)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg border border-blue-500/30 text-xs font-semibold whitespace-nowrap shrink-0 transition-colors">
@@ -1147,10 +1154,10 @@ export default function ConnectTab() {
                   const viewOptions = [
                     { filter: 'today', period: 'current', label: 'Today' },
                     { filter: 'today', period: 'previous', label: 'Yesterday' },
-                    { filter: 'week', period: 'current', label: 'This Wk' },
-                    { filter: 'week', period: 'previous', label: 'Last Wk' },
-                    { filter: 'month', period: 'current', label: 'This Mo' },
-                    { filter: 'month', period: 'previous', label: 'Last Mo' },
+                    { filter: 'week', period: 'current', label: 'This Week' },
+                    { filter: 'week', period: 'previous', label: 'Last Week' },
+                    { filter: 'month', period: 'current', label: 'This Month' },
+                    { filter: 'month', period: 'previous', label: 'Last Month' },
                   ];
                   const activeIndex = viewOptions.findIndex(o => o.filter === leaderboardFilter && o.period === leaderboardPeriod);
                   
@@ -1172,7 +1179,7 @@ export default function ConnectTab() {
                               setLeaderboardFilter(opt.filter as any);
                               setLeaderboardPeriod(opt.period as any);
                             }}
-                            className={`flex-1 py-1 rounded-full text-[8.5px] md:text-[11px] tracking-tighter md:tracking-normal font-bold transition-all whitespace-nowrap text-center ${isActive ? 'text-blue-300 drop-shadow-md' : 'text-white/40 hover:text-white/80'}`}
+                            className={`flex-1 py-0.5 md:py-1 rounded-full text-[7px] sm:text-[9px] md:text-[11px] tracking-tighter md:tracking-normal font-bold transition-all whitespace-nowrap text-center ${isActive ? 'text-blue-300 drop-shadow-md' : 'text-white/40 hover:text-white/80'}`}
                           >
                             {opt.label}
                           </button>
