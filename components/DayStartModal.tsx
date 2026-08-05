@@ -19,10 +19,8 @@ export default function DayStartModal() {
     if (hasPrompted || !_hasHydrated) return;
 
     const isMorningMissing = !todayTimes.wakeupTime || !todayTimes.workStartedTime;
-    const isAfter8PM = new Date().getHours() >= 20;
-    const isBedTimeMissing = !todayTimes.bedTime;
 
-    const needsPrompt = isMorningMissing || (isAfter8PM && isBedTimeMissing);
+    const needsPrompt = isMorningMissing;
 
     if (needsPrompt) {
       if (!isDayStartModalOpen) {
@@ -74,7 +72,7 @@ export default function DayStartModal() {
       <div
         className={`fixed ${isDayStartModalOpen ? '-z-50 hidden' : 'z-0'} transition-all duration-[1500ms] ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col items-center gap-4 ${isMissing
           ? "top-[50vh] left-[50vw] -translate-x-[50%] -translate-y-[50%] scale-100 opacity-100"
-          : "top-[calc(20vh+45px)] sm:top-[calc(20vh+55px)] left-[100vw] -translate-x-[100%] translate-y-0 scale-100 opacity-100"
+          : "hidden opacity-0 pointer-events-none"
           } ${isDayStartModalOpen ? 'opacity-0 pointer-events-none scale-90 hidden' : ''}`}
       >
         <button
@@ -137,7 +135,7 @@ export default function DayStartModal() {
             {/* Content */}
             <div className="p-5 flex flex-col gap-4 relative z-10">
               <p className="text-[11px] text-white/60 mb-2 leading-relaxed">
-                Record your daily times. Wake Up and Start Work times are <strong className="text-white">permanent</strong> once logged. Bed Time can be updated later today. We use your current exact time.
+                Record your daily times. Wake Up and Start Work times are <strong className="text-white">permanent</strong> once logged. Last Active time is logged automatically. We use your current exact time.
               </p>
 
               <div className="flex flex-col gap-3">
@@ -184,28 +182,18 @@ export default function DayStartModal() {
                 </div>
 
                 {/* Bed Time */}
-                <div className={`flex flex-col p-3 rounded-xl bg-indigo-500/10 border transition-all duration-700 ${(!todayTimes.bedTime && new Date().getHours() >= 20) ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)] animate-pulse' : 'border-indigo-500/20'}`}>
+                <div className={`flex flex-col p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20`}>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <Moon className="w-4 h-4 text-indigo-400" />
-                      <span className="text-sm font-semibold text-indigo-100">Bed Time</span>
+                      <span className="text-sm font-semibold text-indigo-100">Last Active</span>
                     </div>
-                    {todayTimes.bedTime && confirming !== 'bedTime' ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-indigo-300 bg-indigo-500/20 px-2 py-1 rounded">{formatTime(todayTimes.bedTime)}</span>
-                        <button onClick={() => handleTimeAction('bedTime')} className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded hover:bg-indigo-500/40 transition-colors">Update</button>
-                      </div>
-                    ) : confirming === 'bedTime' ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-indigo-200">Set to {formatTime(pendingTime)}?</span>
-                        <button onClick={confirmAction} className="p-1 bg-green-500/20 hover:bg-green-500/40 text-green-400 rounded"><Check className="w-4 h-4" /></button>
-                        <button onClick={cancelAction} className="p-1 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded"><X className="w-4 h-4" /></button>
-                      </div>
+                    {todayTimes.bedTime ? (
+                      <span className="text-xs font-bold text-indigo-300 bg-indigo-500/20 px-2 py-1 rounded">{formatTime(todayTimes.bedTime)}</span>
                     ) : (
-                      <button onClick={() => handleTimeAction('bedTime')} className={`text-[10px] font-bold px-3 py-1.5 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg transition-colors ${(!todayTimes.bedTime && new Date().getHours() >= 20) ? 'shadow-[0_0_10px_rgba(99,102,241,0.6)] animate-pulse' : 'shadow-lg'}`}>Sleep</button>
+                      <span className="text-[10px] text-indigo-300/50">Auto-updates from activity</span>
                     )}
                   </div>
-                  {!todayTimes.bedTime && <p className="text-[9px] text-indigo-300/50 mt-1.5 pl-6">Defaults to your last active time if missed.</p>}
                 </div>
 
               </div>

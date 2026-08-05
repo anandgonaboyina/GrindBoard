@@ -491,6 +491,24 @@ export async function POST(request: Request) {
     // 6. Save Stats to the isolated Stats collection
     if ((isFullSync || modifiedCollections.includes('Stats')) && Object.keys(statsSpecificData).length > 0) {
       const statsDoc = { ...statsSpecificData, lastModified: newLastModified };
+      
+      if (existingStats && existingStats.history) {
+        const incomingHistory = statsDoc.history || {};
+        const serverHistory = existingStats.history;
+        const mergedHistory = { ...serverHistory };
+        
+        Object.keys(incomingHistory).forEach(date => {
+          const inc = incomingHistory[date] || 0;
+          const srv = serverHistory[date] || 0;
+          if (inc > srv) {
+            mergedHistory[date] = inc;
+          } else if (srv > inc && inc > 0) {
+            mergedHistory[date] = srv + inc;
+          }
+        });
+        statsDoc.history = mergedHistory;
+      }
+      
       await db.collection('Stats').updateOne(
         { userId: user.userId },
         { 

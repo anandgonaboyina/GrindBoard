@@ -1,7 +1,7 @@
 "use client";
 
 import { useDashboardStore } from "@/store/dashboardStore";
-import { CalendarDays, Edit2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Check, Settings, Plus, Trash, Clock, ArrowUp, ArrowDown, X, Sun, Moon, Copy, ClipboardPaste } from "lucide-react";
+import { CalendarDays, Edit2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Check, Settings, Plus, Trash, Clock, ArrowUp, ArrowDown, X, Sun, Moon, Copy, ClipboardPaste, Download, Upload } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import ConfirmationModal from './ConfirmationModal';
 
@@ -286,6 +286,121 @@ export default function Timetable() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const dataStr = params.get('download_timetable');
+      if (dataStr) {
+        try {
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute("href", "data:text/json;charset=utf-8," + dataStr);
+          downloadAnchorNode.setAttribute("download", "timetable_backup.json");
+          document.body.appendChild(downloadAnchorNode);
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+          
+          // Clean up the URL
+          const url = new URL(window.location.href);
+          url.searchParams.delete('download_timetable');
+          window.history.replaceState({}, '', url.toString());
+          showToast("Timetable backup downloaded automatically.");
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
+
+  const handleBackup = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Timetable Backup',
+      message: (
+        <div className="flex flex-col gap-3 text-sm text-white/80">
+          <p>Your backup file (<code className="text-orange-300 text-xs px-1 bg-black/30 rounded">timetable_backup.json</code>) will be saved to your PC's <strong>Downloads</strong> folder.</p>
+          <p>To use this backup later or on another device, click the <strong>Restore</strong> button and select the downloaded file.</p>
+          {typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively')) && (
+            <p className="text-[11px] text-blue-300 bg-blue-500/10 p-2 rounded mt-1 border border-blue-500/20">
+              ℹ️ Since you are using Lively Wallpaper, your default browser will briefly open to process the download safely.
+            </p>
+          )}
+        </div>
+      ),
+      confirmText: 'Download',
+      cancelText: 'Cancel',
+      onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+      onConfirm: () => {
+        const backupData = {
+          timetableGrid: myTimetableGrid,
+          timetableColors: myTimetableColors,
+          weekdayTimes: myWeekdayTimes,
+          weekendTimes: myWeekendTimes,
+          timetableStartTime: myTimetableStartTime,
+          timetableWeekendStartTime: myTimetableWeekendStartTime,
+        };
+        
+        // Check if we are running in Lively Wallpaper (WebView2)
+        const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
+        
+        if (isWebView2) {
+          const encoded = encodeURIComponent(JSON.stringify(backupData, null, 2));
+          const url = new URL(window.location.href);
+          url.searchParams.set('download_timetable', encoded);
+          window.open(url.toString(), '_blank');
+          showToast("Opening browser to download backup...");
+        } else {
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute("href", dataStr);
+          downloadAnchorNode.setAttribute("download", "timetable_backup.json");
+          document.body.appendChild(downloadAnchorNode);
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+          showToast("Backup download triggered!");
+        }
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const parsed = JSON.parse(content);
+        
+        if (parsed.timetableGrid) {
+          useDashboardStore.setState({
+            timetableGrid: parsed.timetableGrid || {},
+            timetableColors: parsed.timetableColors || {},
+            weekdayTimes: parsed.weekdayTimes || [],
+            weekendTimes: parsed.weekendTimes || [],
+            timetableStartTime: parsed.timetableStartTime || 540,
+            timetableWeekendStartTime: parsed.timetableWeekendStartTime || 540,
+          });
+          showToast("Timetable restored successfully!");
+        } else {
+          showToast("Invalid backup file.");
+        }
+      } catch (err) {
+        showToast("Failed to parse backup file.");
+      }
+    };
+    reader.readAsText(file);
+    setShowSettings(false);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleUpdateDuration = (idx: number, newDur: number) => {
     let oldAccumulated = startTime;
     const oldTimesStrs: string[] = [];
@@ -422,33 +537,61 @@ export default function Timetable() {
       </div>
 
       {/* Compact Start Time Trigger & Copy Mode Toggle */}
-      <div className="mb-2 grid grid-cols-3 w-full items-center px-1">
-        <div></div> {/* Empty spacer for perfect centering */}
-
-        <div className="flex justify-center w-full">
-          <button
-            onClick={() => !viewingFriend && setIsEditingStartTime(true)}
-            className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm ${viewingFriend ? 'cursor-default' : 'active:scale-95'} ${isDark ? 'text-sky-300 bg-sky-500/10 border-sky-500/20 hover:bg-sky-500/20 hover:shadow-[0_0_10px_rgba(14,165,233,0.15)]' : 'text-sky-700 bg-sky-100 border-sky-200 hover:bg-sky-200'}`}
-          >
-            <Clock size={10} /> <span className="whitespace-nowrap">Day Starts: {formatTime(startTime)}</span>
-          </button>
-        </div>
-
-        <div className="flex justify-end w-full">
-          {!viewingFriend && (
+      <div className="mb-2 flex flex-wrap justify-center items-center gap-1.5 md:gap-2 w-full px-1">
+        {!viewingFriend && (
+          <>
             <button
-              onClick={() => {
-                setIsCopyMode(!isCopyMode);
-                setCopiedDay(null);
-              }}
-              className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm active:scale-95 ${isCopyMode ? (isDark ? 'text-white bg-red-500 border-red-500' : 'text-white bg-red-500 border-red-600') : (isDark ? 'text-white/40 bg-white/5 border-white/10 hover:bg-white/10' : 'text-slate-500 bg-slate-100 border-slate-200 hover:bg-slate-200')}`}
-              title="Toggle Copy Mode"
+              onClick={handleBackup}
+              className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm active:scale-95 ${isDark ? 'text-violet-300 bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/20 hover:shadow-[0_0_10px_rgba(139,92,246,0.15)]' : 'text-violet-700 bg-violet-100 border-violet-200 hover:bg-violet-200'}`}
             >
-              <Copy size={10} className="shrink-0" />
-              <span className="whitespace-nowrap">{!isCopyMode ? 'Duplicate Day' : 'Cancel Mode'}</span>
+              <Download size={10} /> <span className="whitespace-nowrap">Backup</span>
             </button>
-          )}
-        </div>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm active:scale-95 ${isDark ? 'text-violet-300 bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/20 hover:shadow-[0_0_10px_rgba(139,92,246,0.15)]' : 'text-violet-700 bg-violet-100 border-violet-200 hover:bg-violet-200'}`}
+            >
+              <Upload size={10} /> <span className="whitespace-nowrap">Restore</span>
+            </button>
+            <input type="file" accept=".json" ref={fileInputRef} onChange={handleRestore} className="hidden" />
+          </>
+        )}
+
+        <button
+          onClick={() => !viewingFriend && setIsEditingStartTime(true)}
+          className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm ${viewingFriend ? 'cursor-default' : 'active:scale-95'} ${isDark ? 'text-sky-300 bg-sky-500/10 border-sky-500/20 hover:bg-sky-500/20 hover:shadow-[0_0_10px_rgba(14,165,233,0.15)]' : 'text-sky-700 bg-sky-100 border-sky-200 hover:bg-sky-200'}`}
+        >
+          <Clock size={10} /> <span className="whitespace-nowrap">Day Starts: {formatTime(startTime)}</span>
+        </button>
+
+        {!viewingFriend && (
+          <button
+            onClick={() => {
+              const newMode = !isCopyMode;
+              setIsCopyMode(newMode);
+              setCopiedDay(null);
+              if (newMode) {
+                setConfirmModal({
+                  isOpen: true,
+                  title: 'How to Copy a Day',
+                  message: (
+                    <div className="flex flex-col gap-2 text-sm">
+                      <p><strong>1.</strong> Click the <Copy size={12} className="inline mx-1"/> icon on the day you want to copy.</p>
+                      <p><strong>2.</strong> Click the <ClipboardPaste size={12} className="inline mx-1"/> icon on another day to paste the schedule there.</p>
+                    </div>
+                  ),
+                  confirmText: 'Got it!',
+                  hideCancel: true,
+                  onConfirm: () => {}
+                });
+              }
+            }}
+            className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm active:scale-95 ${isCopyMode ? (isDark ? 'text-white bg-red-500 border-red-500' : 'text-white bg-red-500 border-red-600') : (isDark ? 'text-white/40 bg-white/5 border-white/10 hover:bg-white/10' : 'text-slate-500 bg-slate-100 border-slate-200 hover:bg-slate-200')}`}
+            title="Toggle Copy Mode"
+          >
+            <Copy size={10} className="shrink-0" />
+            <span className="whitespace-nowrap">{!isCopyMode ? 'Copy Day' : 'Cancel Copy'}</span>
+          </button>
+        )}
       </div>
 
       {/* Timetable Grid Area */}

@@ -698,6 +698,13 @@ export const useDashboardStore = create<DashboardState>()(
               ...state.history,
               [dateKey]: newTotal,
             },
+            dailyTimes: {
+              ...state.dailyTimes,
+              [dateKey]: {
+                ...(state.dailyTimes[dateKey] || {}),
+                bedTime: Date.now()
+              }
+            }
           };
         });
       },
@@ -928,6 +935,7 @@ export const useDashboardStore = create<DashboardState>()(
 
       // Notes State
       notes: [{ id: 'default', title: 'Daily Journal', entries: {} }],
+      setNotes: (notes) => set({ notes }),
       activeNoteId: 'default',
       isNotesOpen: false,
       addNote: () => set((state) => {
@@ -990,13 +998,22 @@ export const useDashboardStore = create<DashboardState>()(
         const today = getLocalDateString();
 
         let newHistory = state.history;
+        let newDailyTimes = state.dailyTimes;
         if (addToStats && mins > 0) {
           newHistory = { ...state.history };
           const newTotal = (newHistory[today] || 0) + mins;
           newHistory[today] = newTotal;
 
+          newDailyTimes = {
+            ...state.dailyTimes,
+            [today]: {
+              ...(state.dailyTimes[today] || {}),
+              bedTime: Date.now()
+            }
+          };
+
           if (newTotal >= 60 && typeof window !== 'undefined') {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('dashboard_sync_token');
             if (token) {
               fetch('/api/users/streak', {
                 method: 'POST',
@@ -1012,6 +1029,7 @@ export const useDashboardStore = create<DashboardState>()(
 
         return {
           history: newHistory,
+          dailyTimes: newDailyTimes,
           stopwatchSessions: [
             { id: Date.now().toString(), title, durationMins: mins, durationSecs: secs, date: today, timestamp: Date.now() },
             ...(state.stopwatchSessions || [])

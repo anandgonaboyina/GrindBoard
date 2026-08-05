@@ -204,6 +204,14 @@ export default function SettingsModal() {
                 <li>Open Windows <strong>Task Manager</strong> (Ctrl+Shift+Esc) → Go to the <strong>Startup Apps</strong> tab → Right-click on <strong>Lively Wallpaper</strong> and select <strong>Enable</strong>.</li>
               </ul>
             </li>
+            <li>
+              <strong>Important Performance & Sync Settings:</strong>
+              <ul className="list-disc pl-4 mt-1 space-y-1">
+                <li>Go to Lively Settings (⚙️) → <strong>Wallpaper</strong> → Set Web Browser Engine to <strong>Edge (WebView2)</strong>.</li>
+                <li>Click on the ⚙️ icon next to the Edge (WebView2) engine setting and set <strong>Cache Directory</strong> to <strong>Disk</strong> (This ensures your data is not lost when restarting your PC).</li>
+                <li>Go to Lively Settings (⚙️) → <strong>Audio</strong> → Untick/Turn off <strong>"Play audio only when desktop is focused"</strong> (This ensures you hear the Focus Timer alarm even if you have full-screen apps or other tabs open).</li>
+              </ul>
+            </li>
           </ol>
         </div>
       )

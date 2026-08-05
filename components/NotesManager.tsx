@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Sun, Moon, Plus, X, StickyNote, Trash2, Undo, Redo, Bold, Italic, Underline, List, Download, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Sun, Moon, Plus, X, StickyNote, Trash2, Undo, Redo, Bold, Italic, Underline, List, Download, ChevronLeft, ChevronRight, Calendar, Upload } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -73,7 +73,7 @@ function EditorBlock({ isLight, date, initialHtml, onChange }: { isLight: boolea
 }
 
 export default function NotesManager() {
-  const { theme: globalTheme, notesThemeOverride, setNotesThemeOverride, isNotesOpen, toggleNotes, notes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote } = useDashboardStore();
+  const { theme: globalTheme, notesThemeOverride, setNotesThemeOverride, isNotesOpen, toggleNotes, notes, setNotes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote } = useDashboardStore();
   const effectiveTheme = notesThemeOverride || (globalTheme === 'light' ? 'light' : 'dark');
   const isLight = effectiveTheme === 'light';
   const [mounted, setMounted] = useState(false);
@@ -94,6 +94,7 @@ export default function NotesManager() {
       updateNoteEntry={updateNoteEntry}
       deleteNote={deleteNote}
       setActiveNote={setActiveNote}
+      setNotes={setNotes}
     />
   );
 }
@@ -161,6 +162,7 @@ function NoteCalendar({ existingDates, onSelectDate, isLight }: { existingDates:
 function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote }: any) {
   const [format, setFormat] = useState({ bold: false, italic: false, underline: false, list: false });
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showDateDropdown, setShowDateDropdown] = useState(false);
 
   // Controls mobile drill-down view
@@ -189,6 +191,31 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
     return () => document.removeEventListener('selectionchange', checkFormat);
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const dataStr = params.get('download_note');
+      const name = params.get('download_note_name') || 'notes_backup';
+      if (dataStr) {
+        try {
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute("href", "data:text/json;charset=utf-8," + dataStr);
+          downloadAnchorNode.setAttribute("download", `${name}.json`);
+          document.body.appendChild(downloadAnchorNode);
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+          
+          const url = new URL(window.location.href);
+          url.searchParams.delete('download_note');
+          url.searchParams.delete('download_note_name');
+          window.history.replaceState({}, '', url.toString());
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
+
   const activeNote = notes.find((n: any) => n.id === activeNoteId) || notes[0];
 
   const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -210,17 +237,111 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
   };
 
   const downloadSingleNote = (note: any) => {
-    const jsonString = JSON.stringify(note, null, 2);
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
+    const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
     const safeTitle = (note.title || 'untitled').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    a.download = `note-${safeTitle}-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const fileName = `note-${safeTitle}-${new Date().toISOString().split('T')[0]}`;
+    
+    if (isWebView2) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Download Note',
+        message: (
+          <div className="flex flex-col gap-3 text-sm text-white/80">
+            <p>This note (<code className="text-orange-300 text-xs px-1 bg-black/30 rounded">{fileName}.json</code>) will be saved to your PC's <strong>Downloads</strong> folder.</p>
+            <p className="text-[11px] text-blue-300 bg-blue-500/10 p-2 rounded mt-1 border border-blue-500/20">
+              ℹ️ Since you are using Lively Wallpaper, your default browser will briefly open to process the download safely.
+            </p>
+          </div>
+        ),
+        confirmText: 'Download',
+        cancelText: 'Cancel',
+        onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+        onConfirm: () => {
+          const encoded = encodeURIComponent(JSON.stringify(note, null, 2));
+          const url = new URL(window.location.href);
+          url.searchParams.set('download_note', encoded);
+          url.searchParams.set('download_note_name', fileName);
+          window.open(url.toString(), '_blank');
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      });
+    } else {
+      const jsonString = JSON.stringify(note, null, 2);
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
+      const a = document.createElement("a");
+      a.href = dataStr;
+      a.download = `${fileName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  const handleBackup = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Notes Backup',
+      message: (
+        <div className="flex flex-col gap-3 text-sm text-white/80">
+          <p>Your notes backup file (<code className="text-orange-300 text-xs px-1 bg-black/30 rounded">notes_backup.json</code>) will be saved to your PC's <strong>Downloads</strong> folder.</p>
+          <p>To use this backup later or on another device, click the <strong>Restore</strong> button and select the downloaded file.</p>
+          {typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively')) && (
+            <p className="text-[11px] text-blue-300 bg-blue-500/10 p-2 rounded mt-1 border border-blue-500/20">
+              ℹ️ Since you are using Lively Wallpaper, your default browser will briefly open to process the download safely.
+            </p>
+          )}
+        </div>
+      ),
+      confirmText: 'Download',
+      cancelText: 'Cancel',
+      onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+      onConfirm: () => {
+        const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
+        
+        if (isWebView2) {
+          const encoded = encodeURIComponent(JSON.stringify(notes, null, 2));
+          const url = new URL(window.location.href);
+          url.searchParams.set('download_note', encoded);
+          url.searchParams.set('download_note_name', 'notes_backup');
+          window.open(url.toString(), '_blank');
+        } else {
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes, null, 2));
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute("href", dataStr);
+          downloadAnchorNode.setAttribute("download", "notes_backup.json");
+          document.body.appendChild(downloadAnchorNode);
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+        }
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (Array.isArray(data) && setNotes) {
+          const mergedNotes = [...notes, ...data].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i);
+          setNotes(mergedNotes);
+        } else if (data && data.id && data.title && setNotes) { // Handle single note restore
+          const mergedNotes = [...notes, data].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i);
+          setNotes(mergedNotes);
+        } else {
+          alert('Invalid notes backup file.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Failed to parse notes backup.');
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -243,25 +364,26 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
             </h2>
             <div className="flex items-center gap-0.5 md:gap-1">
               <button
+                onClick={handleBackup}
+                className={`flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-2 text-[10px] md:text-sm font-semibold rounded-lg transition-colors ${isLight ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                title="Backup Notes"
+              >
+                <Download className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span className="hidden xl:inline">Backup</span>
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-2 text-[10px] md:text-sm font-semibold rounded-lg transition-colors ${isLight ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                title="Restore Notes"
+              >
+                <Upload className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span className="hidden xl:inline">Restore</span>
+              </button>
+              <input type="file" accept=".json" ref={fileInputRef} onChange={handleRestore} className="hidden" />
+              <button
                 onClick={() => setNotesThemeOverride(isLight ? 'dark' : 'light')}
                 className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors ${isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-200' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
                 title="Toggle Theme"
               >
                 {isLight ? <Moon className="w-4 h-4 md:w-5 md:h-5" /> : <Sun className="w-4 h-4 md:w-5 md:h-5" />}
-              </button>
-              <button
-                onClick={() => {
-                  const token = localStorage.getItem('dashboard_sync_token') || localStorage.getItem('dashboard_token');
-                  if (token) {
-                    window.location.href = `/api/export/notes?token=${token}`;
-                  } else {
-                    alert('Please log in first.');
-                  }
-                }}
-                className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors ${isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-200' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                title="Export All Notes"
-              >
-                <Download className="w-4 h-4 md:w-5 md:h-5" />
               </button>
               <button
                 onClick={() => {

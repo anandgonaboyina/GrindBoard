@@ -455,7 +455,7 @@ export default function StatsModal() {
                                         )}
                                         {dTime.bedTime && (
                                           <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-indigo-200 bg-indigo-500/20 px-1 py-px rounded border border-indigo-400/30">
-                                            <span className="font-bold leading-none">Bed: {new Date(dTime.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            <span className="font-bold leading-none">Last Active: {new Date(dTime.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                           </div>
                                         )}
                                       </div>

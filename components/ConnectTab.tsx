@@ -1247,14 +1247,9 @@ export default function ConnectTab() {
                                     {user.workStartedTime && <span className="text-[7px] md:text-[8px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                                   </div>
                                 )}
-                                {(user.bedTime || (user.wakeupTime && user.yesterdayBedTime)) && (
+                                {(user.bedTime) && (
                                   <div className="flex flex-wrap items-center gap-1">
-                                    {user.bedTime && <span className="text-[7px] md:text-[8px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Bed: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                    {user.wakeupTime && user.yesterdayBedTime && user.wakeupTime > user.yesterdayBedTime && (
-                                      <span className="text-[7px] md:text-[8px] text-purple-300 font-bold bg-purple-500/20 px-1 py-0.5 rounded leading-none shrink-0" title="Sleep based on yesterday's bed time">
-                                        Sleep: {Math.floor((user.wakeupTime - user.yesterdayBedTime) / (1000 * 60 * 60))}h {Math.floor(((user.wakeupTime - user.yesterdayBedTime) % (1000 * 60 * 60)) / (1000 * 60))}m
-                                      </span>
-                                    )}
+                                    {user.bedTime && <span className="text-[7px] md:text-[8px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Last Active: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                                   </div>
                                 )}
                               </div>
@@ -1347,7 +1342,7 @@ export default function ConnectTab() {
                 <Clock className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="text-xs font-bold text-blue-300">Sleep Schedule</h4>
-                  <p className="text-[10px] md:text-xs text-white/50 mt-0.5 leading-relaxed">Your Wake, Work, and Bed times are captured via the Daily Routine modal. Daily sleep duration is calculated using your wake time today and your bed time from yesterday.</p>
+                  <p className="text-[10px] md:text-xs text-white/50 mt-0.5 leading-relaxed">Your Wake and Work times are captured via the Daily Routine modal. Your Last Active time is logged automatically based on when you stop working.</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 bg-black/30 p-2.5 rounded-lg border border-white/5">
