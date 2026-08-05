@@ -1140,39 +1140,58 @@ export default function ConnectTab() {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1.5 bg-black/40 p-1 rounded w-full border border-white/10 items-center justify-between min-w-0 shrink-0">
-            <div className="flex flex-row gap-1 w-full sm:w-fit overflow-x-auto no-scrollbar shrink-0">
-              {[
-                { filter: 'today', period: 'current', label: 'Today' },
-                { filter: 'today', period: 'previous', label: 'Yesterday' },
-                { filter: 'week', period: 'current', label: 'This Week' },
-                { filter: 'week', period: 'previous', label: 'Last Week' },
-                { filter: 'month', period: 'current', label: 'This Month' },
-                { filter: 'month', period: 'previous', label: 'Last Month' },
-              ].map(opt => {
-                const isActive = leaderboardFilter === opt.filter && leaderboardPeriod === opt.period;
-                return (
-                  <button
-                    key={`${opt.filter}-${opt.period}`}
-                    onClick={() => {
-                      setLeaderboardFilter(opt.filter as any);
-                      setLeaderboardPeriod(opt.period as any);
-                    }}
-                    className={`px-2 py-1 rounded text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap shrink-0 border ${isActive ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-sm' : 'border-transparent text-white/40 hover:bg-white/5 hover:text-white/80'}`}
-                  >
-                    {opt.label}
-                  </button>
-                )
-              })}
+          <div className="flex flex-col xl:flex-row gap-2 w-full shrink-0 items-center justify-between">
+            <div className="w-full xl:w-auto overflow-x-auto no-scrollbar">
+              <div className="relative flex w-[400px] sm:w-[450px] bg-black/40 p-1 rounded-full border border-white/10 isolate">
+                {(() => {
+                  const viewOptions = [
+                    { filter: 'today', period: 'current', label: 'Today' },
+                    { filter: 'today', period: 'previous', label: 'Yesterday' },
+                    { filter: 'week', period: 'current', label: 'This Wk' },
+                    { filter: 'week', period: 'previous', label: 'Last Wk' },
+                    { filter: 'month', period: 'current', label: 'This Mo' },
+                    { filter: 'month', period: 'previous', label: 'Last Mo' },
+                  ];
+                  const activeIndex = viewOptions.findIndex(o => o.filter === leaderboardFilter && o.period === leaderboardPeriod);
+                  
+                  return (
+                    <>
+                      <div 
+                        className="absolute top-1 bottom-1 rounded-full bg-blue-500/20 border border-blue-500/30 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] -z-10 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                        style={{ 
+                          width: `calc((100% - 8px) / 6)`, 
+                          left: `calc(4px + ((100% - 8px) / 6) * ${activeIndex})` 
+                        }}
+                      />
+                      {viewOptions.map((opt, i) => {
+                        const isActive = activeIndex === i;
+                        return (
+                          <button
+                            key={`${opt.filter}-${opt.period}`}
+                            onClick={() => {
+                              setLeaderboardFilter(opt.filter as any);
+                              setLeaderboardPeriod(opt.period as any);
+                            }}
+                            className={`flex-1 py-1 rounded-full text-[10px] md:text-[11px] font-bold transition-all whitespace-nowrap text-center ${isActive ? 'text-blue-300 drop-shadow-md' : 'text-white/40 hover:text-white/80'}`}
+                          >
+                            {opt.label}
+                          </button>
+                        )
+                      })}
+                    </>
+                  );
+                })()}
+              </div>
             </div>
-            <div className="relative w-full sm:w-36 shrink-0 min-w-0">
-              <Search className="absolute left-1.5 top-1/2 transform -translate-y-1/2 text-white/30 w-3 h-3" />
+            
+            <div className="relative w-full xl:w-48 shrink-0 min-w-0">
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-white/30 w-3.5 h-3.5" />
               <input
                 type="text"
                 placeholder="Search user..."
                 value={leaderboardSearch}
                 onChange={(e) => setLeaderboardSearch(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded pl-5 pr-1.5 py-1 text-[9px] md:text-xs outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full bg-black/40 border border-white/10 rounded-full pl-8 pr-3 py-1.5 text-[10px] md:text-xs outline-none focus:border-blue-500/50 transition-colors"
               />
             </div>
           </div>
@@ -1190,7 +1209,16 @@ export default function ConnectTab() {
                   };
 
                   const sortLeaderboardUsers = (users: any[], filter: string, period: string) => {
-                    return [...users].sort((a, b) => getVal(b) - getVal(a));
+                    return [...users].sort((a, b) => {
+                      const valDiff = getVal(b) - getVal(a);
+                      if (valDiff !== 0) return valDiff;
+                      
+                      // Tie breaker: wakeupTime ascending (earlier wakeup is better)
+                      // If a user doesn't have a wakeupTime, treat it as Infinity (worst)
+                      const wakeA = a.wakeupTime ? new Date(a.wakeupTime).getTime() : Infinity;
+                      const wakeB = b.wakeupTime ? new Date(b.wakeupTime).getTime() : Infinity;
+                      return wakeA - wakeB;
+                    });
                   };
 
                   const sortedData = sortLeaderboardUsers(leaderboardData, leaderboardFilter, leaderboardPeriod);
