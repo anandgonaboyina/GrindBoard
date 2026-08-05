@@ -1140,43 +1140,30 @@ export default function ConnectTab() {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 bg-black/40 p-1 rounded w-full border border-white/10 items-center justify-between min-w-0 shrink-0">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 w-full sm:w-fit overflow-x-auto sm:overflow-visible no-scrollbar">
-              <div className="flex w-full sm:w-auto bg-black/40 border border-white/10 rounded overflow-hidden shrink-0">
-                <button
-                  onClick={() => setLeaderboardFilter('today')}
-                  className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap flex-1 sm:flex-none border ${leaderboardFilter === 'today' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-white/40'}`}
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => setLeaderboardFilter('week')}
-                  className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap flex-1 sm:flex-none border ${leaderboardFilter === 'week' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-white/40'}`}
-                >
-                  This Week
-                </button>
-                <button
-                  onClick={() => setLeaderboardFilter('month')}
-                  className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap flex-1 sm:flex-none border ${leaderboardFilter === 'month' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-white/40'}`}
-                >
-                  This Month
-                </button>
-              </div>
-
-              <div className="flex w-full sm:w-auto bg-black/40 border border-white/10 rounded overflow-hidden shrink-0 ml-auto sm:ml-0">
-                <button
-                  onClick={() => setLeaderboardPeriod('current')}
-                  className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'current' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
-                >
-                  {leaderboardFilter === 'today' ? 'Today' : 'Current'}
-                </button>
-                <button
-                  onClick={() => setLeaderboardPeriod('previous')}
-                  className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'previous' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
-                >
-                  {leaderboardFilter === 'today' ? 'Yesterday' : 'Previous'}
-                </button>
-              </div>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1.5 bg-black/40 p-1 rounded w-full border border-white/10 items-center justify-between min-w-0 shrink-0">
+            <div className="flex flex-row gap-1 w-full sm:w-fit overflow-x-auto no-scrollbar shrink-0">
+              {[
+                { filter: 'today', period: 'current', label: 'Today' },
+                { filter: 'today', period: 'previous', label: 'Yesterday' },
+                { filter: 'week', period: 'current', label: 'This Week' },
+                { filter: 'week', period: 'previous', label: 'Last Week' },
+                { filter: 'month', period: 'current', label: 'This Month' },
+                { filter: 'month', period: 'previous', label: 'Last Month' },
+              ].map(opt => {
+                const isActive = leaderboardFilter === opt.filter && leaderboardPeriod === opt.period;
+                return (
+                  <button
+                    key={`${opt.filter}-${opt.period}`}
+                    onClick={() => {
+                      setLeaderboardFilter(opt.filter as any);
+                      setLeaderboardPeriod(opt.period as any);
+                    }}
+                    className={`px-2 py-1 rounded text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap shrink-0 border ${isActive ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-sm' : 'border-transparent text-white/40 hover:bg-white/5 hover:text-white/80'}`}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
             </div>
             <div className="relative w-full sm:w-36 shrink-0 min-w-0">
               <Search className="absolute left-1.5 top-1/2 transform -translate-y-1/2 text-white/30 w-3 h-3" />
@@ -1185,7 +1172,7 @@ export default function ConnectTab() {
                 placeholder="Search user..."
                 value={leaderboardSearch}
                 onChange={(e) => setLeaderboardSearch(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded pl-5 pr-1.5 py-0.5 text-[9px] md:text-xs outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full bg-black/50 border border-white/10 rounded pl-5 pr-1.5 py-1 text-[9px] md:text-xs outline-none focus:border-blue-500/50 transition-colors"
               />
             </div>
           </div>
@@ -1202,7 +1189,11 @@ export default function ConnectTab() {
                     return leaderboardPeriod === 'current' ? u.thisMonthFocused : u.lastMonthFocused;
                   };
 
-                  const sortedData = [...leaderboardData].sort((a, b) => getVal(b) - getVal(a));
+                  const sortLeaderboardUsers = (users: any[], filter: string, period: string) => {
+                    return [...users].sort((a, b) => getVal(b) - getVal(a));
+                  };
+
+                  const sortedData = sortLeaderboardUsers(leaderboardData, leaderboardFilter, leaderboardPeriod);
                   const filteredData = sortedData.filter(u => u.displayName.toLowerCase().includes(leaderboardSearch.toLowerCase()));
 
                   if (filteredData.length === 0) return <p className="text-white/40 italic text-center py-2 text-[9px] md:text-xs">No user found.</p>;
