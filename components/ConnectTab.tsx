@@ -1140,9 +1140,9 @@ export default function ConnectTab() {
             </button>
           </div>
 
-          <div className="flex flex-col xl:flex-row gap-2 w-full shrink-0 items-center justify-between">
-            <div className="w-full xl:w-auto overflow-x-auto no-scrollbar">
-              <div className="relative flex w-[400px] sm:w-[450px] bg-black/40 p-1 rounded-full border border-white/10 isolate">
+          <div className="flex flex-col gap-1.5 w-full shrink-0 items-center justify-center">
+            <div className="w-full">
+              <div className="relative flex w-full bg-black/40 p-0.5 md:p-1 rounded-full border border-white/10 isolate">
                 {(() => {
                   const viewOptions = [
                     { filter: 'today', period: 'current', label: 'Today' },
@@ -1157,10 +1157,10 @@ export default function ConnectTab() {
                   return (
                     <>
                       <div 
-                        className="absolute top-1 bottom-1 rounded-full bg-blue-500/20 border border-blue-500/30 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] -z-10 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                        className="absolute top-0.5 bottom-0.5 md:top-1 md:bottom-1 rounded-full bg-blue-500/20 border border-blue-500/30 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] -z-10 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
                         style={{ 
-                          width: `calc((100% - 8px) / 6)`, 
-                          left: `calc(4px + ((100% - 8px) / 6) * ${activeIndex})` 
+                          width: `calc((100% - 4px) / 6)`, 
+                          left: `calc(2px + ((100% - 4px) / 6) * ${activeIndex})` 
                         }}
                       />
                       {viewOptions.map((opt, i) => {
@@ -1172,7 +1172,7 @@ export default function ConnectTab() {
                               setLeaderboardFilter(opt.filter as any);
                               setLeaderboardPeriod(opt.period as any);
                             }}
-                            className={`flex-1 py-1 rounded-full text-[10px] md:text-[11px] font-bold transition-all whitespace-nowrap text-center ${isActive ? 'text-blue-300 drop-shadow-md' : 'text-white/40 hover:text-white/80'}`}
+                            className={`flex-1 py-1 rounded-full text-[8.5px] md:text-[11px] tracking-tighter md:tracking-normal font-bold transition-all whitespace-nowrap text-center ${isActive ? 'text-blue-300 drop-shadow-md' : 'text-white/40 hover:text-white/80'}`}
                           >
                             {opt.label}
                           </button>
@@ -1184,14 +1184,14 @@ export default function ConnectTab() {
               </div>
             </div>
             
-            <div className="relative w-full xl:w-48 shrink-0 min-w-0">
-              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-white/30 w-3.5 h-3.5" />
+            <div className="relative w-full shrink-0 min-w-0">
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-white/30 w-3 h-3 md:w-3.5 md:h-3.5" />
               <input
                 type="text"
                 placeholder="Search user..."
                 value={leaderboardSearch}
                 onChange={(e) => setLeaderboardSearch(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-full pl-8 pr-3 py-1.5 text-[10px] md:text-xs outline-none focus:border-blue-500/50 transition-colors"
+                className="w-full bg-black/40 border border-white/10 rounded-full pl-7 pr-3 py-1 md:py-1.5 text-[9px] md:text-xs outline-none focus:border-blue-500/50 transition-colors"
               />
             </div>
           </div>
