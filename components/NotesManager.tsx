@@ -207,7 +207,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
           document.body.appendChild(downloadAnchorNode);
           downloadAnchorNode.click();
           downloadAnchorNode.remove();
-          
+
           const url = new URL(window.location.href);
           url.searchParams.delete('download_note');
           url.searchParams.delete('download_note_name');
@@ -243,7 +243,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
     const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
     const safeTitle = (note.title || 'untitled').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const fileName = `note-${safeTitle}-${new Date().toISOString().split('T')[0]}`;
-    
+
     if (isWebView2) {
       setConfirmModal({
         isOpen: true,
@@ -300,7 +300,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
       onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
       onConfirm: () => {
         const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
-        
+
         if (isWebView2) {
           const encoded = encodeURIComponent(JSON.stringify(notes, null, 2));
           const url = new URL(window.location.href);
@@ -360,61 +360,21 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
       <div className={`relative w-full max-w-6xl h-[80vh] md:h-[85vh] flex flex-col md:flex-row rounded-2xl md:rounded-3xl ${isLight ? 'bg-white/90 border-slate-200' : 'bg-black/80 border-white/20'} backdrop-blur-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300`}>
 
         {/* Top/Left Sidebar: Notes List */}
-        <div className={`${isMobileDetailView ? 'hidden md:flex' : 'flex'} w-full md:w-1/4 md:max-w-[300px] h-full ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'} border-r flex-col shrink-0`}>
+        <div className={`${isMobileDetailView ? 'hidden md:flex' : 'flex'} relative w-full md:w-1/4 md:max-w-[300px] h-full ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'} border-r flex-col shrink-0`}>
           <div className={`p-2.5 md:p-4 border-b ${isLight ? 'border-slate-200 bg-slate-100' : 'border-white/10 bg-white/5'} flex justify-between items-center shrink-0`}>
             <h2 className={`text-sm md:text-lg font-medium ${isLight ? 'text-slate-800' : 'text-white'} tracking-wide flex items-center gap-1.5 md:gap-2`}>
               <StickyNote className="text-yellow-400 w-4 h-4 md:w-[18px] md:h-[18px]" /> Notes
             </h2>
-            <div className="flex items-center gap-0.5 md:gap-1">
-              <button
-                onClick={handleBackup}
-                className={`flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-2 text-[10px] md:text-sm font-semibold rounded-lg transition-colors ${isLight ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-white/10 hover:bg-white/20 text-white'}`}
-                title="Backup Notes"
-              >
-                <Download className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span className="hidden xl:inline">Backup</span>
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className={`flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-2 text-[10px] md:text-sm font-semibold rounded-lg transition-colors ${isLight ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-white/10 hover:bg-white/20 text-white'}`}
-                title="Restore Notes"
-              >
-                <Upload className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span className="hidden xl:inline">Restore</span>
-              </button>
-              <input type="file" accept=".json" ref={fileInputRef} onChange={handleRestore} className="hidden" />
-              <button
-                onClick={() => setNotesThemeOverride(isLight ? 'dark' : 'light')}
-                className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors ${isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-200' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                title="Toggle Theme"
-              >
-                {isLight ? <Moon className="w-4 h-4 md:w-5 md:h-5" /> : <Sun className="w-4 h-4 md:w-5 md:h-5" />}
-              </button>
-              <button
-                onClick={() => {
-                  addNote();
-                  setIsMobileDetailView(true);
-                  setTimeout(() => {
-                    if (titleInputRef.current) {
-                      titleInputRef.current.focus();
-                      titleInputRef.current.select();
-                    }
-                  }, 50);
-                }}
-                className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors ${isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-200' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                title="New Note"
-              >
-                <Plus className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-              {/* Mobile Only Modal Close Button when in List View */}
-              <button
-                onClick={() => {
-                  toggleNotes();
-                  setIsMobileDetailView(false);
-                }}
-                className={`md:hidden p-1.5 rounded-lg transition-colors ml-1 ${isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-red-100' : 'text-white/60 hover:text-white hover:bg-red-500/20'}`}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                toggleNotes();
+                setIsMobileDetailView(false);
+              }}
+              className={`md:hidden p-1.5 rounded-lg transition-colors ${isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-red-100' : 'text-white/60 hover:text-white hover:bg-red-500/20'}`}
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           <div className="relative flex-1 overflow-hidden flex flex-col">
@@ -460,6 +420,62 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
                 </div>
               ))}
             </ScrollableWithArrows>
+          </div>
+
+          {/* Floating Bottom Dock Pill */}
+          <div className="absolute bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+            <div className={`flex items-center gap-1 md:gap-2 px-1.5 py-1.5 md:px-2 md:py-2 rounded-full shadow-xl backdrop-blur-md border transition-colors ${isLight ? 'bg-white/80 border-slate-200/50 shadow-slate-200/50' : 'bg-black/60 border-white/10 shadow-black/50'}`}>
+
+              {/* Utility Actions */}
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={handleBackup}
+                  className={`p-2 rounded-full transition-all hover:scale-105 active:scale-95 ${isLight ? 'text-slate-600 hover:bg-slate-200/50' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                  title="Backup Notes"
+                >
+                  <Download className="w-4 h-4 md:w-4 md:h-4" />
+                </button>
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`p-2 rounded-full transition-all hover:scale-105 active:scale-95 ${isLight ? 'text-slate-600 hover:bg-slate-200/50' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                  title="Restore Notes"
+                >
+                  <Upload className="w-4 h-4 md:w-4 md:h-4" />
+                </button>
+                <input type="file" accept=".json" ref={fileInputRef} onChange={handleRestore} className="hidden" />
+
+                <button
+                  onClick={() => setNotesThemeOverride(isLight ? 'dark' : 'light')}
+                  className={`p-2 rounded-full transition-all hover:scale-105 active:scale-95 ${isLight ? 'text-slate-600 hover:bg-slate-200/50' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                  title="Toggle Theme"
+                >
+                  {isLight ? <Moon className="w-4 h-4 md:w-4 md:h-4" /> : <Sun className="w-4 h-4 md:w-4 md:h-4" />}
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div className={`w-px h-5 mx-0.5 md:mx-1 ${isLight ? 'bg-slate-300' : 'bg-white/20'}`}></div>
+
+              {/* Primary Action */}
+              <button
+                onClick={() => {
+                  addNote();
+                  setIsMobileDetailView(true);
+                  setTimeout(() => {
+                    if (titleInputRef.current) {
+                      titleInputRef.current.focus();
+                      titleInputRef.current.select();
+                    }
+                  }, 50);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 ml-0.5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                title="New Note"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="text-[11px] md:text-[13px] font-bold tracking-wide pr-1">New</span>
+              </button>
+            </div>
           </div>
         </div>
 
