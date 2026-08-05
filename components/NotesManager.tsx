@@ -237,12 +237,27 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
         cancelText: 'Cancel',
         onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
         onConfirm: () => {
-          const encoded = encodeURIComponent(JSON.stringify(note, null, 2));
-          const url = new URL(window.location.origin + '/download.html');
-          url.searchParams.set('data', encoded);
-          url.searchParams.set('name', fileName);
-          url.searchParams.set('type', 'Note');
-          window.open(url.toString(), '_blank');
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = window.location.origin + '/api/download-echo';
+          form.target = '_blank';
+          
+          const dataInput = document.createElement('input');
+          dataInput.type = 'hidden';
+          dataInput.name = 'data';
+          dataInput.value = JSON.stringify(note, null, 2);
+          form.appendChild(dataInput);
+          
+          const nameInput = document.createElement('input');
+          nameInput.type = 'hidden';
+          nameInput.name = 'name';
+          nameInput.value = fileName + '.json';
+          form.appendChild(nameInput);
+          
+          document.body.appendChild(form);
+          form.submit();
+          form.remove();
+          
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
         }
       });
@@ -280,12 +295,26 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
         const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
 
         if (isWebView2) {
-          const encoded = encodeURIComponent(JSON.stringify(notes, null, 2));
-          const url = new URL(window.location.origin + '/download.html');
-          url.searchParams.set('data', encoded);
-          url.searchParams.set('name', 'notes_backup');
-          url.searchParams.set('type', 'Notes Backup');
-          window.open(url.toString(), '_blank');
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = window.location.origin + '/api/download-echo';
+          form.target = '_blank';
+          
+          const dataInput = document.createElement('input');
+          dataInput.type = 'hidden';
+          dataInput.name = 'data';
+          dataInput.value = JSON.stringify(notes, null, 2);
+          form.appendChild(dataInput);
+          
+          const nameInput = document.createElement('input');
+          nameInput.type = 'hidden';
+          nameInput.name = 'name';
+          nameInput.value = 'notes_backup.json';
+          form.appendChild(nameInput);
+          
+          document.body.appendChild(form);
+          form.submit();
+          form.remove();
         } else {
           const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes, null, 2));
           const downloadAnchorNode = document.createElement('a');
