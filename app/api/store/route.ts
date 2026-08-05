@@ -490,7 +490,7 @@ export async function POST(request: Request) {
     
     // 6. Save Stats to the isolated Stats collection
     if ((isFullSync || modifiedCollections.includes('Stats')) && Object.keys(statsSpecificData).length > 0) {
-      const statsDoc = { ...statsSpecificData, lastModified: newLastModified };
+      const statsDoc: any = { ...statsSpecificData, lastModified: newLastModified };
       
       if (existingStats && existingStats.history) {
         const incomingHistory = statsDoc.history || {};

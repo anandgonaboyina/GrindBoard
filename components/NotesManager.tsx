@@ -159,7 +159,7 @@ function NoteCalendar({ existingDates, onSelectDate, isLight }: { existingDates:
   );
 }
 
-function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote }: any) {
+function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote, setNotes }: any) {
   const [format, setFormat] = useState({ bold: false, italic: false, underline: false, list: false });
   const titleInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -172,7 +172,10 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
     isOpen: boolean;
     title: string;
     message: React.ReactNode;
+    confirmText?: string;
+    cancelText?: string;
     isDestructive?: boolean;
+    onCancel?: () => void;
     onConfirm: () => void;
   }>({
     isOpen: false, title: '', message: '', onConfirm: () => { }

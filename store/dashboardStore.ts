@@ -161,6 +161,7 @@ interface DashboardState {
 
   // Notes State
   notes: Note[];
+  setNotes: (notes: Note[]) => void;
   activeNoteId: string | null;
   isNotesOpen: boolean;
   addNote: () => void;

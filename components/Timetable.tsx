@@ -99,7 +99,11 @@ export default function Timetable() {
     isOpen: boolean;
     title: string;
     message: React.ReactNode;
+    confirmText?: string;
+    cancelText?: string;
     isDestructive?: boolean;
+    hideCancel?: boolean;
+    onCancel?: () => void;
     onConfirm: () => void;
   }>({
     isOpen: false, title: '', message: '', onConfirm: () => { }
