@@ -61,6 +61,7 @@
         window.onload = function() {
             const params = new URLSearchParams(window.location.search);
             const dataStr = params.get('data');
+            const apiId = params.get('apiId');
             let fileName = params.get('name') || 'backup';
             const type = params.get('type') || 'Backup';
 
@@ -68,7 +69,16 @@
                 fileName += '.json';
             }
 
-            if (dataStr) {
+            if (apiId) {
+                // Fetch from the Next.js API
+                document.getElementById('title').innerText = type + " Downloaded!";
+                document.getElementById('message').innerText = "Check your browser's download folder. You can close this tab now.";
+                
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = '/api/download-echo?id=' + apiId;
+                document.body.appendChild(iframe);
+            } else if (dataStr) {
                 document.getElementById('title').innerText = type + " Downloaded!";
                 document.getElementById('message').innerText = "Check your browser's download folder. You can close this tab now.";
                 

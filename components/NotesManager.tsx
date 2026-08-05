@@ -249,12 +249,18 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
             });
             const result = await res.json();
             if (result.success && result.id) {
-              window.open(window.location.origin + '/api/download-echo?id=' + result.id, '_blank');
+              window.open(window.location.origin + '/download.html?apiId=' + result.id + '&type=Note', '_blank');
             } else {
               alert('Failed to prepare download.');
             }
           } catch (e) {
-            alert('Error connecting to download server.');
+            // Offline fallback
+            const encoded = encodeURIComponent(JSON.stringify(note, null, 2));
+            const url = new URL(window.location.origin + '/download.html');
+            url.searchParams.set('data', encoded);
+            url.searchParams.set('name', fileName);
+            url.searchParams.set('type', 'Note');
+            window.open(url.toString(), '_blank');
           }
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
         }
@@ -303,11 +309,19 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
             })
           }).then(res => res.json()).then(result => {
             if (result.success && result.id) {
-              window.open(window.location.origin + '/api/download-echo?id=' + result.id, '_blank');
+              window.open(window.location.origin + '/download.html?apiId=' + result.id + '&type=Notes+Backup', '_blank');
             } else {
               alert('Failed to prepare download.');
             }
-          }).catch(() => alert('Error connecting to download server.'));
+          }).catch(() => {
+            // Offline fallback
+            const encoded = encodeURIComponent(JSON.stringify(notes, null, 2));
+            const url = new URL(window.location.origin + '/download.html');
+            url.searchParams.set('data', encoded);
+            url.searchParams.set('name', 'notes_backup');
+            url.searchParams.set('type', 'Notes Backup');
+            window.open(url.toString(), '_blank');
+          });
         } else {
           const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes, null, 2));
           const downloadAnchorNode = document.createElement('a');

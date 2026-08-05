@@ -334,12 +334,21 @@ export default function Timetable() {
             })
           }).then(res => res.json()).then(result => {
             if (result.success && result.id) {
-              window.open(window.location.origin + '/api/download-echo?id=' + result.id, '_blank');
+              window.open(window.location.origin + '/download.html?apiId=' + result.id + '&type=Timetable+Backup', '_blank');
               showToast("Opening browser to download backup...");
             } else {
               showToast("Failed to prepare download.");
             }
-          }).catch(() => showToast("Error connecting to download server."));
+          }).catch(() => {
+            // Offline fallback
+            const encoded = encodeURIComponent(JSON.stringify(backupData, null, 2));
+            const url = new URL(window.location.origin + '/download.html');
+            url.searchParams.set('data', encoded);
+            url.searchParams.set('name', 'timetable_backup');
+            url.searchParams.set('type', 'Timetable Backup');
+            window.open(url.toString(), '_blank');
+            showToast("Opening browser to download backup...");
+          });
         } else {
           const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
           const downloadAnchorNode = document.createElement('a');
