@@ -41,20 +41,13 @@ export async function GET(request: Request) {
 
     const users = await db.collection('User').find({
       _id: { $in: Array.from(allUserIds).filter(Boolean).map(id => new ObjectId(id as string)) }
-    }).project({ _id: 1, username: 1, lastLogin: 1, profilePicture: 1 }).toArray();
-
-    const storages = await db.collection('DashboardStorage').find({
-      userId: { $in: Array.from(allUserIds) }
-    }).project({ userId: 1, lastModified: 1 }).toArray();
-
-    const storageMap = new Map(storages.map(s => [s.userId, s.lastModified]));
+    }).project({ _id: 1, username: 1, lastLogin: 1, profilePicture: 1, lastActiveAt: 1 }).toArray();
 
     const userMap = new Map(users.map(u => {
       const idStr = u._id.toString();
-      const lastMod = storageMap.get(idStr);
       let lastActive = null;
-      if (lastMod) {
-        lastActive = Number(lastMod);
+      if (u.lastActiveAt) {
+        lastActive = new Date(u.lastActiveAt).getTime();
       } else if (u.lastLogin) {
         lastActive = new Date(u.lastLogin).getTime();
       }

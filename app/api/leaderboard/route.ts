@@ -116,8 +116,16 @@ export async function GET(request: Request) {
       const yesterdayStr = getLocalDateString(yesterdayDate);
       
       const todayDaily = dailyTimes[todayStr] || {};
-      const yesterdayDaily = dailyTimes[yesterdayStr] || {};
       
+      let userBedTime = 0;
+      Object.values(dailyTimes).forEach((daily: any) => {
+        if (daily.bedTime && daily.bedTime > userBedTime) {
+          userBedTime = daily.bedTime;
+        }
+      });
+      if (userBedTime === 0) userBedTime = null as any;
+
+      const yesterdayDaily = dailyTimes[yesterdayStr] || {};
       let yesterdayBedTime = yesterdayDaily.bedTime || null;
       if (!yesterdayBedTime) {
         const y10pm = new Date(yesterdayDate);
@@ -169,7 +177,7 @@ export async function GET(request: Request) {
         lastMonthFocused,
         wakeupTime: todayDaily.wakeupTime || null,
         workStartedTime: todayDaily.workStartedTime || null,
-        bedTime: todayDaily.bedTime || null,
+        bedTime: userBedTime,
         yesterdayBedTime: yesterdayBedTime,
         profilePicture: u.profilePicture || null,
         streak: streakCount,
