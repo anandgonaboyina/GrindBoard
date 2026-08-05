@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
 import ThemeProvider from "@/components/ThemeProvider";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,17 +49,15 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(r) {
-                  r.forEach(function(reg) { reg.unregister(); });
-                });
-              }
-            `,
-          }}
-        />
+        <Script id="sw-unregister" strategy="beforeInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(r) {
+                r.forEach(function(reg) { reg.unregister(); });
+              });
+            }
+          `}
+        </Script>
       </head>
       <body className="min-h-full flex flex-col select-none">
         <ThemeProvider />
