@@ -4,9 +4,10 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { Play, Pause, Square, History, Trash2, ChevronLeft, Check } from 'lucide-react';
 import DraggableWidget from './DraggableWidget';
 import ConfirmationModal from './ConfirmationModal';
+import { getLocalDateString } from '@/utils/date';
 
 export default function Stopwatch() {
-  const { isStopwatchOpen, addStopwatchSession, stopwatchSessions, deleteStopwatchSession, clearStopwatchSessions, stopwatchStartTime, setStopwatchStartTime } = useDashboardStore();
+  const { isStopwatchOpen, addStopwatchSession, stopwatchSessions, deleteStopwatchSession, clearStopwatchSessions, stopwatchStartTime, setStopwatchStartTime, stopwatchLastSavedChunks, setStopwatchLastSavedChunks, addMins } = useDashboardStore();
   
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSecs, setElapsedSecs] = useState(0);
@@ -73,31 +74,42 @@ export default function Stopwatch() {
     let interval: NodeJS.Timeout;
     if (isRunning && stopwatchStartTime) {
       interval = setInterval(() => {
-        setElapsedSecs(prev => {
-          const now = Date.now();
-          const stored = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_last_active') : null;
-          const lastActive = stored ? parseInt(stored) : now;
-          const timeSinceActive = Math.floor((now - lastActive) / 1000);
-          
-          if (timeSinceActive >= 7200) {
-            setIsRunning(false);
-            if (now - (lastActive + 7200000) < 120000) {
-              useDashboardStore.getState().setIsAlarmPlaying(true);
-            }
-            useDashboardStore.setState({ isStopwatchOpen: true });
-            setShowContinuePrompt(true);
-            updateInteraction();
-            
-            const cappedElapsed = Math.max(0, Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000));
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
-            }
-            setStopwatchStartTime(null);
-            
-            return cappedElapsed;
+        const now = Date.now();
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_last_active') : null;
+        const lastActive = stored ? parseInt(stored) : now;
+        const timeSinceActive = Math.floor((now - lastActive) / 1000);
+        
+        if (timeSinceActive >= 7200) {
+          setIsRunning(false);
+          if (now - (lastActive + 7200000) < 120000) {
+            useDashboardStore.getState().setIsAlarmPlaying(true);
           }
-          return Math.max(0, Math.floor((now - stopwatchStartTime) / 1000));
-        });
+          useDashboardStore.setState({ isStopwatchOpen: true });
+          setShowContinuePrompt(true);
+          updateInteraction();
+          
+          const cappedElapsed = Math.max(0, Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
+          }
+          setStopwatchStartTime(null);
+          setElapsedSecs(cappedElapsed);
+          return;
+        }
+
+        const currentElapsed = Math.max(0, Math.floor((now - stopwatchStartTime) / 1000));
+        setElapsedSecs(currentElapsed);
+
+        if (addToStats) {
+          const chunks = Math.floor(currentElapsed / 300); // 5 minutes = 300 seconds
+          if (chunks > stopwatchLastSavedChunks) {
+            const diff = chunks - stopwatchLastSavedChunks;
+            const minsToSave = diff * 5;
+            const today = getLocalDateString();
+            addMins(today, minsToSave);
+            setStopwatchLastSavedChunks(chunks);
+          }
+        }
       }, 250); 
     }
     return () => clearInterval(interval);
@@ -106,6 +118,9 @@ export default function Stopwatch() {
   const handleStart = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!isRunning) {
+      if (elapsedSecs === 0) {
+        setStopwatchLastSavedChunks(0);
+      }
       setStopwatchStartTime(Date.now() - elapsedSecs * 1000);
       setIsRunning(true);
       if (typeof window !== 'undefined') {
@@ -134,11 +149,18 @@ export default function Stopwatch() {
   const handleStop = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (elapsedSecs > 0) {
-      addStopwatchSession(taskTitle.trim() || 'Untitled Session', elapsedSecs, addToStats);
+      let finalUnsavedMins = 0;
+      if (addToStats) {
+        const totalMins = Math.floor(elapsedSecs / 60);
+        const alreadySavedMins = stopwatchLastSavedChunks * 5;
+        finalUnsavedMins = Math.max(0, totalMins - alreadySavedMins);
+      }
+      addStopwatchSession(taskTitle.trim() || 'Untitled Session', elapsedSecs, finalUnsavedMins);
     }
     setIsRunning(false);
     setElapsedSecs(0);
     setStopwatchStartTime(null);
+    setStopwatchLastSavedChunks(0);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('stopwatch_paused_secs');
       localStorage.removeItem('stopwatch_last_active');

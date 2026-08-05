@@ -175,11 +175,13 @@ interface DashboardState {
   isStopwatchOpen: boolean;
   toggleStopwatch: () => void;
   stopwatchSessions: { id: string; title: string; durationMins: number; durationSecs: number; date: string; timestamp: number }[];
-  addStopwatchSession: (title: string, secs: number, addToStats: boolean) => void;
+  addStopwatchSession: (title: string, secs: number, unsavedMinsToStats: number) => void;
   deleteStopwatchSession: (id: string) => void;
   clearStopwatchSessions: () => void;
   stopwatchStartTime: number | null;
   setStopwatchStartTime: (time: number | null) => void;
+  stopwatchLastSavedChunks: number;
+  setStopwatchLastSavedChunks: (chunks: number) => void;
 
   // Plans/Roadmap State
   roadmaps: Roadmap[];
@@ -992,17 +994,16 @@ export const useDashboardStore = create<DashboardState>()(
         }
         return { isStopwatchOpen: next, ...extra };
       }),
-      addStopwatchSession: (title, secs, addToStats) => set((state) => {
+      addStopwatchSession: (title, secs, unsavedMinsToStats) => set((state) => {
         const validSecs = Math.max(0, secs);
-        const mins = Math.floor(validSecs / 60);
 
         const today = getLocalDateString();
 
         let newHistory = state.history;
         let newDailyTimes = state.dailyTimes;
-        if (addToStats && mins > 0) {
+        if (unsavedMinsToStats > 0) {
           newHistory = { ...state.history };
-          const newTotal = (newHistory[today] || 0) + mins;
+          const newTotal = (newHistory[today] || 0) + unsavedMinsToStats;
           newHistory[today] = newTotal;
 
           newDailyTimes = {
@@ -1032,7 +1033,7 @@ export const useDashboardStore = create<DashboardState>()(
           history: newHistory,
           dailyTimes: newDailyTimes,
           stopwatchSessions: [
-            { id: Date.now().toString(), title, durationMins: mins, durationSecs: secs, date: today, timestamp: Date.now() },
+            { id: Date.now().toString(), title, durationMins: Math.floor(validSecs / 60), durationSecs: secs, date: today, timestamp: Date.now() },
             ...(state.stopwatchSessions || [])
           ]
         };
@@ -1043,6 +1044,8 @@ export const useDashboardStore = create<DashboardState>()(
       clearStopwatchSessions: () => set({ stopwatchSessions: [] }),
       stopwatchStartTime: null,
       setStopwatchStartTime: (time) => set({ stopwatchStartTime: time }),
+      stopwatchLastSavedChunks: 0,
+      setStopwatchLastSavedChunks: (chunks) => set({ stopwatchLastSavedChunks: chunks }),
 
       // Plans/Roadmap State
       roadmaps: [

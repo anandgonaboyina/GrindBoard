@@ -207,6 +207,7 @@ export default function Timer() {
           setTimerEndAt(Date.now() + state.timerPausedLeft * 1000);
           setTimerPausedLeft(null);
         }
+        useDashboardStore.setState({ timerTrigger: null });
         return;
       }
 
@@ -219,6 +220,7 @@ export default function Timer() {
       } else {
         startTimer(timerTrigger.mins * 60, false);
       }
+      useDashboardStore.setState({ timerTrigger: null });
     }
   }, [timerTrigger]);
 
