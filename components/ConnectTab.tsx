@@ -1163,22 +1163,20 @@ export default function ConnectTab() {
                 </button>
               </div>
 
-              {leaderboardFilter !== 'today' && (
-                <div className="flex w-full sm:w-auto bg-black/40 border border-white/10 rounded overflow-hidden shrink-0 ml-auto sm:ml-0">
-                  <button
-                    onClick={() => setLeaderboardPeriod('current')}
-                    className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'current' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
-                  >
-                    Current
-                  </button>
-                  <button
-                    onClick={() => setLeaderboardPeriod('previous')}
-                    className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'previous' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
-                  >
-                    Previous
-                  </button>
-                </div>
-              )}
+              <div className="flex w-full sm:w-auto bg-black/40 border border-white/10 rounded overflow-hidden shrink-0 ml-auto sm:ml-0">
+                <button
+                  onClick={() => setLeaderboardPeriod('current')}
+                  className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'current' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
+                >
+                  {leaderboardFilter === 'today' ? 'Today' : 'Current'}
+                </button>
+                <button
+                  onClick={() => setLeaderboardPeriod('previous')}
+                  className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-xs font-semibold transition-all whitespace-nowrap border flex-1 sm:flex-none ${leaderboardPeriod === 'previous' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'border-transparent text-white/40'}`}
+                >
+                  {leaderboardFilter === 'today' ? 'Yesterday' : 'Previous'}
+                </button>
+              </div>
             </div>
             <div className="relative w-full sm:w-36 shrink-0 min-w-0">
               <Search className="absolute left-1.5 top-1/2 transform -translate-y-1/2 text-white/30 w-3 h-3" />
@@ -1199,7 +1197,7 @@ export default function ConnectTab() {
               <ScrollableWithArrows className="flex flex-col gap-1 w-full min-w-0 pr-1 h-full pb-10">
                 {(() => {
                   const getVal = (u: any) => {
-                    if (leaderboardFilter === 'today') return u.todayFocused;
+                    if (leaderboardFilter === 'today') return leaderboardPeriod === 'current' ? u.todayFocused : u.yesterdayFocused;
                     if (leaderboardFilter === 'week') return leaderboardPeriod === 'current' ? u.thisWeekFocused : u.lastWeekFocused;
                     return leaderboardPeriod === 'current' ? u.thisMonthFocused : u.lastMonthFocused;
                   };

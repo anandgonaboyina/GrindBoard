@@ -135,6 +135,7 @@ export async function GET(request: Request) {
 
       
       const todayFocused = history[todayStr] || 0;
+      const yesterdayFocused = history[yesterdayStr] || 0;
       const thisWeekFocused = thisWeekDays.reduce((acc, date) => acc + (history[date] || 0), 0);
       const lastWeekFocused = lastWeekDays.reduce((acc, date) => acc + (history[date] || 0), 0);
       const thisMonthFocused = thisMonthDays.reduce((acc, date) => acc + (history[date] || 0), 0);
@@ -171,6 +172,7 @@ export async function GET(request: Request) {
         displayName,
         isMe,
         todayFocused,
+        yesterdayFocused,
         thisWeekFocused,
         lastWeekFocused,
         thisMonthFocused,
