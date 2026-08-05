@@ -236,28 +236,26 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
         confirmText: 'Download',
         cancelText: 'Cancel',
         onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
-        onConfirm: () => {
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = window.location.origin + '/api/download-echo';
-          form.target = '_blank';
-          
-          const dataInput = document.createElement('input');
-          dataInput.type = 'hidden';
-          dataInput.name = 'data';
-          dataInput.value = JSON.stringify(note, null, 2);
-          form.appendChild(dataInput);
-          
-          const nameInput = document.createElement('input');
-          nameInput.type = 'hidden';
-          nameInput.name = 'name';
-          nameInput.value = fileName + '.json';
-          form.appendChild(nameInput);
-          
-          document.body.appendChild(form);
-          form.submit();
-          form.remove();
-          
+        onConfirm: async () => {
+          try {
+            const res = await fetch('/api/download-echo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                data: JSON.stringify(note, null, 2),
+                name: fileName + '.json',
+                type: 'Note'
+              })
+            });
+            const result = await res.json();
+            if (result.success && result.id) {
+              window.open(window.location.origin + '/api/download-echo?id=' + result.id, '_blank');
+            } else {
+              alert('Failed to prepare download.');
+            }
+          } catch (e) {
+            alert('Error connecting to download server.');
+          }
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
         }
       });
@@ -295,26 +293,21 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
         const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
 
         if (isWebView2) {
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = window.location.origin + '/api/download-echo';
-          form.target = '_blank';
-          
-          const dataInput = document.createElement('input');
-          dataInput.type = 'hidden';
-          dataInput.name = 'data';
-          dataInput.value = JSON.stringify(notes, null, 2);
-          form.appendChild(dataInput);
-          
-          const nameInput = document.createElement('input');
-          nameInput.type = 'hidden';
-          nameInput.name = 'name';
-          nameInput.value = 'notes_backup.json';
-          form.appendChild(nameInput);
-          
-          document.body.appendChild(form);
-          form.submit();
-          form.remove();
+          fetch('/api/download-echo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              data: JSON.stringify(notes, null, 2),
+              name: 'notes_backup.json',
+              type: 'Notes Backup'
+            })
+          }).then(res => res.json()).then(result => {
+            if (result.success && result.id) {
+              window.open(window.location.origin + '/api/download-echo?id=' + result.id, '_blank');
+            } else {
+              alert('Failed to prepare download.');
+            }
+          }).catch(() => alert('Error connecting to download server.'));
         } else {
           const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes, null, 2));
           const downloadAnchorNode = document.createElement('a');
@@ -337,14 +330,47 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        if (Array.isArray(data) && setNotes) {
-          const mergedNotes = [...notes, ...data].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i);
-          setNotes(mergedNotes);
-        } else if (data && data.id && data.title && setNotes) { // Handle single note restore
-          const mergedNotes = [...notes, data].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i);
-          setNotes(mergedNotes);
+        
+        let importedNotes = [];
+        if (Array.isArray(data)) {
+          importedNotes = data;
+        } else if (data && data.id && data.title) {
+          importedNotes = [data]; // Single note restore
         } else {
           alert('Invalid notes backup file.');
+          return;
+        }
+
+        // Merge logic: append entries for matching titles, otherwise add new
+        const existingNotes = [...notes];
+        
+        importedNotes.forEach((impNote: any) => {
+          const existing = existingNotes.find(n => n.title === impNote.title);
+          if (existing) {
+            // Merge entries
+            const mergedEntries = { ...(existing.entries || {}) };
+            if (impNote.entries) {
+              Object.keys(impNote.entries).forEach(date => {
+                if (mergedEntries[date]) {
+                  mergedEntries[date] += `<br/><br/>--- Imported ---<br/><br/>${impNote.entries[date]}`;
+                } else {
+                  mergedEntries[date] = impNote.entries[date];
+                }
+              });
+            } else if (impNote.content) {
+               // legacy
+               const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+               mergedEntries[todayStr] = (mergedEntries[todayStr] ? mergedEntries[todayStr] + `<br/><br/>--- Imported ---<br/><br/>` : '') + impNote.content;
+            }
+            existing.entries = mergedEntries;
+          } else {
+            // New note, generate fresh ID to avoid collisions
+            existingNotes.push({ ...impNote, id: Date.now().toString() + Math.random().toString(36).substr(2, 9) });
+          }
+        });
+
+        if (setNotes) {
+          setNotes(existingNotes);
         }
       } catch (err) {
         console.error(err);

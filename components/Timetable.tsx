@@ -324,13 +324,22 @@ export default function Timetable() {
         const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
         
         if (isWebView2) {
-          const encoded = encodeURIComponent(JSON.stringify(backupData, null, 2));
-          const url = new URL(window.location.origin + '/download.html');
-          url.searchParams.set('data', encoded);
-          url.searchParams.set('name', 'timetable_backup');
-          url.searchParams.set('type', 'Timetable Backup');
-          window.open(url.toString(), '_blank');
-          showToast("Opening browser to download backup...");
+          fetch('/api/download-echo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              data: JSON.stringify(backupData, null, 2),
+              name: 'timetable_backup.json',
+              type: 'Timetable Backup'
+            })
+          }).then(res => res.json()).then(result => {
+            if (result.success && result.id) {
+              window.open(window.location.origin + '/api/download-echo?id=' + result.id, '_blank');
+              showToast("Opening browser to download backup...");
+            } else {
+              showToast("Failed to prepare download.");
+            }
+          }).catch(() => showToast("Error connecting to download server."));
         } else {
           const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
           const downloadAnchorNode = document.createElement('a');
