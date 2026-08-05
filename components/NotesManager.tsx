@@ -194,30 +194,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
     return () => document.removeEventListener('selectionchange', checkFormat);
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const dataStr = params.get('download_note');
-      const name = params.get('download_note_name') || 'notes_backup';
-      if (dataStr) {
-        try {
-          const downloadAnchorNode = document.createElement('a');
-          downloadAnchorNode.setAttribute("href", "data:text/json;charset=utf-8," + dataStr);
-          downloadAnchorNode.setAttribute("download", `${name}.json`);
-          document.body.appendChild(downloadAnchorNode);
-          downloadAnchorNode.click();
-          downloadAnchorNode.remove();
 
-          const url = new URL(window.location.href);
-          url.searchParams.delete('download_note');
-          url.searchParams.delete('download_note_name');
-          window.history.replaceState({}, '', url.toString());
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
-  }, []);
 
   const activeNote = notes.find((n: any) => n.id === activeNoteId) || notes[0];
 
@@ -252,7 +229,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
           <div className="flex flex-col gap-3 text-sm text-white/80">
             <p>This note (<code className="text-orange-300 text-xs px-1 bg-black/30 rounded">{fileName}.json</code>) will be saved to your PC's <strong>Downloads</strong> folder.</p>
             <p className="text-[11px] text-blue-300 bg-blue-500/10 p-2 rounded mt-1 border border-blue-500/20">
-              ℹ️ Since you are using Lively Wallpaper, your default browser will briefly open to process the download safely.
+              ℹ️ A new tab will briefly open to process the download securely.
             </p>
           </div>
         ),
@@ -261,9 +238,10 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
         onCancel: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
         onConfirm: () => {
           const encoded = encodeURIComponent(JSON.stringify(note, null, 2));
-          const url = new URL(window.location.href);
-          url.searchParams.set('download_note', encoded);
-          url.searchParams.set('download_note_name', fileName);
+          const url = new URL(window.location.origin + '/download.html');
+          url.searchParams.set('data', encoded);
+          url.searchParams.set('name', fileName);
+          url.searchParams.set('type', 'Note');
           window.open(url.toString(), '_blank');
           setConfirmModal(prev => ({ ...prev, isOpen: false }));
         }
@@ -303,9 +281,10 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
 
         if (isWebView2) {
           const encoded = encodeURIComponent(JSON.stringify(notes, null, 2));
-          const url = new URL(window.location.href);
-          url.searchParams.set('download_note', encoded);
-          url.searchParams.set('download_note_name', 'notes_backup');
+          const url = new URL(window.location.origin + '/download.html');
+          url.searchParams.set('data', encoded);
+          url.searchParams.set('name', 'notes_backup');
+          url.searchParams.set('type', 'Notes Backup');
           window.open(url.toString(), '_blank');
         } else {
           const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes, null, 2));

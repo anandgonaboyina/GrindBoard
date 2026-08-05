@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Downloading Backup...</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+            background-color: #0f172a; 
+            color: white; 
+            text-align: center; 
+        }
+        .container { 
+            max-width: 400px; 
+            padding: 2.5rem; 
+            border-radius: 1.5rem; 
+            background: rgba(255, 255, 255, 0.05); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        h1 { 
+            margin-top: 0; 
+            font-size: 1.5rem; 
+            color: #38bdf8; 
+            margin-bottom: 0.5rem;
+        }
+        p { 
+            color: rgba(255, 255, 255, 0.7); 
+            line-height: 1.5; 
+            font-size: 0.95rem;
+            margin-bottom: 0;
+        }
+        .success-icon { 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80; 
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✓</div>
+        <h1 id="title">Preparing Download...</h1>
+        <p id="message">Your file will download automatically in a moment. You can safely close this tab afterwards.</p>
+    </div>
+    <script>
+        window.onload = function() {
+            const params = new URLSearchParams(window.location.search);
+            const dataStr = params.get('data');
+            let fileName = params.get('name') || 'backup';
+            const type = params.get('type') || 'Backup';
+
+            if (!fileName.endsWith('.json')) {
+                fileName += '.json';
+            }
+
+            if (dataStr) {
+                document.getElementById('title').innerText = type + " Downloaded!";
+                document.getElementById('message').innerText = "Check your browser's download folder. You can close this tab now.";
+                
+                try {
+                    const dataUri = "data:text/json;charset=utf-8," + dataStr;
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute("href", dataUri);
+                    downloadAnchorNode.setAttribute("download", fileName);
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                } catch(e) {
+                    document.getElementById('title').innerText = "Download Failed";
+                    document.getElementById('message').innerText = "Your browser blocked the automatic download.";
+                }
+            } else {
+                document.getElementById('title').innerText = "Invalid Request";
+                document.getElementById('message').innerText = "No data was provided to download.";
+                document.querySelector('.success-icon').innerText = "!";
+                document.querySelector('.success-icon').style.color = "#f87171";
+                document.querySelector('.success-icon').style.background = "rgba(248, 113, 113, 0.2)";
+            }
+        };
+    </script>
+</body>
+</html>

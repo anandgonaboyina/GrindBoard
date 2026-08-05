@@ -290,30 +290,7 @@ export default function Timetable() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const dataStr = params.get('download_timetable');
-      if (dataStr) {
-        try {
-          const downloadAnchorNode = document.createElement('a');
-          downloadAnchorNode.setAttribute("href", "data:text/json;charset=utf-8," + dataStr);
-          downloadAnchorNode.setAttribute("download", "timetable_backup.json");
-          document.body.appendChild(downloadAnchorNode);
-          downloadAnchorNode.click();
-          downloadAnchorNode.remove();
-          
-          // Clean up the URL
-          const url = new URL(window.location.href);
-          url.searchParams.delete('download_timetable');
-          window.history.replaceState({}, '', url.toString());
-          showToast("Timetable backup downloaded automatically.");
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
-  }, []);
+
 
   const handleBackup = () => {
     setConfirmModal({
@@ -325,7 +302,7 @@ export default function Timetable() {
           <p>To use this backup later or on another device, click the <strong>Restore</strong> button and select the downloaded file.</p>
           {typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively')) && (
             <p className="text-[11px] text-blue-300 bg-blue-500/10 p-2 rounded mt-1 border border-blue-500/20">
-              ℹ️ Since you are using Lively Wallpaper, your default browser will briefly open to process the download safely.
+              ℹ️ A new tab will briefly open to process the download securely.
             </p>
           )}
         </div>
@@ -348,8 +325,10 @@ export default function Timetable() {
         
         if (isWebView2) {
           const encoded = encodeURIComponent(JSON.stringify(backupData, null, 2));
-          const url = new URL(window.location.href);
-          url.searchParams.set('download_timetable', encoded);
+          const url = new URL(window.location.origin + '/download.html');
+          url.searchParams.set('data', encoded);
+          url.searchParams.set('name', 'timetable_backup');
+          url.searchParams.set('type', 'Timetable Backup');
           window.open(url.toString(), '_blank');
           showToast("Opening browser to download backup...");
         } else {
