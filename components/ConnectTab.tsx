@@ -34,9 +34,9 @@ export default function ConnectTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string, username: string, profilePicture?: string, alias?: string }[]>([]);
   const [hasSearchedFriends, setHasSearchedFriends] = useState(false);
-  const [friends, setFriends] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string } }[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string } }[]>([]);
-  const [sentRequests, setSentRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string } }[]>([]);
+  const [friends, setFriends] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
+  const [sentRequests, setSentRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
 
   // Info Modal state for Leaderboard
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -1016,9 +1016,9 @@ export default function ConnectTab() {
                     <div key={r.id} className="flex items-center justify-between bg-black/40 border border-white/10 p-2 rounded-lg min-w-0 gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-7 bg-white/10 rounded-full flex items-center justify-center font-bold shrink-0 border border-white/10 overflow-hidden text-xs">
-                          {r.user.profilePicture ? <img src={r.user.profilePicture} alt="" className="w-full h-full object-cover" /> : r.user.username.charAt(0).toUpperCase()}
+                          {r.user.profilePicture ? <img src={r.user.profilePicture} alt="" className="w-full h-full object-cover" /> : (r.user.alias || r.user.username).charAt(0).toUpperCase()}
                         </div>
-                        <span className="font-medium text-xs truncate">{r.user.username}</span>
+                        <span className="font-medium text-xs truncate">{r.user.alias || r.user.username}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button onClick={() => handleFriendRequest(r.id, 'ACCEPTED')} className="w-7 h-7 flex items-center justify-center bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-md border border-green-500/30 transition-colors">
@@ -1042,7 +1042,7 @@ export default function ConnectTab() {
                 <div className="flex flex-col gap-2 min-w-0 w-full">
                   {sentRequests.map(r => (
                     <div key={r.id} className="flex items-center justify-between bg-black/40 p-2 rounded-lg text-xs min-w-0 gap-2 border border-white/5">
-                      <span className="truncate min-w-0 flex-1">{r.user.username}</span>
+                      <span className="truncate min-w-0 flex-1">{r.user.alias || r.user.username}</span>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-white/40 text-[10px]">Pending</span>
                         <button onClick={() => cancelFriendRequest(r.id, r.user?.username || 'Unknown')} className="w-6 h-6 flex items-center justify-center bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition-colors" title="Cancel Request">

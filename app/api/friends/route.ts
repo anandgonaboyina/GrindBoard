@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
     const users = await db.collection('User').find({
       _id: { $in: Array.from(allUserIds).filter(Boolean).map(id => new ObjectId(id as string)) }
-    }).project({ _id: 1, username: 1, lastLogin: 1, profilePicture: 1, lastActiveAt: 1 }).toArray();
+    }).project({ _id: 1, username: 1, alias: 1, lastLogin: 1, profilePicture: 1, lastActiveAt: 1 }).toArray();
 
     const userMap = new Map(users.map(u => {
       const idStr = u._id.toString();
@@ -54,6 +54,7 @@ export async function GET(request: Request) {
       return [idStr, { 
         id: idStr, 
         username: u.username,
+        alias: u.alias || '',
         profilePicture: u.profilePicture || null,
         lastActive
       }];
