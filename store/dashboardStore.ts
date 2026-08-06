@@ -111,6 +111,7 @@ interface DashboardState {
   setActiveTask: (id: string | null, title: string | null) => void;
   updateTaskDuration: (id: string, decreaseMins: number) => void;
   editTaskDuration: (id: string, newDuration: number, tab?: 'today' | 'tomorrow') => void;
+  editTaskTimeSpent: (id: string, newTimeSpent: number, tab?: 'today' | 'tomorrow') => void;
   updateTaskTitle: (id: string, title: string, tab?: 'today' | 'tomorrow') => void;
 
   // Global Timer State
@@ -182,6 +183,8 @@ interface DashboardState {
   setStopwatchStartTime: (time: number | null) => void;
   stopwatchLastSavedChunks: number;
   setStopwatchLastSavedChunks: (chunks: number) => void;
+  stopwatchAddToStats: boolean;
+  setStopwatchAddToStats: (val: boolean) => void;
 
   // Plans/Roadmap State
   roadmaps: Roadmap[];
@@ -865,6 +868,24 @@ export const useDashboardStore = create<DashboardState>()(
         }
         return { tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
       }),
+      editTaskTimeSpent: (id, newTimeSpent, tab = 'today') => set((state) => {
+        const updateTasks = (tasks: Task[]) => tasks.map(t => {
+          if (t.id === id) {
+            const diff = newTimeSpent - (t.timeSpent || 0);
+            return {
+              ...t,
+              timeSpent: Math.max(0, newTimeSpent),
+              duration: Math.max(0, t.duration - diff)
+            };
+          }
+          return t;
+        });
+        
+        if (tab === 'today') {
+          return { tasks: updateTasks(state.tasks) };
+        }
+        return { tomorrowTasks: updateTasks(state.tomorrowTasks) };
+      }),
       reorderTasks: (tab, startIndex, endIndex) => set((state) => {
         const list = tab === 'today' ? Array.from(state.tasks) : Array.from(state.tomorrowTasks);
         const [removed] = list.splice(startIndex, 1);
@@ -885,8 +906,8 @@ export const useDashboardStore = create<DashboardState>()(
           }));
           return {
             tasksDate: todayStr,
-            tasks: [...state.tasks, ...newToday], // Append tomorrow's tasks to any existing today tasks
-            // Keep tomorrowTasks intact so they can be re-used the next day without rewriting.
+            tasks: [...state.tasks, ...newToday],
+            tomorrowTasks: [], // Clear tomorrow's tasks after they are moved to today
           };
         }
         return {};
@@ -1045,6 +1066,8 @@ export const useDashboardStore = create<DashboardState>()(
       setStopwatchStartTime: (time) => set({ stopwatchStartTime: time }),
       stopwatchLastSavedChunks: 0,
       setStopwatchLastSavedChunks: (chunks) => set({ stopwatchLastSavedChunks: chunks }),
+      stopwatchAddToStats: true,
+      setStopwatchAddToStats: (val) => set({ stopwatchAddToStats: val }),
 
       // Plans/Roadmap State
       roadmaps: [

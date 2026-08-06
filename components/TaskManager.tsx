@@ -13,6 +13,7 @@ export default function TaskManager() {
     const [newTaskDuration, setNewTaskDuration] = useState('25');
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [editingDurationId, setEditingDurationId] = useState<string | null>(null);
+    const [editingTimeSpentId, setEditingTimeSpentId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'today' | 'tomorrow'>('today');
 
     const [confirmModal, setConfirmModal] = useState<{
@@ -44,7 +45,7 @@ export default function TaskManager() {
         };
     }, [isInfoOpen]);
 
-    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled } = useDashboardStore();
+    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, editTaskTimeSpent, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled } = useDashboardStore();
 
     useEffect(() => {
         checkTasksRollover();
@@ -313,13 +314,13 @@ export default function TaskManager() {
                                                                 className="w-8 bg-transparent text-[9px] font-bold text-white outline-none placeholder:text-white/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                 onBlur={(e) => {
                                                                     const dur = parseInt(e.target.value);
-                                                                    if (!isNaN(dur) && dur > 0) editTaskDuration(task.id, dur);
+                                                                    if (!isNaN(dur) && dur > 0) editTaskDuration(task.id, dur, activeTab);
                                                                     setEditingDurationId(null);
                                                                 }}
                                                                 onKeyDown={(e) => {
                                                                     if (e.key === 'Enter') {
                                                                         const dur = parseInt(e.currentTarget.value);
-                                                                        if (!isNaN(dur) && dur > 0) editTaskDuration(task.id, dur);
+                                                                        if (!isNaN(dur) && dur > 0) editTaskDuration(task.id, dur, activeTab);
                                                                         setEditingDurationId(null);
                                                                     }
                                                                 }}
@@ -339,13 +340,43 @@ export default function TaskManager() {
                                                         </span>
                                                     )
                                                 )}
-                                                {task.timeSpent !== undefined && task.timeSpent > 0 && !isTaskDone && (
-                                                    <span
-                                                        className="shrink-0 text-[9px] font-semibold tracking-wide text-emerald-200 bg-emerald-500/20 px-1.5 py-0.5 rounded-full border border-emerald-400/20 shadow-sm pointer-events-none"
-                                                        title="Total time tracked for this task"
-                                                    >
-                                                        {task.timeSpent >= 60 ? Math.floor(task.timeSpent / 60) + "h " + (task.timeSpent % 60) + "m" : task.timeSpent + "m"} done
-                                                    </span>
+                                                {!isTaskDone && (
+                                                    editingTimeSpentId === task.id ? (
+                                                        <div className="shrink-0 flex items-center bg-emerald-500/30 rounded-full border border-emerald-400/30 px-1.5 py-px shadow-sm">
+                                                            <input
+                                                                autoFocus
+                                                                type="number"
+                                                                defaultValue={task.timeSpent || 0}
+                                                                min="0"
+                                                                max="999"
+                                                                className="w-8 bg-transparent text-[9px] font-bold text-emerald-100 outline-none placeholder:text-emerald-100/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                onBlur={(e) => {
+                                                                    const dur = parseInt(e.target.value);
+                                                                    if (!isNaN(dur) && dur >= 0) editTaskTimeSpent(task.id, dur, activeTab);
+                                                                    setEditingTimeSpentId(null);
+                                                                }}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        const dur = parseInt(e.currentTarget.value);
+                                                                        if (!isNaN(dur) && dur >= 0) editTaskTimeSpent(task.id, dur, activeTab);
+                                                                        setEditingTimeSpentId(null);
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <span className="text-[9px] font-semibold text-emerald-100/80 ml-0.5">m done</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span
+                                                            onDoubleClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingTimeSpentId(task.id);
+                                                            }}
+                                                            className="shrink-0 text-[9px] font-semibold tracking-wide text-emerald-200 bg-emerald-500/20 hover:bg-emerald-500/40 cursor-pointer px-1.5 py-0.5 rounded-full border border-emerald-400/20 transition-colors shadow-sm"
+                                                            title="Double click to edit done time"
+                                                        >
+                                                            {(task.timeSpent || 0) >= 60 ? Math.floor((task.timeSpent || 0) / 60) + "h " + ((task.timeSpent || 0) % 60) + "m" : (task.timeSpent || 0) + "m"} done
+                                                        </span>
+                                                    )
                                                 )}
                                             </div>
                                         </div>
@@ -444,8 +475,14 @@ export default function TaskManager() {
                             <p>Add tasks to Today or Tomorrow. Tasks placed in Tomorrow will automatically move to Today at midnight, but they will also stay in the Tomorrow tab so you don't have to rewrite repetitive tasks!</p>
                         </div>
                         <div>
-                            <h4 className="font-bold text-emerald-400 mb-1 text-base">⏱️ Focus Timer</h4>
-                            <p>Click the play button next to a task to start a focus timer. The duration can be adjusted by double-clicking the time on a task.</p>
+                            <h4 className="font-bold text-emerald-400 mb-1 text-base">⏱️ Focus Timer & Task Editing</h4>
+                            <p>Click the play button next to a task to start a focus timer.</p>
+                            <ul className="list-disc list-inside mt-2 space-y-1 text-white/90">
+                                <li><strong>Double-click any task title</strong> to edit its name.</li>
+                                <li><strong>Double-click the "m left" badge</strong> to manually edit the task's planned duration.</li>
+                                <li><strong>Double-click the "m done" badge</strong> to manually log completed time. This will automatically deduct from the time left! (Note: Manually adding done time keeps your task progress clean but will <em>not</em> add to your global "Today's Focus" daily streak).</li>
+                                <li>Use the <strong>Up/Down arrows</strong> to easily reorder your tasks.</li>
+                            </ul>
                             <div className="mt-2 p-2 bg-emerald-500/10 rounded-md border border-emerald-500/20 text-emerald-100/80 text-[11px] leading-relaxed">
                                 <strong className="text-emerald-300">Why are stats updated in 5-minute blocks?</strong><br />
                                 Focus time is saved in 5-minute spans. This ensures you maintain deep, uninterrupted focus on a task for a meaningful amount of time before it counts towards your daily completed statistics!
@@ -454,9 +491,6 @@ export default function TaskManager() {
                         <div>
                             <h4 className="font-bold text-purple-400 mb-1 text-base flex items-center gap-1"><BellRing size={16} /> Interval Alert</h4>
                             <p className="mb-2">Plays a short beep every X minutes while a task timer is running. Toggle this using the bell icon at the top of the Task Manager. You can configure the interval time and beep duration under <strong>Settings &rarr; Sound</strong>.</p>
-                        </div>
-                        <div className="text-white/40 mt-2 text-xs italic border-t border-white/10 pt-3">
-                            Tip: Use the Up/Down arrows to reorder tasks. Double-click any task title to edit it.
                         </div>
                     </div>
                 }

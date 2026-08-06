@@ -7,13 +7,12 @@ import ConfirmationModal from './ConfirmationModal';
 import { getLocalDateString } from '@/utils/date';
 
 export default function Stopwatch() {
-  const { isStopwatchOpen, addStopwatchSession, stopwatchSessions, deleteStopwatchSession, clearStopwatchSessions, stopwatchStartTime, setStopwatchStartTime, stopwatchLastSavedChunks, setStopwatchLastSavedChunks, addMins } = useDashboardStore();
+  const { isStopwatchOpen, addStopwatchSession, stopwatchSessions, deleteStopwatchSession, clearStopwatchSessions, stopwatchStartTime, setStopwatchStartTime, stopwatchLastSavedChunks, setStopwatchLastSavedChunks, addMins, stopwatchAddToStats, setStopwatchAddToStats } = useDashboardStore();
   
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSecs, setElapsedSecs] = useState(0);
   const [taskTitle, setTaskTitle] = useState('');
   const [viewingHistory, setViewingHistory] = useState(false);
-  const [addToStats, setAddToStats] = useState(true);
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
 
   const [confirmModal, setConfirmModal] = useState<{
@@ -22,6 +21,9 @@ export default function Stopwatch() {
     message: React.ReactNode;
     isDestructive?: boolean;
     onConfirm: () => void;
+    onCancel?: () => void;
+    confirmText?: string;
+    cancelText?: string;
   }>({
     isOpen: false, title: '', message: '', onConfirm: () => {}
   });
@@ -100,7 +102,7 @@ export default function Stopwatch() {
         const currentElapsed = Math.max(0, Math.floor((now - stopwatchStartTime) / 1000));
         setElapsedSecs(currentElapsed);
 
-        if (addToStats) {
+        if (stopwatchAddToStats) {
           const chunks = Math.floor(currentElapsed / 300); // 5 minutes = 300 seconds
           if (chunks > stopwatchLastSavedChunks) {
             const diff = chunks - stopwatchLastSavedChunks;
@@ -113,7 +115,7 @@ export default function Stopwatch() {
       }, 250); 
     }
     return () => clearInterval(interval);
-  }, [isRunning, stopwatchStartTime, addToStats, stopwatchLastSavedChunks]);
+  }, [isRunning, stopwatchStartTime, stopwatchAddToStats, stopwatchLastSavedChunks]);
 
   const handleStart = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -148,9 +150,26 @@ export default function Stopwatch() {
 
   const handleStop = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    
+    if (elapsedSecs > 0 && !stopwatchAddToStats) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Save to Today\'s Focus?',
+        message: 'You have "Add to Today\'s Focus" unchecked. Do you want to add this session\'s time to your daily stats anyway?',
+        confirmText: 'Yes, Save Time',
+        cancelText: 'No, Discard Time',
+        onConfirm: () => finalizeStop(true),
+        onCancel: () => finalizeStop(false)
+      });
+    } else {
+      finalizeStop(stopwatchAddToStats);
+    }
+  };
+
+  const finalizeStop = (saveToStats: boolean) => {
     if (elapsedSecs > 0) {
       let finalUnsavedMins = 0;
-      if (addToStats) {
+      if (saveToStats) {
         const totalMins = Math.floor(elapsedSecs / 60);
         const alreadySavedMins = stopwatchLastSavedChunks * 5;
         finalUnsavedMins = Math.max(0, totalMins - alreadySavedMins);
@@ -170,7 +189,7 @@ export default function Stopwatch() {
 
   const toggleStatsCheckbox = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setAddToStats(!addToStats);
+    setStopwatchAddToStats(!stopwatchAddToStats);
   };
 
   const formatTime = (totalSecs: number) => {
@@ -318,8 +337,8 @@ export default function Stopwatch() {
                     className="flex items-center justify-center gap-1.5 cursor-pointer opacity-70 hover:opacity-100 transition-opacity mb-1"
                     onClick={toggleStatsCheckbox}
                   >
-                    <div className={`w-3 h-3 rounded-[3px] border flex items-center justify-center transition-colors ${addToStats ? 'bg-blue-500 border-blue-400' : 'border-white/40'}`}>
-                      {addToStats && <Check size={8} className="text-white" />}
+                    <div className={`w-3 h-3 rounded-[3px] border flex items-center justify-center transition-colors ${stopwatchAddToStats ? 'bg-blue-500 border-blue-400' : 'border-white/40'}`}>
+                      {stopwatchAddToStats && <Check size={8} className="text-white" />}
                     </div>
                     <span className="text-[9px] uppercase tracking-wider font-bold">Add to Today's Focus</span>
                   </div>
@@ -363,9 +382,12 @@ export default function Stopwatch() {
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         onConfirm={confirmModal.onConfirm}
+        onCancel={confirmModal.onCancel}
         title={confirmModal.title}
         message={confirmModal.message}
         isDestructive={confirmModal.isDestructive}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
       />
     </DraggableWidget>
   );
