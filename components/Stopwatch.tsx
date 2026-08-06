@@ -113,7 +113,7 @@ export default function Stopwatch() {
       }, 250); 
     }
     return () => clearInterval(interval);
-  }, [isRunning, stopwatchStartTime]);
+  }, [isRunning, stopwatchStartTime, addToStats, stopwatchLastSavedChunks]);
 
   const handleStart = (e?: React.MouseEvent) => {
     e?.stopPropagation();

@@ -196,7 +196,7 @@ export default function Timer() {
     }
 
     return () => clearInterval(interval);
-  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound]);
+  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, lastInteractionTime, isTaskIntervalAlertEnabled, taskIntervalRingSecs]);
 
   // Listen for timer triggers from other components
   useEffect(() => {
