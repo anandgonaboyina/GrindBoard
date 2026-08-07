@@ -23,11 +23,12 @@ async function verifyAdmin(request: Request) {
   return null;
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAdmin(request);
     if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const { id } = await params;
     const body = await request.json();
     const { title, content, broadcastDate, media } = body;
 
@@ -35,7 +36,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const db = client.db();
 
     await db.collection('News').updateOne(
-      { _id: new ObjectId(params.id) },
+      { _id: new ObjectId(id) },
       { $set: { title, content, broadcastDate, media } }
     );
 
@@ -46,15 +47,16 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAdmin(request);
     if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const { id } = await params;
     const client = await clientPromise;
     const db = client.db();
 
-    await db.collection('News').deleteOne({ _id: new ObjectId(params.id) });
+    await db.collection('News').deleteOne({ _id: new ObjectId(id) });
 
     return NextResponse.json({ success: true });
   } catch (error) {
