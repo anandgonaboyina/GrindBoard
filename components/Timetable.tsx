@@ -458,6 +458,16 @@ export default function Timetable() {
     });
   };
 
+  const handleCloseEditor = () => {
+    if (editingCell) {
+      const currentVal = timetableGrid?.[editingCell.day]?.[editingCell.time] || "";
+      if (currentVal.trim() === "") {
+        updateTimetableCell(editingCell.day, editingCell.time, "Free");
+      }
+    }
+    setEditingCell(null);
+  };
+
   return (
     <div suppressHydrationWarning className={` transition-colors duration-500 rounded-[20px] md:rounded-[24px] p-1.5 md:p-2.5 w-full max-w-[100vw] md:w-fit overflow-hidden md:overflow-visible relative mx-auto
         ${isDark ? 'bg-gradient-to-br from-[#12121a] to-[#0a0a0c] border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.4)] text-white/90'
@@ -470,33 +480,43 @@ export default function Timetable() {
 
       {/* Header Area */}
       <div className={`flex items-center justify-between mb-1.5 md:mb-2 pb-1.5 border-b px-1 min-w-0 md:min-w-[400px] lg:min-w-[700px]  ${isDark ? 'border-white/5' : 'border-black/5'}`}>
-        <div className="flex gap-1 items-center">
+        <div className="flex items-center min-w-[40px]">
           <button
             onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
             className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-800'}`}
             title="Previous view"
           >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            onClick={toggleTheme}
-            className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
-            title="Toggle Theme"
-          >
-            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+            <ChevronLeft size={24} strokeWidth={2.5} />
           </button>
         </div>
 
         <div className="flex items-center gap-1 md:gap-1.5 relative" ref={settingsRef}>
-          <CalendarDays className={`w-3.5 h-3.5 md:w-4 md:h-4 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} />
-          <span className={`font-bold tracking-widest uppercase text-[10px] md:text-[11px] text-center truncate ${isDark ? 'text-gray-100' : 'text-slate-800'}`}>
-            {viewMode === "weekdays" ? "Weekly Schedule" : "Weekend Schedule"}
-          </span>
+          <div className="flex flex-col md:flex-row-reverse items-center justify-center md:gap-2">
+            <div className="flex items-center gap-1 md:gap-1.5">
+              <CalendarDays className={`w-3.5 h-3.5 md:w-4 md:h-4 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} />
+              <span className={`font-bold tracking-widest uppercase text-[10px] md:text-[11px] text-center truncate ${isDark ? 'text-gray-100' : 'text-slate-800'}`}>
+                {viewMode === "weekdays" ? "Weekly Schedule" : "Weekend Schedule"}
+              </span>
+            </div>
+            {!viewingFriend && (
+              <span className={`text-[6.5px] md:text-[7.5px] uppercase tracking-wider font-bold px-1.5 py-[1px] rounded mt-0.5 md:mt-0 ${isDark ? 'bg-red-500/20 text-red-300 border border-red-500/20' : 'bg-red-100 text-red-600 border border-red-200'}`}>
+                Double click cell/time to edit
+              </span>
+            )}
+          </div>
           {!viewingFriend && (
             <button onClick={() => setShowSettings(!showSettings)} className={`p-0.5 md:p-1 rounded-md transition-all hover:rotate-90 ml-0.5 shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-900'}`}>
-              <Settings size={12} />
+              <Settings size={14} />
             </button>
           )}
+
+          <button
+            onClick={toggleTheme}
+            className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
+            title="Toggle Theme"
+          >
+            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
 
           {showSettings && (
             <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 rounded-xl shadow-2xl py-1 z-50 flex flex-col min-w-[160px] animate-in slide-in-from-top-2 fade-in duration-200 backdrop-blur-xl border ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-black/10'}`}>
@@ -528,13 +548,15 @@ export default function Timetable() {
           )}
         </div>
 
-        <button
-          onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
-          className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-800'}`}
-          title="Next view"
-        >
-          <ChevronRight size={16} />
-        </button>
+        <div className="flex items-center min-w-[40px] justify-end">
+          <button
+            onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
+            className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-800'}`}
+            title="Next view"
+          >
+            <ChevronRight size={24} strokeWidth={2.5} />
+          </button>
+        </div>
       </div>
 
       {/* Compact Start Time Trigger & Copy Mode Toggle */}
@@ -655,7 +677,7 @@ export default function Timetable() {
               : (isToday ? 'bg-violet-100 text-violet-800 border-violet-300 shadow-[0_0_10px_rgba(139,92,246,0.2)]' : colorMap[day].light);
 
             return (
-              <div key={day} className={`flex flex-col p-0.5 rounded-xl transition-all duration-300 ${isToday ? (isDark ? 'bg-white/[0.04] border border-white/5 shadow-[inset_0_0_15px_rgba(255,255,255,0.02)]' : 'bg-slate-200/50 border border-slate-300/50') : ''}`}>
+              <div key={day} className={`flex flex-col p-0.5 rounded-xl transition-all duration-300 ${isToday ? (isDark ? 'bg-white/[0.04] ring-2 ring-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.15)]' : 'bg-violet-50/80 ring-2 ring-violet-400/60 shadow-[0_0_20px_rgba(139,92,246,0.2)]') : ''}`}>
                 <div className={`relative h-6 md:h-8 flex items-center justify-center text-center font-bold uppercase tracking-widest text-[9px] md:text-[10px] mb-1 rounded-lg border backdrop-blur-sm ${headerStyle}`}>
                   {day}
                   {!viewingFriend && isCopyMode && (
@@ -756,7 +778,7 @@ export default function Timetable() {
                     cellTextClass = 'text-transparent';
                   } else if (isActiveBlock && !isDayFocused) {
                     cellBgClass = isDark ? customColor.active : customColor.lightActive;
-                    cellBorderClass = isDark ? 'border-violet-400/60 shadow-[0_0_10px_rgba(139,92,246,0.3)] z-20' : 'border-violet-500/60 shadow-[0_0_10px_rgba(139,92,246,0.2)] z-20';
+                    cellBorderClass = 'border-transparent z-20';
                   } else if (isDayFocused) {
                     cellBorderClass = isDark ? 'border-white/10' : 'border-black/10';
                   }
@@ -775,11 +797,14 @@ export default function Timetable() {
                         <div
                           style={{ height: `${overlayHeightPx}px` }}
                           className={`absolute top-0 left-0 w-full pointer-events-none flex items-center justify-center z-30 rounded-[6px] border backdrop-blur-sm transition-all duration-200 ${isSpanActive
-                            ? (isDark ? 'bg-violet-600/40 border-violet-400/60 shadow-[0_0_12px_rgba(139,92,246,0.3)]' : 'bg-violet-400/30 border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.2)]')
+                            ? (isDark ? 'bg-violet-600/40 border-transparent' : 'bg-violet-400/30 border-transparent')
                             : `${isDark ? customColor.bg : customColor.lightBg} border-transparent`
                             }`}
                         >
-                          <span className={`px-1 text-center break-words text-[9px] md:text-[10px] font-semibold tracking-wide ${isSpanActive ? (isDark ? 'text-white scale-105 drop-shadow-md' : 'text-violet-900 scale-105') : (isDark ? customColor.text : customColor.lightText)}`}>
+                          {isSpanActive && (
+                            <div className={`absolute inset-0 rounded-[6px] border-2 animate-pulse ${isDark ? 'border-violet-400/70 shadow-[0_0_12px_rgba(139,92,246,0.3)]' : 'border-violet-500/70 shadow-[0_0_12px_rgba(139,92,246,0.2)]'}`} />
+                          )}
+                          <span className={`px-1 text-center break-words text-[9px] md:text-[10px] z-10 font-semibold tracking-wide ${isSpanActive ? (isDark ? 'text-white scale-105 drop-shadow-md' : 'text-violet-900 scale-105') : (isDark ? customColor.text : customColor.lightText)}`}>
                             {subject || "Free"}
                           </span>
                         </div>
@@ -797,6 +822,11 @@ export default function Timetable() {
                         <Edit2 size={8} className={`absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 pointer-events-none ${cellTextClass} z-20 transition-opacity`} />
                       )}
 
+                      {/* Blinking border for active single cells */}
+                      {isActiveBlock && !isDayFocused && !showOverlay && !isContinuation && (
+                        <div className={`absolute inset-0 pointer-events-none rounded-[6px] border-2 animate-pulse ${isDark ? 'border-violet-400/70 shadow-[0_0_10px_rgba(139,92,246,0.3)]' : 'border-violet-500/70 shadow-[0_0_10px_rgba(139,92,246,0.2)]'}`} />
+                      )}
+
                       {/* Active indicator dot */}
                       {isActiveBlock && !isEditingThisCell && (
                         <div className="absolute top-1 right-1 w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-violet-400 animate-pulse shadow-[0_0_6px_rgba(139,92,246,1)] z-40" />
@@ -812,9 +842,9 @@ export default function Timetable() {
 
       {/* Centered Cell Editor Modal */}
       {editingCell && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setEditingCell(null)}>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={handleCloseEditor}>
           <div className={`border rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-4 w-full max-w-[260px] flex flex-col gap-3 relative animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 backdrop-blur-xl border-white/10' : 'bg-white/95 backdrop-blur-xl border-black/10'}`} onClick={e => e.stopPropagation()}>
-            <button onClick={() => setEditingCell(null)} className={`absolute top-2.5 right-2.5 p-1 transition-all rounded-full active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-800 hover:bg-black/5'}`}><X size={14} /></button>
+            <button onClick={handleCloseEditor} className={`absolute top-2.5 right-2.5 p-1 transition-all rounded-full active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-800 hover:bg-black/5'}`}><X size={14} /></button>
 
             <div className="text-center mt-1">
               <h3 className={`font-bold text-xs uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-slate-800'}`}>{editingCell.day} <span className={isDark ? 'text-white/30 mx-1' : 'text-black/20 mx-1'}>•</span> <span className={isDark ? 'text-violet-300' : 'text-violet-600'}>{editingCell.time}</span></h3>
@@ -831,7 +861,7 @@ export default function Timetable() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  setEditingCell(null);
+                  handleCloseEditor();
                 }
               }}
               rows={2}
@@ -856,7 +886,7 @@ export default function Timetable() {
               })}
             </div>
 
-            <button onClick={() => setEditingCell(null)} className="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(139,92,246,0.3)] active:scale-95">
+            <button onClick={handleCloseEditor} className="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(139,92,246,0.3)] active:scale-95">
               Save Changes
             </button>
           </div>
