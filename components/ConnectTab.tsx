@@ -5,6 +5,7 @@ import { useDashboardStore, setAuthTransition } from '@/store/dashboardStore';
 import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
+import Link from 'next/link';
 
 export default function ConnectTab() {
   const { history, tasks, timetableGrid, connectInitialTab, setConnectInitialTab } = useDashboardStore();
@@ -56,6 +57,7 @@ export default function ConnectTab() {
   const [profilePicture, setProfilePicture] = useState('');
   const [profilePictureLoading, setProfilePictureLoading] = useState(false);
   const [profilePictureSuccess, setProfilePictureSuccess] = useState('');
+  const [isAdminUser, setIsAdminUser] = useState(false);
   
   const [aliasSuccess, setAliasSuccess] = useState('');
 
@@ -154,6 +156,9 @@ export default function ConnectTab() {
           } else {
             localStorage.removeItem('dashboard_profile_picture');
             setProfilePicture('');
+          }
+          if (me.isAdmin === true || me.isAdmin === "true") {
+            setIsAdminUser(true);
           }
         }
       }
@@ -907,6 +912,22 @@ export default function ConnectTab() {
               </div>
             )}
           </div>
+
+          {/* Admin Dashboard Access */}
+          {isAdminUser && (
+            <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 p-3 rounded-xl w-full flex flex-col gap-2 shadow-sm mt-2">
+              <label className="text-[10px] md:text-xs font-bold text-indigo-300 flex items-center gap-1.5 uppercase tracking-wider">
+                <ShieldAlert className="w-3.5 h-3.5 text-indigo-400" /> Admin Access
+              </label>
+              <p className="text-indigo-200/50 text-[9px] leading-tight">Switch to the Global Admin Panel.</p>
+              <Link
+                href="/admin"
+                className="w-full px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-center rounded-xl transition-all font-bold text-xs shadow-[0_0_15px_rgba(99,102,241,0.4)] mt-1"
+              >
+                Open Admin Dashboard
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
