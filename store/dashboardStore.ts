@@ -98,6 +98,10 @@ interface DashboardState {
   isClockOpen: boolean;
   toggleClock: () => void;
   isSettingsOpen: boolean;
+  isNewsOpen: boolean;
+  hasUnreadNews: boolean;
+  toggleNews: () => void;
+  setHasUnreadNews: (val: boolean) => void;
   settingsActiveTab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'feedback' | 'update' | 'wallpaper' | 'quotes';
   toggleSettings: () => void;
   setSettingsActiveTab: (tab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'feedback' | 'update' | 'wallpaper' | 'quotes') => void;
@@ -852,6 +856,10 @@ export const useDashboardStore = create<DashboardState>()(
         return { isClockOpen: next, ...extra };
       }),
       isSettingsOpen: false,
+      isNewsOpen: false,
+      hasUnreadNews: true, // test mode
+      toggleNews: () => set((state) => ({ isNewsOpen: !state.isNewsOpen })),
+      setHasUnreadNews: (val: boolean) => set(() => ({ hasUnreadNews: val })),
       settingsActiveTab: 'preferences',
       connectInitialTab: undefined,
       toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),

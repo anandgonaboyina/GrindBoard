@@ -382,8 +382,8 @@ export default function TaskManager() {
                                                         </span>
                                                     )
                                                 )}
-                                                {!isTaskDone && (
-                                                    editingTimeSpentId === task.id ? (
+                                                {(
+                                                    !isTaskDone && editingTimeSpentId === task.id ? (
                                                         <div className="shrink-0 flex items-center bg-emerald-500/30 rounded-full border border-emerald-400/30 px-1.5 py-px shadow-sm">
                                                             <input
                                                                 autoFocus
@@ -410,13 +410,18 @@ export default function TaskManager() {
                                                     ) : (
                                                         <span
                                                             onDoubleClick={(e) => {
+                                                                if (isTaskDone) return;
                                                                 e.stopPropagation();
                                                                 setEditingTimeSpentId(task.id);
                                                             }}
-                                                            className="shrink-0 text-[9px] font-semibold tracking-wide text-emerald-200 bg-emerald-500/20 hover:bg-emerald-500/40 cursor-pointer px-1.5 py-0.5 rounded-full border border-emerald-400/20 transition-colors shadow-sm"
-                                                            title="Double click to edit done time"
+                                                            className={`shrink-0 text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded-full border transition-colors shadow-sm ${isTaskDone ? 'text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20 cursor-default' : 'text-emerald-200 bg-emerald-500/20 hover:bg-emerald-500/40 cursor-pointer border-emerald-400/20'}`}
+                                                            title={isTaskDone ? "Completed duration" : "Double click to edit done time"}
                                                         >
-                                                            {(task.timeSpent || 0) >= 60 ? Math.floor((task.timeSpent || 0) / 60) + "h " + ((task.timeSpent || 0) % 60) + "m" : (task.timeSpent || 0) + "m"} done
+                                                            {isTaskDone ? (
+                                                                task.duration >= 60 ? Math.floor(task.duration / 60) + "h " + (task.duration % 60) + "m" : task.duration + "m"
+                                                            ) : (
+                                                                (task.timeSpent || 0) >= 60 ? Math.floor((task.timeSpent || 0) / 60) + "h " + ((task.timeSpent || 0) % 60) + "m" : (task.timeSpent || 0) + "m"
+                                                            )} done
                                                         </span>
                                                     )
                                                 )}
