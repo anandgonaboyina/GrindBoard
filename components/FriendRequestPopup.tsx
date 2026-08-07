@@ -13,6 +13,7 @@ export default function FriendRequestPopup() {
     const checkRequests = async () => {
       const token = localStorage.getItem('dashboard_sync_token');
       if (!token) return;
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
 
       try {
         const res = await fetch('/api/friends', {
@@ -33,7 +34,7 @@ export default function FriendRequestPopup() {
           setIsVisible(true);
         }
       } catch (err) {
-        console.error('Failed to check friend requests:', err);
+        // Silently ignore network errors to prevent console spam
       }
     };
 

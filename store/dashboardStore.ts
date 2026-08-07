@@ -82,6 +82,7 @@ interface DashboardState {
   addTask: (title: string, duration: number, tab?: 'today' | 'tomorrow') => void;
   toggleTask: (id: string, tab?: 'today' | 'tomorrow') => void;
   deleteTask: (id: string, tab?: 'today' | 'tomorrow') => void;
+  moveTaskTab: (id: string, fromTab: 'today' | 'tomorrow') => void;
   toggleHide: () => void;
 
   isTaskManagerOpen: boolean;
@@ -760,6 +761,25 @@ export const useDashboardStore = create<DashboardState>()(
             tomorrowTasks: state.tomorrowTasks.filter((t) => t.id !== id),
             ...(isCurrentlyActive && { activeTaskId: null, activeTaskTitle: null })
           };
+        }),
+
+      moveTaskTab: (id, fromTab) =>
+        set((state) => {
+          if (fromTab === 'today') {
+            const taskToMove = state.tasks.find(t => t.id === id);
+            if (!taskToMove) return state;
+            return {
+              tasks: state.tasks.filter(t => t.id !== id),
+              tomorrowTasks: [...state.tomorrowTasks, taskToMove]
+            };
+          } else {
+            const taskToMove = state.tomorrowTasks.find(t => t.id === id);
+            if (!taskToMove) return state;
+            return {
+              tomorrowTasks: state.tomorrowTasks.filter(t => t.id !== id),
+              tasks: [...state.tasks, taskToMove]
+            };
+          }
         }),
 
       updateTaskTitle: (id, title, tab = 'today') =>

@@ -27,7 +27,7 @@ export default function VideoBackground() {
   }, []);
 
   // Determine active source
-  let bgSrc = wallpaper || (isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : "/wallpapers/naruto.webp"); // Default fallback
+  let bgSrc = isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : (wallpaper || "/wallpapers/naruto.webp");
   
   if (isMobile && activeMobileCustomIndex !== null && customMobileWallpapers[activeMobileCustomIndex]) {
     bgSrc = customMobileWallpapers[activeMobileCustomIndex];

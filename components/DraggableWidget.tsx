@@ -75,43 +75,45 @@ export default function DraggableWidget({ id, children }: { id: string, children
     startPos.current = { x: e.clientX, y: e.clientY };
     startOffset.current = { ...position };
     latestPos.current = { ...position }; // Ensure latestPos matches current position if they just click without moving
-    target.setPointerCapture(e.pointerId);
-    console.log(`[DraggableWidget] Started dragging widget: ${id}`);
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  useEffect(() => {
     if (!isDragging) return;
-    
-    const dx = e.clientX - startPos.current.x;
-    const dy = e.clientY - startPos.current.y;
-    
-    const newPos = {
-      x: startOffset.current.x + dx,
-      y: startOffset.current.y + dy
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const dx = e.clientX - startPos.current.x;
+      const dy = e.clientY - startPos.current.y;
+      
+      const newPos = {
+        x: startOffset.current.x + dx,
+        y: startOffset.current.y + dy
+      };
+      setPosition(newPos);
+      latestPos.current = newPos;
     };
-    setPosition(newPos);
-    latestPos.current = newPos;
-  };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    const handlePointerUp = (e: PointerEvent) => {
+      setIsDragging(false);
+      if (activeBgSrc) {
+        updateWidgetOffset(activeBgSrc, id, latestPos.current.x, latestPos.current.y);
+      }
+    };
 
-    // Save to store
-    // Save to store using the guaranteed latest position
-    if (activeBgSrc) {
-      updateWidgetOffset(activeBgSrc, id, latestPos.current.x, latestPos.current.y);
-    }
-  };
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [isDragging, activeBgSrc, id, updateWidgetOffset]);
 
   return (
     <div
       id={id}
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
       style={{
         transform: `translate(${isMobile && id === 'countdowns' ? 0 : position.x}px, ${isMobile && id === 'countdowns' ? 0 : position.y}px)`,
         zIndex: widgetZIndices?.[id] || 50,

@@ -306,6 +306,12 @@ export default function ConnectTab() {
       if (res.ok && data.token) {
         localStorage.setItem('dashboard_sync_token', data.token);
         localStorage.setItem('dashboard_username', data.username);
+        
+        if (authMode === 'login') {
+          // If logging in on a new device, clear the empty local state so it doesn't overwrite the cloud data!
+          localStorage.removeItem('dashboard-storage');
+          localStorage.removeItem('dashboard_last_modified');
+        }
 
         fetch('/api/session', {
           method: 'POST',
@@ -927,38 +933,44 @@ export default function ConnectTab() {
             ) : (
               <div className="flex flex-col gap-2 w-full min-w-0">
                 {friends.map(f => (
-                  <div key={f.id} className="flex items-center justify-between bg-black/30 border border-white/10 p-3 rounded-xl hover:bg-black/40 transition-colors group min-w-0 w-full gap-2">
-                    <div className="flex items-center gap-3 min-w-0 overflow-hidden">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center font-bold text-sm shadow-md border border-white/10 shrink-0 overflow-hidden">
+                  <div key={f.id} className="flex items-center justify-between bg-black/40 border border-white/5 p-1 rounded hover:bg-black/60 hover:border-white/10 transition-colors group min-w-0 w-full gap-1">
+                    <div className="flex items-center gap-1.5 min-w-0 overflow-hidden pr-1">
+                      <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center font-bold text-[8px] md:text-[10px] shadow-md border border-white/10 shrink-0 overflow-hidden">
                         {f.user.profilePicture ? <img src={f.user.profilePicture} alt="" className="w-full h-full object-cover" /> : f.user.username.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex flex-col min-w-0 overflow-hidden">
-                        <span className="font-bold text-sm tracking-wide truncate w-full">{f.user.username}</span>
-                        {f.user.lastActive ? (
-                          <span className="text-[10px] text-white/60 flex items-center gap-1.5 mt-0.5 truncate w-full">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span className="truncate">Active: {new Date(f.user.lastActive).toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-white/40 flex items-center gap-1.5 mt-0.5 truncate w-full">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white/20 shrink-0"></span>
-                            <span className="truncate">Active: Unknown</span>
-                          </span>
-                        )}
+                      <div className="flex flex-col min-w-0 overflow-hidden justify-center gap-0.5">
+                        <div className="flex items-center gap-1.5 mt-0.5 w-full overflow-hidden">
+                          <span className="font-bold text-[9px] md:text-[11px] tracking-wide truncate leading-none w-full">{f.user.username}</span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-0.5 mt-0.5 w-full max-w-[220px] md:max-w-[280px]">
+                          {f.user.lastActive ? (
+                            <span className="text-[8px] md:text-[9px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded flex items-center justify-center leading-none gap-1 truncate w-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
+                              <span className="truncate">Active: {new Date(f.user.lastActive).toLocaleString([], { year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[8px] md:text-[9px] text-white/50 font-bold bg-white/5 px-1 py-0.5 rounded flex items-center justify-center leading-none gap-1 truncate w-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white/20 shrink-0"></span>
+                              <span className="truncate">Active: Unknown</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => viewFriendStats(f.user.id, f.user.username)}
-                        className="px-3 py-1.5 bg-blue-500/10 text-blue-300 rounded-lg border border-blue-500/20 flex items-center gap-1.5 text-xs font-semibold hover:bg-blue-500/20 transition-colors"
+                        className="p-1 md:px-2 md:py-1 bg-blue-500/10 text-blue-300 rounded border border-blue-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-blue-500/20 transition-colors h-6 md:h-7"
+                        title="View Stats"
                       >
-                        <BarChart2 size={12} /> Stats
+                        <BarChart2 size={10} className="md:w-3 md:h-3" /> <span className="hidden md:inline">Stats</span>
                       </button>
                       <button
                         onClick={() => removeFriend(f.id, f.user?.username || 'Unknown')}
-                        className="text-red-400/70 hover:text-red-400 p-1.5 rounded-lg border border-transparent hover:border-red-500/20 hover:bg-red-500/10 transition-colors shrink-0"
+                        className="text-red-400/70 hover:text-red-400 w-6 h-6 md:w-7 md:h-7 rounded border border-transparent hover:border-red-500/20 hover:bg-red-500/10 flex items-center justify-center transition-colors shrink-0"
+                        title="Remove Friend"
                       >
-                        <X size={14} />
+                        <X size={12} className="md:w-3.5 md:h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -1261,15 +1273,19 @@ export default function ConnectTab() {
                     const rankColor = isTop3 ? rankColors[index] : 'bg-white/5 text-white/50 border-white/10';
 
                     return (
-                      <div key={user.id} className={`flex flex-col gap-0.5 p-1 md:p-1.5 rounded border transition-all w-full min-w-0 ${user.isMe ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)] z-10' : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/10'}`}>
-                        <div className="flex items-center justify-between w-full min-w-0 gap-1"
-                          onClick={() => setExpandedLeaderboardUserId(expandedLeaderboardUserId === user.id ? null : user.id)}
+                      <div key={user.id} className={`flex flex-col gap-0.5 p-1 rounded border transition-all w-full min-w-0 ${user.isMe ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)] z-10' : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/10'}`}>
+                        <div className={`flex items-center justify-between w-full min-w-0 gap-1 ${leaderboardFilter === 'today' && leaderboardPeriod === 'current' ? 'cursor-pointer group/row' : ''}`}
+                          onClick={() => {
+                            if (leaderboardFilter === 'today' && leaderboardPeriod === 'current') {
+                              setExpandedLeaderboardUserId(expandedLeaderboardUserId === user.id ? null : user.id);
+                            }
+                          }}
                         >
                           <div className="flex items-center gap-1.5 min-w-0 pr-1">
-                            <div className={`w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center font-bold text-[8px] md:text-[10px] border shrink-0 ${rankColor}`}>
+                            <div className={`w-3.5 h-3.5 md:w-4 md:h-4 rounded-full flex items-center justify-center font-bold text-[7px] md:text-[9px] border shrink-0 ${rankColor}`}>
                               {index + 1}
                             </div>
-                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-[8px] md:text-[10px] shrink-0 overflow-hidden border border-white/10">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-[8px] md:text-[10px] shrink-0 overflow-hidden border border-white/10">
                               {user.profilePicture ? <img src={user.profilePicture} alt="" className="w-full h-full object-cover" /> : user.displayName.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex flex-col min-w-0 overflow-hidden justify-center gap-0.5">
@@ -1278,25 +1294,17 @@ export default function ConnectTab() {
                                 <span className={`font-bold text-[9px] md:text-[11px] tracking-wide truncate leading-none ${user.isMe ? 'text-blue-500 dark:text-blue-400' : 'text-white dark:text-white/90'}`}>
                                   {user.displayName}
                                 </span>
-                                {user.streak > 0 && (
-                                  <span className="text-[7px] md:text-[8px] text-red-300 font-bold bg-red-500/20 px-1 py-0.5 rounded leading-none flex items-center gap-0.5 shrink-0">
-                                    <Flame className="w-2.5 h-2.5 text-red-400" /> {user.streak} Streak (Max: {user.maxStreak || 0})
-                                  </span>
-                                )}
                               </div>
 
-                              <div className="flex flex-col gap-0.5 mt-0.5 w-full">
-                                {(user.wakeupTime || user.workStartedTime) && (
-                                  <div className="flex flex-wrap items-center gap-1">
-                                    {user.wakeupTime && <span className="text-[7px] md:text-[8px] text-blue-300 font-bold bg-blue-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Wake: {new Date(user.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                    {user.workStartedTime && <span className="text-[7px] md:text-[8px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                  </div>
+                              <div className="grid grid-cols-2 gap-0.5 mt-0.5 w-full max-w-[220px] md:max-w-[280px]">
+                                {user.streak > 0 && (
+                                  <span className="text-[8px] md:text-[9px] text-red-300 font-bold bg-red-500/20 px-1 py-0.5 rounded leading-none flex items-center justify-center gap-0.5 w-full">
+                                    <Flame className="w-2.5 h-2.5 md:w-3 md:h-3 text-red-400 shrink-0" /> <span className="truncate">{user.streak} Streak (Max: {user.maxStreak || 0})</span>
+                                  </span>
                                 )}
-                                {(user.bedTime) && (
-                                  <div className="flex flex-wrap items-center gap-1">
-                                    {user.bedTime && <span className="text-[7px] md:text-[8px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded leading-none truncate shrink-0">Last Active: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                  </div>
-                                )}
+                                {user.wakeupTime && <span className="text-[8px] md:text-[9px] text-blue-300 font-bold bg-blue-500/20 px-1 py-0.5 rounded flex items-center justify-center leading-none truncate w-full">Wake: {new Date(user.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                {user.workStartedTime && <span className="text-[8px] md:text-[9px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded flex items-center justify-center leading-none truncate w-full">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                {user.bedTime && <span className="text-[8px] md:text-[9px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded flex items-center justify-center leading-none truncate w-full">Active: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                               </div>
                             </div>
                           </div>
@@ -1306,19 +1314,16 @@ export default function ConnectTab() {
                                 {Math.floor(val / 60)}<span className="text-[7px] md:text-[9px] ml-0.5 text-gray-500 dark:text-white/40 mr-0.5">h</span>{val % 60}<span className="text-[7px] md:text-[9px] ml-0.5 text-gray-500 dark:text-white/40">m</span>
                               </span>
                             </div>
-                            <button
-                              type="button"
-                              title="Click to view full stats"
-                              onClick={() => setExpandedLeaderboardUserId(expandedLeaderboardUserId === user.id ? null : user.id)}
-                              className="p-0.5 bg-gray-200 hover:bg-gray-300 dark:bg-white/5 dark:hover:bg-white/10 rounded transition-colors border border-transparent hover:border-gray-300 dark:hover:border-white/20 text-gray-500 dark:text-white/50 shrink-0"
-                            >
-                              {expandedLeaderboardUserId === user.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                            </button>
+                            {leaderboardFilter === 'today' && leaderboardPeriod === 'current' && (
+                              <div className="text-white/30 group-hover/row:text-white/70 transition-colors shrink-0 flex items-center justify-center pl-0.5">
+                                <ChevronDown className={`w-3.5 h-3.5 md:w-4 md:h-4 transition-transform duration-300 ${expandedLeaderboardUserId === user.id ? 'rotate-180' : ''}`} />
+                              </div>
+                            )}
                           </div>
                         </div>
 
                         {/* Expanded Stats */}
-                        {expandedLeaderboardUserId === user.id && (
+                        {expandedLeaderboardUserId === user.id && leaderboardFilter === 'today' && leaderboardPeriod === 'current' && (
                           <div className="w-full mt-0.5 pt-0.5 border-t border-white/10 flex flex-col gap-0.5 animate-fade-in min-w-0">
                             <div className="text-[7px] md:text-[8px] text-white/70 font-mono text-left bg-black/20 p-0.5 rounded select-all cursor-text flex items-center justify-between border border-white/5">
                               <span className="uppercase tracking-widest font-semibold">ID:</span>

@@ -94,7 +94,7 @@ export default function Countdown({
       <div className="flex items-center justify-between mb-2 sm:mb-3">
         <div className="flex items-center gap-1 sm:gap-1.5 text-white/80 cursor-grab active:cursor-grabbing">
           {hasPrev && (
-            <button onClick={onPrev} className="p-1 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100">
+            <button onClick={onPrev} className="p-1 bg-white/10 hover:bg-white/50 rounded-full text-white/40 hover:text-white transition-colors cursor-pointer">
               <ChevronLeft size={16} />
             </button>
           )}
@@ -105,13 +105,13 @@ export default function Countdown({
         </div>
         <div>
           {hasNext && (
-            <button onClick={onNext} className="p-1 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100">
+            <button onClick={onNext} className="p-1 bg-white/10 hover:bg-white/50 rounded-full text-white/40 hover:text-white transition-colors cursor-pointer">
               <ChevronRight size={16} />
             </button>
           )}
           <button
             onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-            className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all border ${isEditing ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/50' : 'bg-white/5 border-white/10 hover:bg-white/15 hover:border-white/20'}`}
+            className={`p-1.5 sm:p-1.5 ml-1 rounded-lg sm:rounded-xl transition-all border ${isEditing ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/50' : 'bg-white/5 border-white/10 hover:bg-white/15 hover:border-white/20'}`}
             title={isEditing ? "Save Target" : "Edit Target"}
           >
             {isEditing ? <Check size={18} className="text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.5)] sm:w-5 sm:h-5" /> : <Edit2 size={16} className="text-white/80 sm:w-[18px] sm:h-[18px]" />}

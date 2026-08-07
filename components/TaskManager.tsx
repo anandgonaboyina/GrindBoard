@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Plus, Play, Trash2, CheckCircle, Circle, Clock, RotateCcw, Filter, BellRing, ChevronUp, ChevronDown, ClipboardList, Info, X } from 'lucide-react';
+import { Plus, Play, Trash2, CheckCircle, Circle, Clock, RotateCcw, Filter, BellRing, ChevronUp, ChevronDown, ClipboardList, Info, X, ArrowRight, ArrowLeft } from 'lucide-react';
 import { fetchQuote } from '@/utils/quoteEngine';
 import DraggableWidget from './DraggableWidget';
 import ScrollableWithArrows from './ScrollableWithArrows';
@@ -10,11 +10,12 @@ import ConfirmationModal from './ConfirmationModal';
 
 export default function TaskManager() {
     const [newTaskTitle, setNewTaskTitle] = useState('');
-    const [newTaskDuration, setNewTaskDuration] = useState('25');
+    const [newTaskDuration, setNewTaskDuration] = useState('');
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [editingDurationId, setEditingDurationId] = useState<string | null>(null);
     const [editingTimeSpentId, setEditingTimeSpentId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'today' | 'tomorrow'>('today');
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
@@ -45,7 +46,21 @@ export default function TaskManager() {
         };
     }, [isInfoOpen]);
 
-    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, editTaskTimeSpent, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled } = useDashboardStore();
+    useEffect(() => {
+        const handlePointerUp = () => {
+            if (draggedIndex !== null) {
+                setDraggedIndex(null);
+            }
+        };
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        return () => {
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+        };
+    }, [draggedIndex]);
+
+    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, editTaskTimeSpent, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, moveTaskTab } = useDashboardStore();
 
     useEffect(() => {
         checkTasksRollover();
@@ -118,6 +133,7 @@ export default function TaskManager() {
         );
 
         setNewTaskTitle('');
+        setNewTaskDuration('');
     };
 
     const isTaskCompleted = (t: any) => {
@@ -153,6 +169,20 @@ export default function TaskManager() {
                         >
                             <Info size={14} />
                         </button>
+                        {totalRemainingMinutes > 0 && (
+                            <span className="text-[10px] sm:text-xs font-bold text-sky-300 flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-500/20 rounded-md border border-sky-500/30 shadow-sm" title="Total time required for uncompleted tasks">
+                                <Clock size={16} /> <pre>{formatRemainingTime(totalRemainingMinutes)}</pre>
+                            </span>
+                        )}
+                        {currentTasks.some(isTaskCompleted) && (
+                            <button
+                                onClick={handleRestartAllCompleted}
+                                className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/20 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-colors active:scale-95 text-[10px] sm:text-md font-bold uppercase tracking-wider border border-orange-500/30 shadow-sm"
+                                title="Restart all completed"
+                            >
+                                <RotateCcw size={12} /> <span className="hidden sm:inline">Reset</span>
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-1.5 text-[8px] font-bold tracking-widest text-white/60 uppercase">
@@ -164,66 +194,65 @@ export default function TaskManager() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 md:gap-2 flex-wrap">
+                    <div className="flex items-center gap-1 md:gap-2">
                         <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shrink-0">
                             <button
                                 onClick={() => setActiveTab('today')}
-                                className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'today' ? 'bg-sky-500/20 text-sky-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                                className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'today' ? 'bg-sky-500/20 text-sky-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
                             >
                                 Today
                             </button>
                             <button
                                 onClick={() => setActiveTab('tomorrow')}
-                                className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'tomorrow' ? 'bg-purple-500/20 text-purple-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                                className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${activeTab === 'tomorrow' ? 'bg-purple-500/20 text-purple-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
                             >
                                 Tomorrow
                             </button>
                         </div>
                         <div
-                            className="relative flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors shrink-0"
-                            title="Plays a short beep every X minutes while a task timer is running (Configure in Settings -> Sound)"
-                            onClick={() => {
-                                if (isTaskIntervalAlertEnabled) {
-                                    setIsTaskIntervalAlertEnabled(false);
-                                } else {
-                                    setIsTaskIntervalAlertEnabled(true);
-                                    if (taskIntervalAlertMins === 0) {
-                                        setTaskIntervalAlertMins(10);
-                                    }
-                                }
-                            }}
+                            className="relative flex items-center gap-1 md:gap-1.5 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0"
+                            title="Plays a short beep every X minutes while a task timer is running"
                         >
-                            <BellRing size={12} className={isTaskIntervalAlertEnabled ? "text-sky-300" : "text-white/40"} />
-                            <span className="text-[9px] font-medium text-white/70">Interval</span>
-                            <button
-                                className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTaskIntervalAlertEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
+                            <div
+                                className="flex items-center gap-1 md:gap-1.5 cursor-pointer"
+                                onClick={() => {
+                                    if (isTaskIntervalAlertEnabled) {
+                                        setIsTaskIntervalAlertEnabled(false);
+                                    } else {
+                                        setIsTaskIntervalAlertEnabled(true);
+                                        if (taskIntervalAlertMins === 0) {
+                                            setTaskIntervalAlertMins(10);
+                                        }
+                                    }
+                                }}
                             >
-                                <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isTaskIntervalAlertEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
-                            </button>
-                        </div>
-                        <div className="flex flex-col gap-0.75 items-center text-[6px] font-bold tracking-widest text-white/60 uppercase">
-
-                            {currentTasks.some(isTaskCompleted) && (
+                                <BellRing size={12} className={isTaskIntervalAlertEnabled ? "text-sky-300" : "text-white/40"} />
+                                <span className="text-[9px] font-medium text-white/70">Interval</span>
                                 <button
-                                    onClick={handleRestartAllCompleted}
-                                    className="flex items-center gap-0.25 p-0.75 py-0.5 bg-orange-500/20 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-colors active:scale-95 text-[6px] font-bold uppercase tracking-wider"
-                                    title="Restart all completed"
+                                    className={`relative inline-flex h-2.5 md:h-3 w-4 md:w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTaskIntervalAlertEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
                                 >
-                                    <RotateCcw className="w-2.5 h-2.5 " /> <span className="hidden sm:inline">Reset All</span>
+                                    <span className={`inline-block h-1.5 md:h-2 w-1.5 md:w-2 transform rounded-full bg-white transition-transform ${isTaskIntervalAlertEnabled ? 'translate-x-1.5 md:translate-x-2.5' : 'translate-x-0.5'}`} />
                                 </button>
-                            )}
+                            </div>
 
-                            {totalRemainingMinutes > 0 && (
-                                <>
-                                    <span className="hidden w-1 h-1 rounded-full bg-white/20" />
-                                    <span className="text-sky-300/90 flex items-center gap-0.25 px-0.75 bg-sky-500/10 rounded-md border border-sky-500/20">
-                                        <Clock className="w-2.5 h-2.5 " /> {formatRemainingTime(totalRemainingMinutes)}
-                                    </span>
-                                </>
+                            {isTaskIntervalAlertEnabled && (
+                                <div className="flex items-center gap-1 pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
+                                    <input
+                                        type="number"
+                                        value={taskIntervalAlertMins || ''}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            setTaskIntervalAlertMins(isNaN(val) ? 0 : val);
+                                        }}
+                                        className="w-6 md:w-7 bg-black/40 border border-white/10 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                                        min="1"
+                                    />
+                                    <span className="text-[8px] font-medium text-white/40 uppercase">min</span>
+                                </div>
                             )}
-
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -234,36 +263,49 @@ export default function TaskManager() {
                         No {activeTab} tasks found.
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-1.5 ">
+                    <div
+                        className="flex flex-col gap-1.5 "
+                        onPointerDown={() => setDraggedIndex(null)}
+                        onPointerUp={() => setDraggedIndex(null)}
+                        onPointerCancel={() => setDraggedIndex(null)}
+                        onMouseLeave={() => setDraggedIndex(null)}
+                    >
                         {filteredTasks.map((task, index) => {
                             const isTaskDone = isTaskCompleted(task);
                             return (
                                 <div
                                     key={task.id}
-                                    className={`group flex items-start justify-between p-1.5 rounded-lg border border-white/5 bg-white/[0.02] hover:border-white/20 hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-40 grayscale-[50%]' : ''}`}
+                                    onPointerEnter={() => {
+                                        if (draggedIndex !== null && draggedIndex !== index) {
+                                            reorderTasks(activeTab, draggedIndex, index);
+                                            setDraggedIndex(index);
+                                        }
+                                    }}
+                                    className={`group flex items-start justify-between p-1.5 rounded-lg border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/20 hover:border-white/40'}`}
                                 >
                                     <div className="flex items-start gap-1.5 flex-1 min-w-0">
-                                        <div className="flex flex-col items-center opacity-30 hover:opacity-100 transition-opacity justify-center mt-0.5 shrink-0 -ml-0.5">
-                                            <button
-                                                onClick={() => { if (index > 0) reorderTasks(activeTab, index, index - 1); }}
-                                                disabled={index === 0}
-                                                className="p-[1px] hover:text-sky-300 disabled:opacity-10 transition-colors"
-                                            >
-                                                <ChevronUp className="w-2.5 h-2.5" strokeWidth={3} />
-                                            </button>
-                                            <button
-                                                onClick={() => { if (index < filteredTasks.length - 1) reorderTasks(activeTab, index, index + 1); }}
-                                                disabled={index === filteredTasks.length - 1}
-                                                className="p-[1px] hover:text-sky-300 disabled:opacity-10 transition-colors"
-                                            >
-                                                <ChevronDown className="w-2.5 h-2.5" strokeWidth={3} />
-                                            </button>
+                                        <div
+                                            className="flex flex-col items-center opacity-30 hover:opacity-100 transition-opacity justify-center mt-1.5 shrink-0 -ml-0.5 cursor-grab active:cursor-grabbing touch-none"
+                                            onPointerDown={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault(); // Prevent text selection
+                                                setDraggedIndex(index);
+                                            }}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        >
+                                            <svg className="w-3.5 h-3.5 text-white/50 hover:text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /></svg>
                                         </div>
-                                        <div className="flex items-center gap-1 mt-[2.5px] shrink-0">
-                                            <span className="text-[9px] font-bold text-white/30 tabular-nums w-4 text-right select-none">{index + 1}.</span>
-                                            <button onClick={() => handleToggleTask(task.id)} className="text-white/50 hover:text-white hover:scale-110 transition-all active:scale-95">
-                                                {isTaskDone ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" /> : <Circle className="w-3.5 h-3.5 " />}
+                                        <div className="flex flex-col items-center justify-center gap-0.5 mt-0.5 shrink-0 px-0.5">
+                                            <button onClick={() => handleToggleTask(task.id)} className="text-white/50 hover:text-white hover:scale-110 transition-all active:scale-95 flex items-center justify-center">
+                                                {isTaskDone ? (
+                                                    <div className="w-3.5 h-3.5 rounded-[4px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] flex items-center justify-center">
+                                                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-3.5 h-3.5 rounded-[4px] border-[1.5px] border-white/40 group-hover:border-white/70 transition-colors" />
+                                                )}
                                             </button>
+                                            <span className="text-[11px] font-black text-sky-300/90 tabular-nums select-none leading-none mt-0.5">{index + 1}</span>
                                         </div>
                                         <div className="flex flex-col gap-0.5 flex-1 min-w-0 w-full ml-0.5 ">
                                             {editingTaskId === task.id ? (
@@ -296,7 +338,7 @@ export default function TaskManager() {
                                                 <div
                                                     onDoubleClick={() => setEditingTaskId(task.id)}
                                                     title="Double click to edit"
-                                                    className={`w-full text-[11px] leading-snug px-1 -mx-1 cursor-text whitespace-pre-wrap ${isTaskDone ? 'line-through text-white/40' : 'text-white/90'}`}
+                                                    className={`w-full text-[11px] leading-snug px-1 -mx-1 cursor-text whitespace-pre-wrap ${isTaskDone ? 'line-through text-white/60' : 'text-white/90'}`}
                                                 >
                                                     {task.title}
                                                 </div>
@@ -382,7 +424,7 @@ export default function TaskManager() {
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col items-center gap-0.5 shrink-0 ml-1">
+                                    <div className="flex flex-col items-end justify-between gap-1 shrink-0 ml-1 self-stretch">
                                         <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                             {!isTaskDone && (
                                                 <button
@@ -417,6 +459,13 @@ export default function TaskManager() {
                                                 <Trash2 className="w-3 h-3 " />
                                             </button>
                                         </div>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); moveTaskTab(task.id, activeTab); }}
+                                            className="p-1 mt-auto bg-purple-500/10 text-purple-300 hover:bg-purple-500 hover:text-white rounded-md transition-all active:scale-95 border border-purple-500/20 hover:border-transparent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
+                                            title={activeTab === 'today' ? "Move to tomorrow" : "Move to today"}
+                                        >
+                                            {activeTab === 'today' ? <ArrowRight className="w-3 h-3" /> : <ArrowLeft className="w-3 h-3" />}
+                                        </button>
                                     </div>
                                 </div>
                             );
@@ -443,15 +492,18 @@ export default function TaskManager() {
                     rows={1}
                     className="flex-1 bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-[11px] outline-none focus:bg-white/10 focus:border-sky-500/50 transition-all placeholder:text-white/30 shadow-inner resize-none overflow-hidden min-h-[28px] max-h-[80px]"
                 />
-                <input
-                    type="number"
-                    placeholder="min"
-                    value={newTaskDuration}
-                    onChange={(e) => setNewTaskDuration(e.target.value)}
-                    title="Minutes"
-                    className="w-10 bg-white/5 border border-white/10 rounded-md px-1.5 py-1 text-[11px] font-semibold text-center outline-none focus:bg-white/10 focus:border-sky-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
-                />
-                <button type="submit" className="p-1 bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/5">
+                <div className="flex flex-col gap-1 items-center shrink-0">
+                    <span className="text-[7.5px] font-bold tracking-widest text-white/50 uppercase leading-none">Duration (min)</span>
+                    <input
+                        type="number"
+                        placeholder="min"
+                        value={newTaskDuration}
+                        onChange={(e) => setNewTaskDuration(e.target.value)}
+                        title="Minutes"
+                        className="w-[60px] bg-white/5 border border-white/10 rounded-md px-1.5 py-1 text-[11px] font-semibold text-center outline-none focus:bg-white/10 focus:border-sky-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                    />
+                </div>
+                <button type="submit" className="p-1 mb-[1px] bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/5">
                     <Plus className="w-3.5 h-3.5 " />
                 </button>
             </form>
@@ -469,7 +521,7 @@ export default function TaskManager() {
                 onClose={() => setIsInfoOpen(false)}
                 title="How Task Manager Works"
                 message={
-                    <div className="flex flex-col gap-4 text-sm mt-1">
+                    <ScrollableWithArrows className="max-h-[60vh] pr-2 flex flex-col gap-4 text-sm mt-1">
                         <div>
                             <h4 className="font-bold text-sky-400 mb-1 text-base">📅 Plan your Today & Tomorrow</h4>
                             <p>Add tasks to Today or Tomorrow. Tasks placed in Tomorrow will automatically move to Today at midnight, but they will also stay in the Tomorrow tab so you don't have to rewrite repetitive tasks!</p>
@@ -481,7 +533,8 @@ export default function TaskManager() {
                                 <li><strong>Double-click any task title</strong> to edit its name.</li>
                                 <li><strong>Double-click the "m left" badge</strong> to manually edit the task's planned duration.</li>
                                 <li><strong>Double-click the "m done" badge</strong> to manually log completed time. This will automatically deduct from the time left! (Note: Manually adding done time keeps your task progress clean but will <em>not</em> add to your global "Today's Focus" daily streak).</li>
-                                <li>Use the <strong>Up/Down arrows</strong> to easily reorder your tasks.</li>
+                                <li><strong>Drag the handle</strong> on the left edge of any task to easily reorder your list.</li>
+                                <li><strong>Click the Move arrow</strong> at the bottom right of any task to quickly swap it between Today and Tomorrow.</li>
                             </ul>
                             <div className="mt-2 p-2 bg-emerald-500/10 rounded-md border border-emerald-500/20 text-emerald-100/80 text-[11px] leading-relaxed">
                                 <strong className="text-emerald-300">Why are stats updated in 5-minute blocks?</strong><br />
@@ -492,7 +545,7 @@ export default function TaskManager() {
                             <h4 className="font-bold text-purple-400 mb-1 text-base flex items-center gap-1"><BellRing size={16} /> Interval Alert</h4>
                             <p className="mb-2">Plays a short beep every X minutes while a task timer is running. Toggle this using the bell icon at the top of the Task Manager. You can configure the interval time and beep duration under <strong>Settings &rarr; Sound</strong>.</p>
                         </div>
-                    </div>
+                    </ScrollableWithArrows>
                 }
                 onConfirm={() => setIsInfoOpen(false)}
                 confirmText="Got it!"

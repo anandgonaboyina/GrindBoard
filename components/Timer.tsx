@@ -28,7 +28,9 @@ export default function Timer() {
   } = useDashboardStore();
 
   const audioRef = useRef<HTMLAudioElement>(null);
+  const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
   const [customMins, setCustomMins] = useState('');
+  const [isIntervalRinging, setIsIntervalRinging] = useState(false);
 
   // Local state for UI updates (does not spam DB)
   const [localTimeLeft, setLocalTimeLeft] = useState(0);
@@ -118,19 +120,24 @@ export default function Timer() {
             }
 
             // Interval Alert Beep
-            if (isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0) {
+            if (isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0 && remaining > 0) {
               const alertIntervalSecs = taskIntervalAlertMins * 60;
               const alertChunks = Math.floor(elapsedSeconds / alertIntervalSecs);
               if (alertChunks > timerLastAlertedChunks && alertChunks > 0) {
                 setTimerLastAlertedChunks(alertChunks);
                 if (enableAlarmSound) {
                   const audio = new Audio(alarmSound);
+                  intervalAudioRef.current = audio;
                   const vol = alarmVolume !== undefined ? alarmVolume : 1;
                   audio.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
                   audio.play().catch(e => console.log('Interval beep failed:', e));
+                  setIsIntervalRinging(true);
                   const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
                   setTimeout(() => {
-                    audio.pause();
+                    if (intervalAudioRef.current === audio) {
+                      audio.pause();
+                      setIsIntervalRinging(false);
+                    }
                   }, duration);
                 }
               }
@@ -590,6 +597,20 @@ export default function Timer() {
                 STOP TIMER
               </button>
             )
+          ) : isIntervalRinging ? (
+            <button
+              onClick={() => {
+                if (intervalAudioRef.current) {
+                  intervalAudioRef.current.pause();
+                  intervalAudioRef.current.currentTime = 0;
+                }
+                setIsIntervalRinging(false);
+              }}
+              className="w-full py-2 flex items-center justify-center gap-2 bg-sky-500/80 hover:bg-sky-500 rounded-xl font-medium transition-colors animate-pulse"
+            >
+              <Check size={20} />
+              Okay
+            </button>
           ) : (
             <>
               {/* Controls */}

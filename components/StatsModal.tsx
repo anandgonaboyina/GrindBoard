@@ -483,7 +483,7 @@ export default function StatsModal() {
 
       {showFriendTimetable && viewingFriend && (
         <div
-          className="fixed inset-0 z-[10005] flex flex-col items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300 p-2 sm:p-4"
+          className="fixed inset-0 z-[10005] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300 p-2 sm:p-4"
           onClick={() => setShowFriendTimetable(false)}
         >
           <div

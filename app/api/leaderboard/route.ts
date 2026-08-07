@@ -153,18 +153,53 @@ export async function GET(request: Request) {
         displayName = u.alias;
       }
 
-      let streakCount = 0;
+      let currentStreak = 0;
       let maxStreak = 0;
-      if (u.streak && u.streak.lastUpdate && u.streak.currentStreak) {
-        const reqDate = new Date(todayStr);
-        const lastUpdateDate = new Date(u.streak.lastUpdate);
-        const diffTime = reqDate.getTime() - lastUpdateDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+      
+      if (Object.keys(history).length > 0) {
+        let tempStreak = 0;
+        const sortedDates = Object.keys(history).sort((a, b) => a.localeCompare(b));
         
-        if (diffDays <= 1) { // Valid if today or yesterday
-          streakCount = u.streak.currentStreak;
+        for (let i = 0; i < sortedDates.length; i++) {
+          const dStr = sortedDates[i];
+          if (history[dStr] >= 60) {
+            if (i > 0) {
+              const prevDate = new Date(sortedDates[i-1]);
+              const currDate = new Date(dStr);
+              const diffDays = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 3600 * 24));
+              if (diffDays === 1) {
+                tempStreak++;
+              } else {
+                tempStreak = 1;
+              }
+            } else {
+              tempStreak = 1;
+            }
+            if (tempStreak > maxStreak) maxStreak = tempStreak;
+          } else {
+            tempStreak = 0;
+          }
         }
-        maxStreak = u.streak.maxStreak || 0;
+
+        const streakCheckDate = new Date(todayDate);
+        streakCheckDate.setHours(0,0,0,0);
+        
+        let activeDate = new Date(streakCheckDate);
+        if (!history[todayStr] || history[todayStr] < 60) {
+          activeDate.setDate(activeDate.getDate() - 1);
+        }
+
+        while (true) {
+          const activeStr = `${activeDate.getFullYear()}-${String(activeDate.getMonth() + 1).padStart(2, '0')}-${String(activeDate.getDate()).padStart(2, '0')}`;
+          if (history[activeStr] && history[activeStr] >= 60) {
+            currentStreak++;
+            activeDate.setDate(activeDate.getDate() - 1);
+          } else {
+            break;
+          }
+        }
+        
+        if (currentStreak > maxStreak) maxStreak = currentStreak;
       }
 
       return {
@@ -182,7 +217,7 @@ export async function GET(request: Request) {
         bedTime: userBedTime,
         yesterdayBedTime: yesterdayBedTime,
         profilePicture: u.profilePicture || null,
-        streak: streakCount,
+        streak: currentStreak,
         maxStreak: maxStreak
       };
     });
