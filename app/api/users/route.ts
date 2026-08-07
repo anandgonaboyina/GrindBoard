@@ -62,7 +62,7 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { alias, profilePicture } = body;
+    const { alias, profilePicture, readNewsIds } = body;
 
     if (alias !== undefined && typeof alias !== 'string') {
       return NextResponse.json({ error: 'Invalid alias format' }, { status: 400 });
@@ -78,10 +78,19 @@ export async function PATCH(request: Request) {
     if (alias !== undefined) updateFields.alias = alias ? alias.trim() : "";
     if (profilePicture !== undefined) updateFields.profilePicture = profilePicture.trim();
 
+    const updateOp: any = {};
     if (Object.keys(updateFields).length > 0) {
+      updateOp.$set = updateFields;
+    }
+    
+    if (readNewsIds && Array.isArray(readNewsIds)) {
+      updateOp.$addToSet = { readNewsIds: { $each: readNewsIds } };
+    }
+
+    if (Object.keys(updateOp).length > 0) {
       await db.collection('User').updateOne(
         { _id: new ObjectId(decoded.userId) },
-        { $set: updateFields }
+        updateOp
       );
     }
 
