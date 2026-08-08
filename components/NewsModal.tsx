@@ -138,7 +138,7 @@ export default function NewsModal() {
           </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center relative">
-            <NewsCardStack posts={news.sort((a, b) => a.createdAt - b.createdAt)} unreadIds={unreadIds} />
+            <NewsCardStack posts={news.sort((a, b) => a.createdAt - b.createdAt)} unreadIds={unreadIds} isOpen={isNewsOpen} />
           </div>
         )}
       </div>

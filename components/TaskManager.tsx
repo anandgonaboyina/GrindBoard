@@ -46,21 +46,58 @@ export default function TaskManager() {
         };
     }, [isInfoOpen]);
 
+    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, editTaskTimeSpent, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, moveTaskTab } = useDashboardStore();
+
+    const draggedIndexRef = useRef<number | null>(null);
+
     useEffect(() => {
+        draggedIndexRef.current = draggedIndex;
+    }, [draggedIndex]);
+
+    useEffect(() => {
+        const handlePointerMove = (e: PointerEvent | TouchEvent) => {
+            if (draggedIndexRef.current === null) return;
+            const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as PointerEvent).clientX;
+            const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as PointerEvent).clientY;
+            if (clientX === undefined || clientY === undefined) return;
+
+            const el = document.elementFromPoint(clientX, clientY);
+            if (el) {
+                const taskEl = el.closest('[data-task-index]');
+                if (taskEl) {
+                    const targetIndex = parseInt(taskEl.getAttribute('data-task-index') || '', 10);
+                    if (!isNaN(targetIndex) && targetIndex !== draggedIndexRef.current) {
+                        reorderTasks(activeTab, draggedIndexRef.current, targetIndex);
+                        draggedIndexRef.current = targetIndex;
+                        setDraggedIndex(targetIndex);
+                    }
+                }
+            }
+        };
+
         const handlePointerUp = () => {
-            if (draggedIndex !== null) {
+            if (draggedIndexRef.current !== null) {
+                draggedIndexRef.current = null;
                 setDraggedIndex(null);
             }
         };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('touchmove', handlePointerMove, { passive: false });
         window.addEventListener('pointerup', handlePointerUp);
         window.addEventListener('pointercancel', handlePointerUp);
+        window.addEventListener('touchend', handlePointerUp);
+        window.addEventListener('touchcancel', handlePointerUp);
+
         return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('touchmove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);
             window.removeEventListener('pointercancel', handlePointerUp);
+            window.removeEventListener('touchend', handlePointerUp);
+            window.removeEventListener('touchcancel', handlePointerUp);
         };
-    }, [draggedIndex]);
-
-    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, editTaskTimeSpent, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, moveTaskTab } = useDashboardStore();
+    }, [activeTab, reorderTasks]);
 
     useEffect(() => {
         checkTasksRollover();
@@ -120,11 +157,6 @@ export default function TaskManager() {
     const handleAddTask = (e: React.FormEvent | React.KeyboardEvent) => {
         e.preventDefault();
         if (!newTaskTitle.trim()) return;
-
-        if (currentTasks.length >= 10) {
-            alert("Maximum of 10 tasks allowed per day to maintain focus!");
-            return;
-        }
 
         addTask(
             newTaskTitle.trim(),
@@ -275,6 +307,7 @@ export default function TaskManager() {
                             return (
                                 <div
                                     key={task.id}
+                                    data-task-index={index}
                                     onPointerEnter={() => {
                                         if (draggedIndex !== null && draggedIndex !== index) {
                                             reorderTasks(activeTab, draggedIndex, index);
@@ -285,10 +318,13 @@ export default function TaskManager() {
                                 >
                                     <div className="flex items-start gap-1.5 flex-1 min-w-0">
                                         <div
-                                            className="flex flex-col items-center opacity-30 hover:opacity-100 transition-opacity justify-center mt-1.5 shrink-0 -ml-0.5 cursor-grab active:cursor-grabbing touch-none"
+                                            className="flex flex-col items-center opacity-40 hover:opacity-100 transition-opacity justify-center mt-1.5 shrink-0 -ml-0.5 cursor-grab active:cursor-grabbing touch-none select-none p-1"
                                             onPointerDown={(e) => {
                                                 e.stopPropagation();
-                                                e.preventDefault(); // Prevent text selection
+                                                setDraggedIndex(index);
+                                            }}
+                                            onTouchStart={(e) => {
+                                                e.stopPropagation();
                                                 setDraggedIndex(index);
                                             }}
                                             onMouseDown={(e) => e.stopPropagation()}
@@ -418,7 +454,7 @@ export default function TaskManager() {
                                                             title={isTaskDone ? "Completed duration" : "Double click to edit done time"}
                                                         >
                                                             {isTaskDone ? (
-                                                                task.duration >= 60 ? Math.floor(task.duration / 60) + "h " + (task.duration % 60) + "m" : task.duration + "m"
+                                                                ((task.timeSpent || 0) + (task.duration || 0)) >= 60 ? Math.floor(((task.timeSpent || 0) + (task.duration || 0)) / 60) + "h " + (((task.timeSpent || 0) + (task.duration || 0)) % 60) + "m" : ((task.timeSpent || 0) + (task.duration || 0)) + "m"
                                                             ) : (
                                                                 (task.timeSpent || 0) >= 60 ? Math.floor((task.timeSpent || 0) / 60) + "h " + ((task.timeSpent || 0) % 60) + "m" : (task.timeSpent || 0) + "m"
                                                             )} done

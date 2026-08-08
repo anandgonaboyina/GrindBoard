@@ -5,6 +5,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
 import DraggableWidget from './DraggableWidget';
+import { useAudioUrl } from '@/hooks/useAudioUrl';
 
 export default function Timer() {
   const {
@@ -27,6 +28,8 @@ export default function Timer() {
     isTimerOpen
   } = useDashboardStore();
 
+  const resolvedAlarmUrl = useAudioUrl(alarmSound);
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
   const [customMins, setCustomMins] = useState('');
@@ -34,6 +37,10 @@ export default function Timer() {
 
   // Local state for UI updates (does not spam DB)
   const [localTimeLeft, setLocalTimeLeft] = useState(0);
+
+  // Ref mirror of timerLastSavedChunks so the interval callback always
+  // reads the up-to-date value within the same tick (state updates are async).
+  const savedChunksRef = useRef(timerLastSavedChunks);
 
   // Inline editing state
   const [isEditingTime, setIsEditingTime] = useState(false);
@@ -55,6 +62,11 @@ export default function Timer() {
   };
 
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
+
+  // Keep the ref mirror in sync whenever the store value changes.
+  useEffect(() => {
+    savedChunksRef.current = timerLastSavedChunks;
+  }, [timerLastSavedChunks]);
 
   // Ensure local time immediately reflects store changes
   useEffect(() => {
@@ -80,9 +92,9 @@ export default function Timer() {
 
       const elapsedSeconds = (timerInitialMins * 60) - currentRemaining;
       if (elapsedSeconds > 0) {
-        const finalUnsavedSeconds = elapsedSeconds - (timerLastSavedChunks * 300);
-        const additionalChunks = Math.floor(finalUnsavedSeconds / 300);
-        const finalUnsavedMins = additionalChunks * 5;
+        const elapsedMins = Math.floor(elapsedSeconds / 60);
+        const savedMins = savedChunksRef.current * 5;
+        const finalUnsavedMins = Math.max(0, elapsedMins - savedMins);
 
         if (finalUnsavedMins > 0) {
           const today = getLocalDateString();
@@ -92,6 +104,7 @@ export default function Timer() {
       }
     }
 
+    savedChunksRef.current = 0;
     setActiveTask(null, null);
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
@@ -110,12 +123,15 @@ export default function Timer() {
           const elapsedSeconds = (timerInitialMins * 60) - remaining;
           if (elapsedSeconds >= 0) {
             const chunks = Math.floor(elapsedSeconds / 300); // 5 minutes = 300 seconds
-            if (chunks > timerLastSavedChunks) {
-              const diff = chunks - timerLastSavedChunks;
+            if (chunks > savedChunksRef.current) {
+              const diff = chunks - savedChunksRef.current;
               const minsToSave = diff * 5;
               const today = getLocalDateString();
               addMins(today, minsToSave);
               updateTaskDuration(activeTaskId, minsToSave);
+              // Update the ref immediately (synchronous) so the finish handler
+              // in the same tick sees the updated count and doesn't double-save.
+              savedChunksRef.current = chunks;
               setTimerLastSavedChunks(chunks);
             }
 
@@ -126,7 +142,7 @@ export default function Timer() {
               if (alertChunks > timerLastAlertedChunks && alertChunks > 0) {
                 setTimerLastAlertedChunks(alertChunks);
                 if (enableAlarmSound) {
-                  const audio = new Audio(alarmSound);
+                  const audio = new Audio(resolvedAlarmUrl || alarmSound);
                   intervalAudioRef.current = audio;
                   const vol = alarmVolume !== undefined ? alarmVolume : 1;
                   audio.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
@@ -178,16 +194,17 @@ export default function Timer() {
           if (timerInitialMins && timerInitialMins > 0) {
             const today = getLocalDateString();
             if (activeTaskId) {
-              const elapsedSeconds = timerInitialMins * 60;
-              const finalUnsavedSeconds = elapsedSeconds - (timerLastSavedChunks * 300);
-              const additionalChunks = Math.floor(finalUnsavedSeconds / 300);
-              const finalUnsavedMins = additionalChunks * 5;
+              // Calculate any remaining unsaved minutes for this active task session
+              const savedMins = savedChunksRef.current * 5;
+              const finalUnsavedMins = Math.max(0, timerInitialMins - savedMins);
               if (finalUnsavedMins > 0) {
                 addMins(today, finalUnsavedMins);
                 updateTaskDuration(activeTaskId, finalUnsavedMins);
               }
+              savedChunksRef.current = 0;
               setActiveTask(null, null);
               setTimerLastSavedChunks(0);
+              setTimerLastAlertedChunks(0);
             } else {
               addMins(today, timerInitialMins);
             }
@@ -334,6 +351,7 @@ export default function Timer() {
     setTimerInitialMins(Math.round(seconds / 60));
     setTimerPausedLeft(null);
     setTimerEndAt(Date.now() + seconds * 1000);
+    savedChunksRef.current = 0;
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
     stopAlarm();
@@ -420,6 +438,7 @@ export default function Timer() {
 
   const resetTimer = () => {
     saveAndClearActiveTaskTimer();
+    savedChunksRef.current = 0;
     setTimerEndAt(null);
     setTimerPausedLeft(null);
     setTimerInitialMins(null);
@@ -477,8 +496,8 @@ export default function Timer() {
     }
   };
 
-  // Always render to keep interval running, but can hide visually if needed.
-  // Actually, we'll just not return null.
+  const elapsedSecs = timerInitialMins ? Math.max(0, (timerInitialMins * 60) - localTimeLeft) : 0;
+  const doneMins = Math.floor(elapsedSecs / 60);
 
   return (
     <DraggableWidget id="timer">
@@ -606,10 +625,14 @@ export default function Timer() {
                 }
                 setIsIntervalRinging(false);
               }}
-              className="w-full py-2 flex items-center justify-center gap-2 bg-sky-500/80 hover:bg-sky-500 rounded-xl font-medium transition-colors animate-pulse"
+              className="w-full py-2 px-3 flex flex-col items-center justify-center gap-0.5 bg-sky-500/80 hover:bg-sky-500 rounded-xl transition-colors animate-pulse shadow-lg"
             >
-              <Check size={20} />
-              Okay
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">
+                {taskIntervalAlertMins || 5}m Span ({doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m"} / {(timerInitialMins || 0) >= 60 ? Math.floor((timerInitialMins || 0) / 60) + "h " + ((timerInitialMins || 0) % 60) + "m" : (timerInitialMins || 0) + "m"})
+              </span>
+              <span className="text-base font-bold tracking-wide flex items-center gap-1 text-white">
+                <Check size={18} strokeWidth={2.5} /> Okay
+              </span>
             </button>
           ) : (
             <>
@@ -659,7 +682,7 @@ export default function Timer() {
           {/* Hidden Audio Element */}
           <audio 
             ref={audioRef} 
-            src={alarmSound} 
+            src={resolvedAlarmUrl || alarmSound} 
             loop 
             preload="auto" 
             onPlay={(e) => {

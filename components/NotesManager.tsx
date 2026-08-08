@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Sun, Moon, Plus, X, StickyNote, Trash2, Undo, Redo, Bold, Italic, Underline, List, Download, ChevronLeft, ChevronRight, Calendar, Upload } from 'lucide-react';
+import { Sun, Moon, Plus, X, StickyNote, Trash2, Undo, Redo, Bold, Italic, Underline, List, Download, ChevronLeft, ChevronRight, Calendar, Upload, GripVertical } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -73,7 +73,7 @@ function EditorBlock({ isLight, date, initialHtml, onChange }: { isLight: boolea
 }
 
 export default function NotesManager() {
-  const { theme: globalTheme, notesThemeOverride, setNotesThemeOverride, isNotesOpen, toggleNotes, notes, setNotes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote } = useDashboardStore();
+  const { theme: globalTheme, notesThemeOverride, setNotesThemeOverride, isNotesOpen, toggleNotes, notes, setNotes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote, reorderNotes } = useDashboardStore();
   const effectiveTheme = notesThemeOverride || (globalTheme === 'light' ? 'light' : 'dark');
   const isLight = effectiveTheme === 'light';
   const [mounted, setMounted] = useState(false);
@@ -95,6 +95,7 @@ export default function NotesManager() {
       deleteNote={deleteNote}
       setActiveNote={setActiveNote}
       setNotes={setNotes}
+      reorderNotes={reorderNotes}
     />
   );
 }
@@ -159,11 +160,13 @@ function NoteCalendar({ existingDates, onSelectDate, isLight }: { existingDates:
   );
 }
 
-function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote, setNotes }: any) {
+function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote, setNotes, reorderNotes }: any) {
   const [format, setFormat] = useState({ bold: false, italic: false, underline: false, list: false });
   const titleInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showDateDropdown, setShowDateDropdown] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const draggedIndexRef = useRef<number | null>(null);
 
   // Controls mobile drill-down view
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
@@ -182,6 +185,56 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
   });
 
   useEffect(() => {
+    draggedIndexRef.current = draggedIndex;
+  }, [draggedIndex]);
+
+  // Handle touch & pointer drag reordering for notes
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent | TouchEvent) => {
+      if (draggedIndexRef.current === null) return;
+      const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as PointerEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as PointerEvent).clientY;
+      if (clientX === undefined || clientY === undefined) return;
+
+      const el = document.elementFromPoint(clientX, clientY);
+      if (el) {
+        const noteEl = el.closest('[data-note-index]');
+        if (noteEl) {
+          const targetIndex = parseInt(noteEl.getAttribute('data-note-index') || '', 10);
+          if (!isNaN(targetIndex) && targetIndex !== draggedIndexRef.current) {
+            reorderNotes(draggedIndexRef.current, targetIndex);
+            draggedIndexRef.current = targetIndex;
+            setDraggedIndex(targetIndex);
+          }
+        }
+      }
+    };
+
+    const handlePointerUp = () => {
+      if (draggedIndexRef.current !== null) {
+        draggedIndexRef.current = null;
+        setDraggedIndex(null);
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('touchmove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    window.addEventListener('touchend', handlePointerUp);
+    window.addEventListener('touchcancel', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('touchmove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+      window.removeEventListener('touchend', handlePointerUp);
+      window.removeEventListener('touchcancel', handlePointerUp);
+    };
+  }, [reorderNotes]);
+
+  useEffect(() => {
     const checkFormat = () => {
       setFormat({
         bold: document.queryCommandState('bold'),
@@ -193,8 +246,6 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
     document.addEventListener('selectionchange', checkFormat);
     return () => document.removeEventListener('selectionchange', checkFormat);
   }, []);
-
-
 
   const activeNote = notes.find((n: any) => n.id === activeNoteId) || notes[0];
 
@@ -211,6 +262,15 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
   if (!existingDates.includes(todayStr)) {
     existingDates.push(todayStr); // Always show today at the bottom
   }
+
+  // Smooth scroll to today's note editor block when user clicks Today button
+  const scrollToToday = () => {
+    const todayId = `note-date-${todayStr.replace(/\s+/g, '-')}`;
+    const el = document.getElementById(todayId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const exec = (cmd: string, val?: string) => {
     document.execCommand(cmd, false, val);
@@ -427,46 +487,73 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
 
           <div className="relative flex-1 overflow-hidden flex flex-col">
             <ScrollableWithArrows className="p-1 md:p-2 flex flex-col gap-1 pr-1">
-              {notes.map((note: any) => (
-                <div
-                  key={note.id}
-                  onClick={() => {
-                    setActiveNote(note.id);
-                    setIsMobileDetailView(true);
-                  }}
-                  className={`group flex items-center justify-between p-2 md:p-3 rounded-lg md:rounded-xl cursor-pointer transition-all min-w-0 ${activeNoteId === note.id ? (isLight ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'bg-white/20 text-white shadow-md') : (isLight ? 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900' : 'text-white/60 hover:bg-white/10 hover:text-white')}`}
-                >
-                  <span className="font-medium truncate pr-2 text-xs md:text-base flex-1">{note.title || 'Untitled Note'}</span>
-                  <div className="flex items-center gap-0.5 md:gap-1 shrink-0 transition-all">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        downloadSingleNote(note);
-                      }}
-                      className={`p-1 md:p-1.5 rounded-md md:rounded-lg transition-all ${isLight ? 'hover:bg-blue-100 hover:text-blue-600 text-slate-400 group-hover:text-slate-600' : 'hover:bg-blue-500/20 hover:text-blue-400 text-white/40 group-hover:text-white/80'}`}
-                      title="Download Note"
-                    >
-                      <Download className="w-3.5 h-3.5 md:w-[14px] md:h-[14px]" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmModal({
-                          isOpen: true,
-                          title: 'Delete Note',
-                          message: `Are you sure you want to delete "${note.title || 'Untitled Note'}"?`,
-                          isDestructive: true,
-                          onConfirm: () => deleteNote(note.id)
-                        });
-                      }}
-                      className={`p-1 md:p-1.5 rounded-md md:rounded-lg transition-all ${notes.length === 1 ? 'hidden' : ''} ${isLight ? 'hover:bg-red-100 hover:text-red-600 text-slate-400 group-hover:text-slate-600' : 'hover:bg-red-500/20 hover:text-red-400 text-white/40 group-hover:text-white/80'}`}
-                      title="Delete Note"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 md:w-[14px] md:h-[14px]" />
-                    </button>
+              {notes.map((note: any, index: number) => {
+                const isDragging = draggedIndex === index;
+                return (
+                  <div
+                    key={note.id}
+                    data-note-index={index}
+                    onClick={() => {
+                      setActiveNote(note.id);
+                      setIsMobileDetailView(true);
+                    }}
+                    className={`group flex items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl cursor-pointer transition-all min-w-0 ${
+                      isDragging ? 'opacity-40 scale-[0.98]' : ''
+                    } ${
+                      activeNoteId === note.id
+                        ? (isLight ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'bg-white/20 text-white shadow-md')
+                        : (isLight ? 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900' : 'text-white/60 hover:bg-white/10 hover:text-white')
+                    }`}
+                  >
+                    <div className="flex items-center gap-1 flex-1 min-w-0 pr-1">
+                      <div
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          setDraggedIndex(index);
+                        }}
+                        onTouchStart={() => {
+                          setDraggedIndex(index);
+                        }}
+                        className="cursor-grab active:cursor-grabbing p-0.5 opacity-40 group-hover:opacity-100 transition-opacity touch-none shrink-0"
+                        title="Drag to reorder"
+                      >
+                        <GripVertical className="w-3.5 h-3.5" />
+                      </div>
+
+                      <span className="font-medium truncate text-xs md:text-sm flex-1">{note.title || 'Untitled Note'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-0.5 shrink-0 transition-all">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadSingleNote(note);
+                        }}
+                        className={`p-1 md:p-1.5 rounded-md md:rounded-lg transition-all ${isLight ? 'hover:bg-blue-100 hover:text-blue-600 text-slate-400 group-hover:text-slate-600' : 'hover:bg-blue-500/20 hover:text-blue-400 text-white/40 group-hover:text-white/80'}`}
+                        title="Download Note"
+                      >
+                        <Download className="w-3.5 h-3.5 md:w-[14px] md:h-[14px]" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmModal({
+                            isOpen: true,
+                            title: 'Delete Note',
+                            message: `Are you sure you want to delete "${note.title || 'Untitled Note'}"?`,
+                            isDestructive: true,
+                            onConfirm: () => deleteNote(note.id)
+                          });
+                        }}
+                        className={`p-1 md:p-1.5 rounded-md md:rounded-lg transition-all ${notes.length === 1 ? 'hidden' : ''} ${isLight ? 'hover:bg-red-100 hover:text-red-600 text-slate-400 group-hover:text-slate-600' : 'hover:bg-red-500/20 hover:text-red-400 text-white/40 group-hover:text-white/80'}`}
+                        title="Delete Note"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 md:w-[14px] md:h-[14px]" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </ScrollableWithArrows>
           </div>
 
@@ -553,6 +640,17 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
               </div>
 
               <div className="flex items-center gap-1 md:gap-2 shrink-0 relative">
+                <button
+                  onClick={scrollToToday}
+                  className={`px-2 py-1 md:px-2.5 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-1 text-[11px] md:text-xs font-semibold ${
+                    isLight ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20' : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 border border-blue-500/30'
+                  }`}
+                  title="Scroll to Today's Note"
+                >
+                  <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  <span>Today</span>
+                </button>
+
                 <div className="relative">
                   <button
                     onClick={() => setShowDateDropdown(!showDateDropdown)}

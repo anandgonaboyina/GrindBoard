@@ -35,28 +35,7 @@ export async function GET(request: Request) {
       createdAt: item.createdAt
     }));
 
-    // If user is logged in, return their feedback submission statuses
-    const authHeader = request.headers.get('authorization');
-    let mySubmissions: any[] = [];
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as { userId: string };
-        const mine = await db.collection('Feedback')
-          .find({ userId: decoded.userId })
-          .sort({ createdAt: -1 })
-          .project({ _id: 1, type: 1, message: 1, status: 1, createdAt: 1 })
-          .toArray();
-        mySubmissions = mine.map(item => ({
-          id: item._id.toString(),
-          type: item.type,
-          message: item.message,
-          status: item.status,
-          createdAt: item.createdAt
-        }));
-      } catch (_) { /* ignore invalid tokens */ }
-    }
-
-    return NextResponse.json({ roadmap: mappedRoadmap, mySubmissions });
+    return NextResponse.json({ roadmap: mappedRoadmap });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch roadmap' }, { status: 500 });
   }

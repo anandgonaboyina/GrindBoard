@@ -4,6 +4,7 @@ import { Newspaper, Plus, Trash2, Edit2, Check, X, Calendar as CalendarIcon, Ima
 import { getLocalDateString } from '@/utils/date';
 import ScrollableHorizontalWithArrows from '@/components/ScrollableHorizontalWithArrows';
 import ScrollableWithArrows from '@/components/ScrollableWithArrows';
+import { getEmbedVideoUrl } from '@/components/NewsCardStack';
 
 export type NewsPost = {
   _id?: string;
@@ -321,13 +322,50 @@ export default function AdminNewsManager() {
                             {/* Media Section */}
                             {(post.media?.imageUrl || post.media?.videoUrl || post.media?.svgUrl) && (
                               <div className="w-full h-32 sm:h-40 bg-black/40 border-b border-white/10 relative flex items-center justify-center overflow-hidden shrink-0">
-                                {post.media.videoUrl ? (
-                                  <video src={post.media.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
-                                ) : post.media.imageUrl ? (
-                                  <img src={post.media.imageUrl} alt={post.title} className="w-full h-full object-cover" />
-                                ) : post.media.svgUrl ? (
-                                  <img src={post.media.svgUrl} alt={post.title} className="w-full h-full object-contain p-4" />
-                                ) : null}
+                                {(() => {
+                                  const videoSrc = post.media?.videoUrl || (
+                                    post.media?.imageUrl && (
+                                      post.media.imageUrl.includes('youtube.com') ||
+                                      post.media.imageUrl.includes('youtu.be') ||
+                                      post.media.imageUrl.includes('cloudinary.com') ||
+                                      post.media.imageUrl.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i)
+                                    ) ? post.media.imageUrl : null
+                                  );
+
+                                  if (videoSrc) {
+                                    const parsed = getEmbedVideoUrl(videoSrc);
+                                    if (parsed.type === 'iframe') {
+                                      return (
+                                        <iframe
+                                          src={parsed.embedUrl}
+                                          title={post.title}
+                                          className="w-full h-full border-0 object-cover"
+                                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                          allowFullScreen
+                                        />
+                                      );
+                                    }
+                                    return (
+                                      <video
+                                        src={parsed.embedUrl}
+                                        controls
+                                        muted
+                                        playsInline
+                                        className="w-full h-full object-cover"
+                                      />
+                                    );
+                                  }
+
+                                  if (post.media?.imageUrl) {
+                                    return <img src={post.media.imageUrl} alt={post.title} className="w-full h-full object-cover" />;
+                                  }
+
+                                  if (post.media?.svgUrl) {
+                                    return <img src={post.media.svgUrl} alt={post.title} className="w-full h-full object-contain p-4" />;
+                                  }
+
+                                  return null;
+                                })()}
                               </div>
                             )}
 

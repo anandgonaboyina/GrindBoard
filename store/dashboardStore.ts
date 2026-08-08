@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { getLocalDateString } from '@/utils/date';
 
+export interface CustomAlarmSound {
+  id: string;
+  name: string;
+  url: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -102,11 +108,11 @@ interface DashboardState {
   hasUnreadNews: boolean;
   toggleNews: () => void;
   setHasUnreadNews: (val: boolean) => void;
-  settingsActiveTab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'feedback' | 'update' | 'wallpaper' | 'quotes';
+  settingsActiveTab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'update' | 'wallpaper' | 'quotes';
   toggleSettings: () => void;
-  setSettingsActiveTab: (tab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'feedback' | 'update' | 'wallpaper' | 'quotes') => void;
-  connectInitialTab?: 'profile' | 'friends' | 'broadcasts' | 'leaderboard';
-  setConnectInitialTab: (tab?: 'profile' | 'friends' | 'broadcasts' | 'leaderboard') => void;
+  setSettingsActiveTab: (tab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'update' | 'wallpaper' | 'quotes') => void;
+  connectInitialTab?: 'profile' | 'friends' | 'leaderboard';
+  setConnectInitialTab: (tab?: 'profile' | 'friends' | 'leaderboard') => void;
   timerTrigger: { mins: number; ts: number; taskId?: string; taskTitle?: string } | null;
   triggerTimer: (mins: number, taskId?: string, taskTitle?: string) => void;
 
@@ -128,6 +134,9 @@ interface DashboardState {
   timerLastUpdated: number;
   isAlarmPlaying: boolean;
   alarmSound: string;
+  customAlarmSounds: CustomAlarmSound[];
+  addCustomAlarmSound: (name: string, url: string) => void;
+  deleteCustomAlarmSound: (id: string) => void;
   alarmVolume: number;
   enableAlarmSound: boolean;
   enableAlarmVibration: boolean;
@@ -176,6 +185,7 @@ interface DashboardState {
   deleteNote: (id: string) => void;
   setActiveNote: (id: string) => void;
   toggleNotes: () => void;
+  reorderNotes: (fromIndex: number, toIndex: number) => void;
 
   // Stopwatch State
   isStopwatchOpen: boolean;
@@ -477,7 +487,11 @@ const performSave = async () => {
 
       isSyncingFromCloud = true;
       setSyncLastModified(Date.now());
-      localStorage.setItem('dashboard-storage', mergedStr);
+      try {
+        localStorage.setItem('dashboard-storage', mergedStr);
+      } catch (e) {
+        console.warn("Failed to set mergedStr in localStorage:", e);
+      }
       useDashboardStore.setState(mergedState);
       setTimeout(() => { isSyncingFromCloud = false; }, 500);
 
@@ -577,7 +591,11 @@ const fileStorage = createJSONStorage(() => ({
               setTimeout(() => { isSyncingFromCloud = false; }, 1000);
               const str = JSON.stringify(json.data);
               // ensure local cache perfectly matches cloud
-              localStorage.setItem('dashboard-storage', str);
+              try {
+                localStorage.setItem('dashboard-storage', str);
+              } catch (e) {
+                console.warn("Failed to update localStorage with cloud data:", e);
+              }
               lastSavedValue = str;
               return str;
             }
@@ -888,6 +906,11 @@ export const useDashboardStore = create<DashboardState>()(
           ...t,
           duration: Math.max(0, t.duration - decreaseMins),
           timeSpent: (t.timeSpent || 0) + decreaseMins
+        } : t),
+        tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? {
+          ...t,
+          duration: Math.max(0, t.duration - decreaseMins),
+          timeSpent: (t.timeSpent || 0) + decreaseMins
         } : t)
       })),
       editTaskDuration: (id, newDuration, tab = 'today') => set((state) => {
@@ -948,7 +971,27 @@ export const useDashboardStore = create<DashboardState>()(
       timerLastAlertedChunks: 0,
       timerLastUpdated: 0,
       isAlarmPlaying: false,
-      alarmSound: '/ringtones/alarm.mp3',
+      alarmSound: '/ringtones/narutoBGM.mp3',
+      customAlarmSounds: [],
+      addCustomAlarmSound: (name, url) => set((state) => {
+        const currentList = state.customAlarmSounds || [];
+        if (currentList.length >= 3) return state;
+        const newSound: CustomAlarmSound = { id: Date.now().toString(), name, url };
+        return {
+          customAlarmSounds: [...currentList, newSound],
+          alarmSound: url
+        };
+      }),
+      deleteCustomAlarmSound: (id) => set((state) => {
+        const currentList = state.customAlarmSounds || [];
+        const soundToDelete = currentList.find(s => s.id === id);
+        const updatedList = currentList.filter(s => s.id !== id);
+        const activeSound = state.alarmSound === soundToDelete?.url ? '/ringtones/narutoBGM.mp3' : state.alarmSound;
+        return {
+          customAlarmSounds: updatedList,
+          alarmSound: activeSound
+        };
+      }),
       alarmVolume: 1,
       setTimerEndAt: (time) => set({ timerEndAt: time, timerLastUpdated: Date.now() }),
       setTimerPausedLeft: (time) => set({ timerPausedLeft: time, timerLastUpdated: Date.now() }),
@@ -970,7 +1013,7 @@ export const useDashboardStore = create<DashboardState>()(
       isTaskIntervalAlertEnabled: false,
       setIsTaskIntervalAlertEnabled: (enabled) => set({ isTaskIntervalAlertEnabled: enabled }),
       setTaskIntervalAlertMins: (mins) => set({ taskIntervalAlertMins: mins }),
-      taskIntervalRingSecs: 5,
+      taskIntervalRingSecs: 10,
       setTaskIntervalRingSecs: (secs) => set({ taskIntervalRingSecs: secs }),
       setEnablePanicButton: (val) => set({ enablePanicButton: val }),
       setPanicButtonMode: (val) => set({ panicButtonMode: val }),
@@ -1028,6 +1071,13 @@ export const useDashboardStore = create<DashboardState>()(
       }),
       setActiveNote: (id) => set({ activeNoteId: id }),
       toggleNotes: () => set((state) => ({ isNotesOpen: !state.isNotesOpen })),
+      reorderNotes: (fromIndex, toIndex) => set((state) => {
+        if (fromIndex < 0 || fromIndex >= state.notes.length || toIndex < 0 || toIndex >= state.notes.length) return state;
+        const newNotes = [...state.notes];
+        const [moved] = newNotes.splice(fromIndex, 1);
+        newNotes.splice(toIndex, 0, moved);
+        return { notes: newNotes };
+      }),
 
       // Stopwatch Defaults
       isStopwatchOpen: false,
@@ -1466,7 +1516,7 @@ export const useDashboardStore = create<DashboardState>()(
       toggleVisibility: (key) => set((state) => ({ [key]: !state[key] })),
 
       hideConfig: {
-        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
       },
       setHideConfig: (key, value) => {
         set((state) => ({ hideConfig: { ...state.hideConfig, [key]: value } }));
@@ -1475,7 +1525,7 @@ export const useDashboardStore = create<DashboardState>()(
         if (hide) {
           set({
             hideConfig: {
-              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
             }
           });
         } else {
@@ -1484,7 +1534,7 @@ export const useDashboardStore = create<DashboardState>()(
       },
 
       mobileHideConfig: {
-        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
       },
       setMobileHideConfig: (key, value) => {
         set((state) => ({ mobileHideConfig: { ...state.mobileHideConfig, [key]: value } }));
@@ -1493,7 +1543,7 @@ export const useDashboardStore = create<DashboardState>()(
         if (hide) {
           set({
             mobileHideConfig: {
-              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: true, timerPill: true, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
             }
           });
         } else {
@@ -1644,6 +1694,22 @@ export const useDashboardStore = create<DashboardState>()(
         }
         if (persistedState.mobileHideConfig && currentState.mobileHideConfig) {
           persistedState.mobileHideConfig = { ...currentState.mobileHideConfig, ...persistedState.mobileHideConfig };
+        }
+
+        if (!persistedState._focusPillDefaultsUpdated) {
+          if (persistedState.hideConfig) {
+            persistedState.hideConfig.todayFocusPill = false;
+            persistedState.hideConfig.timerPill = false;
+          }
+          if (persistedState.mobileHideConfig) {
+            persistedState.mobileHideConfig.todayFocusPill = false;
+            persistedState.mobileHideConfig.timerPill = false;
+          }
+          persistedState._focusPillDefaultsUpdated = true;
+        }
+
+        if (!persistedState.customAlarmSounds) {
+          persistedState.customAlarmSounds = [];
         }
 
         // Auto-cleanup deadlines that are more than 7 days in the past

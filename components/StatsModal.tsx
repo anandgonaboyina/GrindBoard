@@ -34,6 +34,9 @@ export default function StatsModal() {
 
     if (shouldReturn) {
       if (typeof window !== 'undefined') sessionStorage.removeItem('returnToConnect');
+      if (wasViewingFriend) {
+        useDashboardStore.getState().setConnectInitialTab('friends');
+      }
       // Ensure Settings Modal is open and on the connect tab
       useDashboardStore.getState().setSettingsActiveTab('connect');
       if (!useDashboardStore.getState().isSettingsOpen) {
