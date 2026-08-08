@@ -105,7 +105,6 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
   const contentStartScrollTop = useRef(0);
 
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    // If mouse event, only trigger on primary click
     if ('button' in e && e.button !== 0) return;
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -135,7 +134,6 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
     }
 
     if (isSwipingHorizontal.current === true) {
-      // Resistance at edges
       if ((activeIndex === 0 && diffX > 0) || (activeIndex === posts.length - 1 && diffX < 0)) {
         setDragOffset(diffX * 0.2);
       } else {
@@ -147,11 +145,9 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
   const handleTouchEnd = () => {
     if (isSwipingHorizontal.current === true) {
       if (dragOffset > 75 && activeIndex > 0) {
-        // Swiped right -> previous (older)
         setActiveIndex(prev => prev - 1);
         setExpandedId(null);
       } else if (dragOffset < -75 && activeIndex < posts.length - 1) {
-        // Swiped left -> next (newer)
         setActiveIndex(prev => prev + 1);
         setExpandedId(null);
       }
@@ -242,7 +238,7 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
           let style = {};
           let classes = "absolute top-0 right-0 w-full h-full rounded-3xl flex flex-col transition-all duration-400 ease-out border overflow-hidden select-none bg-[#18181b]";
 
-          const relativeIndex = activeIndex - i; // 0 is active, 1 is back stack, -1 is swiped away
+          const relativeIndex = activeIndex - i;
 
           if (relativeIndex === 0) {
             style = {
@@ -347,14 +343,14 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
                 </div>
               )}
 
-              {/* Media Section: Top of Card */}
+              {/* Media Section: Top of Card (Transparent Corners & Seamless Aspect) */}
               {hasMedia && (
-                <div className="absolute top-0 left-0 w-full h-[52%] sm:h-[55%] z-0 overflow-hidden rounded-t-3xl bg-black">
+                <div className="absolute top-0 left-0 w-full h-[52%] sm:h-[55%] z-0 overflow-hidden rounded-t-3xl bg-transparent">
                   {(() => {
                     if (videoSrc) {
                       if (relativeIndex !== 0) {
                         return (
-                          <div className="w-full h-full bg-black/80 flex items-center justify-center">
+                          <div className="w-full h-full bg-transparent flex items-center justify-center">
                             <Video size={36} className="text-white/20" />
                           </div>
                         );
@@ -367,7 +363,7 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
                             key={`${videoSrc}-${isMuted}`}
                             src={parsed.embedUrl}
                             title={post.title}
-                            className="w-full h-full border-0 object-cover"
+                            className="w-full h-full border-0 object-cover rounded-t-3xl bg-transparent"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
                           />
@@ -383,13 +379,13 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
                           loop
                           muted={isMuted}
                           playsInline
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover rounded-t-3xl bg-transparent"
                         />
                       );
                     }
 
                     if (post.media?.imageUrl) {
-                      return <img src={post.media.imageUrl} alt={post.title} className="w-full h-full object-cover" />;
+                      return <img src={post.media.imageUrl} alt={post.title} className="w-full h-full object-cover rounded-t-3xl" />;
                     }
 
                     if (post.media?.svgUrl) {
@@ -466,7 +462,7 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
       {/* Fullscreen Video Overlay Modal */}
       {fullscreenVideo && (
         <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
-          <div className="relative w-full max-w-4xl h-[75vh] bg-black rounded-3xl overflow-hidden border border-white/20 shadow-2xl flex flex-col">
+          <div className="relative w-full max-w-4xl h-[75vh] bg-[#121214]/90 backdrop-blur-2xl rounded-3xl overflow-hidden border border-white/20 shadow-2xl flex flex-col">
             <div className="flex items-center justify-between p-4 bg-white/10 backdrop-blur-md border-b border-white/10 shrink-0 z-10">
               <span className="text-sm font-bold text-white flex items-center gap-2">
                 <Video className="text-blue-400" size={18} /> Video View
@@ -480,7 +476,7 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
               </button>
             </div>
 
-            <div className="flex-1 w-full h-full relative bg-black flex items-center justify-center">
+            <div className="flex-1 w-full h-full relative bg-transparent flex items-center justify-center overflow-hidden rounded-b-3xl">
               {(() => {
                 const parsed = getEmbedVideoUrl(fullscreenVideo, false);
                 if (parsed.type === 'iframe') {
@@ -488,7 +484,7 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
                     <iframe
                       src={parsed.embedUrl}
                       title="Fullscreen Video"
-                      className="w-full h-full border-0 object-contain"
+                      className="w-full h-full border-0 object-contain rounded-b-3xl bg-transparent"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                     />
@@ -501,7 +497,7 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
                     controls
                     autoPlay
                     playsInline
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain rounded-b-3xl bg-transparent"
                   />
                 );
               })()}

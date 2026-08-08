@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NewsCardStack from './NewsCardStack';
 import type { NewsPost } from './admin/AdminNewsManager';
+import { syncNewsMediaCache } from '@/lib/newsMediaCache';
 
 export default function NewsModal() {
   const { isNewsOpen, toggleNews, hasUnreadNews, setHasUnreadNews } = useDashboardStore();
@@ -49,6 +50,7 @@ export default function NewsModal() {
             setNews(broadcasted);
             setUnreadIds(unread.map((n: NewsPost) => n._id!));
             setHasUnreadNews(unread.length > 0);
+            syncNewsMediaCache(broadcasted);
           }
         }
       } catch (e) {
