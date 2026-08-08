@@ -461,25 +461,22 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
 
       {/* Fullscreen Video Overlay Modal */}
       {fullscreenVideo && (
-        <div
-          className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setFullscreenVideo(null)}
-        >
-          <div
-            className="relative w-full max-w-5xl aspect-video max-h-[85vh] flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Top Close Button Floating */}
-            <button
-              onClick={() => setFullscreenVideo(null)}
-              className="absolute -top-10 right-0 z-50 p-2 text-white/80 hover:text-white transition-colors flex items-center gap-1 font-bold text-xs tracking-wider cursor-pointer bg-black/40 hover:bg-black/70 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/20"
-            >
-              <X size={16} />
-              <span>CLOSE</span>
-            </button>
+        <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-4xl h-[75vh] bg-[#121214]/90 backdrop-blur-2xl rounded-3xl overflow-hidden border border-white/20 shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between p-4 bg-white/10 backdrop-blur-md border-b border-white/10 shrink-0 z-10">
+              <span className="text-sm font-bold text-white flex items-center gap-2">
+                <Video className="text-blue-400" size={18} /> Video View
+              </span>
+              <button
+                onClick={() => setFullscreenVideo(null)}
+                className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/20 active:scale-95 flex items-center gap-1 px-3"
+              >
+                <X size={18} />
+                <span className="text-xs font-bold uppercase">Close</span>
+              </button>
+            </div>
 
-            {/* Video Container - Pure Aspect-Video without Black Letterbox Bars */}
-            <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-transparent flex items-center justify-center">
+            <div className="flex-1 w-full h-full relative bg-transparent flex items-center justify-center overflow-hidden rounded-b-3xl">
               {(() => {
                 const parsed = getEmbedVideoUrl(fullscreenVideo, false);
                 if (parsed.type === 'iframe') {
@@ -487,7 +484,7 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
                     <iframe
                       src={parsed.embedUrl}
                       title="Fullscreen Video"
-                      className="w-full h-full border-0 aspect-video rounded-2xl bg-transparent"
+                      className="w-full h-full border-0 object-contain rounded-b-3xl bg-transparent"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                     />
@@ -500,7 +497,7 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
                     controls
                     autoPlay
                     playsInline
-                    className="w-full h-full object-contain rounded-2xl bg-transparent"
+                    className="w-full h-full object-contain rounded-b-3xl bg-transparent"
                   />
                 );
               })()}
