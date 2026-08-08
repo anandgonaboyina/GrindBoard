@@ -461,7 +461,7 @@ export default function NewsCardStack({ posts, unreadIds = [], onEdit, onDelete,
 
       {/* Fullscreen Video Overlay Modal */}
       {fullscreenVideo && (
-        <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[9999] rounded-4xl bg-transparent backdrop-blur-xl flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
           <div className="relative w-full max-w-4xl h-[75vh] bg-[#121214]/90 backdrop-blur-2xl rounded-3xl overflow-hidden border border-white/20 shadow-2xl flex flex-col">
             <div className="flex items-center justify-between p-4 bg-white/10 backdrop-blur-md border-b border-white/10 shrink-0 z-10">
               <span className="text-sm font-bold text-white flex items-center gap-2">
