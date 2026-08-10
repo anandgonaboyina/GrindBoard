@@ -32,7 +32,7 @@ export default function Timer() {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
-  const [customMins, setCustomMins] = useState('');
+  const [customMins, setCustomMins] = useState<any>('');
   const [isIntervalRinging, setIsIntervalRinging] = useState(false);
 
   // Local state for UI updates (does not spam DB)
@@ -46,7 +46,7 @@ export default function Timer() {
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [editHours, setEditHours] = useState('00');
   const [editMins, setEditMins] = useState('25');
-  
+
   const [lastInteractionTime, setLastInteractionTime] = useState(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('timer_last_active');
@@ -54,7 +54,7 @@ export default function Timer() {
     }
     return Date.now();
   });
-  
+
   const updateInteraction = () => {
     const now = Date.now();
     setLastInteractionTime(now);
@@ -160,23 +160,23 @@ export default function Timer() {
             }
           }
         }
-        
+
         const elapsedSinceInteraction = Math.floor((now - lastInteractionTime) / 1000);
         if (elapsedSinceInteraction >= 7200) {
-           // Idle for 2 hours while running, auto pause!
-           const intendedPauseTime = lastInteractionTime + 7200000;
-           // Only pause if the timer wouldn't have finished naturally before the pause time
-           if (intendedPauseTime < timerEndAt) {
-             const actualRemaining = Math.max(0, Math.floor((timerEndAt - intendedPauseTime) / 1000));
-             setTimerPausedLeft(actualRemaining);
-             setTimerEndAt(null);
-             if (now - intendedPauseTime < 120000) {
-               playAlarm();
-             }
-             setShowContinuePrompt(true);
-             updateInteraction();
-             return;
-           }
+          // Idle for 2 hours while running, auto pause!
+          const intendedPauseTime = lastInteractionTime + 7200000;
+          // Only pause if the timer wouldn't have finished naturally before the pause time
+          if (intendedPauseTime < timerEndAt) {
+            const actualRemaining = Math.max(0, Math.floor((timerEndAt - intendedPauseTime) / 1000));
+            setTimerPausedLeft(actualRemaining);
+            setTimerEndAt(null);
+            if (now - intendedPauseTime < 120000) {
+              playAlarm();
+            }
+            setShowContinuePrompt(true);
+            updateInteraction();
+            return;
+          }
         }
 
         if (remaining <= 0) {
@@ -185,7 +185,7 @@ export default function Timer() {
           setLocalTimeLeft(0);
           setTimerEndAt(null);
           setTimerPausedLeft(null);
-          
+
           if (now - timerEndAt < 120000) {
             playAlarm();
           }
@@ -448,7 +448,7 @@ export default function Timer() {
   const handleCustomStart = () => {
     let mins = parseInt(customMins);
     if (!isNaN(mins) && mins > 0) {
-      startTimer(mins * 60); 
+      startTimer(mins * 60);
       setCustomMins('');
     }
   };
@@ -501,7 +501,7 @@ export default function Timer() {
 
   return (
     <DraggableWidget id="timer">
-      <div 
+      <div
         onPointerDown={updateInteraction}
         className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying ? '' : 'hidden'}`}
       >
@@ -658,14 +658,40 @@ export default function Timer() {
 
               {/* Custom Input */}
               {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
-                <div className="flex gap-2 mt-1">
+                <div className="flex gap-1 mt-1">
+                  <input
+                    type="time" className='text-[12px]'
+                    // Do NOT use value={customMins} here because customMins is now a number, not "HH:MM"
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const timeValue = e.target.value; // Example: "14:30"
+                      if (!timeValue) return;
+
+                      // 1. Extract hours and minutes as numbers
+                      const [hours, minutes] = timeValue.split(':').map(Number);
+
+                      // 2. Get current time and target time
+                      const now = new Date();
+                      const targetDate = new Date();
+                      targetDate.setHours(hours, minutes, 0, 0);
+                      // 3. Handle times selected for the next day (optional safety check)
+                      if (targetDate < now) {
+                        targetDate.setDate(targetDate.getDate() + 1);
+                      }
+                      // 4. Convert milliseconds difference to total minutes
+                      const diffInMs = targetDate.getTime() - now.getTime();
+                      const diffInMins = Math.floor(diffInMs / 1000 / 60);
+                      // 5. Save the number to state
+                      setCustomMins(diffInMins);
+                    }}
+                  />
+                  or
                   <input
                     type="number"
-                    placeholder="Custom mins..."
+                    placeholder="Custom(min)"
                     value={customMins}
                     onChange={(e) => setCustomMins(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-sm outline-none focus:bg-white/10 transition-colors placeholder:text-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-1 py-1 text-sm outline-none focus:bg-white/10 transition-colors placeholder:text-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     min="1"
                   />
                   <button
@@ -680,11 +706,11 @@ export default function Timer() {
           )}
 
           {/* Hidden Audio Element */}
-          <audio 
-            ref={audioRef} 
-            src={resolvedAlarmUrl || alarmSound} 
-            loop 
-            preload="auto" 
+          <audio
+            ref={audioRef}
+            src={resolvedAlarmUrl || alarmSound}
+            loop
+            preload="auto"
             onPlay={(e) => {
               // Prevent Lively Wallpaper / Chromium from auto-resuming media on focus
               if (!useDashboardStore.getState().isAlarmPlaying) {
