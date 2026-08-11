@@ -5,6 +5,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
 import DraggableWidget from './DraggableWidget';
+import { useAudioUrl } from '@/hooks/useAudioUrl';
 
 export default function Timer() {
   const {
@@ -27,19 +28,25 @@ export default function Timer() {
     isTimerOpen
   } = useDashboardStore();
 
+  const resolvedAlarmUrl = useAudioUrl(alarmSound);
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
-  const [customMins, setCustomMins] = useState('');
+  const [customMins, setCustomMins] = useState<any>('');
   const [isIntervalRinging, setIsIntervalRinging] = useState(false);
 
   // Local state for UI updates (does not spam DB)
   const [localTimeLeft, setLocalTimeLeft] = useState(0);
 
+  // Ref mirror of timerLastSavedChunks so the interval callback always
+  // reads the up-to-date value within the same tick (state updates are async).
+  const savedChunksRef = useRef(timerLastSavedChunks);
+
   // Inline editing state
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [editHours, setEditHours] = useState('00');
   const [editMins, setEditMins] = useState('25');
-  
+
   const [lastInteractionTime, setLastInteractionTime] = useState(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('timer_last_active');
@@ -47,7 +54,7 @@ export default function Timer() {
     }
     return Date.now();
   });
-  
+
   const updateInteraction = () => {
     const now = Date.now();
     setLastInteractionTime(now);
@@ -55,6 +62,11 @@ export default function Timer() {
   };
 
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
+
+  // Keep the ref mirror in sync whenever the store value changes.
+  useEffect(() => {
+    savedChunksRef.current = timerLastSavedChunks;
+  }, [timerLastSavedChunks]);
 
   // Ensure local time immediately reflects store changes
   useEffect(() => {
@@ -80,9 +92,9 @@ export default function Timer() {
 
       const elapsedSeconds = (timerInitialMins * 60) - currentRemaining;
       if (elapsedSeconds > 0) {
-        const finalUnsavedSeconds = elapsedSeconds - (timerLastSavedChunks * 300);
-        const additionalChunks = Math.floor(finalUnsavedSeconds / 300);
-        const finalUnsavedMins = additionalChunks * 5;
+        const elapsedMins = Math.floor(elapsedSeconds / 60);
+        const savedMins = savedChunksRef.current * 5;
+        const finalUnsavedMins = Math.max(0, elapsedMins - savedMins);
 
         if (finalUnsavedMins > 0) {
           const today = getLocalDateString();
@@ -92,6 +104,7 @@ export default function Timer() {
       }
     }
 
+    savedChunksRef.current = 0;
     setActiveTask(null, null);
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
@@ -110,12 +123,15 @@ export default function Timer() {
           const elapsedSeconds = (timerInitialMins * 60) - remaining;
           if (elapsedSeconds >= 0) {
             const chunks = Math.floor(elapsedSeconds / 300); // 5 minutes = 300 seconds
-            if (chunks > timerLastSavedChunks) {
-              const diff = chunks - timerLastSavedChunks;
+            if (chunks > savedChunksRef.current) {
+              const diff = chunks - savedChunksRef.current;
               const minsToSave = diff * 5;
               const today = getLocalDateString();
               addMins(today, minsToSave);
               updateTaskDuration(activeTaskId, minsToSave);
+              // Update the ref immediately (synchronous) so the finish handler
+              // in the same tick sees the updated count and doesn't double-save.
+              savedChunksRef.current = chunks;
               setTimerLastSavedChunks(chunks);
             }
 
@@ -126,7 +142,7 @@ export default function Timer() {
               if (alertChunks > timerLastAlertedChunks && alertChunks > 0) {
                 setTimerLastAlertedChunks(alertChunks);
                 if (enableAlarmSound) {
-                  const audio = new Audio(alarmSound);
+                  const audio = new Audio(resolvedAlarmUrl || alarmSound);
                   intervalAudioRef.current = audio;
                   const vol = alarmVolume !== undefined ? alarmVolume : 1;
                   audio.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
@@ -144,23 +160,23 @@ export default function Timer() {
             }
           }
         }
-        
+
         const elapsedSinceInteraction = Math.floor((now - lastInteractionTime) / 1000);
         if (elapsedSinceInteraction >= 7200) {
-           // Idle for 2 hours while running, auto pause!
-           const intendedPauseTime = lastInteractionTime + 7200000;
-           // Only pause if the timer wouldn't have finished naturally before the pause time
-           if (intendedPauseTime < timerEndAt) {
-             const actualRemaining = Math.max(0, Math.floor((timerEndAt - intendedPauseTime) / 1000));
-             setTimerPausedLeft(actualRemaining);
-             setTimerEndAt(null);
-             if (now - intendedPauseTime < 120000) {
-               playAlarm();
-             }
-             setShowContinuePrompt(true);
-             updateInteraction();
-             return;
-           }
+          // Idle for 2 hours while running, auto pause!
+          const intendedPauseTime = lastInteractionTime + 7200000;
+          // Only pause if the timer wouldn't have finished naturally before the pause time
+          if (intendedPauseTime < timerEndAt) {
+            const actualRemaining = Math.max(0, Math.floor((timerEndAt - intendedPauseTime) / 1000));
+            setTimerPausedLeft(actualRemaining);
+            setTimerEndAt(null);
+            if (now - intendedPauseTime < 120000) {
+              playAlarm();
+            }
+            setShowContinuePrompt(true);
+            updateInteraction();
+            return;
+          }
         }
 
         if (remaining <= 0) {
@@ -169,7 +185,7 @@ export default function Timer() {
           setLocalTimeLeft(0);
           setTimerEndAt(null);
           setTimerPausedLeft(null);
-          
+
           if (now - timerEndAt < 120000) {
             playAlarm();
           }
@@ -178,16 +194,17 @@ export default function Timer() {
           if (timerInitialMins && timerInitialMins > 0) {
             const today = getLocalDateString();
             if (activeTaskId) {
-              const elapsedSeconds = timerInitialMins * 60;
-              const finalUnsavedSeconds = elapsedSeconds - (timerLastSavedChunks * 300);
-              const additionalChunks = Math.floor(finalUnsavedSeconds / 300);
-              const finalUnsavedMins = additionalChunks * 5;
+              // Calculate any remaining unsaved minutes for this active task session
+              const savedMins = savedChunksRef.current * 5;
+              const finalUnsavedMins = Math.max(0, timerInitialMins - savedMins);
               if (finalUnsavedMins > 0) {
                 addMins(today, finalUnsavedMins);
                 updateTaskDuration(activeTaskId, finalUnsavedMins);
               }
+              savedChunksRef.current = 0;
               setActiveTask(null, null);
               setTimerLastSavedChunks(0);
+              setTimerLastAlertedChunks(0);
             } else {
               addMins(today, timerInitialMins);
             }
@@ -334,6 +351,7 @@ export default function Timer() {
     setTimerInitialMins(Math.round(seconds / 60));
     setTimerPausedLeft(null);
     setTimerEndAt(Date.now() + seconds * 1000);
+    savedChunksRef.current = 0;
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
     stopAlarm();
@@ -420,6 +438,7 @@ export default function Timer() {
 
   const resetTimer = () => {
     saveAndClearActiveTaskTimer();
+    savedChunksRef.current = 0;
     setTimerEndAt(null);
     setTimerPausedLeft(null);
     setTimerInitialMins(null);
@@ -429,7 +448,7 @@ export default function Timer() {
   const handleCustomStart = () => {
     let mins = parseInt(customMins);
     if (!isNaN(mins) && mins > 0) {
-      startTimer(mins * 60); 
+      startTimer(mins * 60);
       setCustomMins('');
     }
   };
@@ -477,12 +496,12 @@ export default function Timer() {
     }
   };
 
-  // Always render to keep interval running, but can hide visually if needed.
-  // Actually, we'll just not return null.
+  const elapsedSecs = timerInitialMins ? Math.max(0, (timerInitialMins * 60) - localTimeLeft) : 0;
+  const doneMins = Math.floor(elapsedSecs / 60);
 
   return (
     <DraggableWidget id="timer">
-      <div 
+      <div
         onPointerDown={updateInteraction}
         className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying ? '' : 'hidden'}`}
       >
@@ -498,7 +517,7 @@ export default function Timer() {
             <div className="flex items-center justify-center w-full relative">
               {/* Quick Presets Right */}
               {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !isAlarmPlaying && (
-                <div className="absolute right-1 top-1/2 mt-[20px] ml-[5px] -translate-y-1/2 flex flex-col gap-1.5">
+                <div className="absolute right-1 top-1 mt-[20px] ml-[5px] -translate-y-1/2 flex flex-col gap-1.5">
                   {[5, 15, 25].map((preset) => (
                     <button
                       key={preset}
@@ -510,10 +529,10 @@ export default function Timer() {
                   ))}
                 </div>
               )}
-
               {isEditingTime ? (
                 <div className="flex items-center justify-center gap-2">
                   <div className="flex flex-col items-center">
+
                     <button onClick={() => adjustEditTime('h', 1)} className="hover:text-white/60 p-1"><ChevronUp size={20} /></button>
                     <input
                       type="number"
@@ -550,6 +569,7 @@ export default function Timer() {
                   className={`text-5xl font-light tracking-widest tabular-nums drop-shadow-md transition-opacity ${!timerEndAt && !isAlarmPlaying ? 'cursor-pointer hover:opacity-80' : ''}`}
                   title={!timerEndAt && !isAlarmPlaying ? "Click to set time" : ""}
                 >
+
                   {formatTime(localTimeLeft)}
                 </div>
               )}
@@ -606,27 +626,31 @@ export default function Timer() {
                 }
                 setIsIntervalRinging(false);
               }}
-              className="w-full py-2 flex items-center justify-center gap-2 bg-sky-500/80 hover:bg-sky-500 rounded-xl font-medium transition-colors animate-pulse"
+              className="w-full py-2 px-3 flex flex-col items-center justify-center gap-0.5 bg-sky-500/80 hover:bg-sky-500 rounded-xl transition-colors animate-pulse shadow-lg"
             >
-              <Check size={20} />
-              Okay
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">
+                {taskIntervalAlertMins || 5}m Span ({doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m"} / {(timerInitialMins || 0) >= 60 ? Math.floor((timerInitialMins || 0) / 60) + "h " + ((timerInitialMins || 0) % 60) + "m" : (timerInitialMins || 0) + "m"})
+              </span>
+              <span className="text-base font-bold tracking-wide flex items-center gap-1 text-white">
+                <Check size={18} strokeWidth={2.5} /> Okay
+              </span>
             </button>
           ) : (
             <>
               {/* Controls */}
-              {!isEditingTime && (
+              {!isEditingTime && (timerEndAt || timerPausedLeft) && (
                 <div className="flex justify-center gap-2">
                   <button
-                    onClick={localTimeLeft > 0 || timerPausedLeft ? togglePause : () => startTimer(25 * 60)}
+                    onClick={togglePause}
                     className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                    title={localTimeLeft > 0 || timerPausedLeft ? (timerEndAt ? "Pause" : "Resume") : "Start 25m Timer"}
+                    title={timerEndAt ? "Pause" : "Resume"}
                   >
                     {timerEndAt ? <Pause size={20} /> : <Play size={20} />}
                   </button>
                   <button
                     onClick={resetTimer}
                     className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                    title="Reset Timer"
+                    title="Stop Timer"
                   >
                     <Square size={20} className="fill-current" />
                   </button>
@@ -635,33 +659,64 @@ export default function Timer() {
 
               {/* Custom Input */}
               {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
-                <div className="flex gap-2 mt-1">
-                  <input
-                    type="number"
-                    placeholder="Custom mins..."
-                    value={customMins}
-                    onChange={(e) => setCustomMins(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-sm outline-none focus:bg-white/10 transition-colors placeholder:text-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    min="1"
-                  />
-                  <button
-                    onClick={handleCustomStart}
-                    className="px-3 py-1 bg-blue-500/60 hover:bg-blue-500/80 rounded-lg text-sm font-medium transition-colors shrink-0"
-                  >
-                    Set
-                  </button>
+                <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-white/10">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1 group">
+                      <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Set Time</span>
+                      <input
+                        type="time"
+                        className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-2 py-1.5 text-sm outline-none transition-all placeholder:text-white/20 text-white/90 shadow-inner [color-scheme:dark]"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const timeValue = e.target.value;
+                          if (!timeValue) return;
+                          const [hours, minutes] = timeValue.split(':').map(Number);
+                          const now = new Date();
+                          const targetDate = new Date();
+                          targetDate.setHours(hours, minutes, 0, 0);
+                          if (targetDate < now) {
+                            targetDate.setDate(targetDate.getDate() + 1);
+                          }
+                          const diffInMs = targetDate.getTime() - now.getTime();
+                          const diffInMins = Math.floor(diffInMs / 1000 / 60);
+                          setCustomMins(diffInMins);
+                        }}
+                      />
+                    </div>
+
+                    <span className="text-[9px] font-bold text-white/30 uppercase">or</span>
+
+                    <div className="relative flex-1 group">
+                      <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Minutes</span>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={customMins}
+                        onChange={(e) => setCustomMins(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
+                        className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-2 py-1.5 text-sm text-center outline-none transition-all placeholder:text-white/20 text-white/90 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        min="1"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleCustomStart}
+                      className="px-2.5 py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
+                      title="Start custom timer"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                    </button>
+                  </div>
                 </div>
               )}
             </>
           )}
 
           {/* Hidden Audio Element */}
-          <audio 
-            ref={audioRef} 
-            src={alarmSound} 
-            loop 
-            preload="auto" 
+          <audio
+            ref={audioRef}
+            src={resolvedAlarmUrl || alarmSound}
+            loop
+            preload="auto"
             onPlay={(e) => {
               // Prevent Lively Wallpaper / Chromium from auto-resuming media on focus
               if (!useDashboardStore.getState().isAlarmPlaying) {

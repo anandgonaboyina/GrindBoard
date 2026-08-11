@@ -1,4 +1,12 @@
 import { MongoClient } from 'mongodb';
+import dns from 'dns';
+
+// Set public DNS servers for Node.js DNS resolution to bypass local ISP/Wi-Fi DNS blocks on SRV queries
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+} catch (e) {
+  console.warn('Could not set custom DNS servers:', e);
+}
 
 // Helper to resolve mongodb+srv URIs using DNS-over-HTTPS (DoH)
 // to bypass local UDP port 53/SRV blocking (e.g. on college WiFi)
@@ -117,24 +125,29 @@ if (!process.env.DATABASE_URL) {
 }
 
 declare global {
-  var _mongoClientPromise: Promise<MongoClient>;
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
 // Helper to create and connect MongoClient
-const connectClient = async () => {
+const connectClient = async (): Promise<MongoClient> => {
   console.log('Connecting to MongoDB...');
   const resolvedUri = await resolveMongoSrv(uri);
   client = new MongoClient(resolvedUri, options);
   return client.connect();
 };
 
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise) {
-    global._mongoClientPromise = connectClient();
+const getClientPromise = (): Promise<MongoClient> => {
+  if (process.env.NODE_ENV === 'development') {
+    if (!global._mongoClientPromise) {
+      global._mongoClientPromise = connectClient().catch((err) => {
+        console.error('MongoDB Connection Failed, resetting promise cache for retry:', err.message);
+        global._mongoClientPromise = undefined;
+        throw err;
+      });
+    }
+    return global._mongoClientPromise;
   }
-  clientPromise = global._mongoClientPromise;
-} else {
-  clientPromise = connectClient();
-}
+  return connectClient();
+};
 
-export default clientPromise;
+export default getClientPromise();

@@ -28,6 +28,66 @@ export default function ScrollableHorizontalWithArrows({ children, className = '
     }
   };
 
+  const scrollRafRef = useRef<number | null>(null);
+  const scrollStartTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const stopArrowScroll = () => {
+    if (scrollStartTimeout.current) {
+      clearTimeout(scrollStartTimeout.current);
+      scrollStartTimeout.current = null;
+    }
+    if (scrollRafRef.current) {
+      cancelAnimationFrame(scrollRafRef.current);
+      scrollRafRef.current = null;
+    }
+  };
+
+  const handleArrowPointerDown = (direction: 'left' | 'right', e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    stopArrowScroll();
+    scrollBy(direction);
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) { }
+
+    scrollStartTimeout.current = setTimeout(() => {
+      const scrollStep = () => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollLeft += direction === 'left' ? -20 : 20;
+          checkScroll();
+        }
+        scrollRafRef.current = requestAnimationFrame(scrollStep);
+      };
+      scrollRafRef.current = requestAnimationFrame(scrollStep);
+    }, 300);
+  };
+
+  const handleArrowPointerUpOrLeave = (e?: React.PointerEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (err) { }
+    }
+    stopArrowScroll();
+  };
+
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      stopArrowScroll();
+    };
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+      stopArrowScroll();
+    };
+  }, []);
+
   useEffect(() => {
     const timeout = setTimeout(checkScroll, 100);
     window.addEventListener('resize', checkScroll);
@@ -43,6 +103,7 @@ export default function ScrollableHorizontalWithArrows({ children, className = '
   const startScrollLeft = useRef(0);
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    stopArrowScroll();
     const target = e.target as HTMLElement;
     if (e.button !== 0 || target.tagName.toLowerCase() === 'input' || target.tagName.toLowerCase() === 'textarea' || target.closest('button')) return;
 
@@ -58,7 +119,6 @@ export default function ScrollableHorizontalWithArrows({ children, className = '
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging.current || !scrollRef.current) return;
-    
     
     e.preventDefault();
 
@@ -83,8 +143,11 @@ export default function ScrollableHorizontalWithArrows({ children, className = '
       {/* Left Arrow */}
       {!hideArrows && canScrollLeft && (
         <button
-          onClick={(e) => { e.preventDefault(); scrollBy('left'); }}
-          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center p-2 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full shadow-lg border border-white/20 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+          onPointerDown={(e) => handleArrowPointerDown('left', e)}
+          onPointerUp={handleArrowPointerUpOrLeave}
+          onPointerLeave={handleArrowPointerUpOrLeave}
+          onPointerCancel={handleArrowPointerUpOrLeave}
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center p-2 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full shadow-lg border border-white/20 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 select-none"
           aria-label="Scroll left"
         >
           <ChevronLeft size={20} />
@@ -111,8 +174,11 @@ export default function ScrollableHorizontalWithArrows({ children, className = '
       {/* Right Arrow */}
       {!hideArrows && canScrollRight && (
         <button
-          onClick={(e) => { e.preventDefault(); scrollBy('right'); }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center p-2 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full shadow-lg border border-white/20 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+          onPointerDown={(e) => handleArrowPointerDown('right', e)}
+          onPointerUp={handleArrowPointerUpOrLeave}
+          onPointerLeave={handleArrowPointerUpOrLeave}
+          onPointerCancel={handleArrowPointerUpOrLeave}
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center p-2 bg-gray-800/80 hover:bg-gray-700 text-white rounded-full shadow-lg border border-white/20 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 select-none"
           aria-label="Scroll right"
         >
           <ChevronRight size={20} />

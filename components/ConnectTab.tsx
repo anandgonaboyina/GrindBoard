@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 export default function ConnectTab() {
   const { history, tasks, timetableGrid, connectInitialTab, setConnectInitialTab } = useDashboardStore();
-  const [activeTab, setActiveTab] = useState<'profile' | 'friends' | 'broadcasts' | 'leaderboard'>(connectInitialTab || 'profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'friends' | 'leaderboard'>(connectInitialTab || 'profile');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('');
 
@@ -41,10 +41,7 @@ export default function ConnectTab() {
 
   // Info Modal state for Leaderboard
   const [showInfoModal, setShowInfoModal] = useState(false);
-
-  // Broadcasts state
-  const [broadcasts, setBroadcasts] = useState<{ id: string, title: string, content: string, type: string, createdAt: string }[]>([]);
-  const [roadmapItems, setRoadmapItems] = useState<any[]>([]);
+  const [selectedImageOverlay, setSelectedImageOverlay] = useState<{ url: string; title: string } | null>(null);
 
   // Leaderboard & Alias state
   const [alias, setAlias] = useState('');
@@ -58,7 +55,7 @@ export default function ConnectTab() {
   const [profilePictureLoading, setProfilePictureLoading] = useState(false);
   const [profilePictureSuccess, setProfilePictureSuccess] = useState('');
   const [isAdminUser, setIsAdminUser] = useState(false);
-  
+
   const [aliasSuccess, setAliasSuccess] = useState('');
 
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
@@ -87,7 +84,6 @@ export default function ConnectTab() {
       setUsername(storedUsername);
       fetchFriendsData();
     }
-    fetchBroadcasts();
 
     // Listen for custom event from StatsModal
     const handleOpenLeaderboard = () => {
@@ -119,11 +115,7 @@ export default function ConnectTab() {
 
   useEffect(() => {
     if (activeTab === 'profile' && isLoggedIn) {
-      fetchRoadmap();
       fetchProfile();
-    }
-    if (activeTab === 'broadcasts') {
-      fetchRoadmap();
     }
     if (activeTab === 'leaderboard' && isLoggedIn) {
       fetchLeaderboard();
@@ -227,28 +219,7 @@ export default function ConnectTab() {
     } catch (err) { }
   };
 
-  const fetchBroadcasts = async () => {
-    try {
-      const res = await fetch('/api/broadcasts');
-      const data = await res.json();
-      if (res.ok && data.broadcasts) {
-        setBroadcasts(data.broadcasts);
-      }
-    } catch (err) { }
-  };
 
-  const fetchRoadmap = async () => {
-    try {
-      const token = localStorage.getItem('dashboard_sync_token');
-      const res = await fetch('/api/roadmap', {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setRoadmapItems(data.roadmap || []);
-      }
-    } catch (err) { }
-  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,7 +282,7 @@ export default function ConnectTab() {
       if (res.ok && data.token) {
         localStorage.setItem('dashboard_sync_token', data.token);
         localStorage.setItem('dashboard_username', data.username);
-        
+
         if (authMode === 'login') {
           // If logging in on a new device, clear the empty local state so it doesn't overwrite the cloud data!
           localStorage.removeItem('dashboard-storage');
@@ -485,6 +456,7 @@ export default function ConnectTab() {
       const data = await res.json();
       if (res.ok) {
         useDashboardStore.getState().setViewingFriend({ username: friendUsername, stats: data.stats });
+        useDashboardStore.getState().setConnectInitialTab('friends');
         sessionStorage.setItem('returnToConnect', 'true');
         useDashboardStore.getState().toggleSettings(); // Close settings to see stats modal
         if (!useDashboardStore.getState().isStatsOpen) {
@@ -656,13 +628,7 @@ export default function ConnectTab() {
             </span>
           )}
         </button>
-        <button
-          onClick={() => setActiveTab('broadcasts')}
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-all ${activeTab === 'broadcasts' ? 'bg-blue-500 text-white shadow-md' : 'text-white/50 hover:text-white/90'}`}
-        >
-          <Rss size={16} />
-          <span className="text-[9px] font-bold">News</span>
-        </button>
+
         <button
           onClick={() => setActiveTab('leaderboard')}
           className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-all ${activeTab === 'leaderboard' ? 'bg-blue-500 text-white shadow-md' : 'text-white/50 hover:text-white/90'}`}
@@ -679,7 +645,11 @@ export default function ConnectTab() {
 
           {/* Header Card */}
           <div className="flex items-center w-full gap-3 bg-gradient-to-r from-white/5 to-transparent p-2 rounded-2xl border border-white/10 shadow-sm">
-            <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl md:text-2xl font-bold shadow-inner border-2 border-white/10 shrink-0 overflow-hidden">
+            <div
+              onClick={() => { if (profilePicture) setSelectedImageOverlay({ url: profilePicture, title: username }); }}
+              className={`w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl md:text-2xl font-bold shadow-inner border-2 border-white/10 shrink-0 overflow-hidden ${profilePicture ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
+              title={profilePicture ? "Click to expand photo" : ""}
+            >
               {profilePicture ? (
                 <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" />
               ) : (
@@ -772,7 +742,7 @@ export default function ConnectTab() {
               </label>
               {aliasSuccess && <span className="text-green-400 text-[10px] font-bold animate-pulse">{aliasSuccess}</span>}
             </div>
-            
+
             <div className="flex flex-col gap-1.5 w-full">
               <div className="flex gap-1.5 w-full mt-0.5">
                 <input
@@ -1112,74 +1082,7 @@ export default function ConnectTab() {
         </div>
       )}
 
-      {/* Broadcasts Tab */}
-      {activeTab === 'broadcasts' && (
-        <div className="flex flex-col gap-5 w-full animate-in fade-in slide-in-from-bottom-2">
-          {/* Global Announcements */}
-          <div>
-            <h4 className="text-sm font-semibold mb-3 border-b border-white/10 pb-2 flex items-center gap-1.5 text-white/90">
-              <Rss className="text-orange-400 w-4 h-4" /> Announcements
-            </h4>
-            {broadcasts.length === 0 ? (
-              <p className="text-white/40 italic text-center py-6 text-xs bg-white/5 rounded-xl border border-white/5">No news at the moment.</p>
-            ) : (
-              <div className="flex flex-col gap-3 w-full">
-                {broadcasts.map(b => (
-                  <div key={b.id} className="bg-white/5 border border-white/10 p-3.5 rounded-xl relative overflow-hidden w-full shadow-md">
-                    {b.type === 'WARNING' && <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>}
-                    {b.type === 'UPDATE' && <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>}
-                    {b.type === 'INFO' && <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>}
-                    <div className="flex justify-between items-start mb-2 pl-2 gap-2">
-                      <h5 className="font-bold text-sm text-white/90 truncate leading-tight">{b.title}</h5>
-                      <span className="text-[10px] text-white/50 bg-black/40 px-2 py-0.5 rounded border border-white/5 shrink-0">{new Date(b.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-white/70 pl-2 leading-relaxed text-xs whitespace-pre-wrap break-words">{b.content}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
-          {/* Feature Pipeline */}
-          <div className="mt-2">
-            <h4 className="text-sm font-semibold text-white/90 mb-3 border-b border-white/10 pb-2 flex items-center gap-1.5">
-              <Map className="text-purple-400 w-4 h-4" />
-              Pipeline
-              <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-purple-500/30 ml-auto">{roadmapItems.length} PLAN</span>
-            </h4>
-            {roadmapItems.length === 0 ? (
-              <p className="text-white/40 text-xs italic text-center py-4 bg-white/5 rounded-xl border border-white/5">No features in pipeline.</p>
-            ) : (
-              <div className="flex flex-col gap-2 w-full">
-                {roadmapItems.map((item, i) => {
-                  const statusColors: Record<string, string> = {
-                    planned: 'bg-white/5 border-white/10 text-white/50',
-                    in_progress: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
-                    done: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  };
-                  const statusLabels: Record<string, string> = {
-                    planned: 'Plan', in_progress: '🔨 WIP', done: '✅ Done'
-                  };
-                  return (
-                    <div key={item.id} className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-start gap-3 w-full">
-                      <div className="w-6 h-6 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-400 font-black text-xs shrink-0 border border-purple-500/30">{i + 1}</div>
-                      <div className="flex-1 flex flex-col gap-1 w-full min-w-0">
-                        <div className="flex items-start justify-between gap-2 min-w-0">
-                          <p className="text-white/90 text-xs font-bold truncate">{item.title}</p>
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${statusColors[item.status] || statusColors.planned}`}>
-                            {statusLabels[item.status] || item.status}
-                          </span>
-                        </div>
-                        {item.description && <p className="text-white/50 text-[10px] leading-relaxed break-words">{item.description}</p>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Leaderboard Tab */}
       {activeTab === 'leaderboard' && (
@@ -1214,14 +1117,14 @@ export default function ConnectTab() {
                     { filter: 'month', period: 'previous', label: 'Last Month' },
                   ];
                   const activeIndex = viewOptions.findIndex(o => o.filter === leaderboardFilter && o.period === leaderboardPeriod);
-                  
+
                   return (
                     <>
-                      <div 
+                      <div
                         className="absolute top-0.5 bottom-0.5 md:top-1 md:bottom-1 rounded-full bg-blue-500/20 border border-blue-500/30 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] -z-10 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
-                        style={{ 
-                          width: `calc((100% - 4px) / 6)`, 
-                          left: `calc(2px + ((100% - 4px) / 6) * ${activeIndex})` 
+                        style={{
+                          width: `calc((100% - 4px) / 6)`,
+                          left: `calc(2px + ((100% - 4px) / 6) * ${activeIndex})`
                         }}
                       />
                       {viewOptions.map((opt, i) => {
@@ -1244,7 +1147,7 @@ export default function ConnectTab() {
                 })()}
               </div>
             </div>
-            
+
             <div className="relative w-full shrink-0 min-w-0">
               <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-white/30 w-3 h-3 md:w-3.5 md:h-3.5" />
               <input
@@ -1273,7 +1176,7 @@ export default function ConnectTab() {
                     return [...users].sort((a, b) => {
                       const valDiff = getVal(b) - getVal(a);
                       if (valDiff !== 0) return valDiff;
-                      
+
                       // Tie breaker: wakeupTime ascending (earlier wakeup is better)
                       // If a user doesn't have a wakeupTime, treat it as Infinity (worst)
                       const wakeA = a.wakeupTime ? new Date(a.wakeupTime).getTime() : Infinity;
@@ -1294,49 +1197,86 @@ export default function ConnectTab() {
                     const rankColor = isTop3 ? rankColors[index] : 'bg-white/5 text-white/50 border-white/10';
 
                     return (
-                      <div key={user.id} className={`flex flex-col gap-0.5 p-1 rounded border transition-all w-full min-w-0 ${user.isMe ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)] z-10' : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/10'}`}>
-                        <div className={`flex items-center justify-between w-full min-w-0 gap-1 ${leaderboardFilter === 'today' && leaderboardPeriod === 'current' ? 'cursor-pointer group/row' : ''}`}
+                      <div key={user.id} className={`flex flex-col gap-0.5 p-0.5 sm:p-1 rounded-xl border transition-all w-full min-w-0 ${user.isMe ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)] z-10' : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/10'}`}>
+                        <div className={`flex items-center justify-between w-full min-w-0 gap-1 sm:gap-1.5 ${leaderboardFilter === 'today' && leaderboardPeriod === 'current' ? 'cursor-pointer group/row' : ''}`}
                           onClick={() => {
                             if (leaderboardFilter === 'today' && leaderboardPeriod === 'current') {
                               setExpandedLeaderboardUserId(expandedLeaderboardUserId === user.id ? null : user.id);
                             }
                           }}
                         >
-                          <div className="flex items-center gap-1.5 min-w-0 pr-1">
-                            <div className={`w-3.5 h-3.5 md:w-4 md:h-4 rounded-full flex items-center justify-center font-bold text-[7px] md:text-[9px] border shrink-0 ${rankColor}`}>
-                              {index + 1}
+                          <div className="flex items-center gap-1 sm:gap-1 min-w-0 flex-1">
+                            {/* Left Column: Rank number & Profile picture side by side */}
+                            <div className="flex items-center gap-1 sm:gap-1 shrink-0">
+                              <span className={`font-black text-[14px] sm:text-xs md:text-xl leading-none tracking-tighter min-w-[14px] sm:min-w-[18px] text-center ${isTop3 ? (index === 0 ? 'text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.5)]' : index === 1 ? 'text-gray-200' : 'text-amber-500') : 'text-white/60'}`}>
+                                {index + 1}
+                              </span>
+                              <div
+                                onClick={(e) => {
+                                  if (user.profilePicture) {
+                                    e.stopPropagation();
+                                    setSelectedImageOverlay({ url: user.profilePicture, title: user.displayName });
+                                  }
+                                }}
+                                className={`w-9 h-9 sm:w-8.5 sm:h-8.5 md:w-9.5 md:h-9.5 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-[10px] sm:text-xs md:text-sm shrink-0 overflow-hidden border border-white/10 ${user.profilePicture ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
+                                title={user.profilePicture ? "Click to view photo" : ""}
+                              >
+                                {user.profilePicture ? <img src={user.profilePicture} alt="" className="w-full h-full object-cover" /> : user.displayName.charAt(0).toUpperCase()}
+                              </div>
                             </div>
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-[8px] md:text-[10px] shrink-0 overflow-hidden border border-white/10">
-                              {user.profilePicture ? <img src={user.profilePicture} alt="" className="w-full h-full object-cover" /> : user.displayName.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex flex-col min-w-0 overflow-hidden justify-center gap-0.5">
 
-                              <div className="flex items-center gap-1.5 mt-0.5 w-full overflow-hidden">
-                                <span className={`font-bold text-[9px] md:text-[11px] tracking-wide truncate leading-none ${user.isMe ? 'text-blue-500 dark:text-blue-400' : 'text-white dark:text-white/90'}`}>
+                            {/* Middle Column: Display name and 4-item grid */}
+                            <div className="flex flex-col min-w-0 overflow-hidden justify-center gap-0.5 flex-1">
+                              <div className="flex items-center gap-0.5 w-full overflow-hidden">
+                                <span className={`font-bold text-[10px] sm:text-xs md:text-sm tracking-wide truncate leading-none ${user.isMe ? 'text-blue-400 font-extrabold' : 'text-white/90'}`}>
                                   {user.displayName}
                                 </span>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-0.5 mt-0.5 w-full max-w-[220px] md:max-w-[280px]">
-                                {user.streak > 0 && (
-                                  <span className="text-[8px] md:text-[9px] text-red-300 font-bold bg-red-500/20 px-1 py-0.5 rounded leading-none flex items-center justify-center gap-0.5 w-full">
-                                    <Flame className="w-2.5 h-2.5 md:w-3 md:h-3 text-red-400 shrink-0" /> <span className="truncate">{user.streak} Streak (Max: {user.maxStreak || 0})</span>
-                                  </span>
+                              <div className="grid grid-cols-[auto_auto] gap-0.5 sm:gap-1 w-fit">
+                                {(user.streak > 0 || user.maxStreak > 0) && (
+                                  <div className="flex items-center justify-start gap-0.5 sm:gap-1 bg-red-500/15 border border-red-500/25 px-1 py-0.5 rounded min-w-0 w-fit">
+                                    <Flame className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-red-400 shrink-0" />
+                                    <span className="text-[8px] sm:text-[9.5px] md:text-xs text-red-300 font-bold leading-none whitespace-nowrap">
+                                      {user.streak}d <span className="text-red-300/70 font-normal text-[7px] sm:text-[8.5px]">(Max:{user.maxStreak || 0})</span>
+                                    </span>
+                                  </div>
                                 )}
-                                {user.wakeupTime && <span className="text-[8px] md:text-[9px] text-blue-300 font-bold bg-blue-500/20 px-1 py-0.5 rounded flex items-center justify-center leading-none truncate w-full">Wake: {new Date(user.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                {user.workStartedTime && <span className="text-[8px] md:text-[9px] text-orange-300 font-bold bg-orange-500/20 px-1 py-0.5 rounded flex items-center justify-center leading-none truncate w-full">Work: {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                                {user.bedTime && <span className="text-[8px] md:text-[9px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded flex items-center justify-center leading-none truncate w-full">Active: {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                                {user.wakeupTime && (
+                                  <div className="flex items-center justify-start gap-0.5 sm:gap-1 bg-blue-500/15 border border-blue-500/25 px-1 py-0.5 rounded min-w-0 w-fit">
+                                    <span className="text-[8px] sm:text-[9.5px] md:text-xs text-blue-300/80 font-medium leading-none shrink-0">Wake:</span>
+                                    <span className="text-[8px] sm:text-[9.5px] md:text-xs text-blue-200 font-bold leading-none whitespace-nowrap">
+                                      {new Date(user.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                )}
+                                {user.workStartedTime && (
+                                  <div className="flex items-center justify-start gap-0.5 sm:gap-1 bg-orange-500/15 border border-orange-500/25 px-1 py-0.5 rounded min-w-0 w-fit">
+                                    <span className="text-[8px] sm:text-[9.5px] md:text-xs text-orange-300/80 font-medium leading-none shrink-0">Work:</span>
+                                    <span className="text-[8px] sm:text-[9.5px] md:text-xs text-orange-200 font-bold leading-none whitespace-nowrap">
+                                      {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                )}
+                                {user.bedTime && (
+                                  <div className="flex items-center justify-start gap-0.5 sm:gap-1 bg-indigo-500/15 border border-indigo-500/25 px-1 py-0.5 rounded min-w-0 w-fit">
+                                    <span className="text-[8px] sm:text-[9.5px] md:text-xs text-indigo-300/80 font-medium leading-none shrink-0">Last Active:</span>
+                                    <span className="text-[8px] sm:text-[9.5px] md:text-xs text-indigo-200 font-bold leading-none whitespace-nowrap">
+                                      {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
-                          <div className="text-right flex items-center gap-1.5 shrink-0">
+                          <div className="text-right flex items-center gap-0.5 sm:gap-1 shrink-0 pl-0">
                             <div className="flex flex-col items-end justify-center leading-none">
-                              <span className="font-mono font-bold text-[10px] md:text-sm tracking-tighter text-white dark:text-white/90">
-                                {Math.floor(val / 60)}<span className="text-[7px] md:text-[9px] ml-0.5 text-gray-500 dark:text-white/40 mr-0.5">h</span>{val % 60}<span className="text-[7px] md:text-[9px] ml-0.5 text-gray-500 dark:text-white/40">m</span>
+                              <span className="font-mono font-bold text-[10.5px] sm:text-xs md:text-sm tracking-tighter text-white dark:text-white/90">
+                                {Math.floor(val / 60)}<span className="text-[8px] md:text-[10px] ml-0.5 text-gray-500 dark:text-white/40 mr-0.5">h</span>{val % 60}<span className="text-[8px] md:text-[10px] ml-0.5 text-gray-500 dark:text-white/40">m</span>
                               </span>
                             </div>
                             {leaderboardFilter === 'today' && leaderboardPeriod === 'current' && (
-                              <div className="text-white/30 group-hover/row:text-white/70 transition-colors shrink-0 flex items-center justify-center pl-0.5">
+                              <div className="text-white/30 group-hover/row:text-white/70 transition-colors shrink-0 flex items-center justify-center pl-0">
                                 <ChevronDown className={`w-3.5 h-3.5 md:w-4 md:h-4 transition-transform duration-300 ${expandedLeaderboardUserId === user.id ? 'rotate-180' : ''}`} />
                               </div>
                             )}
@@ -1345,26 +1285,28 @@ export default function ConnectTab() {
 
                         {/* Expanded Stats */}
                         {expandedLeaderboardUserId === user.id && leaderboardFilter === 'today' && leaderboardPeriod === 'current' && (
-                          <div className="w-full mt-0.5 pt-0.5 border-t border-white/10 flex flex-col gap-0.5 animate-fade-in min-w-0">
-                            <div className="text-[7px] md:text-[8px] text-white/70 font-mono text-left bg-black/20 p-0.5 rounded select-all cursor-text flex items-center justify-between border border-white/5">
-                              <span className="uppercase tracking-widest font-semibold">ID:</span>
+                          <div className="w-full mt-1 pt-1 border-t border-white/10 flex flex-col gap-1 animate-fade-in min-w-0">
+                            <div className="text-[7.5px] md:text-[8.5px] text-white/60 font-mono text-left bg-black/30 px-2 py-0.5 rounded select-all cursor-text flex items-center justify-between border border-white/5">
+                              <span className="uppercase tracking-widest font-semibold text-white/40">User ID:</span>
                               <span>{user.id.slice(0, 5)}...{user.id.slice(-4)}</span>
                             </div>
 
-
-
-                            <div className="grid grid-cols-3 gap-1 text-center min-w-0">
-                              <div className="flex flex-col bg-black/20 p-0.5 rounded border border-white/5 min-w-0">
-                                <span className="text-[6px] md:text-[7px] text-white/70 uppercase tracking-widest truncate">Today</span>
-                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-yellow-400 truncate">{Math.floor(user.todayFocused / 60)}h {user.todayFocused % 60}m</span>
+                            <div className="grid grid-cols-4 gap-0.5 sm:gap-1 text-center min-w-0">
+                              <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-yellow-500/20 min-w-0 justify-center items-center">
+                                <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-yellow-400 font-bold uppercase tracking-wider truncate">Today</span>
+                                <span className="font-mono text-[8px] sm:text-[9.5px] md:text-[11px] font-bold text-yellow-300 truncate">{Math.floor(user.todayFocused / 60)}h {user.todayFocused % 60}m</span>
                               </div>
-                              <div className="flex flex-col bg-black/20 p-0.5 rounded border border-white/5 min-w-0">
-                                <span className="text-[6px] md:text-[7px] text-white/50 uppercase tracking-widest truncate">{leaderboardPeriod === 'current' ? 'Week' : 'L. Week'}</span>
-                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-purple-400 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisWeekFocused : user.lastWeekFocused) % 60}m</span>
+                              <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-amber-500/20 min-w-0 justify-center items-center">
+                                <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-amber-400 font-bold uppercase tracking-wider truncate">Yesterday</span>
+                                <span className="font-mono text-[8px] sm:text-[9.5px] md:text-[11px] font-bold text-amber-300 truncate">{Math.floor(user.yesterdayFocused / 60)}h {user.yesterdayFocused % 60}m</span>
                               </div>
-                              <div className="flex flex-col bg-black/20 p-0.5 rounded border border-white/5 min-w-0">
-                                <span className="text-[6px] md:text-[7px] text-white/50 uppercase tracking-widest truncate">{leaderboardPeriod === 'current' ? 'Month' : 'L. Month'}</span>
-                                <span className="font-mono text-[8px] md:text-[10px] font-bold text-emerald-400 truncate">{Math.floor((leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) / 60)}h {(leaderboardPeriod === 'current' ? user.thisMonthFocused : user.lastMonthFocused) % 60}m</span>
+                              <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-purple-500/20 min-w-0 justify-center items-center">
+                                <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-purple-400 font-bold uppercase tracking-wider truncate">This Week</span>
+                                <span className="font-mono text-[7.5px] sm:text-[8.5px] md:text-[10.5px] font-bold text-purple-300 truncate">{Math.floor(user.thisWeekFocused / 60)}h {user.thisWeekFocused % 60}m</span>
+                              </div>
+                              <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-emerald-500/20 min-w-0 justify-center items-center">
+                                <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-emerald-400 font-bold uppercase tracking-wider truncate">This Month</span>
+                                <span className="font-mono text-[7.5px] sm:text-[8.5px] md:text-[10.5px] font-bold text-emerald-300 truncate">{Math.floor(user.thisMonthFocused / 60)}h {user.thisMonthFocused % 60}m</span>
                               </div>
                             </div>
                           </div>
@@ -1430,6 +1372,38 @@ export default function ConnectTab() {
             >
               Got it
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Image Overlay Modal */}
+      {selectedImageOverlay && (
+        <div
+          className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedImageOverlay(null)}
+        >
+          <div
+            className="relative max-w-sm sm:max-w-md w-full bg-gray-900/95 border border-white/20 rounded-2xl p-4 shadow-2xl flex flex-col items-center overflow-hidden gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedImageOverlay(null)}
+              className="absolute top-3 right-3 text-white/70 hover:text-white p-1.5 bg-black/50 hover:bg-black/80 rounded-full transition-colors z-10 border border-white/10"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-full max-h-[65vh] flex items-center justify-center overflow-hidden rounded-xl bg-black/40 border border-white/10 p-1">
+              <img
+                src={selectedImageOverlay.url}
+                alt={selectedImageOverlay.title}
+                className="w-full h-auto max-h-[60vh] object-contain rounded-lg shadow-lg"
+              />
+            </div>
+
+            <div className="flex flex-col items-center text-center">
+              <h4 className="text-sm md:text-base font-bold text-white tracking-wide">{selectedImageOverlay.title}</h4>
+            </div>
           </div>
         </div>
       )}

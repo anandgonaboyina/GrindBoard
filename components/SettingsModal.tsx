@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Bug, Info } from 'lucide-react';
+import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2 } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
 import ScrollableWithArrows from './ScrollableWithArrows';
@@ -14,8 +14,19 @@ const DEFAULT_WALLPAPERS = [
   'kakashiChild.jpg', 'naruto.webp', 'RockLee.mp4', 'squa7.jpg', 'demonslayer1.mp4'
 ];
 
+const DEFAULT_ALARM_SOUNDS = [
+  { id: 'naruto', name: 'naruto BGM ( default )', url: '/ringtones/narutoBGM.mp3' },
+  { id: 'demonslayer', name: 'Demon Slayer', url: '/ringtones/Demon Slayer.mp3' },
+  { id: 'fightsong', name: 'Fight Song', url: '/ringtones/Fight Song.mp3' },
+  { id: 'heartbroken', name: 'Heart broken', url: '/ringtones/Heart broken.mp3' },
+  { id: 'moneyheist', name: 'Moneyheist', url: '/ringtones/Moneyheist.mp3' },
+  { id: 'onmyway', name: 'On My Way', url: '/ringtones/On My Way.mp3' },
+  { id: 'unstoppable', name: 'Unstoppable', url: '/ringtones/Unstoppable.mp3' },
+];
+
 import { useWallpaperUrl } from '@/hooks/useWallpaperUrl';
-import { saveWallpaperToDB, deleteWallpaperFromDB } from '@/lib/indexedDB';
+import { saveWallpaperToDB, deleteWallpaperFromDB, saveAudioToDB, deleteAudioFromDB } from '@/lib/indexedDB';
+import { getResolvedAudioUrl } from '@/hooks/useAudioUrl';
 
 const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, aspectClass = "aspect-video" }: any) => {
   const { resolvedUrl, isVideo } = useWallpaperUrl(url);
@@ -68,12 +79,78 @@ const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, aspec
 };
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, is24HourClock, toggle24HourClock, clockScale, setClockScale, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, is24HourClock, toggle24HourClock, clockScale, setClockScale, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs } = useDashboardStore();
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
 
   // Mobile specific drill-down state
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
+
+  // Custom Audio state & handlers
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
+  const [previewingAudioUrl, setPreviewingAudioUrl] = useState<string | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isDefaultDropdownOpen, setIsDefaultDropdownOpen] = useState(false);
+
+  const handleTogglePreviewAudio = async (url: string) => {
+    if (previewingAudioUrl === url) {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current.currentTime = 0;
+      }
+      setPreviewingAudioUrl(null);
+    } else {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+      }
+      const resolvedUrl = await getResolvedAudioUrl(url);
+      const audio = new Audio(resolvedUrl);
+      const vol = alarmVolume !== undefined ? alarmVolume : 1;
+      audio.volume = vol > 1 ? vol / 100 : vol;
+      audio.play().catch(e => console.error("Audio preview error:", e));
+      audio.onended = () => setPreviewingAudioUrl(null);
+      previewAudioRef.current = audio;
+      setPreviewingAudioUrl(url);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current = null;
+      }
+    };
+  }, [settingsActiveTab, isSettingsOpen]);
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if ((customAlarmSounds || []).length >= 3) {
+      alert("Maximum 3 custom ringtones allowed. Please delete an existing custom ringtone first.");
+      return;
+    }
+
+    if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|ogg|m4a|aac)$/i)) {
+      alert("Please select a valid audio file (MP3, WAV, OGG, M4A).");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size too large. Please select an audio file under 10MB.");
+      return;
+    }
+
+    const audioKey = 'custom-audio-' + Date.now();
+    await saveAudioToDB(audioKey, file);
+    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+    addCustomAlarmSound(nameWithoutExt, audioKey);
+
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -236,21 +313,6 @@ export default function SettingsModal() {
         </div>
       )
     },
-    feedback: {
-      title: 'Feedback & Bugs',
-      content: (
-        <div className="space-y-3 text-sm text-gray-700 dark:text-white/ pb-2">
-          <p className="text-[11px] leading-relaxed">Communicate directly with the developer from inside the app.</p>
-          <ul className="list-disc pl-4 space-y-1 text-[11px]">
-            <li><strong>💡 Feature request:</strong> Suggest a new tool or widget you'd like to see.</li>
-            <li><strong>🐛 Bug report:</strong> Describe something that isn't working correctly.</li>
-            <li><strong>💬 General feedback:</strong> Any other comments or messages.</li>
-          </ul>
-          <h4 className="font-bold text-gray-900 dark:text-white text-[13px] mt-2">Submission Status</h4>
-          <p className="text-[11px] leading-relaxed">Track the progress of your tickets right here. The status will update from "Reviewing" (not yet looked at), to "Reviewed" (seen by developer), to "✓ Roadmap!" when a feature is accepted and planned for a future update.</p>
-        </div>
-      )
-    },
     dragControls: {
       title: 'Widget Drag Controls',
       content: (
@@ -295,12 +357,6 @@ export default function SettingsModal() {
   const upiId = 'gonaboyinaanandkumar@ybl';
   const [donationAmount, setDonationAmount] = useState<number | null>(100);
 
-  const [feedbackType, setFeedbackType] = useState('feature');
-  const [feedbackMessage, setFeedbackMessage] = useState('');
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
-  const [mySubmissions, setMySubmissions] = useState<any[]>([]);
-
   const [newQuoteText, setNewQuoteText] = useState('');
   const [newQuoteAuthor, setNewQuoteAuthor] = useState('');
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
@@ -338,45 +394,6 @@ export default function SettingsModal() {
     setCustomQuotes(customQuotes.filter((_, i) => i !== index));
   };
 
-  const fetchMySubmissions = async () => {
-    try {
-      const token = localStorage.getItem('dashboard_token') || localStorage.getItem('dashboard_sync_token');
-      if (!token) return;
-      const res = await fetch('/api/roadmap', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) setMySubmissions(data.mySubmissions || []);
-    } catch (_) { }
-  };
-
-  const handleFeedbackSubmit = async () => {
-    if (!feedbackMessage.trim()) return alert("Please enter a message first.");
-
-    setIsSubmittingFeedback(true);
-    try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('dashboard_token')}` },
-        body: JSON.stringify({ type: feedbackType, message: feedbackMessage })
-      });
-
-      if (res.ok) {
-        setFeedbackSuccess(true);
-        setFeedbackMessage('');
-        setTimeout(() => setFeedbackSuccess(false), 3000);
-        fetchMySubmissions();
-      } else {
-        alert("Failed to submit feedback. You must be logged in.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Network error.");
-    } finally {
-      setIsSubmittingFeedback(false);
-    }
-  };
-
   const settingsScrollRef = useRef<HTMLDivElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
 
@@ -385,14 +402,6 @@ export default function SettingsModal() {
       ref.current.scrollBy({ top: direction === 'up' ? -300 : 300, behavior: 'smooth' });
     }
   };
-
-
-
-  useEffect(() => {
-    if (settingsActiveTab === 'feedback') {
-      fetchMySubmissions();
-    }
-  }, [settingsActiveTab]);
 
   useEffect(() => {
     const handleOpenLeaderboard = () => {
@@ -564,46 +573,51 @@ export default function SettingsModal() {
           }
         ` }} />
         {/* Header - scaled down padding and text */}
-        <div className="flex items-center justify-between p-3 md:p-4 border-b border-white/10 bg-black/20 shrink-0">
-          <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center justify-between p-2.5 sm:p-3 md:p-4 border-b border-white/10 bg-black/20 shrink-0 gap-1.5 md:gap-3">
+          <div className="flex items-center gap-1.5 md:gap-2.5 min-w-0 flex-1 pr-1">
             {isMobileDetailView && (
               <button
                 onClick={() => setIsMobileDetailView(false)}
-                className="md:hidden p-1.5 hover:bg-white/10 rounded-xl transition-colors text-white/80 border border-white/10 bg-white/5 mr-1"
+                className="md:hidden p-1 hover:bg-white/10 rounded-lg transition-colors text-white/80 border border-white/10 bg-white/5 shrink-0"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
             )}
-            <SettingsIcon className={`${isMobileDetailView ? 'hidden md:block' : 'block'} text-blue-400 w-5 h-5`} />
-            <h2 className="text-base md:text-lg font-bold tracking-wide leading-tight flex items-center gap-1.5 md:gap-2">
+            <SettingsIcon className={`${isMobileDetailView ? 'hidden md:block' : 'block'} text-blue-400 w-4 h-4 md:w-5 md:h-5 shrink-0`} />
+            <h2 className="text-sm sm:text-base md:text-lg font-bold tracking-wide leading-tight flex items-center gap-1 md:gap-2 min-w-0 truncate">
               {isMobileDetailView ? (
-                <span className="md:hidden capitalize">{(settingsActiveTab != "about") ? settingsActiveTab + " Settings" : "About Developer"} </span>
+                <span className="md:hidden capitalize truncate">
+                  {settingsActiveTab === "about" ? "About Dev" : settingsActiveTab === "connect" ? "Connect & Ranks" : settingsActiveTab + " Settings"}
+                </span>
               ) : null}
-              <span className={isMobileDetailView ? 'hidden md:inline' : 'inline'}>Dashboard Settings</span>
+              <span className={isMobileDetailView ? 'hidden md:inline truncate' : 'inline truncate'}>
+                <span className="md:hidden">Settings</span>
+                <span className="hidden md:inline">Dashboard Settings</span>
+              </span>
               <button
                 onClick={(e) => { e.stopPropagation(); setInfoModalKey('dragControls'); }}
                 className={`${isMobileDetailView ? 'hidden md:flex' : 'flex'} p-1 text-blue-400 hover:text-blue-300 bg-white/5 hover:bg-white/10 rounded-full transition-colors shrink-0`}
                 title="View Drag Controls"
               >
-                <Info className="w-4 h-4 md:w-4 md:h-4" />
+                <Info className="w-3.5 h-3.5 md:w-4 md:h-4" />
               </button>
             </h2>
           </div>
-          <div className="flex items-center gap-1 md:gap-2">
-            <div className="hidden md:flex items-center gap-1.5 md:gap-2 mr-1 md:mr-2 border-r border-white/10 pr-2 md:pr-3">
+          <div className="flex items-center gap-1 md:gap-2 shrink-0">
+            <div className="flex items-center gap-1 md:gap-2 mr-0.5 md:mr-2 border-r border-white/10 pr-1.5 md:pr-3 shrink-0">
               <span className="hidden sm:inline-block text-[9px] text-white/50 leading-tight text-right max-w-[100px]">
                 Apply changes
               </span>
               <button
                 onClick={() => window.location.reload()}
-                className="flex items-center gap-1 md:gap-1.5 p-1 md:px-2 md:py-1 hover:bg-blue-500/20 hover:border-blue-500/50 rounded-lg transition-all border border-white/10 bg-black/40 group"
+                className="flex flex-row items-center justify-center gap-1 md:gap-1.5 px-2 py-1 md:px-2.5 md:py-1 hover:bg-blue-500/20 hover:border-blue-500/50 rounded-lg transition-all border border-white/10 bg-black/40 group shrink-0 whitespace-nowrap"
                 title="Refresh the app to apply changes or fix wallpaper bugs"
               >
-                <RefreshCw className="w-3 h-3 md:w-3.5 md:h-3.5 text-blue-400 group-hover:rotate-180 transition-transform duration-500" />
-                <span className="text-[9px] md:text-[10px] font-medium text-white/80 pr-0.5">Refresh App</span>
+                <RefreshCw className="w-3.5 h-3.5 md:w-3.5 md:h-3.5 text-blue-400 group-hover:rotate-180 transition-transform duration-500 shrink-0" />
+                <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-semibold text-white/90 leading-none">Refresh App</span>
               </button>
             </div>
-            {isMobileDetailView && ['preferences', 'sound', 'focus', 'wallpaper', 'data', 'feedback'].includes(settingsActiveTab) && (
+            {isMobileDetailView && ['preferences', 'sound', 'focus', 'wallpaper', 'data'].includes(settingsActiveTab) && (
               <button
                 onClick={() => setInfoModalKey(settingsActiveTab === 'wallpaper' ? 'wallpapers' : settingsActiveTab === 'focus' ? 'panic' : settingsActiveTab === 'data' ? 'backup' : settingsActiveTab)}
                 className="md:hidden p-1.5 hover:bg-white/10 rounded-xl transition-colors text-blue-400 bg-white/5 border border-white/10 shadow-sm"
@@ -669,32 +683,27 @@ export default function SettingsModal() {
                 onClick={() => handleTabClick('connect')}
                 className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'connect' && !isMobileDetailView ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
               >
-                <Globe className={`w-4 h-4 ${settingsActiveTab === 'connect' ? 'text-blue-400 animate-pulse' : ''}`} /> Connect & News
-              </button>
-
-              <button
-                onClick={() => handleTabClick('feedback')}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'feedback' && !isMobileDetailView ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
-              >
-                <Bug className="w-4 h-4" /> Feedback & Bugs
+                <Globe className={`w-4 h-4 ${settingsActiveTab === 'connect' ? 'text-blue-400 animate-pulse' : ''}`} /> Connect & Ranks
               </button>
               <button
                 onClick={() => handleTabClick('about')}
-                className={`relative overflow-hidden group flex flex-row md:flex-col w-full min-h-[76px] md:min-h-[90px] items-center justify-center gap-3 md:gap-1.5 px-3 py-2 md:py-3 rounded-xl transition-all ${settingsActiveTab === 'about' && !isMobileDetailView ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-white border border-blue-500/30 shadow-lg' : 'bg-black/40 md:bg-black/20 text-white/60 hover:bg-white/10 hover:text-white hover:border-white/20 border border-white/5 md:hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] backdrop-blur-md'}`}
+                className={`relative overflow-hidden group flex flex-row w-full min-h-[76px] md:min-h-[84px] items-center justify-between gap-3 px-3 py-2 md:py-3 rounded-xl transition-all ${settingsActiveTab === 'about' && !isMobileDetailView ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-white border border-blue-500/30 shadow-lg' : 'bg-black/40 md:bg-black/20 text-white/60 hover:bg-white/10 hover:text-white hover:border-white/20 border border-white/5 md:hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] backdrop-blur-md'}`}
               >
-                <div className="absolute top-0 bottom-0 w-[150%] bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none glass-sweep-anim" style={{ left: '-100%' }} />
+                <div className="absolute top-0 bottom-0 w-[200%] bg-gradient-to-r from-transparent via-white/25 via-blue-300/20 to-transparent pointer-events-none glass-sweep-anim" style={{ left: '-100%' }} />
                 <img
                   src="/branding/author.jpeg"
                   alt="Developer"
-                  className="w-16 h-16 md:w-10 md:h-10 rounded-full object-cover shadow-lg border-2 border-white/20 relative z-10 shrink-0"
+                  className="w-16 h-16 md:w-14 md:h-14 rounded-full object-cover shadow-lg border-2 border-white/30 relative z-10 shrink-0"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                     e.currentTarget.parentElement?.insertAdjacentHTML('afterbegin', '<svg class="w-8 h-8 relative z-10" ... />');
                   }}
                 />
-                <div className="flex flex-col items-start md:items-center text-left md:text-center relative z-10 min-w-0">
-                  <span className="text-[11px] md:text-[10px] font-semibold tracking-wide leading-tight text-white block">Support Developer</span>
-                  <span className="text-[9px] md:text-[9px] text-blue-300 font-medium uppercase mt-0.5 tracking-wider block truncate w-full">Anand kumar</span>
+                <div className="flex flex-col items-start md:items-start text-left relative z-10 min-w-0 flex-1 pl-1">
+                  <span className="text-[11px] md:text-[11px] font-bold tracking-wide leading-tight text-white block">Support Developer</span>
+                  <span className="text-[9.5px] md:text-[9px] text-blue-300 font-semibold uppercase mt-0.5 tracking-wider block truncate w-full">
+                    <pre>Anand kumar</pre>
+                  </span>
                 </div>
               </button>
 
@@ -706,16 +715,16 @@ export default function SettingsModal() {
               </button>
 
               <div className="md:hidden mt-auto pt-2 border-t border-white/10 flex items-center justify-between px-2 w-full">
-                <span className="text-[9px] text-white/50 font-medium tracking-wide">Apply changes:</span>
+                <span className="text-[9.5px] text-white/50 font-medium tracking-wide">Apply changes:</span>
                 <button
                   onClick={() => window.location.reload()}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-blue-500/20 text-white/70 hover:text-white rounded-lg transition-all border border-white/10 group"
+                  className="flex flex-row items-center justify-center gap-1.5 px-2.5 py-1 hover:bg-blue-500/20 text-white/80 hover:text-white rounded-lg transition-all border border-white/10 group shrink-0 whitespace-nowrap"
                 >
-                  <RefreshCw className="w-3 h-3 text-blue-400 group-hover:rotate-180 transition-transform duration-500" />
-                  <span className="text-[9px] font-medium">Refresh App</span>
+                  <RefreshCw className="w-3.5 h-3.5 text-blue-400 group-hover:rotate-180 transition-transform duration-500 shrink-0" />
+                  <span className="text-[9px] sm:text-[9.5px] font-semibold text-white/90 leading-none">Refresh App</span>
                 </button>
               </div>
-              </ScrollableWithArrows>
+            </ScrollableWithArrows>
           </div>
 
           {/* Content Area */}
@@ -967,6 +976,208 @@ export default function SettingsModal() {
 
                   <div className="bg-white/5 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 flex flex-col gap-4 md:gap-6">
 
+                    {/* Choose Default Alarm Sound (Dropdown Style) */}
+                    <div className="flex flex-col gap-2">
+                      <div>
+                        <label className="text-xs md:text-sm font-semibold text-white/90 flex items-center gap-1.5">
+                          <Music className="w-3.5 h-3.5 text-blue-400" />
+                          <span>Choose Default Alarm Sound</span>
+                        </label>
+                        <p className="text-[9px] md:text-[10px] text-white/50 mt-0.5">Select a ringtone from our built-in default library.</p>
+                      </div>
+
+                      {/* Dropdown Header & Trigger */}
+                      {(() => {
+                        const activeDefault = DEFAULT_ALARM_SOUNDS.find(s => s.url === alarmSound || (s.url === '/ringtones/narutoBGM.mp3' && alarmSound === '/ringtones/alarm.mp3'));
+                        const isCustomActive = !activeDefault && (customAlarmSounds || []).some(s => s.url === alarmSound);
+                        const isPreviewingActive = activeDefault && previewingAudioUrl === activeDefault.url;
+
+                        return (
+                          <div className="flex flex-col gap-1.5">
+                            <div
+                              onClick={() => setIsDefaultDropdownOpen(!isDefaultDropdownOpen)}
+                              className={`flex items-center justify-between p-2.5 md:p-3 rounded-lg border transition-all cursor-pointer select-none ${
+                                isDefaultDropdownOpen
+                                  ? 'bg-blue-500/20 border-blue-500/60 shadow-lg shadow-blue-500/10'
+                                  : 'bg-black/30 border-white/15 hover:border-white/30 hover:bg-black/40'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${activeDefault ? 'border-blue-400 bg-blue-500/20' : 'border-white/30'}`}>
+                                  {activeDefault && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                                </div>
+                                <span className="text-xs md:text-sm font-medium text-white truncate">
+                                  {activeDefault ? activeDefault.name : isCustomActive ? 'Custom Ringtone Active' : 'Select Default Alarm...'}
+                                </span>
+                                {activeDefault && (
+                                  <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-semibold shrink-0">Default Active</span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                {activeDefault && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleTogglePreviewAudio(activeDefault.url);
+                                    }}
+                                    className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors text-[9px]"
+                                    title="Preview sound"
+                                  >
+                                    {isPreviewingActive ? <Pause className="w-3.5 h-3.5 text-yellow-300 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
+                                  </button>
+                                )}
+                                <ChevronDown className={`w-4 h-4 text-white/60 transition-transform duration-200 ${isDefaultDropdownOpen ? 'rotate-180 text-blue-400' : ''}`} />
+                              </div>
+                            </div>
+
+                            {/* Dropdown Options List */}
+                            {isDefaultDropdownOpen && (
+                              <div className="mt-1 bg-[#161619] border border-white/15 rounded-xl p-1.5 shadow-2xl space-y-1 animate-in fade-in-50 zoom-in-95 duration-150 max-h-60 overflow-y-auto arrow-scrollbar">
+                                {DEFAULT_ALARM_SOUNDS.map((sound) => {
+                                  const isActive = alarmSound === sound.url || (sound.url === '/ringtones/narutoBGM.mp3' && alarmSound === '/ringtones/alarm.mp3');
+                                  const isPreviewing = previewingAudioUrl === sound.url;
+
+                                  return (
+                                    <div
+                                      key={sound.id}
+                                      onClick={() => {
+                                        setAlarmSound(sound.url);
+                                        setIsDefaultDropdownOpen(false);
+                                      }}
+                                      className={`flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all cursor-pointer ${
+                                        isActive
+                                          ? 'bg-blue-600/25 border-blue-500/60 text-white'
+                                          : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10 text-white/80 hover:text-white'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0 pr-2 flex-1">
+                                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-blue-400' : 'border-white/30'}`}>
+                                          {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                                        </div>
+                                        <span className="text-[11px] md:text-xs font-medium truncate" title={sound.name}>{sound.name}</span>
+                                        {isActive && (
+                                          <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-semibold shrink-0">Selected</span>
+                                        )}
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleTogglePreviewAudio(sound.url);
+                                        }}
+                                        className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-[9px]"
+                                        title="Preview sound"
+                                      >
+                                        {isPreviewing ? <Pause className="w-3 h-3 text-yellow-300 animate-pulse" /> : <Play className="w-3 h-3" />}
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Custom Ringtones (Separately below) */}
+                    <div className="flex flex-col gap-2 pt-3 border-t border-white/10">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <label className="text-xs md:text-sm font-semibold text-white/80">Custom Ringtones</label>
+                          <p className="text-[9px] md:text-[10px] text-white/50">Upload max 3 custom ringtones saved in your local settings.</p>
+                        </div>
+
+                        <input
+                          type="file"
+                          ref={audioFileInputRef}
+                          onChange={handleAudioUpload}
+                          accept="audio/*"
+                          className="hidden"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => audioFileInputRef.current?.click()}
+                          disabled={(customAlarmSounds || []).length >= 3}
+                          className={`flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-md text-[9px] md:text-[10px] font-medium transition-all border shrink-0 ${(customAlarmSounds || []).length >= 3
+                            ? 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
+                            : 'bg-purple-600/30 hover:bg-purple-600/50 border-purple-500/40 text-purple-200 hover:text-white'
+                            }`}
+                        >
+                          <Upload className="w-3 h-3 shrink-0" />
+                          <span>Upload ({(customAlarmSounds || []).length}/3)</span>
+                        </button>
+                      </div>
+
+                      <div className="grid gap-1.5 md:gap-2">
+                        {(customAlarmSounds || []).length === 0 ? (
+                          <div className="p-3 text-center border border-dashed border-white/10 rounded-md text-white/40 text-[10px] md:text-[11px]">
+                            No custom ringtones uploaded yet.
+                          </div>
+                        ) : (
+                          (customAlarmSounds || []).map((sound) => {
+                            const isActive = alarmSound === sound.url;
+                            const isPreviewing = previewingAudioUrl === sound.url;
+                            return (
+                              <div
+                                key={sound.id}
+                                className={`flex items-center justify-between p-2 md:p-2.5 rounded-md border transition-all ${isActive
+                                  ? 'bg-purple-500/20 border-purple-500/50'
+                                  : 'bg-black/20 border-white/10 hover:border-white/30'
+                                  }`}
+                              >
+                                <div
+                                  className="flex items-center gap-2 md:gap-2.5 cursor-pointer flex-1 min-w-0 pr-2"
+                                  onClick={() => setAlarmSound(sound.url)}
+                                >
+                                  <div className={`w-3 h-3 md:w-3.5 md:h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-purple-400' : 'border-white/30'}`}>
+                                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
+                                  </div>
+                                  <span className="text-[10px] md:text-[11px] font-medium truncate" title={sound.name}>{sound.name}</span>
+                                  <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold shrink-0">Custom</span>
+                                  {isActive && (
+                                    <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-300 font-semibold shrink-0">Active</span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTogglePreviewAudio(sound.url)}
+                                    className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors flex items-center gap-1 text-[9px]"
+                                    title="Preview sound"
+                                  >
+                                    {isPreviewing ? <Pause className="w-3 h-3 text-yellow-300 animate-pulse" /> : <Play className="w-3 h-3" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isPreviewing && previewAudioRef.current) {
+                                        previewAudioRef.current.pause();
+                                        setPreviewingAudioUrl(null);
+                                      }
+                                      if (sound.url.startsWith('custom-audio-')) {
+                                        deleteAudioFromDB(sound.url);
+                                      }
+                                      deleteCustomAlarmSound(sound.id);
+                                    }}
+                                    className="p-1 md:p-1.5 rounded bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white transition-colors"
+                                    title="Delete custom ringtone"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
                     <div className="flex flex-col gap-2 md:gap-3">
                       <div className="flex justify-between items-center">
                         <label className="text-xs md:text-sm font-semibold text-white/80">Auto Stop Timer</label>
@@ -1035,7 +1246,7 @@ export default function SettingsModal() {
                         <span>30m</span>
                         <span>60m</span>
                       </div>
-                      
+
                       <div className="flex justify-between items-center mt-3">
                         <label className="text-xs md:text-sm font-semibold text-white/80">Interval Beep Duration</label>
                         <span className="text-[9px] md:text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/60">{taskIntervalRingSecs} Secs</span>
@@ -1046,7 +1257,7 @@ export default function SettingsModal() {
                         min="1"
                         max="30"
                         step="1"
-                        value={taskIntervalRingSecs || 5}
+                        value={taskIntervalRingSecs || 10}
                         onChange={(e) => setTaskIntervalRingSecs(parseInt(e.target.value))}
                         className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 mt-1"
                       />
@@ -1054,26 +1265,6 @@ export default function SettingsModal() {
                         <span>1s</span>
                         <span>15s</span>
                         <span>30s</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2 md:gap-3">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs md:text-sm font-semibold text-white/80">Select Alarm Sound</label>
-                      </div>
-
-                      <div className="grid gap-1.5 md:gap-2">
-                        <div
-                          className={`flex items-center justify-between p-2 md:p-2.5 rounded-md border transition-all cursor-pointer ${alarmSound === '/ringtones/alarm.mp3' ? 'bg-blue-500/20 border-blue-500/50' : 'bg-black/20 border-white/10 hover:border-white/30'}`}
-                          onClick={() => setAlarmSound('/ringtones/alarm.mp3')}
-                        >
-                          <div className="flex items-center gap-2 md:gap-2.5">
-                            <div className={`w-3 h-3 md:w-3.5 md:h-3.5 rounded-full border flex items-center justify-center ${alarmSound === '/ringtones/alarm.mp3' ? 'border-blue-400' : 'border-white/30'}`}>
-                              {alarmSound === '/ringtones/alarm.mp3' && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
-                            </div>
-                            <span className="text-[10px] md:text-[11px] font-medium">Default Alarm</span>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1175,103 +1366,6 @@ export default function SettingsModal() {
                       <button onClick={handleBulkAddQuotes} className="mt-3 bg-pink-500/80 hover:bg-pink-500 text-white py-2 rounded-lg text-xs font-bold transition-colors">Import JSON</button>
                     </div>
                   )}
-                </div>
-              )}
-
-              {settingsActiveTab === 'feedback' && (
-                <div className="flex flex-col gap-3 md:gap-4 min-h-[60vh]">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm md:text-base font-semibold">Feedback & Bugs</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Help us improve the dashboard.</p>
-                    </div>
-                    <button onClick={() => setInfoModalKey('feedback')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors mr-1">
-                      <Info className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 flex flex-col gap-2.5 md:gap-3">
-                    <div className="flex flex-col gap-1.5 md:gap-2">
-                      <label className="text-[10px] md:text-xs font-semibold text-white/80">Type</label>
-                      <div className="flex flex-wrap gap-1.5 md:gap-2">
-                        <button
-                          onClick={() => setFeedbackType('feature')}
-                          className={`flex-1 py-1 md:py-1.5 px-1 md:px-2 rounded text-[9px] md:text-[10px] transition-colors border ${feedbackType === 'feature' ? 'bg-orange-500/20 border-orange-500/50 text-orange-100' : 'bg-black/40 border-white/10 text-white/60 hover:bg-white/5'}`}
-                        >
-                          💡 Feature
-                        </button>
-                        <button
-                          onClick={() => setFeedbackType('bug')}
-                          className={`flex-1 py-1 md:py-1.5 px-1 md:px-2 rounded text-[9px] md:text-[10px] transition-colors border ${feedbackType === 'bug' ? 'bg-orange-500/20 border-orange-500/50 text-orange-100' : 'bg-black/40 border-white/10 text-white/60 hover:bg-white/5'}`}
-                        >
-                          🐛 Bug
-                        </button>
-                        <button
-                          onClick={() => setFeedbackType('other')}
-                          className={`flex-1 py-1 md:py-1.5 px-1 md:px-2 rounded text-[9px] md:text-[10px] transition-colors border ${feedbackType === 'other' ? 'bg-orange-500/20 border-orange-500/50 text-orange-100' : 'bg-black/40 border-white/10 text-white/60 hover:bg-white/5'}`}
-                        >
-                          💬 General
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5 md:gap-2">
-                      <label className="text-[10px] md:text-xs font-semibold text-white/80">Message</label>
-                      <textarea
-                        rows={4}
-                        className="w-full bg-black/40 border border-white/10 rounded-md px-2 py-1.5 md:px-3 md:py-2 text-[10px] md:text-[11px] outline-none focus:border-orange-500/50 transition-all placeholder:text-white/40 resize-none min-h-[80px] md:min-h-[100px]"
-                        value={feedbackMessage}
-                        onChange={(e) => setFeedbackMessage(e.target.value)}
-                        placeholder="Describe your idea or issue..."
-                      />
-                    </div>
-
-                    <button
-                      onClick={handleFeedbackSubmit}
-                      disabled={isSubmittingFeedback || feedbackSuccess}
-                      className={`self-end px-3 py-1 md:px-4 md:py-1.5 font-bold rounded flex items-center gap-1 md:gap-1.5 text-[10px] md:text-[11px] transition-colors shadow-lg ${feedbackSuccess ? 'bg-green-500 text-white' : 'bg-orange-500/80 hover:bg-orange-500 text-white'}`}
-                    >
-                      {isSubmittingFeedback ? <RefreshCw className="animate-spin w-3 h-3 md:w-3.5 md:h-3.5" /> : feedbackSuccess ? <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <Send className="w-3 h-3 md:w-3.5 md:h-3.5" />}
-                      {feedbackSuccess ? 'Sent!' : 'Submit'}
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5 md:gap-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] md:text-xs font-semibold text-white/80">Submission Status</label>
-                      <button onClick={fetchMySubmissions} className="text-[9px] md:text-[10px] text-white/40 hover:text-white/70">Refresh</button>
-                    </div>
-                    {mySubmissions.length === 0 ? (
-                      <p className="text-white/30 text-[9px] md:text-[10px] italic text-center py-2 bg-black/20 rounded-md">No submissions yet.</p>
-                    ) : (
-                      <div className="flex flex-col gap-1.5 md:gap-2">
-                        {mySubmissions.map((item: any) => {
-                          const statusConfig: Record<string, { label: string; color: string; dot: string }> = {
-                            pending: { label: 'Reviewing', color: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10', dot: 'bg-yellow-400' },
-                            reviewed: { label: 'Reviewed', color: 'text-blue-400 border-blue-500/30 bg-blue-500/10', dot: 'bg-blue-400' },
-                            added_to_roadmap: { label: '✓ Roadmap!', color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10', dot: 'bg-emerald-400' },
-                          };
-                          const s = statusConfig[item.status] || { label: item.status, color: 'text-white/40 border-white/10 bg-white/5', dot: 'bg-white/20' };
-                          return (
-                            <div key={item.id} className="bg-black/30 border border-white/10 p-2 md:p-2.5 rounded-md flex items-start justify-between gap-2">
-                              <div className="flex flex-col gap-0.5 min-w-0">
-                                <p className="text-white/70 text-[9px] md:text-[10px] leading-relaxed truncate">{item.message}</p>
-                                {item.createdAt && (
-                                  <span className="text-[8px] md:text-[9px] text-white/40">
-                                    {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
-                                  </span>
-                                )}
-                              </div>
-                              <span className={`text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 flex items-center gap-1 ${s.color}`}>
-                                <span className={`w-1 h-1 rounded-full ${s.dot}`}></span>
-                                {s.label}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
 
@@ -1798,11 +1892,11 @@ export default function SettingsModal() {
               {settingsActiveTab === 'about' && (
                 <div className="flex flex-col gap-2 md:gap-0 pb-4">
 
-                  <div className="flex flex-col gap-2 md:gap-3 bg-black/20 border border-white/10 rounded-lg md:rounded-2xl p-2 md:p-3 relative overflow-hidden">
-                    <div className="absolute -top-10 -right-10 w-32 h-32 md:w-48 md:h-48 bg-blue-500/20 blur-3xl rounded-full mix-blend-screen pointer-events-none" />
+                  <div className="flex flex-col gap-2.5 md:gap-3 bg-black/30 border border-white/10 rounded-lg md:rounded-2xl p-3 md:p-4 relative overflow-hidden">
+                    <div className="absolute -top-10 -right-10 w-48 h-48 md:w-64 md:h-64 bg-blue-500/30 blur-3xl rounded-full mix-blend-screen pointer-events-none" />
 
-                    <div className="flex flex-row items-center gap-2 md:gap-3 w-full z-10">
-                      <div className="w-18 h-18 md:w-16 md:h-16 shrink-0 relative rounded-full overflow-hidden border-2 border-white/10 shadow-xl">
+                    <div className="flex flex-row items-center justify-between gap-3 md:gap-4 w-full z-10">
+                      <div className="w-16 h-16 md:w-20 md:h-20 shrink-0 relative rounded-full overflow-hidden border-2 border-blue-400/40 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
                         <img
                           src="/branding/author.jpeg"
                           alt="Gonaboyina Anand kumar"
@@ -1811,12 +1905,12 @@ export default function SettingsModal() {
                         />
                       </div>
 
-                      <div className="flex flex-col flex-1 items-start text-left min-w-0">
-                        <div className="flex items-center gap-1 md:gap-1.5 mb-0.5 w-full">
-                          <h2 className="text-sm md:text-base font-bold tracking-tight text-white truncate">Gonaboyina Anand kumar</h2>
-                          <BadgeCheck className="text-blue-400 shrink-0 w-3.5 h-3.5 md:w-4 md:h-4" />
+                      <div className="flex flex-col flex-1 items-start text-left min-w-0 pl-1">
+                        <div className="flex items-center gap-1.5 mb-0.5 w-full">
+                          <h2 className="text-base md:text-lg font-extrabold tracking-tight text-white truncate">Gonaboyina Anand kumar</h2>
+                          <BadgeCheck className="text-blue-400 shrink-0 w-4 h-4 md:w-5 md:h-5 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                         </div>
-                        <p className="text-blue-300 font-medium tracking-wide uppercase text-[8px] md:text-[10px]">Full Stack MERN Developer</p>
+                        <p className="text-blue-300 font-semibold tracking-wide uppercase text-[9px] md:text-[11px]">Full Stack MERN Developer</p>
                       </div>
                     </div>
 
@@ -1997,6 +2091,8 @@ export default function SettingsModal() {
           </div>
         </div>
       )}
+
+
       {/* Confirmation Modal overlay (highest z-index) */}
       <ConfirmationModal
         isOpen={confirmModal.isOpen}

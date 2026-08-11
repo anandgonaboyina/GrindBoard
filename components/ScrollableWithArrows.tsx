@@ -50,12 +50,27 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
   const scrollRafRef = useRef<number | null>(null);
   const scrollStartTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  const stopArrowScroll = () => {
+    if (scrollStartTimeout.current) {
+      clearTimeout(scrollStartTimeout.current);
+      scrollStartTimeout.current = null;
+    }
+    if (scrollRafRef.current) {
+      cancelAnimationFrame(scrollRafRef.current);
+      scrollRafRef.current = null;
+    }
+  };
+
   const handleArrowPointerDown = (direction: 'up' | 'down', e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    stopArrowScroll();
     scrollBy(direction);
     
-    if (scrollStartTimeout.current) clearTimeout(scrollStartTimeout.current);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) { }
+
     scrollStartTimeout.current = setTimeout(() => {
       const scrollStep = () => {
         if (scrollRef.current) {
@@ -72,16 +87,24 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (err) { }
     }
-    if (scrollStartTimeout.current) clearTimeout(scrollStartTimeout.current);
-    if (scrollRafRef.current) {
-      cancelAnimationFrame(scrollRafRef.current);
-      scrollRafRef.current = null;
-    }
+    stopArrowScroll();
   };
 
   useEffect(() => {
-    return () => handleArrowPointerUpOrLeave();
+    const handleGlobalPointerUp = () => {
+      stopArrowScroll();
+    };
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+      stopArrowScroll();
+    };
   }, []);
 
   useEffect(() => {
@@ -102,6 +125,7 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
   const dragMode = useRef<'content' | 'scrollbar'>('content');
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    stopArrowScroll();
     const target = e.target as HTMLElement;
     const currentTarget = e.currentTarget as HTMLElement;
 
