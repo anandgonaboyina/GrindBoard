@@ -517,7 +517,7 @@ export default function Timer() {
             <div className="flex items-center justify-center w-full relative">
               {/* Quick Presets Right */}
               {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !isAlarmPlaying && (
-                <div className="absolute right-1 top-1/2 mt-[20px] ml-[5px] -translate-y-1/2 flex flex-col gap-1.5">
+                <div className="absolute right-1 top-1 mt-[20px] ml-[5px] -translate-y-1/2 flex flex-col gap-1.5">
                   {[5, 15, 25].map((preset) => (
                     <button
                       key={preset}
@@ -638,19 +638,19 @@ export default function Timer() {
           ) : (
             <>
               {/* Controls */}
-              {!isEditingTime && (
+              {!isEditingTime && (timerEndAt || timerPausedLeft) && (
                 <div className="flex justify-center gap-2">
                   <button
-                    onClick={localTimeLeft > 0 || timerPausedLeft ? togglePause : () => startTimer(25 * 60)}
+                    onClick={togglePause}
                     className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                    title={localTimeLeft > 0 || timerPausedLeft ? (timerEndAt ? "Pause" : "Resume") : "Start 25m Timer"}
+                    title={timerEndAt ? "Pause" : "Resume"}
                   >
                     {timerEndAt ? <Pause size={20} /> : <Play size={20} />}
                   </button>
                   <button
                     onClick={resetTimer}
                     className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                    title="Reset Timer"
+                    title="Stop Timer"
                   >
                     <Square size={20} className="fill-current" />
                   </button>
@@ -659,50 +659,53 @@ export default function Timer() {
 
               {/* Custom Input */}
               {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
-                <div className="flex gap-1 mt-1 relative">
-                  <p className='text-[12px] absolute -top-5 left-0'> set Alarm</p>
-                  <input
-                    type="time" placeholder='0:0'
-                    className='text-[12px] border-1 rounded-md border-red-300 md:p-1'
-                    // Do NOT use value={customMins} here because customMins is now a number, not "HH:MM"
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      const timeValue = e.target.value; // Example: "14:30"
-                      if (!timeValue) return;
+                <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-white/10">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1 group">
+                      <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Set Time</span>
+                      <input
+                        type="time"
+                        className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-2 py-1.5 text-sm outline-none transition-all placeholder:text-white/20 text-white/90 shadow-inner [color-scheme:dark]"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const timeValue = e.target.value;
+                          if (!timeValue) return;
+                          const [hours, minutes] = timeValue.split(':').map(Number);
+                          const now = new Date();
+                          const targetDate = new Date();
+                          targetDate.setHours(hours, minutes, 0, 0);
+                          if (targetDate < now) {
+                            targetDate.setDate(targetDate.getDate() + 1);
+                          }
+                          const diffInMs = targetDate.getTime() - now.getTime();
+                          const diffInMins = Math.floor(diffInMs / 1000 / 60);
+                          setCustomMins(diffInMins);
+                        }}
+                      />
+                    </div>
 
-                      // 1. Extract hours and minutes as numbers
-                      const [hours, minutes] = timeValue.split(':').map(Number);
+                    <span className="text-[9px] font-bold text-white/30 uppercase">or</span>
 
-                      // 2. Get current time and target time
-                      const now = new Date();
-                      const targetDate = new Date();
-                      targetDate.setHours(hours, minutes, 0, 0);
-                      // 3. Handle times selected for the next day (optional safety check)
-                      if (targetDate < now) {
-                        targetDate.setDate(targetDate.getDate() + 1);
-                      }
-                      // 4. Convert milliseconds difference to total minutes
-                      const diffInMs = targetDate.getTime() - now.getTime();
-                      const diffInMins = Math.floor(diffInMs / 1000 / 60);
-                      // 5. Save the number to state
-                      setCustomMins(diffInMins);
-                    }}
-                  />
-                  or
-                  <input
-                    type="number"
-                    placeholder="Custom(min)"
-                    value={customMins}
-                    onChange={(e) => setCustomMins(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                    className="flex-1 text-[12px] min-w-0 bg-white/5 border border-white/10 rounded-lg px-1 py-1 text-sm outline-none focus:bg-white/10 transition-colors placeholder:text-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    min="1"
-                  />
-                  <button
-                    onClick={handleCustomStart}
-                    className="px-3 py-1 bg-blue-500/60 hover:bg-blue-500/80 rounded-lg text-sm font-medium transition-colors shrink-0"
-                  >
-                    Set
-                  </button>
+                    <div className="relative flex-1 group">
+                      <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Minutes</span>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={customMins}
+                        onChange={(e) => setCustomMins(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
+                        className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-2 py-1.5 text-sm text-center outline-none transition-all placeholder:text-white/20 text-white/90 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        min="1"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleCustomStart}
+                      className="px-2.5 py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
+                      title="Start custom timer"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                    </button>
+                  </div>
                 </div>
               )}
             </>

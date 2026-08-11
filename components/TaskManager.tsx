@@ -15,6 +15,8 @@ export default function TaskManager() {
     const [editingDurationId, setEditingDurationId] = useState<string | null>(null);
     const [editingTimeSpentId, setEditingTimeSpentId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'today' | 'tomorrow'>('today');
+    const [activeGroupTab, setActiveGroupTab] = useState<number>(0);
+    const [editingGroupIndex, setEditingGroupIndex] = useState<number | null>(null);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const [confirmModal, setConfirmModal] = useState<{
@@ -46,7 +48,7 @@ export default function TaskManager() {
         };
     }, [isInfoOpen]);
 
-    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, editTaskTimeSpent, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, moveTaskTab } = useDashboardStore();
+    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, editTaskTimeSpent, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, moveTaskTab, taskGroupNames, setTaskGroupName, activeTaskId } = useDashboardStore();
 
     const draggedIndexRef = useRef<number | null>(null);
 
@@ -140,11 +142,11 @@ export default function TaskManager() {
         setConfirmModal({
             isOpen: true,
             title: 'Restart All Completed',
-            message: 'Are you sure you want to restart ALL completed tasks?',
+            message: 'Are you sure you want to restart ALL completed tasks in this group?',
             isDestructive: false,
             onConfirm: () => {
                 setTasks(currentTasks.map(t => {
-                    if (t.completed) {
+                    if (isTaskCompleted(t) && (t.groupId || 0) === activeGroupTab) {
                         const totalDuration = t.duration + (t.timeSpent || 0);
                         return { ...t, completed: false, duration: totalDuration > 0 ? totalDuration : 25, timeSpent: 0 };
                     }
@@ -161,7 +163,8 @@ export default function TaskManager() {
         addTask(
             newTaskTitle.trim(),
             parseInt(newTaskDuration) || 25,
-            activeTab
+            activeTab,
+            activeGroupTab
         );
 
         setNewTaskTitle('');
@@ -174,7 +177,12 @@ export default function TaskManager() {
         return false;
     };
 
-    const filteredTasks = currentTasks.sort((a, b) => {
+    const groupFilteredTasks = currentTasks.filter(t => (t.groupId || 0) === activeGroupTab);
+
+    const filteredTasks = groupFilteredTasks.sort((a, b) => {
+        if (a.id === activeTaskId && b.id !== activeTaskId) return -1;
+        if (b.id === activeTaskId && a.id !== activeTaskId) return 1;
+
         const aDone = isTaskCompleted(a);
         const bDone = isTaskCompleted(b);
         if (aDone === bDone) return 0;
@@ -191,7 +199,7 @@ export default function TaskManager() {
 
     return (
         <div className="w-full h-full z-10 mr-24 rounded-2xl bg-black/40 backdrop-blur-2xl border border-white/10 shadow-xl  flex flex-col overflow-hidden text-white pointer-events-auto transition-all duration-300">
-            <div className="border-b border-white/5 bg-black/20 flex flex-col pt-2 pb-1 px-3 gap-3">
+            <div className="border-b border-white/5 bg-black/20 flex flex-col pt-2 pb-1 px-3 gap-1">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <h2 className="text-xs sm:text-sm font-bold tracking-wider text-white drop-shadow-md"><pre>Plan your Day</pre></h2>
@@ -202,15 +210,20 @@ export default function TaskManager() {
                             <Info size={14} />
                         </button>
                         {totalRemainingMinutes > 0 && (
-                            <span className="text-[10px] sm:text-xs font-bold text-sky-300 flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-500/20 rounded-md border border-sky-500/30 shadow-sm" title="Total time required for uncompleted tasks">
-                                <Clock size={16} /> <pre>{formatRemainingTime(totalRemainingMinutes)}</pre>
-                            </span>
+                            <div className="relative group ml-1 mt-1.5">
+                                <span className="absolute -top-2 left-1.5 px-1 bg-black/60 backdrop-blur-md rounded-md text-[6.5px] font-bold tracking-widest text-sky-200/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-sky-300">
+                                    Total Left
+                                </span>
+                                <span className="text-[10px] sm:text-xs font-bold text-sky-300 flex items-center gap-1 px-2 py-0.5 bg-sky-500/20 rounded-md border border-sky-500/30 shadow-sm pt-1">
+                                    <Clock size={12} className="shrink-0" /> {formatRemainingTime(totalRemainingMinutes)}
+                                </span>
+                            </div>
                         )}
-                        {currentTasks.some(isTaskCompleted) && (
+                        {groupFilteredTasks.some(isTaskCompleted) && (
                             <button
                                 onClick={handleRestartAllCompleted}
                                 className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/20 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-colors active:scale-95 text-[10px] sm:text-md font-bold uppercase tracking-wider border border-orange-500/30 shadow-sm"
-                                title="Restart all completed"
+                                title="Restart all completed in this group"
                             >
                                 <RotateCcw size={12} /> <span className="hidden sm:inline">Reset</span>
                             </button>
@@ -286,6 +299,57 @@ export default function TaskManager() {
                         </div>
 
                     </div>
+                </div>
+
+                {/* Sub-tabs for grouping */}
+                <div className="flex items-start gap-1">
+                    {[0, 1, 2].map((idx) => {
+                        const tabTasks = currentTasks.filter(t => (t.groupId || 0) === idx);
+                        const tabRemaining = tabTasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + (t.duration || 0), 0);
+                        const timeDisplay = tabRemaining > 0 ? formatRemainingTime(tabRemaining).replace(' left', '') : '';
+
+                        return (
+                            <div
+                                key={idx}
+                                className={`relative flex flex-col flex-1 min-w-0 rounded-md border transition-all h-[25px] ${activeGroupTab === idx
+                                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-200'
+                                    : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/80 cursor-pointer'
+                                    }`}
+                                onClick={() => setActiveGroupTab(idx)}
+                            >
+                                {editingGroupIndex === idx ? (
+                                    <input
+                                        autoFocus
+                                        className="absolute inset-0 w-full h-full bg-transparent outline-none px-1.5 py-1 text-[8px] font-bold text-left text-white"
+                                        defaultValue={taskGroupNames?.[idx] || `Tab ${idx + 1}`}
+                                        onBlur={(e) => {
+                                            setTaskGroupName(idx, e.target.value.trim() || `Tab ${idx + 1}`);
+                                            setEditingGroupIndex(null);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                setTaskGroupName(idx, e.currentTarget.value.trim() || `Tab ${idx + 1}`);
+                                                setEditingGroupIndex(null);
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <div
+                                        onDoubleClick={() => setEditingGroupIndex(idx)}
+                                        className="w-full px-1.5 py-1 text-[8px] font-bold uppercase tracking-wider text-left truncate select-none"
+                                        title="Double click to rename tab"
+                                    >
+                                        {taskGroupNames?.[idx] || `Tab ${idx + 1}`}
+                                    </div>
+                                )}
+                                {timeDisplay && (
+                                    <div className={`absolute bottom-0 right-0 text-[7.5px] font-bold uppercase tracking-widest px-1 py-[1px] rounded-tl-md rounded-br-md border-t border-l shadow-sm ${activeGroupTab === idx ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-black/60 text-white/40 border-white/10 border-t-white/5 border-l-white/5'}`}>
+                                        {timeDisplay}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -500,13 +564,17 @@ export default function TaskManager() {
                                                 <Trash2 className="w-3 h-3 " />
                                             </button>
                                         </div>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); moveTaskTab(task.id, activeTab); }}
-                                            className="p-1 mt-auto bg-purple-500/10 text-purple-300 hover:bg-purple-500 hover:text-white rounded-md transition-all active:scale-95 border border-purple-500/20 hover:border-transparent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
-                                            title={activeTab === 'today' ? "Move to tomorrow" : "Move to today"}
-                                        >
-                                            {activeTab === 'today' ? <ArrowRight className="w-3 h-3" /> : <ArrowLeft className="w-3 h-3" />}
-                                        </button>
+                                        <div className="relative group/arrow mt-auto flex items-center">
+                                            <span className="absolute right-6 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-black/80 backdrop-blur-md rounded text-[6.5px] font-bold tracking-widest text-purple-200/50 uppercase pointer-events-none z-10 opacity-0 group-hover/arrow:opacity-100 transition-all whitespace-nowrap shadow-sm border border-white/5">
+                                                {activeTab === 'today' ? 'To Tomorrow' : 'To Today'}
+                                            </span>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); moveTaskTab(task.id, activeTab); }}
+                                                className="p-1 bg-purple-500/10 text-purple-300 hover:bg-purple-500 hover:text-white rounded-md transition-all active:scale-95 border border-purple-500/20 hover:border-transparent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
+                                            >
+                                                {activeTab === 'today' ? <ArrowRight className="w-3 h-3" /> : <ArrowLeft className="w-3 h-3" />}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -515,37 +583,43 @@ export default function TaskManager() {
                 )}
             </ScrollableWithArrows>
 
-            <form onSubmit={handleAddTask} className="p-1.5 border-t border-white/5 bg-black/20 flex gap-1.5 items-end">
-                <textarea
-                    placeholder={`New ${activeTab} task...`}
-                    value={newTaskTitle}
-                    onChange={(e) => {
-                        e.target.style.height = 'auto';
-                        e.target.style.height = e.target.scrollHeight + 'px';
-                        setNewTaskTitle(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleAddTask(e);
-                        }
-                    }}
-                    rows={1}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-[11px] outline-none focus:bg-white/10 focus:border-sky-500/50 transition-all placeholder:text-white/30 shadow-inner resize-none overflow-hidden min-h-[28px] max-h-[80px]"
-                />
-                <div className="flex flex-col gap-1 items-center shrink-0">
-                    <span className="text-[7.5px] font-bold tracking-widest text-white/50 uppercase leading-none">Duration (min)</span>
+            <form onSubmit={handleAddTask} className="p-2 border-t border-white/5 bg-black/20 flex gap-2 items-end mt-1 pt-3">
+                <div className="relative flex-1 group/task">
+                    <span className="absolute -top-[9px] left-1 px-1 bg-[#1a1a1a] rounded text-[6.5px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/task:text-blue-300">
+                        Task Name
+                    </span>
+                    <textarea
+                        placeholder={`New ${activeTab} task...`}
+                        value={newTaskTitle}
+                        onChange={(e) => {
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                            setNewTaskTitle(e.target.value);
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAddTask(e);
+                            }
+                        }}
+                        rows={1}
+                        className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-[11px] outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 shadow-inner resize-none overflow-hidden min-h-[28px] max-h-[80px]"
+                    />
+                </div>
+                <div className="relative -top-[5px] flex-col items-center shrink-0 group/duration">
+                    <span className="absolute -top-[9px] left-1 px-1 bg-[#1a1a1a] rounded text-[6.5px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/duration:text-blue-300 whitespace-nowrap">
+                        duration(min)
+                    </span>
                     <input
                         type="number"
                         placeholder="min"
                         value={newTaskDuration}
                         onChange={(e) => setNewTaskDuration(e.target.value)}
-                        title="Minutes"
-                        className="w-[60px] bg-white/5 border border-white/10 rounded-md px-1.5 py-1 text-[11px] font-semibold text-center outline-none focus:bg-white/10 focus:border-sky-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                        className="w-[50px] bg-white/5 border border-white/10 rounded-md px-1.5 py-1.5 text-[11px] font-semibold text-center outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
                     />
                 </div>
-                <button type="submit" className="p-1 mb-[1px] bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/5">
-                    <Plus className="w-3.5 h-3.5 " />
+                <button type="submit" className="h-[28px] w-[28px] -top-[20px] bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/5 flex items-center justify-center mb-px">
+                    <Plus className="w-4 h-4" />
                 </button>
             </form>
 

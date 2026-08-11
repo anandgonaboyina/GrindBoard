@@ -14,6 +14,7 @@ export interface Task {
   duration: number; // in minutes
   completed: boolean;
   timeSpent?: number; // total minutes spent on this task
+  groupId?: number; // 0, 1, or 2 for Tab 1, 2, 3
 }
 
 export interface Note {
@@ -85,10 +86,12 @@ interface DashboardState {
   setWallpaper: (url: string) => void;
   addMins: (dateKey: string, mins: number) => void;
   setTasks: (tasks: Task[], tab?: 'today' | 'tomorrow') => void;
-  addTask: (title: string, duration: number, tab?: 'today' | 'tomorrow') => void;
+  addTask: (title: string, duration: number, tab?: 'today' | 'tomorrow', groupId?: number) => void;
   toggleTask: (id: string, tab?: 'today' | 'tomorrow') => void;
   deleteTask: (id: string, tab?: 'today' | 'tomorrow') => void;
   moveTaskTab: (id: string, fromTab: 'today' | 'tomorrow') => void;
+  taskGroupNames: string[];
+  setTaskGroupName: (index: number, name: string) => void;
   toggleHide: () => void;
 
   isTaskManagerOpen: boolean;
@@ -666,6 +669,12 @@ export const useDashboardStore = create<DashboardState>()(
       tasks: [],
       tomorrowTasks: [],
       tasksDate: getLocalDateString(),
+      taskGroupNames: ['Tab 1', 'Tab 2', 'Tab 3'],
+      setTaskGroupName: (index, name) => set((state) => {
+        const newNames = [...(state.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3'])];
+        newNames[index] = name;
+        return { taskGroupNames: newNames };
+      }),
       isHidden: false,
       _hasHydrated: false,
       theme: 'dark',
@@ -730,6 +739,7 @@ export const useDashboardStore = create<DashboardState>()(
               ...state.dailyTimes,
               [dateKey]: {
                 ...(state.dailyTimes[dateKey] || {}),
+                workStartedTime: (state.dailyTimes[dateKey] || {}).workStartedTime || Date.now(),
                 bedTime: Date.now()
               }
             }
@@ -739,14 +749,15 @@ export const useDashboardStore = create<DashboardState>()(
 
       setTasks: (tasks, tab = 'today') => set(tab === 'today' ? { tasks } : { tomorrowTasks: tasks }),
 
-      addTask: (title, duration, tab = 'today') =>
+      addTask: (title, duration, tab = 'today', groupId = 0) =>
         set((state) => {
           const newTask = {
             id: Date.now().toString(),
             title,
             duration,
             completed: false,
-            timeSpent: 0
+            timeSpent: 0,
+            groupId
           };
           if (tab === 'today') {
             return { tasks: [...state.tasks, newTask] };
