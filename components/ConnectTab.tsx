@@ -1174,14 +1174,35 @@ export default function ConnectTab() {
 
                   const sortLeaderboardUsers = (users: any[], filter: string, period: string) => {
                     return [...users].sort((a, b) => {
-                      const valDiff = getVal(b) - getVal(a);
-                      if (valDiff !== 0) return valDiff;
+                      const valA = getVal(a) || 0;
+                      const valB = getVal(b) || 0;
+                      
+                      // 1. Primary: Sort by selected period focus time (descending)
+                      if (valA !== valB) return valB - valA;
 
-                      // Tie breaker: wakeupTime ascending (earlier wakeup is better)
-                      // If a user doesn't have a wakeupTime, treat it as Infinity (worst)
+                      // 2. Tie breaker: wakeupTime (earlier is better, missing is worst)
                       const wakeA = a.wakeupTime ? new Date(a.wakeupTime).getTime() : Infinity;
                       const wakeB = b.wakeupTime ? new Date(b.wakeupTime).getTime() : Infinity;
-                      return wakeA - wakeB;
+                      if (wakeA !== wakeB) {
+                         return wakeA < wakeB ? -1 : 1;
+                      }
+
+                      // 3. Tie breaker: streak (descending)
+                      const streakA = a.streak || 0;
+                      const streakB = b.streak || 0;
+                      if (streakA !== streakB) return streakB - streakA;
+
+                      // 4. Tie breaker: this week focused (descending)
+                      const weekA = a.thisWeekFocused || 0;
+                      const weekB = b.thisWeekFocused || 0;
+                      if (weekA !== weekB) return weekB - weekA;
+
+                      // 5. Tie breaker: this month focused (descending)
+                      const monthA = a.thisMonthFocused || 0;
+                      const monthB = b.thisMonthFocused || 0;
+                      if (monthA !== monthB) return monthB - monthA;
+
+                      return 0;
                     });
                   };
 

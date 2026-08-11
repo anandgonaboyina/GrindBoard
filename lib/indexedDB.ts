@@ -2,7 +2,7 @@ export const saveWallpaperToDB = (key: string, file: File | Blob) => {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') return resolve(false);
     
-    const request = indexedDB.open('WallpaperDB', 2);
+    const request = indexedDB.open('WallpaperDB', 4);
     request.onupgradeneeded = (e) => {
       const db = (e.target as any).result;
       if (!db.objectStoreNames.contains('wallpapers')) {
@@ -28,7 +28,7 @@ export const getWallpaperFromDB = (key: string): Promise<Blob | null> => {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') return resolve(null);
 
-    const request = indexedDB.open('WallpaperDB', 2);
+    const request = indexedDB.open('WallpaperDB', 4);
     request.onupgradeneeded = (e) => {
       const db = (e.target as any).result;
       if (!db.objectStoreNames.contains('wallpapers')) {
@@ -56,7 +56,7 @@ export const deleteWallpaperFromDB = (key: string): Promise<boolean> => {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') return resolve(false);
 
-    const request = indexedDB.open('WallpaperDB', 2);
+    const request = indexedDB.open('WallpaperDB', 4);
     request.onupgradeneeded = (e) => {
       const db = (e.target as any).result;
       if (!db.objectStoreNames.contains('wallpapers')) {
@@ -84,7 +84,7 @@ export const saveAudioToDB = (key: string, file: File | Blob) => {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') return resolve(false);
     
-    const request = indexedDB.open('WallpaperDB', 2);
+    const request = indexedDB.open('WallpaperDB', 4);
     request.onupgradeneeded = (e) => {
       const db = (e.target as any).result;
       if (!db.objectStoreNames.contains('wallpapers')) {
@@ -110,7 +110,7 @@ export const getAudioFromDB = (key: string): Promise<Blob | null> => {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') return resolve(null);
 
-    const request = indexedDB.open('WallpaperDB', 2);
+    const request = indexedDB.open('WallpaperDB', 4);
     request.onupgradeneeded = (e) => {
       const db = (e.target as any).result;
       if (!db.objectStoreNames.contains('wallpapers')) {
@@ -138,7 +138,7 @@ export const deleteAudioFromDB = (key: string): Promise<boolean> => {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') return resolve(false);
 
-    const request = indexedDB.open('WallpaperDB', 2);
+    const request = indexedDB.open('WallpaperDB', 4);
     request.onupgradeneeded = (e) => {
       const db = (e.target as any).result;
       if (!db.objectStoreNames.contains('wallpapers')) {

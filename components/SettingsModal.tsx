@@ -420,7 +420,188 @@ export default function SettingsModal() {
     };
   }, [setSettingsActiveTab]);
 
+  const processBackupDownload = (data: any, filename: string, typeName: string) => {
+    const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
 
+    if (isWebView2) {
+      fetch('/api/download-echo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: JSON.stringify(data, null, 2),
+          name: filename,
+          type: typeName
+        })
+      }).then(res => res.json()).then(result => {
+        if (result.success && result.id) {
+          window.open(window.location.origin + '/download.html?apiId=' + result.id + '&type=' + encodeURIComponent(typeName), '_blank');
+        } else {
+          alert('Failed to prepare download.');
+        }
+      }).catch(() => {
+        const encoded = encodeURIComponent(JSON.stringify(data, null, 2));
+        const url = new URL(window.location.origin + '/download.html');
+        url.searchParams.set('data', encoded);
+        url.searchParams.set('name', filename.replace('.json', ''));
+        url.searchParams.set('type', typeName);
+        window.open(url.toString(), '_blank');
+      });
+    } else {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", filename);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
+  };
+
+  const showBackupModal = (title: string, filename: string, typeName: string, itemsDesc: string, getData: () => any) => {
+    setConfirmModal({
+      isOpen: true,
+      title: title,
+      message: (
+        <div className="flex flex-col gap-3 text-sm text-white/80">
+          <p>Your backup file (<code className="text-orange-300 text-xs px-1 bg-black/30 rounded">{filename}</code>) will be saved to your PC's <strong>Downloads</strong> folder.</p>
+          <div className="p-2 bg-black/30 border border-white/10 rounded-lg text-xs leading-relaxed text-white/60">
+            <strong>Will include:</strong> {itemsDesc}
+          </div>
+          {typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively')) && (
+            <p className="text-[11px] text-blue-300 bg-blue-500/10 p-2 rounded mt-1 border border-blue-500/20">
+              ℹ️ Since you are using Lively Wallpaper, your default browser will briefly open to process the download safely.
+            </p>
+          )}
+        </div>
+      ),
+      confirmText: 'Download',
+      onConfirm: () => {
+        processBackupDownload(getData(), filename, typeName);
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const handleBackupPlanYourDay = () => {
+    showBackupModal(
+      'Backup Plan Your Day',
+      'plan_your_day_backup.json',
+      'Plan Your Day Backup',
+      'All your created tasks (both Today and Tomorrow), time remaining, completion times, interval duration, and task alert beep settings.',
+      () => {
+        const state = useDashboardStore.getState();
+        return {
+          tasks: state.tasks || [],
+          tomorrowTasks: state.tomorrowTasks || [],
+          tasksDate: state.tasksDate,
+          taskIntervalAlertMins: state.taskIntervalAlertMins || 10,
+          taskIntervalRingSecs: state.taskIntervalRingSecs || 10,
+          isTaskIntervalAlertEnabled: state.isTaskIntervalAlertEnabled || false,
+          taskGroupNames: state.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3']
+        };
+      }
+    );
+  };
+
+  const handleRestorePlanYourDay = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        useDashboardStore.setState({
+          tasks: data.tasks || [],
+          tomorrowTasks: data.tomorrowTasks || [],
+          tasksDate: data.tasksDate || new Date().toISOString().split('T')[0],
+          taskIntervalAlertMins: data.taskIntervalAlertMins || 10,
+          taskIntervalRingSecs: data.taskIntervalRingSecs || 10,
+          isTaskIntervalAlertEnabled: data.isTaskIntervalAlertEnabled || false,
+          taskGroupNames: data.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3']
+        });
+        alert('Plan Your Day restored successfully!');
+      } catch (err) {
+        alert('Failed to parse backup file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleBackupNotes = () => {
+    showBackupModal(
+      'Backup Notes',
+      'notes_backup.json',
+      'Notes Backup',
+      'All your personal notes, ideas, and saved HTML content inside the notepad.',
+      () => useDashboardStore.getState().notes || []
+    );
+  };
+
+  const handleRestoreNotes = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (Array.isArray(data)) {
+          useDashboardStore.setState({ notes: data });
+          alert('Notes restored successfully!');
+        } else {
+          alert('Invalid format.');
+        }
+      } catch (err) {
+        alert('Failed to parse backup file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleBackupSettings = () => {
+    showBackupModal(
+      'Backup Settings',
+      'settings_backup.json',
+      'Settings Backup',
+      'App theme, clocks, panic mode configs, focus mode settings, quote settings, and layout visibilities (excludes heavy data like stats and histories).',
+      () => {
+        const state = useDashboardStore.getState();
+        const EXCLUDED_KEYS = ['history', 'healthData', 'tasks', 'tomorrowTasks', 'notes', 'timetableGrid', 'timetableColors', 'stopwatchSessions', 'deadlines', 'syntheticDeadlines', 'activeTaskId'];
+        const settingsData: any = {};
+        Object.keys(state).forEach(key => {
+          if (typeof (state as any)[key] !== 'function' && !EXCLUDED_KEYS.includes(key)) {
+            settingsData[key] = (state as any)[key];
+          }
+        });
+        return settingsData;
+      }
+    );
+  };
+
+  const handleRestoreSettings = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        const EXCLUDED_KEYS = ['history', 'healthData', 'tasks', 'tomorrowTasks', 'notes', 'timetableGrid', 'timetableColors', 'stopwatchSessions', 'deadlines', 'syntheticDeadlines', 'activeTaskId'];
+        const restoreData: any = {};
+        Object.keys(data).forEach(key => {
+          if (!EXCLUDED_KEYS.includes(key)) {
+            restoreData[key] = data[key];
+          }
+        });
+        useDashboardStore.setState(restoreData);
+        alert('Settings restored successfully!');
+      } catch (err) {
+        alert('Failed to parse backup file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const handleExportData = async () => {
     try {
@@ -1787,46 +1968,72 @@ export default function SettingsModal() {
                       </div>
                     </div>
 
-                    {/* Clear Old Data */}
-                    <div className="flex flex-col p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0 mb-1">
-                        <Trash2 className="text-yellow-400 w-4 h-4 shrink-0" />
-                        <div className="min-w-0">
-                          <h4 className="font-medium text-[10px] md:text-sm">Clear Old Data</h4>
-                          <p className="text-[8px] md:text-[10px] text-white/50">Delete health logs older than selected.</p>
+                    {/* Plan Your Day Backup & Restore */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <UploadCloud className="text-pink-400 w-4 h-4 shrink-0" />
+                        <div className="min-w-0 pr-1">
+                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap">Plan Your Day Backup</h4>
+                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Backup/Restore tasks & intervals.</p>
                         </div>
                       </div>
-
-                      <div className="flex flex-wrap gap-1.5 md:gap-2 justify-start sm:pl-6 md:pl-7">
-                        {[15, 30, 60, 90, 120].map(days => (
-                          <button
-                            key={days}
-                            onClick={() => setDeleteDays(days)}
-                            className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-semibold border ${deleteDays === days
-                              ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50'
-                              : 'bg-black/40 text-white/50 border-white/5'
-                              }`}
-                          >
-                            {days}d
-                          </button>
-                        ))}
+                      <div className="flex gap-1.5 w-full sm:w-auto">
                         <button
-                          onClick={() => {
-                            setConfirmModal({
-                              isOpen: true,
-                              title: 'Clear Old Data',
-                              message: `Delete logs older than ${deleteDays} days?`,
-                              isDestructive: true,
-                              onConfirm: async () => {
-                                await clearOldData(deleteDays);
-                                alert(`Logs cleared.`);
-                              }
-                            });
-                          }}
-                          className="px-2 py-1 md:px-3 md:py-1 bg-yellow-500/20 text-yellow-300 rounded text-[9px] md:text-[10px] font-bold border border-yellow-500/30 ml-auto"
+                          onClick={handleBackupPlanYourDay}
+                          className="flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1"
                         >
-                          Delete
+                          <Download className="w-3 h-3" /> Backup
                         </button>
+                        <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-pink-500/20 text-pink-300 rounded text-[9px] md:text-[10px] font-medium border border-pink-500/30 flex items-center gap-1">
+                          <Upload className="w-3 h-3" /> Restore
+                          <input type="file" className="hidden" accept=".json" onChange={handleRestorePlanYourDay} />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Notes Backup & Restore */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <UploadCloud className="text-yellow-400 w-4 h-4 shrink-0" />
+                        <div className="min-w-0 pr-1">
+                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap">Notes Backup</h4>
+                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Backup/Restore all your notes.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 w-full sm:w-auto">
+                        <button
+                          onClick={handleBackupNotes}
+                          className="flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1"
+                        >
+                          <Download className="w-3 h-3" /> Backup
+                        </button>
+                        <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-yellow-500/20 text-yellow-300 rounded text-[9px] md:text-[10px] font-medium border border-yellow-500/30 flex items-center gap-1">
+                          <Upload className="w-3 h-3" /> Restore
+                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreNotes} />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Settings Backup & Restore */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <UploadCloud className="text-blue-400 w-4 h-4 shrink-0" />
+                        <div className="min-w-0 pr-1">
+                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap">Settings Backup</h4>
+                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Backup/Restore your preferences.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 w-full sm:w-auto">
+                        <button
+                          onClick={handleBackupSettings}
+                          className="flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1"
+                        >
+                          <Download className="w-3 h-3" /> Backup
+                        </button>
+                        <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-blue-500/20 text-blue-300 rounded text-[9px] md:text-[10px] font-medium border border-blue-500/30 flex items-center gap-1">
+                          <Upload className="w-3 h-3" /> Restore
+                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreSettings} />
+                        </label>
                       </div>
                     </div>
 

@@ -62,6 +62,21 @@ export default function Timer() {
   };
 
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
+  
+  // Suppress harmless NotSupportedError unhandled rejections caused by Lively Wallpaper/Chromium forcing play() on invalid media sources before fallback kicks in
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const errStr = String(event.reason?.name || event.reason?.message || event.reason);
+      if (errStr.includes('NotSupportedError') || errStr.includes('no supported sources') || errStr.includes('The element has no supported sources')) {
+        event.preventDefault(); // Suppresses the console error
+        event.stopImmediatePropagation(); // Prevents Next.js Dev overlay from catching it and spamming the terminal
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('unhandledrejection', handleUnhandledRejection, { capture: true });
+      return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection, { capture: true });
+    }
+  }, []);
 
   // Keep the ref mirror in sync whenever the store value changes.
   useEffect(() => {
@@ -146,6 +161,9 @@ export default function Timer() {
                   intervalAudioRef.current = audio;
                   const vol = alarmVolume !== undefined ? alarmVolume : 1;
                   audio.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
+                  audio.addEventListener('error', () => {
+                    useDashboardStore.getState().setAlarmSound('/ringtones/alarm.mp3');
+                  });
                   audio.play().catch(e => console.log('Interval beep failed:', e));
                   setIsIntervalRinging(true);
                   const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
@@ -717,6 +735,9 @@ export default function Timer() {
             src={resolvedAlarmUrl || alarmSound}
             loop
             preload="auto"
+            onError={(e) => {
+              useDashboardStore.getState().setAlarmSound('/ringtones/alarm.mp3');
+            }}
             onPlay={(e) => {
               // Prevent Lively Wallpaper / Chromium from auto-resuming media on focus
               if (!useDashboardStore.getState().isAlarmPlaying) {
