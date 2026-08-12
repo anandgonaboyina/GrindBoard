@@ -7,26 +7,11 @@ import ConfirmationModal from './ConfirmationModal';
 import { getLocalDateString } from '@/utils/date';
 
 export default function Stopwatch() {
-  const { isStopwatchOpen, addStopwatchSession, stopwatchSessions, deleteStopwatchSession, clearStopwatchSessions, stopwatchStartTime, setStopwatchStartTime, stopwatchLastSavedChunks, setStopwatchLastSavedChunks, addMins, stopwatchAddToStats, setStopwatchAddToStats } = useDashboardStore();
+  const { isStopwatchOpen, stopwatchStartTime, setStopwatchStartTime, stopwatchLastSavedChunks, setStopwatchLastSavedChunks, addMins, stopwatchAddToStats, setStopwatchAddToStats } = useDashboardStore();
   
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSecs, setElapsedSecs] = useState(0);
-  const [taskTitle, setTaskTitle] = useState('');
-  const [viewingHistory, setViewingHistory] = useState(false);
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
-
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: React.ReactNode;
-    isDestructive?: boolean;
-    onConfirm: () => void;
-    onCancel?: () => void;
-    confirmText?: string;
-    cancelText?: string;
-  }>({
-    isOpen: false, title: '', message: '', onConfirm: () => {}
-  });
 
   const updateInteraction = () => {
     if (typeof window !== 'undefined') {
@@ -150,31 +135,17 @@ export default function Stopwatch() {
 
   const handleStop = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    
-    if (elapsedSecs > 0 && !stopwatchAddToStats) {
-      setConfirmModal({
-        isOpen: true,
-        title: 'Save to Today\'s Focus?',
-        message: 'You have "Add to Today\'s Focus" unchecked. Do you want to add this session\'s time to your daily stats anyway?',
-        confirmText: 'Yes, Save Time',
-        cancelText: 'No, Discard Time',
-        onConfirm: () => finalizeStop(true),
-        onCancel: () => finalizeStop(false)
-      });
-    } else {
-      finalizeStop(stopwatchAddToStats);
-    }
+    finalizeStop(stopwatchAddToStats);
   };
 
   const finalizeStop = (saveToStats: boolean) => {
-    if (elapsedSecs > 0) {
-      let finalUnsavedMins = 0;
-      if (saveToStats) {
-        const totalMins = Math.floor(elapsedSecs / 60);
-        const alreadySavedMins = stopwatchLastSavedChunks * 5;
-        finalUnsavedMins = Math.max(0, totalMins - alreadySavedMins);
+    if (elapsedSecs > 0 && saveToStats) {
+      const totalMins = Math.floor(elapsedSecs / 60);
+      const alreadySavedMins = stopwatchLastSavedChunks * 5;
+      const finalUnsavedMins = Math.max(0, totalMins - alreadySavedMins);
+      if (finalUnsavedMins > 0) {
+        addMins(getLocalDateString(), finalUnsavedMins);
       }
-      addStopwatchSession(taskTitle.trim() || 'Untitled Session', elapsedSecs, finalUnsavedMins);
     }
     setIsRunning(false);
     setElapsedSecs(0);
@@ -184,7 +155,6 @@ export default function Stopwatch() {
       localStorage.removeItem('stopwatch_paused_secs');
       localStorage.removeItem('stopwatch_last_active');
     }
-    setTaskTitle('');
   };
 
   const toggleStatsCheckbox = (e: React.MouseEvent) => {
@@ -206,189 +176,111 @@ export default function Stopwatch() {
     <DraggableWidget id="stopwatch">
       <div 
         className={`relative pointer-events-auto select-none ${isStopwatchOpen ? '' : 'hidden'}`} 
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={updateInteraction}
       >
-        <div className="w-56 rounded-3xl glass-panel p-3 text-white flex flex-col gap-2 min-h-[120px]">
+        <div className="w-48 rounded-3xl glass-panel text-white flex flex-col min-h-[90px] overflow-hidden">
           
-          {viewingHistory ? (
-            <div className="flex flex-col h-full gap-2 relative">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                <div className="flex items-center gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); setViewingHistory(false); }} className="p-1 hover:bg-white/10 rounded-lg transition-colors text-white/60 hover:text-white">
-                    <ChevronLeft size={16} />
-                  </button>
-                  <span className="font-medium text-xs tracking-wide">History</span>
-                </div>
-                {stopwatchSessions && stopwatchSessions.length > 0 && (
-                  <button 
+          {/* Top Handle - Draggable */}
+          <div 
+            className="w-full h-5 bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center cursor-grab active:cursor-grabbing group border-b border-white/5"
+            onPointerDown={updateInteraction}
+          >
+            <div className="w-8 h-1 rounded-full bg-white/20 group-hover:bg-white/40 transition-colors" />
+          </div>
+
+          {/* Body - Non-draggable */}
+          <div 
+            className="p-3 flex flex-col gap-1 cursor-default"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              updateInteraction();
+            }}
+          >
+            {showContinuePrompt ? (
+              <div className="flex flex-col items-center gap-2 w-full py-1">
+                <p className="text-[10px] font-semibold text-blue-300">Still working?</p>
+                <div className="flex gap-2 w-full">
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setConfirmModal({
-                        isOpen: true,
-                        title: 'Clear History',
-                        message: 'Clear all stopwatch history?',
-                        isDestructive: true,
-                        onConfirm: clearStopwatchSessions
-                      });
+                      setShowContinuePrompt(false);
+                      useDashboardStore.getState().setIsAlarmPlaying(false);
+                      
+                      if (typeof window !== 'undefined') {
+                        localStorage.removeItem('stopwatch_paused_secs');
+                      }
+                      updateInteraction();
+                      setStopwatchStartTime(Date.now() - elapsedSecs * 1000);
+                      setIsRunning(true);
                     }}
-                    className="p-1.5 bg-white/10 border border-white/20 text-white/70 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/30 rounded-lg transition-all shadow-sm"
-                    title="Clear All History"
+                    className="flex-1 py-1 bg-blue-500 hover:bg-blue-600 rounded-lg text-[9px] font-bold transition-colors"
                   >
-                    <Trash2 size={12} />
+                    Continue
                   </button>
-                )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowContinuePrompt(false);
+                      useDashboardStore.getState().setIsAlarmPlaying(false);
+                    }}
+                    className="flex-1 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-[9px] font-bold transition-colors"
+                  >
+                    Stop
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto arrow-scrollbar pr-1 max-h-[160px]" onWheel={(e) => { e.stopPropagation(); e.currentTarget.scrollTop += e.deltaY; }}>
-                {(!stopwatchSessions || stopwatchSessions.length === 0) ? (
-                  <div className="text-center text-white/40 mt-4 text-[10px]">No records yet.</div>
-                ) : (
-                  <div className="flex flex-col gap-1.5">
-                    {(stopwatchSessions || []).map(session => (
-                      <div key={session.id} className="bg-black/20 border border-white/5 rounded-xl p-2 flex flex-col gap-1 group">
-                        <div className="flex justify-between items-start">
-                          <span className="font-semibold text-[10px] truncate pr-2 text-white/90">{session.title}</span>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); deleteStopwatchSession(session.id); }}
-                            className="p-1 bg-white/5 border border-white/10 text-white/50 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/30 rounded-md transition-all shrink-0"
-                            title="Delete Record"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                        <div className="flex justify-between items-center text-[9px] text-white/50">
-                          <span className="tabular-nums font-bold text-blue-300/80">{formatTime(session.durationSecs)}</span>
-                          <span>{new Date(session.timestamp).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Header / Title Input */}
-              <div className="w-full flex items-center justify-between gap-1 px-1">
-                <input 
-                  type="text" 
-                  placeholder="Task Name..." 
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-center text-[10px] font-medium outline-none focus:border-blue-400 focus:bg-white/10 transition-all placeholder:text-white/40 shadow-inner"
-                />
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setViewingHistory(true); }}
-                  className="p-1.5 bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg transition-all text-white/80 hover:text-white shrink-0 shadow-sm"
-                  title="View History"
-                >
-                  <History size={12} />
-                </button>
-              </div>
-
-              {showContinuePrompt ? (
-                <div className="flex flex-col items-center gap-3 w-full py-2">
-                  <p className="text-[11px] font-semibold text-blue-300">Are you still working?</p>
-                  <div className="flex gap-2 w-full">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowContinuePrompt(false);
-                        useDashboardStore.getState().setIsAlarmPlaying(false);
-                        
-                        // Clear paused secs and resume
-                        if (typeof window !== 'undefined') {
-                          localStorage.removeItem('stopwatch_paused_secs');
-                        }
-                        updateInteraction();
-                        setStopwatchStartTime(Date.now() - elapsedSecs * 1000);
-                        setIsRunning(true);
-                      }}
-                      className="flex-1 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-[10px] font-bold transition-colors"
-                    >
-                      Continue
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowContinuePrompt(false);
-                        useDashboardStore.getState().setIsAlarmPlaying(false);
-                      }}
-                      className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-bold transition-colors"
-                    >
-                      Stop
-                    </button>
+            ) : (
+              <>
+                {/* Time Display */}
+                <div className="text-center flex flex-col items-center justify-center">
+                  <div className={`text-4xl font-light tracking-tighter tabular-nums drop-shadow-md transition-opacity ${isRunning ? 'opacity-100' : 'opacity-90'}`}>
+                    {formatTime(elapsedSecs)}
                   </div>
                 </div>
-              ) : (
-                <>
-                  {/* Time Display */}
-                  <div className="text-center min-h-[50px] flex flex-col items-center justify-center relative">
-                    <div className="flex items-center justify-center w-full relative">
-                      <div className={`text-4xl font-light tracking-tighter tabular-nums drop-shadow-md transition-opacity ${isRunning ? 'opacity-100' : 'opacity-90'}`}>
-                        {formatTime(elapsedSecs)}
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Add to Stats Toggle */}
-                  <div 
-                    className="flex items-center justify-center gap-1.5 cursor-pointer opacity-70 hover:opacity-100 transition-opacity mb-1"
-                    onClick={toggleStatsCheckbox}
-                  >
-                    <div className={`w-3 h-3 rounded-[3px] border flex items-center justify-center transition-colors ${stopwatchAddToStats ? 'bg-blue-500 border-blue-400' : 'border-white/40'}`}>
-                      {stopwatchAddToStats && <Check size={8} className="text-white" />}
-                    </div>
-                    <span className="text-[9px] uppercase tracking-wider font-bold">Add to Today's Focus</span>
+                {/* Add to Stats Toggle */}
+                <div 
+                  className="flex items-center justify-center gap-1.5 cursor-pointer opacity-70 hover:opacity-100 transition-opacity my-0.5"
+                  onClick={toggleStatsCheckbox}
+                >
+                  <div className={`w-3 h-3 rounded-[3px] border flex items-center justify-center transition-colors ${stopwatchAddToStats ? 'bg-blue-500 border-blue-400' : 'border-white/40'}`}>
+                    {stopwatchAddToStats && <Check size={8} className="text-white" />}
                   </div>
+                  <span className="text-[8px] uppercase tracking-wider font-bold">Add to Today's Focus</span>
+                </div>
 
-                  {/* Controls */}
-                  <div className="flex justify-center items-center gap-2 mt-1">
-                    {!isRunning ? (
-                      <button 
-                        onClick={handleStart} 
-                        className="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
-                        title="Start Stopwatch"
-                      >
-                        <Play fill="currentColor" size={14} className="ml-0.5" />
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={handlePause} 
-                        className="w-8 h-8 flex items-center justify-center rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
-                        title="Pause Stopwatch"
-                      >
-                        <Pause fill="currentColor" size={14} />
-                      </button>
-                    )}
+                {/* Controls */}
+                <div className="flex justify-center items-center gap-2">
+                  {!isRunning ? (
                     <button 
-                      onClick={handleStop} 
-                      disabled={elapsedSecs === 0}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
-                      title="Stop & Save"
+                      onClick={handleStart} 
+                      className="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
+                      title="Start Stopwatch"
                     >
-                      <Square fill="currentColor" size={12} />
+                      <Play fill="currentColor" size={14} className="ml-0.5" />
                     </button>
-                  </div>
-                </>
-              )}
-            </>
-          )}
+                  ) : (
+                    <button 
+                      onClick={handlePause} 
+                      className="w-8 h-8 flex items-center justify-center rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
+                      title="Pause Stopwatch"
+                    >
+                      <Pause fill="currentColor" size={14} />
+                    </button>
+                  )}
+                  <button 
+                    onClick={handleStop} 
+                    disabled={elapsedSecs === 0}
+                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                    title="Stop & Save"
+                  >
+                    <Square fill="currentColor" size={12} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
-      
-      <ConfirmationModal
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={confirmModal.onCancel}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        isDestructive={confirmModal.isDestructive}
-        confirmText={confirmModal.confirmText}
-        cancelText={confirmModal.cancelText}
-      />
     </DraggableWidget>
   );
 }

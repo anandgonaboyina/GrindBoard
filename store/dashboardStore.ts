@@ -193,10 +193,6 @@ interface DashboardState {
   // Stopwatch State
   isStopwatchOpen: boolean;
   toggleStopwatch: () => void;
-  stopwatchSessions: { id: string; title: string; durationMins: number; durationSecs: number; date: string; timestamp: number }[];
-  addStopwatchSession: (title: string, secs: number, unsavedMinsToStats: number) => void;
-  deleteStopwatchSession: (id: string) => void;
-  clearStopwatchSessions: () => void;
   stopwatchStartTime: number | null;
   setStopwatchStartTime: (time: number | null) => void;
   stopwatchLastSavedChunks: number;
@@ -424,7 +420,7 @@ const performSave = async () => {
       const newState = JSON.parse(valueToSave).state || {};
 
       const TASK_KEYS = ['tasks', 'countdowns', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
-      const STATS_KEYS = ['history', 'stopwatchSessions'];
+      const STATS_KEYS = ['history'];
       const DAILY_ROUTINE_KEYS = ['dailyTimes'];
       const NOTES_KEYS = ['notes'];
       const ROADMAPS_KEYS = ['roadmaps'];
@@ -466,13 +462,38 @@ const performSave = async () => {
       const parsedCloud = json.cloudData;
       const parsedLocal = JSON.parse(valueToSave);
 
+      const localHistory = parsedLocal.state.history || {};
+      const cloudHistory = parsedCloud.state.history || {};
+      const mergedHistory = { ...localHistory };
+      for (const date in cloudHistory) {
+        if (mergedHistory[date] !== undefined) {
+          mergedHistory[date] = Math.max(mergedHistory[date], cloudHistory[date]);
+        } else {
+          mergedHistory[date] = cloudHistory[date];
+        }
+      }
+
+      const localDailyTimes = parsedLocal.state.dailyTimes || {};
+      const cloudDailyTimes = parsedCloud.state.dailyTimes || {};
+      const mergedDailyTimes = { ...localDailyTimes };
+      for (const date in cloudDailyTimes) {
+        if (mergedDailyTimes[date]) {
+          mergedDailyTimes[date] = {
+            ...cloudDailyTimes[date],
+            ...mergedDailyTimes[date], // Local wins for daily times if conflict
+          };
+        } else {
+          mergedDailyTimes[date] = cloudDailyTimes[date];
+        }
+      }
+
       const mergedState = {
         ...parsedLocal.state,
         ...parsedCloud.state, // Cloud wins for scalar settings and complex objects to prevent default overrides
 
         // Deep merge tracking data to prevent data loss
-        history: { ...(parsedLocal.state.history || {}), ...(parsedCloud.state.history || {}) },
-        dailyTimes: { ...(parsedLocal.state.dailyTimes || {}), ...(parsedCloud.state.dailyTimes || {}) },
+        history: mergedHistory,
+        dailyTimes: mergedDailyTimes,
         timetableGrid: { ...(parsedLocal.state.timetableGrid || {}), ...(parsedCloud.state.timetableGrid || {}) },
         timetableColors: { ...(parsedLocal.state.timetableColors || {}), ...(parsedCloud.state.timetableColors || {}) },
 
@@ -481,7 +502,6 @@ const performSave = async () => {
         countdowns: [...(parsedLocal.state.countdowns || []), ...(parsedCloud.state.countdowns || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
         deadlines: [...(parsedLocal.state.deadlines || []), ...(parsedCloud.state.deadlines || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
         notes: [...(parsedLocal.state.notes || []), ...(parsedCloud.state.notes || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
-        stopwatchSessions: [...(parsedLocal.state.stopwatchSessions || []), ...(parsedCloud.state.stopwatchSessions || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
         roadmaps: [...(parsedLocal.state.roadmaps || []), ...(parsedCloud.state.roadmaps || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
       };
 
@@ -590,16 +610,52 @@ const fileStorage = createJSONStorage(() => ({
               return localDataStr;
             } else {
               setSyncLastModified(json.lastModified);
-              isSyncingFromCloud = true;
-              setTimeout(() => { isSyncingFromCloud = false; }, 1000);
+              
+              // SMART MERGE local history into cloud before overwriting
+              let hasLocalHigher = false;
+              if (localDataStr) {
+                try {
+                  const parsedLocal = JSON.parse(localDataStr);
+                  const localHistory = parsedLocal.state?.history || {};
+                  const cloudHistory = json.data.state?.history || {};
+                  
+                  for (const date in localHistory) {
+                    const lVal = localHistory[date] || 0;
+                    const cVal = cloudHistory[date] || 0;
+                    if (lVal > cVal) {
+                      json.data.state.history = json.data.state.history || {};
+                      json.data.state.history[date] = lVal;
+                      hasLocalHigher = true;
+                    }
+                  }
+                } catch (e) {
+                  console.warn("Failed to merge local history during cloud sync", e);
+                }
+              }
+
               const str = JSON.stringify(json.data);
+              
+              isSyncingFromCloud = !hasLocalHigher; // If local had higher, we don't treat it fully as sync from cloud, we want it to trigger save!
+              setTimeout(() => { isSyncingFromCloud = false; }, 1000);
+              
               // ensure local cache perfectly matches cloud
               try {
                 localStorage.setItem('dashboard-storage', str);
               } catch (e) {
                 console.warn("Failed to update localStorage with cloud data:", e);
               }
+              
               lastSavedValue = str;
+              
+              // If we salvaged higher offline stats, queue a save to push them to the cloud!
+              if (hasLocalHigher) {
+                pendingValue = str;
+                hasUnsavedChanges = true;
+                if (!saveTimeout) {
+                   saveTimeout = setTimeout(performSave, 500);
+                }
+              }
+              
               return str;
             }
           }
@@ -1092,7 +1148,6 @@ export const useDashboardStore = create<DashboardState>()(
 
       // Stopwatch Defaults
       isStopwatchOpen: false,
-      stopwatchSessions: [],
       toggleStopwatch: () => set((state) => {
         const next = !state.isStopwatchOpen;
         let extra = {};
@@ -1103,54 +1158,6 @@ export const useDashboardStore = create<DashboardState>()(
         }
         return { isStopwatchOpen: next, ...extra };
       }),
-      addStopwatchSession: (title, secs, unsavedMinsToStats) => set((state) => {
-        const validSecs = Math.max(0, secs);
-
-        const today = getLocalDateString();
-
-        let newHistory = state.history;
-        let newDailyTimes = state.dailyTimes;
-        if (unsavedMinsToStats > 0) {
-          newHistory = { ...state.history };
-          const newTotal = (newHistory[today] || 0) + unsavedMinsToStats;
-          newHistory[today] = newTotal;
-
-          newDailyTimes = {
-            ...state.dailyTimes,
-            [today]: {
-              ...(state.dailyTimes[today] || {}),
-              bedTime: Date.now()
-            }
-          };
-
-          if (newTotal >= 60 && typeof window !== 'undefined') {
-            const token = localStorage.getItem('dashboard_sync_token');
-            if (token) {
-              fetch('/api/users/streak', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ dateStr: today, minutes: newTotal })
-              }).catch(err => console.error("Streak sync error:", err));
-            }
-          }
-        }
-
-        return {
-          history: newHistory,
-          dailyTimes: newDailyTimes,
-          stopwatchSessions: [
-            { id: Date.now().toString(), title, durationMins: Math.floor(validSecs / 60), durationSecs: secs, date: today, timestamp: Date.now() },
-            ...(state.stopwatchSessions || [])
-          ]
-        };
-      }),
-      deleteStopwatchSession: (id) => set((state) => ({
-        stopwatchSessions: (state.stopwatchSessions || []).filter(s => s.id !== id)
-      })),
-      clearStopwatchSessions: () => set({ stopwatchSessions: [] }),
       stopwatchStartTime: null,
       setStopwatchStartTime: (time) => set({ stopwatchStartTime: time }),
       stopwatchLastSavedChunks: 0,

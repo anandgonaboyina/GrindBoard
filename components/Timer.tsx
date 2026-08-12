@@ -41,6 +41,8 @@ export default function Timer() {
   // Ref mirror of timerLastSavedChunks so the interval callback always
   // reads the up-to-date value within the same tick (state updates are async).
   const savedChunksRef = useRef(timerLastSavedChunks);
+  const alertedChunksRef = useRef(timerLastAlertedChunks);
+  const isUnlockingAudioRef = useRef(false);
 
   // Inline editing state
   const [isEditingTime, setIsEditingTime] = useState(false);
@@ -83,6 +85,10 @@ export default function Timer() {
     savedChunksRef.current = timerLastSavedChunks;
   }, [timerLastSavedChunks]);
 
+  useEffect(() => {
+    alertedChunksRef.current = timerLastAlertedChunks;
+  }, [timerLastAlertedChunks]);
+
   // Ensure local time immediately reflects store changes
   useEffect(() => {
     if (timerEndAt) {
@@ -123,6 +129,13 @@ export default function Timer() {
     setActiveTask(null, null);
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
+    
+    // Safety clear of interval beep
+    if (intervalAudioRef.current) {
+      intervalAudioRef.current.pause();
+      intervalAudioRef.current.currentTime = 0;
+    }
+    setIsIntervalRinging(false);
   };
 
   // Main tick interval
@@ -154,24 +167,31 @@ export default function Timer() {
             if (isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0 && remaining > 0) {
               const alertIntervalSecs = taskIntervalAlertMins * 60;
               const alertChunks = Math.floor(elapsedSeconds / alertIntervalSecs);
-              if (alertChunks > timerLastAlertedChunks && alertChunks > 0) {
+              if (alertChunks > alertedChunksRef.current && alertChunks > 0) {
+                alertedChunksRef.current = alertChunks;
                 setTimerLastAlertedChunks(alertChunks);
-                if (enableAlarmSound) {
-                  const audio = new Audio(resolvedAlarmUrl || alarmSound);
-                  intervalAudioRef.current = audio;
-                  const vol = alarmVolume !== undefined ? alarmVolume : 1;
-                  audio.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
-                  audio.addEventListener('error', () => {
-                    useDashboardStore.getState().setAlarmSound('/ringtones/alarm.mp3');
-                  });
-                  audio.play().catch(e => console.log('Interval beep failed:', e));
+                if (enableAlarmSound || enableAlarmVibration) {
                   setIsIntervalRinging(true);
+                  
+                  if (enableAlarmSound && intervalAudioRef.current) {
+                    const vol = alarmVolume !== undefined ? alarmVolume : 1;
+                    intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
+                    intervalAudioRef.current.currentTime = 0;
+                    intervalAudioRef.current.play().catch(e => console.log('Interval beep failed:', e));
+                  }
+                  
+                  if (enableAlarmVibration) {
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
+                    }
+                  }
+
                   const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
                   setTimeout(() => {
-                    if (intervalAudioRef.current === audio) {
-                      audio.pause();
-                      setIsIntervalRinging(false);
+                    if (intervalAudioRef.current) {
+                      intervalAudioRef.current.pause();
                     }
+                    setIsIntervalRinging(false);
                   }, duration);
                 }
               }
@@ -203,6 +223,13 @@ export default function Timer() {
           setLocalTimeLeft(0);
           setTimerEndAt(null);
           setTimerPausedLeft(null);
+
+          // Force stop any lingering interval beep
+          if (intervalAudioRef.current) {
+            intervalAudioRef.current.pause();
+            intervalAudioRef.current.currentTime = 0;
+          }
+          setIsIntervalRinging(false);
 
           if (now - timerEndAt < 120000) {
             playAlarm();
@@ -362,6 +389,14 @@ export default function Timer() {
     }
   };
 
+  const stopIntervalBeep = () => {
+    if (intervalAudioRef.current) {
+      intervalAudioRef.current.pause();
+      intervalAudioRef.current.currentTime = 0;
+    }
+    setIsIntervalRinging(false);
+  };
+
   const startTimer = (seconds: number, isTask: boolean = false) => {
     if (!isTask) {
       saveAndClearActiveTaskTimer();
@@ -384,6 +419,7 @@ export default function Timer() {
     // Unlock audio for mobile browsers during this user interaction
     // We allow a brief audible "blip" which acts as start feedback and securely unlocks audio on strict mobile browsers
     if (audioRef.current && enableAlarmSound) {
+      isUnlockingAudioRef.current = true;
       const vol = alarmVolume !== undefined ? alarmVolume : 1;
       audioRef.current.volume = vol > 1 ? vol / 100 : vol;
       audioRef.current.play().then(() => {
@@ -392,8 +428,25 @@ export default function Timer() {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
           }
+          isUnlockingAudioRef.current = false;
         }, 150); // 150ms audible blip
-      }).catch(e => console.log('Audio unlock failed:', e));
+      }).catch(e => {
+        console.log('Audio unlock failed:', e);
+        isUnlockingAudioRef.current = false;
+      });
+    }
+
+    if (intervalAudioRef.current && enableAlarmSound) {
+      const vol = alarmVolume !== undefined ? alarmVolume : 1;
+      intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.1;
+      intervalAudioRef.current.play().then(() => {
+        setTimeout(() => {
+          if (intervalAudioRef.current) {
+            intervalAudioRef.current.pause();
+            intervalAudioRef.current.currentTime = 0;
+          }
+        }, 150);
+      }).catch(e => console.log('Interval Audio unlock failed:', e));
     }
 
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -432,6 +485,7 @@ export default function Timer() {
       // Pause it
       setTimerPausedLeft(localTimeLeft);
       setTimerEndAt(null);
+      stopIntervalBeep();
 
       // Clear scheduled background notification
       if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
@@ -461,6 +515,7 @@ export default function Timer() {
     setTimerPausedLeft(null);
     setTimerInitialMins(null);
     stopAlarm();
+    stopIntervalBeep();
   };
 
   const handleCustomStart = () => {
@@ -729,7 +784,7 @@ export default function Timer() {
             </>
           )}
 
-          {/* Hidden Audio Element */}
+          {/* Hidden Audio Elements */}
           <audio
             ref={audioRef}
             src={resolvedAlarmUrl || alarmSound}
@@ -740,10 +795,18 @@ export default function Timer() {
             }}
             onPlay={(e) => {
               // Prevent Lively Wallpaper / Chromium from auto-resuming media on focus
-              if (!useDashboardStore.getState().isAlarmPlaying) {
+              if (!useDashboardStore.getState().isAlarmPlaying && !isUnlockingAudioRef.current) {
                 e.currentTarget.pause();
                 e.currentTarget.currentTime = 0;
               }
+            }}
+          />
+          <audio
+            ref={intervalAudioRef}
+            src={resolvedAlarmUrl || alarmSound}
+            preload="auto"
+            onError={(e) => {
+              useDashboardStore.getState().setAlarmSound('/ringtones/alarm.mp3');
             }}
           />
         </div>

@@ -500,11 +500,7 @@ export async function POST(request: Request) {
         Object.keys(incomingHistory).forEach(date => {
           const inc = incomingHistory[date] || 0;
           const srv = serverHistory[date] || 0;
-          if (inc > srv) {
-            mergedHistory[date] = inc;
-          } else if (srv > inc && inc > 0) {
-            mergedHistory[date] = srv + inc;
-          }
+          mergedHistory[date] = Math.max(inc, srv);
         });
         statsDoc.history = mergedHistory;
       }

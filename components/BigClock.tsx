@@ -171,7 +171,7 @@ export default function BigClock() {
   const minsLeft = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
   const timeLeftText = `${hrsLeft}h ` + `${minsLeft}m left`;
 
-  const clockVisible = showClock && !isMobile && (!isHidden || !hideConfig.clock);
+  const clockVisible = showClock && (!isHidden || !hideConfig.clock);
   const focusPillVisible = showTodayWork && (!isHidden || !hideConfig.todayFocusPill);
   const timerPillVisible = (!isHidden || !hideConfig.timerPill);
 

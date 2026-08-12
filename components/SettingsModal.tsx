@@ -603,38 +603,67 @@ export default function SettingsModal() {
     e.target.value = '';
   };
 
-  const handleExportData = async () => {
-    try {
-      const token = localStorage.getItem('dashboard_sync_token');
-      if (!token) {
-        alert('You must be logged in to export data. Please login via the Connect tab.');
-        return;
+  const handleBackupTimetable = () => {
+    showBackupModal(
+      'Backup Timetable',
+      'timetable_backup.json',
+      'Timetable Backup',
+      'Your weekly schedule, grid layout, times, and colors.',
+      () => {
+        const state = useDashboardStore.getState();
+        return {
+          timetableGrid: state.timetableGrid,
+          timetableColors: state.timetableColors,
+          weekdayTimes: state.weekdayTimes,
+          weekendTimes: state.weekendTimes,
+          timetableStartTime: state.timetableStartTime,
+          timetableWeekendStartTime: state.timetableWeekendStartTime,
+        };
       }
+    );
+  };
 
-      const res = await fetch(`/api/export?token=${token}`);
-      if (!res.ok) throw new Error('Export failed');
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-
-      // Get filename from header if possible
-      const contentDisposition = res.headers.get('Content-Disposition');
-      let filename = 'dashboard-backup.json';
-      if (contentDisposition && contentDisposition.includes('filename="')) {
-        filename = contentDisposition.split('filename="')[1].split('"')[0];
+  const handleRestoreTimetable = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.timetableGrid) {
+          useDashboardStore.setState({
+            timetableGrid: data.timetableGrid || {},
+            timetableColors: data.timetableColors || {},
+            weekdayTimes: data.weekdayTimes || [],
+            weekendTimes: data.weekendTimes || [],
+            timetableStartTime: data.timetableStartTime || 540,
+            timetableWeekendStartTime: data.timetableWeekendStartTime || 540,
+          });
+          alert('Timetable restored successfully!');
+        } else {
+          alert('Invalid backup file format for Timetable.');
+        }
+      } catch (err) {
+        alert('Failed to parse backup file.');
       }
-      a.download = filename;
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to export data.');
-    }
+  const handleExportData = () => {
+    showBackupModal(
+      'Full Dashboard Backup',
+      'dashboard_full_backup.json',
+      'Full Backup',
+      'All your settings, tasks, timetables, statistics, history, and notes.',
+      () => {
+        return {
+          version: 2,
+          state: useDashboardStore.getState()
+        };
+      }
+    );
   };
 
   const handleImportData = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -786,17 +815,17 @@ export default function SettingsModal() {
           </div>
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
             <div className="flex items-center gap-1 md:gap-2 mr-0.5 md:mr-2 border-r border-white/10 pr-1.5 md:pr-3 shrink-0">
-              <span className="hidden sm:inline-block text-[9px] text-white/50 leading-tight text-right max-w-[100px]">
-                Apply changes
-              </span>
-              <button
-                onClick={() => window.location.reload()}
-                className="flex flex-row items-center justify-center gap-1 md:gap-1.5 px-2 py-1 md:px-2.5 md:py-1 hover:bg-blue-500/20 hover:border-blue-500/50 rounded-lg transition-all border border-white/10 bg-black/40 group shrink-0 whitespace-nowrap"
-                title="Refresh the app to apply changes or fix wallpaper bugs"
-              >
-                <RefreshCw className="w-3.5 h-3.5 md:w-3.5 md:h-3.5 text-blue-400 group-hover:rotate-180 transition-transform duration-500 shrink-0" />
-                <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-semibold text-white/90 leading-none">Refresh App</span>
-              </button>
+              <div className="relative group mt-1.5 md:mt-0">
+                <span className="absolute -top-2 left-2 px-1 bg-[#1a1b26]/90 backdrop-blur-md rounded-md text-[7px] md:text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300 whitespace-nowrap">Apply / Update</span>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="flex flex-row items-center justify-center gap-1 md:gap-1.5 px-2 py-1.5 md:px-2.5 md:py-1.5 hover:bg-blue-500/20 hover:border-blue-500/50 rounded-lg transition-all border border-white/10 bg-black/40 shrink-0 whitespace-nowrap"
+                  title="Refresh the app to apply changes or fix wallpaper bugs"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 md:w-3.5 md:h-3.5 text-blue-400 group-hover:rotate-180 transition-transform duration-500 shrink-0" />
+                  <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-semibold text-white/90 leading-none mt-0.5">Refresh App</span>
+                </button>
+              </div>
             </div>
             {isMobileDetailView && ['preferences', 'sound', 'focus', 'wallpaper', 'data'].includes(settingsActiveTab) && (
               <button
@@ -895,16 +924,6 @@ export default function SettingsModal() {
                 <BookOpen className="w-4 h-4 text-blue-400" /> User Manual
               </button>
 
-              <div className="md:hidden mt-auto pt-2 border-t border-white/10 flex items-center justify-between px-2 w-full">
-                <span className="text-[9.5px] text-white/50 font-medium tracking-wide">Apply changes:</span>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="flex flex-row items-center justify-center gap-1.5 px-2.5 py-1 hover:bg-blue-500/20 text-white/80 hover:text-white rounded-lg transition-all border border-white/10 group shrink-0 whitespace-nowrap"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-blue-400 group-hover:rotate-180 transition-transform duration-500 shrink-0" />
-                  <span className="text-[9px] sm:text-[9.5px] font-semibold text-white/90 leading-none">Refresh App</span>
-                </button>
-              </div>
             </ScrollableWithArrows>
           </div>
 
@@ -986,23 +1005,20 @@ export default function SettingsModal() {
                         </div>
                       </div>
                       <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">current size : {Math.round((clockScale) * 100)}%</p>
-                      <div className="flex mr-10 items-center gap-2 w-full sm:w-40 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
+                      <div className="flex items-center gap-2 w-full sm:w-40 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
                         <span className="text-[9px] md:text-[10px] text-white/40">50%</span>
                         <input
                           type="range"
                           min="0.5"
                           max="1.5"
-                          step="0.1"
-                          value={clockScale || 1}
+                          step="0.05"
+                          value={clockScale}
                           onChange={(e) => setClockScale(parseFloat(e.target.value))}
-                          className="flex-1 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
+                          className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
                         />
                         <span className="text-[9px] md:text-[10px] text-white/40">150%</span>
-
                       </div>
                     </div>
-
-
 
                     {/* Deadline Alerts */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
@@ -2033,6 +2049,29 @@ export default function SettingsModal() {
                         <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-blue-500/20 text-blue-300 rounded text-[9px] md:text-[10px] font-medium border border-blue-500/30 flex items-center gap-1">
                           <Upload className="w-3 h-3" /> Restore
                           <input type="file" className="hidden" accept=".json" onChange={handleRestoreSettings} />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Timetable Backup & Restore */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <CalendarDays className="text-violet-400 w-4 h-4 shrink-0" />
+                        <div className="min-w-0 pr-1">
+                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap text-violet-300">Timetable Backup</h4>
+                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Backup/Restore your weekly schedule.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 w-full sm:w-auto">
+                        <button
+                          onClick={handleBackupTimetable}
+                          className="flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 text-violet-100"
+                        >
+                          <Download className="w-3 h-3" /> Backup
+                        </button>
+                        <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-violet-500/20 text-violet-300 rounded text-[9px] md:text-[10px] font-medium border border-violet-500/30 flex items-center gap-1">
+                          <Upload className="w-3 h-3" /> Restore
+                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreTimetable} />
                         </label>
                       </div>
                     </div>
