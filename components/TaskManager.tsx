@@ -290,7 +290,7 @@ export default function TaskManager() {
                                             const val = parseInt(e.target.value);
                                             setTaskIntervalAlertMins(isNaN(val) ? 0 : val);
                                         }}
-                                        className="w-6 md:w-7 bg-black/40 border border-white/10 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                                        className="w-6 md:w-7 bg-black/40 border border-white/20 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
                                         min="1"
                                     />
                                     <span className="text-[8px] font-medium text-white/40 uppercase">min</span>
@@ -313,7 +313,7 @@ export default function TaskManager() {
                                 key={idx}
                                 className={`relative flex flex-col flex-1 min-w-0 rounded-md border transition-all h-[25px] ${activeGroupTab === idx
                                     ? 'bg-blue-500/20 border-blue-500/50 text-blue-200'
-                                    : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/80 cursor-pointer'
+                                    : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10 hover:text-white/80 cursor-pointer'
                                     }`}
                                 onClick={() => setActiveGroupTab(idx)}
                             >
@@ -343,7 +343,7 @@ export default function TaskManager() {
                                     </div>
                                 )}
                                 {timeDisplay && (
-                                    <div className={`absolute bottom-0 right-0 text-[7.5px] font-bold uppercase tracking-widest px-1 py-[1px] rounded-tl-md rounded-br-md border-t border-l shadow-sm ${activeGroupTab === idx ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-black/60 text-white/40 border-white/10 border-t-white/5 border-l-white/5'}`}>
+                                    <div className={`absolute bottom-0 right-0 text-[7.5px] font-bold uppercase tracking-widest px-1 py-[1px] rounded-tl-md rounded-br-md border-t border-l shadow-sm ${activeGroupTab === idx ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-black/60 text-white/40 border-white/20 border-t-white/20 border-l-white/20'}`}>
                                         {timeDisplay}
                                     </div>
                                 )}
@@ -378,7 +378,7 @@ export default function TaskManager() {
                                             setDraggedIndex(index);
                                         }
                                     }}
-                                    className={`group flex items-start justify-between p-1.5 rounded-lg border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/20 hover:border-white/40'}`}
+                                    className={`group flex items-start justify-between p-1.5 rounded-lg border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/30 hover:border-white/50'}`}
                                 >
                                     <div className="flex items-start gap-1.5 flex-1 min-w-0">
                                         <div
@@ -583,7 +583,7 @@ export default function TaskManager() {
                 )}
             </ScrollableWithArrows>
 
-            <form onSubmit={handleAddTask} className="p-2 border-t border-white/5 bg-black/20 flex gap-2 items-end mt-1 pt-3">
+            <form onSubmit={handleAddTask} className="p-2 border-t border-white/20 bg-black/20 flex gap-2 items-end mt-1 pt-3">
                 <div className="relative flex-1 group/task">
                     <span className="absolute -top-[9px] left-1 px-1 bg-[#1a1a1a] rounded text-[6.5px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/task:text-blue-300">
                         Task Name
@@ -603,7 +603,7 @@ export default function TaskManager() {
                             }
                         }}
                         rows={1}
-                        className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-[11px] outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 shadow-inner resize-none overflow-hidden min-h-[28px] max-h-[80px]"
+                        className="w-full bg-white/5 border border-white/20 rounded-md px-2 py-1.5 text-[11px] outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 shadow-inner resize-none overflow-hidden min-h-[28px] max-h-[80px]"
                     />
                 </div>
                 <div className="relative -top-[5px] flex-col items-center shrink-0 group/duration">
@@ -615,10 +615,10 @@ export default function TaskManager() {
                         placeholder="min"
                         value={newTaskDuration}
                         onChange={(e) => setNewTaskDuration(e.target.value)}
-                        className="w-[50px] bg-white/5 border border-white/10 rounded-md px-1.5 py-1.5 text-[11px] font-semibold text-center outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                        className="w-[50px] bg-white/5 border border-white/20 rounded-md px-1.5 py-1.5 text-[11px] font-semibold text-center outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
                     />
                 </div>
-                <button type="submit" className="h-[28px] w-[28px] bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/5 flex items-center justify-center mb-px">
+                <button type="submit" className="h-[28px] w-[28px] bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/20 flex items-center justify-center mb-px">
                     <Plus className="w-4 h-4" />
                 </button>
             </form>

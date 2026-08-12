@@ -177,7 +177,7 @@ export default function Stopwatch() {
       <div 
         className={`relative pointer-events-auto select-none ${isStopwatchOpen ? '' : 'hidden'}`} 
       >
-        <div className="w-48 rounded-3xl glass-panel text-white flex flex-col min-h-[90px] overflow-hidden">
+        <div className="w-48 rounded-3xl glass-panel border border-white/20 text-white flex flex-col min-h-[90px] overflow-hidden shadow-2xl">
           
           {/* Top Handle - Draggable */}
           <div 

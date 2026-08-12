@@ -578,7 +578,7 @@ export default function Timer() {
         onPointerDown={updateInteraction}
         className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying ? '' : 'hidden'}`}
       >
-        <div className="w-64 rounded-3xl glass-panel p-3 text-white flex flex-col gap-2">
+        <div className="w-64 rounded-3xl glass-panel border border-white/20 p-3 text-white flex flex-col gap-2 shadow-2xl">
           {/* Timer Display / Editor */}
           <div className="text-center min-h-[80px] flex flex-col items-center justify-center relative">
             {activeTaskTitle && (
