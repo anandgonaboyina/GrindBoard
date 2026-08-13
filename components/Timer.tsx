@@ -6,6 +6,7 @@ import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
 import DraggableWidget from './DraggableWidget';
 import { useAudioUrl } from '@/hooks/useAudioUrl';
+import { getDeviceId } from '@/utils/deviceId';
 
 export default function Timer() {
   const {
@@ -25,7 +26,7 @@ export default function Timer() {
     activeTaskId, activeTaskTitle, setActiveTask, updateTaskDuration,
     alarmSound, alarmVolume,
     enableAlarmSound, enableAlarmVibration,
-    isTimerOpen
+    isTimerOpen, timerDeviceId, setTimerDeviceId
   } = useDashboardStore();
 
   const resolvedAlarmUrl = useAudioUrl(alarmSound);
@@ -146,21 +147,24 @@ export default function Timer() {
       interval = setInterval(() => {
         const now = Date.now();
         const remaining = Math.floor((timerEndAt - now) / 1000);
+        const isOwner = timerDeviceId === getDeviceId();
 
         if (timerInitialMins && activeTaskId) {
           const elapsedSeconds = (timerInitialMins * 60) - remaining;
           if (elapsedSeconds >= 0) {
             const chunks = Math.floor(elapsedSeconds / 300); // 5 minutes = 300 seconds
             if (chunks > savedChunksRef.current) {
-              const diff = chunks - savedChunksRef.current;
-              const minsToSave = diff * 5;
-              const today = getLocalDateString();
-              addMins(today, minsToSave);
-              updateTaskDuration(activeTaskId, minsToSave);
-              // Update the ref immediately (synchronous) so the finish handler
-              // in the same tick sees the updated count and doesn't double-save.
+              // Only owner saves chunks to prevent duplication
+              if (isOwner) {
+                const diff = chunks - savedChunksRef.current;
+                const minsToSave = diff * 5;
+                const today = getLocalDateString();
+                addMins(today, minsToSave);
+                updateTaskDuration(activeTaskId, minsToSave);
+                setTimerLastSavedChunks(chunks);
+              }
+              // Local state updates instantly to keep UI in sync
               savedChunksRef.current = chunks;
-              setTimerLastSavedChunks(chunks);
             }
 
             // Interval Alert Beep
@@ -168,31 +172,35 @@ export default function Timer() {
               const alertIntervalSecs = taskIntervalAlertMins * 60;
               const alertChunks = Math.floor(elapsedSeconds / alertIntervalSecs);
               if (alertChunks > alertedChunksRef.current && alertChunks > 0) {
+                // Update local ref immediately to prevent looping
                 alertedChunksRef.current = alertChunks;
-                setTimerLastAlertedChunks(alertChunks);
-                if (enableAlarmSound || enableAlarmVibration) {
-                  setIsIntervalRinging(true);
-                  
-                  if (enableAlarmSound && intervalAudioRef.current) {
-                    const vol = alarmVolume !== undefined ? alarmVolume : 1;
-                    intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
-                    intervalAudioRef.current.currentTime = 0;
-                    intervalAudioRef.current.play().catch(e => console.log('Interval beep failed:', e));
-                  }
-                  
-                  if (enableAlarmVibration) {
-                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                      try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
+                // Only the device that started it (owner) will ring, preventing background ghosts on other laptops
+                if (isOwner) {
+                  setTimerLastAlertedChunks(alertChunks);
+                  if (enableAlarmSound || enableAlarmVibration) {
+                    setIsIntervalRinging(true);
+                    
+                    if (enableAlarmSound && intervalAudioRef.current) {
+                      const vol = alarmVolume !== undefined ? alarmVolume : 1;
+                      intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
+                      intervalAudioRef.current.currentTime = 0;
+                      intervalAudioRef.current.play().catch(e => console.log('Interval beep failed:', e));
                     }
-                  }
+                    
+                    if (enableAlarmVibration) {
+                      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                        try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
+                      }
+                    }
 
-                  const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
-                  setTimeout(() => {
-                    if (intervalAudioRef.current) {
-                      intervalAudioRef.current.pause();
-                    }
-                    setIsIntervalRinging(false);
-                  }, duration);
+                    const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
+                    setTimeout(() => {
+                      if (intervalAudioRef.current) {
+                        intervalAudioRef.current.pause();
+                      }
+                      setIsIntervalRinging(false);
+                    }, duration);
+                  }
                 }
               }
             }
@@ -200,8 +208,8 @@ export default function Timer() {
         }
 
         const elapsedSinceInteraction = Math.floor((now - lastInteractionTime) / 1000);
-        if (elapsedSinceInteraction >= 7200) {
-          // Idle for 2 hours while running, auto pause!
+        if (elapsedSinceInteraction >= 7200 && isOwner) {
+          // Idle for 2 hours while running, auto pause! (Only owner evaluates this to avoid random cross-device pauses)
           const intendedPauseTime = lastInteractionTime + 7200000;
           // Only pause if the timer wouldn't have finished naturally before the pause time
           if (intendedPauseTime < timerEndAt) {
@@ -221,8 +229,11 @@ export default function Timer() {
           // Timer finished!
           clearInterval(interval);
           setLocalTimeLeft(0);
-          setTimerEndAt(null);
-          setTimerPausedLeft(null);
+          
+          if (isOwner) {
+            setTimerEndAt(null);
+            setTimerPausedLeft(null);
+          }
 
           // Force stop any lingering interval beep
           if (intervalAudioRef.current) {
@@ -231,33 +242,37 @@ export default function Timer() {
           }
           setIsIntervalRinging(false);
 
-          if (now - timerEndAt < 120000) {
+          if (isOwner && now - timerEndAt < 120000) {
             playAlarm();
           }
 
           // Log to history
           if (timerInitialMins && timerInitialMins > 0) {
-            const today = getLocalDateString();
-            if (activeTaskId) {
-              // Calculate any remaining unsaved minutes for this active task session
-              const savedMins = savedChunksRef.current * 5;
-              const finalUnsavedMins = Math.max(0, timerInitialMins - savedMins);
-              if (finalUnsavedMins > 0) {
-                addMins(today, finalUnsavedMins);
-                updateTaskDuration(activeTaskId, finalUnsavedMins);
+            if (isOwner) {
+              const today = getLocalDateString();
+              if (activeTaskId) {
+                // Calculate any remaining unsaved minutes for this active task session
+                const savedMins = savedChunksRef.current * 5;
+                const finalUnsavedMins = Math.max(0, timerInitialMins - savedMins);
+                if (finalUnsavedMins > 0) {
+                  addMins(today, finalUnsavedMins);
+                  updateTaskDuration(activeTaskId, finalUnsavedMins);
+                }
+                setTimerLastSavedChunks(0);
+                setTimerLastAlertedChunks(0);
+                setActiveTask(null, null);
+              } else {
+                addMins(today, timerInitialMins);
               }
-              savedChunksRef.current = 0;
-              setActiveTask(null, null);
-              setTimerLastSavedChunks(0);
-              setTimerLastAlertedChunks(0);
-            } else {
-              addMins(today, timerInitialMins);
+              setTimerInitialMins(null);
             }
-            setTimerInitialMins(null);
+            savedChunksRef.current = 0;
           }
 
           // Show quote popup
-          fetchQuote().then(q => showQuotePopup(q));
+          if (isOwner) {
+            fetchQuote().then(q => showQuotePopup(q));
+          }
         } else {
           setLocalTimeLeft(remaining);
         }
@@ -265,7 +280,7 @@ export default function Timer() {
     }
 
     return () => clearInterval(interval);
-  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, lastInteractionTime, isTaskIntervalAlertEnabled, taskIntervalRingSecs]);
+  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, lastInteractionTime, isTaskIntervalAlertEnabled, taskIntervalRingSecs, timerDeviceId]);
 
   // Listen for timer triggers from other components
   useEffect(() => {
@@ -407,6 +422,7 @@ export default function Timer() {
     savedChunksRef.current = 0;
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
+    setTimerDeviceId(getDeviceId());
     stopAlarm();
     updateInteraction();
 
@@ -501,6 +517,7 @@ export default function Timer() {
       const newEndAt = Date.now() + timerPausedLeft * 1000;
       setTimerEndAt(newEndAt);
       setTimerPausedLeft(null);
+      setTimerDeviceId(getDeviceId());
 
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         scheduleNotification(newEndAt);
@@ -514,6 +531,7 @@ export default function Timer() {
     setTimerEndAt(null);
     setTimerPausedLeft(null);
     setTimerInitialMins(null);
+    setTimerDeviceId(null);
     stopAlarm();
     stopIntervalBeep();
   };
@@ -576,7 +594,7 @@ export default function Timer() {
     <DraggableWidget id="timer">
       <div
         onPointerDown={updateInteraction}
-        className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying ? '' : 'hidden'}`}
+        className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying || isIntervalRinging ? '' : 'hidden'}`}
       >
         <div className="w-64 rounded-3xl glass-panel border border-white/20 p-3 text-white flex flex-col gap-2 shadow-2xl">
           {/* Timer Display / Editor */}
@@ -663,6 +681,7 @@ export default function Timer() {
                       if (timerPausedLeft !== null) {
                         setTimerEndAt(Date.now() + timerPausedLeft * 1000);
                         setTimerPausedLeft(null);
+                        setTimerDeviceId(getDeviceId());
                         updateInteraction();
                       }
                     }}
@@ -711,7 +730,7 @@ export default function Timer() {
           ) : (
             <>
               {/* Controls */}
-              {!isEditingTime && (timerEndAt || timerPausedLeft) && (
+              {!isEditingTime && (timerEndAt || timerPausedLeft) && timerDeviceId === getDeviceId() && (
                 <div className="flex justify-center gap-2">
                   <button
                     onClick={togglePause}

@@ -427,10 +427,10 @@ export default function Dashboard() {
             <div
               style={{ zIndex: widgetZIndices.clock || 50 }}
               className={`absolute pointer-events-none transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTimetableOpen
-                ? 'top-20 left-1/2 -translate-x-1/2 md:top-1/2 md:left-20 md:-translate-y-1/2 md:translate-x-0 scale-[0.7] md:scale-100 origin-top md:origin-center'
+                ? 'top-28 left-1/2 -translate-x-1/2 md:top-1/2 md:left-20 md:-translate-y-1/2 md:translate-x-0 scale-[0.85] md:scale-100 origin-top md:origin-center'
                 : currentBgType === 'image'
-                  ? 'top-20 left-1/2 -translate-x-1/2 translate-y-0 scale-[0.7] md:scale-100 md:top-40 origin-top'
-                  : 'top-20 left-1/2 -translate-x-1/2 md:top-40 md:left-10 md:translate-x-0 translate-y-0 scale-[0.7] md:scale-100 origin-top md:origin-top-left'
+                  ? 'top-32 left-1/2 -translate-x-1/2 translate-y-0 scale-[0.85] md:scale-100 md:top-40 origin-top'
+                  : 'top-32 left-1/2 -translate-x-1/2 md:top-40 md:left-10 md:translate-x-0 translate-y-0 scale-[0.85] md:scale-100 origin-top md:origin-top-left'
                 }`}>
               <DraggableClock>
                 <BigClock />

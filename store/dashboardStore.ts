@@ -132,6 +132,7 @@ interface DashboardState {
   timerEndAt: number | null;
   timerPausedLeft: number | null; // Keeps track of remaining time if paused
   timerInitialMins: number | null;
+  timerDeviceId: string | null;
   timerLastSavedChunks: number;
   timerLastAlertedChunks: number;
   timerLastUpdated: number;
@@ -154,6 +155,7 @@ interface DashboardState {
   setTimerEndAt: (time: number | null) => void;
   setTimerPausedLeft: (time: number | null) => void;
   setTimerInitialMins: (mins: number | null) => void;
+  setTimerDeviceId: (id: string | null) => void;
   setTimerLastSavedChunks: (chunks: number) => void;
   setTimerLastAlertedChunks: (chunks: number) => void;
   setIsAlarmPlaying: (playing: boolean) => void;
@@ -195,6 +197,8 @@ interface DashboardState {
   toggleStopwatch: () => void;
   stopwatchStartTime: number | null;
   setStopwatchStartTime: (time: number | null) => void;
+  stopwatchDeviceId: string | null;
+  setStopwatchDeviceId: (id: string | null) => void;
   stopwatchLastSavedChunks: number;
   setStopwatchLastSavedChunks: (chunks: number) => void;
   stopwatchAddToStats: boolean;
@@ -1034,6 +1038,7 @@ export const useDashboardStore = create<DashboardState>()(
       timerEndAt: null,
       timerPausedLeft: null,
       timerInitialMins: null,
+      timerDeviceId: null,
       timerLastSavedChunks: 0,
       timerLastAlertedChunks: 0,
       timerLastUpdated: 0,
@@ -1063,6 +1068,7 @@ export const useDashboardStore = create<DashboardState>()(
       setTimerEndAt: (time) => set({ timerEndAt: time, timerLastUpdated: Date.now() }),
       setTimerPausedLeft: (time) => set({ timerPausedLeft: time, timerLastUpdated: Date.now() }),
       setTimerInitialMins: (mins) => set({ timerInitialMins: mins, timerLastUpdated: Date.now() }),
+      setTimerDeviceId: (id) => set({ timerDeviceId: id, timerLastUpdated: Date.now() }),
       setTimerLastSavedChunks: (chunks) => set({ timerLastSavedChunks: chunks }),
       setTimerLastAlertedChunks: (chunks) => set({ timerLastAlertedChunks: chunks }),
       setIsAlarmPlaying: (playing) => set({ isAlarmPlaying: playing }),
@@ -1160,6 +1166,8 @@ export const useDashboardStore = create<DashboardState>()(
       }),
       stopwatchStartTime: null,
       setStopwatchStartTime: (time) => set({ stopwatchStartTime: time }),
+      stopwatchDeviceId: null,
+      setStopwatchDeviceId: (id) => set({ stopwatchDeviceId: id }),
       stopwatchLastSavedChunks: 0,
       setStopwatchLastSavedChunks: (chunks) => set({ stopwatchLastSavedChunks: chunks }),
       stopwatchAddToStats: true,
@@ -1699,6 +1707,7 @@ export const useDashboardStore = create<DashboardState>()(
           persistedState.timerEndAt = currentState.timerEndAt;
           persistedState.timerPausedLeft = currentState.timerPausedLeft;
           persistedState.timerInitialMins = currentState.timerInitialMins;
+          persistedState.timerDeviceId = currentState.timerDeviceId;
           persistedState.activeTaskId = currentState.activeTaskId;
           persistedState.activeTaskTitle = currentState.activeTaskTitle;
           persistedState.timerLastSavedChunks = currentState.timerLastSavedChunks;

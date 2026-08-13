@@ -5,9 +5,10 @@ import { Play, Pause, Square, History, Trash2, ChevronLeft, Check } from 'lucide
 import DraggableWidget from './DraggableWidget';
 import ConfirmationModal from './ConfirmationModal';
 import { getLocalDateString } from '@/utils/date';
+import { getDeviceId } from '@/utils/deviceId';
 
 export default function Stopwatch() {
-  const { isStopwatchOpen, stopwatchStartTime, setStopwatchStartTime, stopwatchLastSavedChunks, setStopwatchLastSavedChunks, addMins, stopwatchAddToStats, setStopwatchAddToStats } = useDashboardStore();
+  const { isStopwatchOpen, stopwatchStartTime, setStopwatchStartTime, stopwatchLastSavedChunks, setStopwatchLastSavedChunks, addMins, stopwatchAddToStats, setStopwatchAddToStats, stopwatchDeviceId, setStopwatchDeviceId } = useDashboardStore();
   
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSecs, setElapsedSecs] = useState(0);
@@ -28,8 +29,9 @@ export default function Stopwatch() {
       const lastActive = storedLastActive ? parseInt(storedLastActive) : now;
       
       const timeSinceActive = Math.floor((now - lastActive) / 1000);
+      const isOwner = stopwatchDeviceId === getDeviceId();
       
-      if (timeSinceActive >= 7200) {
+      if (timeSinceActive >= 7200 && isOwner) {
         const cappedElapsed = Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000);
         setIsRunning(false);
         setElapsedSecs(cappedElapsed);
@@ -43,6 +45,7 @@ export default function Stopwatch() {
           localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
         }
         setStopwatchStartTime(null);
+        setStopwatchDeviceId(null);
       } else {
         setIsRunning(true);
         setElapsedSecs(Math.max(0, Math.floor((now - stopwatchStartTime) / 1000)));
@@ -65,8 +68,9 @@ export default function Stopwatch() {
         const stored = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_last_active') : null;
         const lastActive = stored ? parseInt(stored) : now;
         const timeSinceActive = Math.floor((now - lastActive) / 1000);
+        const isOwner = stopwatchDeviceId === getDeviceId();
         
-        if (timeSinceActive >= 7200) {
+        if (timeSinceActive >= 7200 && isOwner) {
           setIsRunning(false);
           if (now - (lastActive + 7200000) < 120000) {
             useDashboardStore.getState().setIsAlarmPlaying(true);
@@ -80,6 +84,7 @@ export default function Stopwatch() {
             localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
           }
           setStopwatchStartTime(null);
+          setStopwatchDeviceId(null);
           setElapsedSecs(cappedElapsed);
           return;
         }
@@ -87,7 +92,7 @@ export default function Stopwatch() {
         const currentElapsed = Math.max(0, Math.floor((now - stopwatchStartTime) / 1000));
         setElapsedSecs(currentElapsed);
 
-        if (stopwatchAddToStats) {
+        if (stopwatchAddToStats && isOwner) {
           const chunks = Math.floor(currentElapsed / 300); // 5 minutes = 300 seconds
           if (chunks > stopwatchLastSavedChunks) {
             const diff = chunks - stopwatchLastSavedChunks;
@@ -109,6 +114,7 @@ export default function Stopwatch() {
         setStopwatchLastSavedChunks(0);
       }
       setStopwatchStartTime(Date.now() - elapsedSecs * 1000);
+      setStopwatchDeviceId(getDeviceId());
       setIsRunning(true);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('stopwatch_paused_secs');
@@ -139,7 +145,8 @@ export default function Stopwatch() {
   };
 
   const finalizeStop = (saveToStats: boolean) => {
-    if (elapsedSecs > 0 && saveToStats) {
+    const isOwner = stopwatchDeviceId === getDeviceId();
+    if (elapsedSecs > 0 && saveToStats && isOwner) {
       const totalMins = Math.floor(elapsedSecs / 60);
       const alreadySavedMins = stopwatchLastSavedChunks * 5;
       const finalUnsavedMins = Math.max(0, totalMins - alreadySavedMins);
@@ -150,6 +157,7 @@ export default function Stopwatch() {
     setIsRunning(false);
     setElapsedSecs(0);
     setStopwatchStartTime(null);
+    setStopwatchDeviceId(null);
     setStopwatchLastSavedChunks(0);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('stopwatch_paused_secs');
@@ -210,6 +218,7 @@ export default function Stopwatch() {
                       }
                       updateInteraction();
                       setStopwatchStartTime(Date.now() - elapsedSecs * 1000);
+                      setStopwatchDeviceId(getDeviceId());
                       setIsRunning(true);
                     }}
                     className="flex-1 py-1 bg-blue-500 hover:bg-blue-600 rounded-lg text-[9px] font-bold transition-colors"
