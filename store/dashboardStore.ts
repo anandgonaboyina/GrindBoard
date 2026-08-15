@@ -423,7 +423,7 @@ const performSave = async () => {
       const oldState = JSON.parse(lastSavedValue).state || {};
       const newState = JSON.parse(valueToSave).state || {};
 
-      const TASK_KEYS = ['tasks', 'countdowns', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
+      const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
       const STATS_KEYS = ['history'];
       const DAILY_ROUTINE_KEYS = ['dailyTimes'];
       const NOTES_KEYS = ['notes'];
@@ -1774,7 +1774,10 @@ export const useDashboardStore = create<DashboardState>()(
           safeState.history = { ...currentState.history, ...persistedState.history };
         }
         if (persistedState.timetableGrid && typeof persistedState.timetableGrid === 'object') {
-          safeState.timetableGrid = { ...currentState.timetableGrid, ...persistedState.timetableGrid };
+          safeState.timetableGrid = persistedState.timetableGrid; // Do not merge with defaults, or deleted entries will come back
+        }
+        if (persistedState.timetableColors && typeof persistedState.timetableColors === 'object') {
+          safeState.timetableColors = persistedState.timetableColors;
         }
         if (persistedState.dailyTimes && typeof persistedState.dailyTimes === 'object') {
           safeState.dailyTimes = { ...currentState.dailyTimes, ...persistedState.dailyTimes };

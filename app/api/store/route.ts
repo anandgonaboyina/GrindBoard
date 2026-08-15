@@ -46,10 +46,11 @@ export async function GET(request: Request) {
     const SETTING_ARRAY_KEYS = [
       'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
       'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
-      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton'
+      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton',
+      'weekdayTimes', 'weekendTimes'
     ];
     
-    const TASK_KEYS = ['tasks', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
+    const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
     const STATS_KEYS = ['history', 'stopwatchSessions'];
     const DAILY_ROUTINE_KEYS = ['dailyTimes'];
 
@@ -199,10 +200,11 @@ export async function POST(request: Request) {
     const SETTING_ARRAY_KEYS = [
       'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
       'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
-      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton'
+      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton',
+      'weekdayTimes', 'weekendTimes'
     ];
     
-    const TASK_KEYS = ['tasks', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
+    const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
     const STATS_KEYS = ['history', 'stopwatchSessions'];
     const DAILY_ROUTINE_KEYS = ['dailyTimes'];
 
