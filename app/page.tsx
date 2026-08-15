@@ -134,6 +134,8 @@ export default function CloudLogin() {
           if (res.ok && data.token) {
             setSuccessMsg('Registration successful! Logging you in...');
             setTimeout(() => {
+              localStorage.removeItem('dashboard-storage');
+              localStorage.removeItem('dashboard_last_modified');
               localStorage.setItem('dashboard_token', data.token);
               localStorage.setItem('dashboard_sync_token', data.token);
               localStorage.setItem('dashboard_username', data.username || username);
@@ -163,6 +165,8 @@ export default function CloudLogin() {
             return;
           }
 
+          localStorage.removeItem('dashboard-storage');
+          localStorage.removeItem('dashboard_last_modified');
           localStorage.setItem('dashboard_token', data.token);
           localStorage.setItem('dashboard_sync_token', data.token);
           localStorage.setItem('dashboard_username', data.username || username);

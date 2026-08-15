@@ -39,8 +39,17 @@ export async function GET(request: Request) {
     const statsRecord = await db.collection('Stats').findOne({ userId: user.userId });
     const dailyRoutineRecord = await db.collection('DailyRoutine').findOne({ userId: user.userId });
     
+    let maxLastModified = existing ? (existing.lastModified || 0) : 0;
+    const collections = [notesRecord, settingsRecord, tasksRecord, roadmapsRecord, statsRecord, dailyRoutineRecord];
+    for (const record of collections) {
+      if (record && record.lastModified && record.lastModified > maxLastModified) {
+        maxLastModified = record.lastModified;
+      }
+    }
+    const cloudLastModified = maxLastModified || Date.now();
+
     if (!existing && !notesRecord && !settingsRecord && !tasksRecord && !roadmapsRecord && !statsRecord && !dailyRoutineRecord) {
-      return NextResponse.json({ data: null, lastModified: 0 });
+      return NextResponse.json({ data: null, lastModified: cloudLastModified });
     }
 
     const SETTING_ARRAY_KEYS = [
@@ -150,15 +159,7 @@ export async function GET(request: Request) {
       returnedData = { state: { notes: notesRecord?.notes || [] }, version: 2 };
     }
     
-    const cloudLastModified = Math.max(
-      existing?.lastModified ? Number(existing.lastModified) : 0,
-      notesRecord?.lastModified ? Number(notesRecord.lastModified) : 0,
-      settingsRecord?.lastModified ? Number(settingsRecord.lastModified) : 0,
-      tasksRecord?.lastModified ? Number(tasksRecord.lastModified) : 0,
-      roadmapsRecord?.lastModified ? Number(roadmapsRecord.lastModified) : 0,
-      statsRecord?.lastModified ? Number(statsRecord.lastModified) : 0,
-      dailyRoutineRecord?.lastModified ? Number(dailyRoutineRecord.lastModified) : 0
-    );
+
 
     console.log('GET /api/store returning for user', user.userId, ':', { 
       hasExisting: !!existing, 
