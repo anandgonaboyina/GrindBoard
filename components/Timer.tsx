@@ -433,11 +433,10 @@ export default function Timer() {
     }
 
     // Unlock audio for mobile browsers during this user interaction
-    // We allow a brief audible "blip" which acts as start feedback and securely unlocks audio on strict mobile browsers
+    // We unlock silently by setting volume to 0. Real alarms will reset the volume before playing.
     if (audioRef.current && enableAlarmSound) {
       isUnlockingAudioRef.current = true;
-      const vol = alarmVolume !== undefined ? alarmVolume : 1;
-      audioRef.current.volume = vol > 1 ? vol / 100 : vol;
+      audioRef.current.volume = 0;
       audioRef.current.play().then(() => {
         setTimeout(() => {
           if (audioRef.current) {
@@ -445,7 +444,7 @@ export default function Timer() {
             audioRef.current.currentTime = 0;
           }
           isUnlockingAudioRef.current = false;
-        }, 150); // 150ms audible blip
+        }, 50); // Silent unlock
       }).catch(e => {
         console.log('Audio unlock failed:', e);
         isUnlockingAudioRef.current = false;
@@ -453,15 +452,14 @@ export default function Timer() {
     }
 
     if (intervalAudioRef.current && enableAlarmSound) {
-      const vol = alarmVolume !== undefined ? alarmVolume : 1;
-      intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.1;
+      intervalAudioRef.current.volume = 0;
       intervalAudioRef.current.play().then(() => {
         setTimeout(() => {
           if (intervalAudioRef.current) {
             intervalAudioRef.current.pause();
             intervalAudioRef.current.currentTime = 0;
           }
-        }, 150);
+        }, 50);
       }).catch(e => console.log('Interval Audio unlock failed:', e));
     }
 
