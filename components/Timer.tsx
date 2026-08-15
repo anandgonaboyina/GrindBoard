@@ -44,6 +44,7 @@ export default function Timer() {
   const savedChunksRef = useRef(timerLastSavedChunks);
   const alertedChunksRef = useRef(timerLastAlertedChunks);
   const isUnlockingAudioRef = useRef(false);
+  const isIntervalRingingRef = useRef(false);
 
   // Inline editing state
   const [isEditingTime, setIsEditingTime] = useState(false);
@@ -102,9 +103,9 @@ export default function Timer() {
     }
   }, [timerEndAt, timerPausedLeft]);
 
-  // Helper to save partial time for an active task timer before clearing/overwriting it
+  // Helper to clear timer state and save partial minutes IF minimum 5-min span is reached
   const saveAndClearActiveTaskTimer = () => {
-    if (activeTaskId && timerInitialMins) {
+    if (timerInitialMins) {
       let currentRemaining = localTimeLeft;
       if (timerEndAt) {
         currentRemaining = Math.max(0, Math.floor((timerEndAt - Date.now()) / 1000));
@@ -113,7 +114,7 @@ export default function Timer() {
       }
 
       const elapsedSeconds = (timerInitialMins * 60) - currentRemaining;
-      if (elapsedSeconds > 0) {
+      if (elapsedSeconds >= 300) {
         const elapsedMins = Math.floor(elapsedSeconds / 60);
         const savedMins = savedChunksRef.current * 5;
         const finalUnsavedMins = Math.max(0, elapsedMins - savedMins);
@@ -121,7 +122,9 @@ export default function Timer() {
         if (finalUnsavedMins > 0) {
           const today = getLocalDateString();
           addMins(today, finalUnsavedMins);
-          updateTaskDuration(activeTaskId, finalUnsavedMins);
+          if (activeTaskId) {
+            updateTaskDuration(activeTaskId, finalUnsavedMins);
+          }
         }
       }
     }
@@ -137,6 +140,7 @@ export default function Timer() {
       intervalAudioRef.current.currentTime = 0;
     }
     setIsIntervalRinging(false);
+    isIntervalRingingRef.current = false;
   };
 
   // Main tick interval
@@ -149,7 +153,7 @@ export default function Timer() {
         const remaining = Math.floor((timerEndAt - now) / 1000);
         const isOwner = timerDeviceId === getDeviceId();
 
-        if (timerInitialMins && activeTaskId) {
+        if (timerInitialMins) {
           const elapsedSeconds = (timerInitialMins * 60) - remaining;
           if (elapsedSeconds >= 0) {
             const chunks = Math.floor(elapsedSeconds / 300); // 5 minutes = 300 seconds
@@ -160,7 +164,9 @@ export default function Timer() {
                 const minsToSave = diff * 5;
                 const today = getLocalDateString();
                 addMins(today, minsToSave);
-                updateTaskDuration(activeTaskId, minsToSave);
+                if (activeTaskId) {
+                  updateTaskDuration(activeTaskId, minsToSave);
+                }
                 setTimerLastSavedChunks(chunks);
               }
               // Local state updates instantly to keep UI in sync
@@ -168,7 +174,7 @@ export default function Timer() {
             }
 
             // Interval Alert Beep
-            if (isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0 && remaining > 0) {
+            if (activeTaskId && isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0 && remaining > 0) {
               const alertIntervalSecs = taskIntervalAlertMins * 60;
               const alertChunks = Math.floor(elapsedSeconds / alertIntervalSecs);
               if (alertChunks > alertedChunksRef.current && alertChunks > 0) {
@@ -178,7 +184,9 @@ export default function Timer() {
                 if (isOwner) {
                   setTimerLastAlertedChunks(alertChunks);
                   if (enableAlarmSound || enableAlarmVibration) {
+                    console.log(`[AUDIO DEBUG] Interval beep triggered for chunk ${alertChunks}.`);
                     setIsIntervalRinging(true);
+                    isIntervalRingingRef.current = true;
                     
                     if (enableAlarmSound && intervalAudioRef.current) {
                       const vol = alarmVolume !== undefined ? alarmVolume : 1;
@@ -199,6 +207,7 @@ export default function Timer() {
                         intervalAudioRef.current.pause();
                       }
                       setIsIntervalRinging(false);
+                      isIntervalRingingRef.current = false;
                     }, duration);
                   }
                 }
@@ -241,6 +250,7 @@ export default function Timer() {
             intervalAudioRef.current.currentTime = 0;
           }
           setIsIntervalRinging(false);
+          isIntervalRingingRef.current = false;
 
           if (isOwner && now - timerEndAt < 120000) {
             playAlarm();
@@ -250,19 +260,19 @@ export default function Timer() {
           if (timerInitialMins && timerInitialMins > 0) {
             if (isOwner) {
               const today = getLocalDateString();
-              if (activeTaskId) {
-                // Calculate any remaining unsaved minutes for this active task session
-                const savedMins = savedChunksRef.current * 5;
-                const finalUnsavedMins = Math.max(0, timerInitialMins - savedMins);
-                if (finalUnsavedMins > 0) {
-                  addMins(today, finalUnsavedMins);
+              // Calculate any remaining unsaved minutes for this session
+              const savedMins = savedChunksRef.current * 5;
+              const finalUnsavedMins = Math.max(0, timerInitialMins - savedMins);
+              if (finalUnsavedMins > 0) {
+                addMins(today, finalUnsavedMins);
+                if (activeTaskId) {
                   updateTaskDuration(activeTaskId, finalUnsavedMins);
                 }
-                setTimerLastSavedChunks(0);
-                setTimerLastAlertedChunks(0);
+              }
+              setTimerLastSavedChunks(0);
+              setTimerLastAlertedChunks(0);
+              if (activeTaskId) {
                 setActiveTask(null, null);
-              } else {
-                addMins(today, timerInitialMins);
               }
               setTimerInitialMins(null);
             }
@@ -355,6 +365,7 @@ export default function Timer() {
   };
 
   const playAlarm = async () => {
+    console.log('[AUDIO DEBUG] playAlarm triggered: Main timer finished.');
     setIsAlarmPlaying(true);
     useDashboardStore.setState({ isTimerOpen: true });
     const durationSecs = useDashboardStore.getState().alarmDurationSecs || 60;
@@ -410,6 +421,7 @@ export default function Timer() {
       intervalAudioRef.current.currentTime = 0;
     }
     setIsIntervalRinging(false);
+    isIntervalRingingRef.current = false;
   };
 
   const startTimer = (seconds: number, isTask: boolean = false) => {
@@ -715,6 +727,7 @@ export default function Timer() {
                   intervalAudioRef.current.currentTime = 0;
                 }
                 setIsIntervalRinging(false);
+                isIntervalRingingRef.current = false;
               }}
               className="w-full py-2 px-3 flex flex-col items-center justify-center gap-0.5 bg-sky-500/80 hover:bg-sky-500 rounded-xl transition-colors animate-pulse shadow-lg"
             >
@@ -812,9 +825,13 @@ export default function Timer() {
             }}
             onPlay={(e) => {
               // Prevent Lively Wallpaper / Chromium from auto-resuming media on focus
-              if (!useDashboardStore.getState().isAlarmPlaying && !isUnlockingAudioRef.current) {
+              const isAlarmPlaying = useDashboardStore.getState().isAlarmPlaying;
+              if (!isAlarmPlaying && !isUnlockingAudioRef.current) {
+                console.log('[AUDIO DEBUG] Blocked auto-resume on MAIN alarm. isAlarmPlaying:', isAlarmPlaying, 'isUnlockingAudio:', isUnlockingAudioRef.current);
                 e.currentTarget.pause();
                 e.currentTarget.currentTime = 0;
+              } else {
+                console.log('[AUDIO DEBUG] Allowed MAIN alarm play. isAlarmPlaying:', isAlarmPlaying, 'isUnlockingAudio:', isUnlockingAudioRef.current);
               }
             }}
           />
@@ -824,6 +841,15 @@ export default function Timer() {
             preload="auto"
             onError={(e) => {
               useDashboardStore.getState().setAlarmSound('/ringtones/alarm.mp3');
+            }}
+            onPlay={(e) => {
+              if (!isIntervalRingingRef.current && !isUnlockingAudioRef.current) {
+                console.log('[AUDIO DEBUG] Blocked auto-resume on INTERVAL beep. isIntervalRinging:', isIntervalRingingRef.current, 'isUnlockingAudio:', isUnlockingAudioRef.current);
+                e.currentTarget.pause();
+                e.currentTarget.currentTime = 0;
+              } else {
+                console.log('[AUDIO DEBUG] Allowed INTERVAL beep play. isIntervalRinging:', isIntervalRingingRef.current, 'isUnlockingAudio:', isUnlockingAudioRef.current);
+              }
             }}
           />
         </div>

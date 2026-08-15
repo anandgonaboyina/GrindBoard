@@ -146,7 +146,8 @@ export default function Stopwatch() {
 
   const finalizeStop = (saveToStats: boolean) => {
     const isOwner = stopwatchDeviceId === getDeviceId();
-    if (elapsedSecs > 0 && saveToStats && isOwner) {
+    // Only save partial final minutes if the total elapsed time is >= 5 minutes (300 secs)
+    if (elapsedSecs >= 300 && saveToStats && isOwner) {
       const totalMins = Math.floor(elapsedSecs / 60);
       const alreadySavedMins = stopwatchLastSavedChunks * 5;
       const finalUnsavedMins = Math.max(0, totalMins - alreadySavedMins);
@@ -154,6 +155,7 @@ export default function Stopwatch() {
         addMins(getLocalDateString(), finalUnsavedMins);
       }
     }
+    
     setIsRunning(false);
     setElapsedSecs(0);
     setStopwatchStartTime(null);
