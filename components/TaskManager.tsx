@@ -289,6 +289,7 @@ export default function TaskManager() {
                                         onChange={(e) => {
                                             const val = parseInt(e.target.value);
                                             setTaskIntervalAlertMins(isNaN(val) ? 0 : val);
+                                            
                                         }}
                                         className="w-6 md:w-7 bg-black/40 border border-white/20 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
                                         min="1"

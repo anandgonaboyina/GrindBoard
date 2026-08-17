@@ -176,15 +176,23 @@ export default function Timer() {
             // Interval Alert Beep
             if (activeTaskId && isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0 && remaining > 0) {
               const alertIntervalSecs = taskIntervalAlertMins * 60;
-              const alertChunks = Math.floor(elapsedSeconds / alertIntervalSecs);
-              if (alertChunks > alertedChunksRef.current && alertChunks > 0) {
-                // Update local ref immediately to prevent looping
-                alertedChunksRef.current = alertChunks;
+              const currentIntervalBoundary = Math.ceil(remaining / alertIntervalSecs);
+
+              if (alertedChunksRef.current === 0 || currentIntervalBoundary > alertedChunksRef.current) {
+                // Initialize or handle timer time increases
+                alertedChunksRef.current = currentIntervalBoundary;
+                if (isOwner) {
+                  setTimerLastAlertedChunks(currentIntervalBoundary);
+                }
+              } else if (currentIntervalBoundary < alertedChunksRef.current) {
+                // Crossed a boundary downwards!
+                alertedChunksRef.current = currentIntervalBoundary;
+                
                 // Only the device that started it (owner) will ring, preventing background ghosts on other laptops
                 if (isOwner) {
-                  setTimerLastAlertedChunks(alertChunks);
+                  setTimerLastAlertedChunks(currentIntervalBoundary);
                   if (enableAlarmSound || enableAlarmVibration) {
-                    console.log(`[AUDIO DEBUG] Interval beep triggered for chunk ${alertChunks}.`);
+                    console.log(`[AUDIO DEBUG] Interval beep triggered at boundary ${currentIntervalBoundary}.`);
                     setIsIntervalRinging(true);
                     isIntervalRingingRef.current = true;
                     
