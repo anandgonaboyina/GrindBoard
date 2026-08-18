@@ -46,6 +46,7 @@ export default function Timer() {
   const isUnlockingAudioRef = useRef(false);
   const isIntervalRingingRef = useRef(false);
   const lastIntervalAlertMinsRef = useRef(taskIntervalAlertMins);
+  const lastIsIntervalEnabledRef = useRef(isTaskIntervalAlertEnabled);
 
   // Inline editing state
   const [isEditingTime, setIsEditingTime] = useState(false);
@@ -83,13 +84,18 @@ export default function Timer() {
     }
   }, []);
 
-  // Keep the ref mirror in sync whenever the store value changes.
+  // Keep the ref mirror in sync for resets (0 or -1), but ignore cloud sync overwrites of active state
+  // to prevent ghost interval beeps or double-saving stats.
   useEffect(() => {
-    savedChunksRef.current = timerLastSavedChunks;
+    if (timerLastSavedChunks === 0) {
+      savedChunksRef.current = 0;
+    }
   }, [timerLastSavedChunks]);
 
   useEffect(() => {
-    alertedChunksRef.current = timerLastAlertedChunks;
+    if (timerLastAlertedChunks <= 0) {
+      alertedChunksRef.current = timerLastAlertedChunks;
+    }
   }, [timerLastAlertedChunks]);
 
   // Ensure local time immediately reflects store changes
@@ -181,6 +187,7 @@ export default function Timer() {
               if (
                 alertedChunksRef.current === 0 || 
                 lastIntervalAlertMinsRef.current !== taskIntervalAlertMins ||
+                lastIsIntervalEnabledRef.current !== isTaskIntervalAlertEnabled ||
                 remaining > alertedChunksRef.current + alertIntervalSecs + 5
               ) {
                 // Initialize or handle timer time increases or interval changes
@@ -189,6 +196,7 @@ export default function Timer() {
                 
                 alertedChunksRef.current = nextAlert;
                 lastIntervalAlertMinsRef.current = taskIntervalAlertMins;
+                lastIsIntervalEnabledRef.current = isTaskIntervalAlertEnabled;
                 if (isOwner) {
                   setTimerLastAlertedChunks(nextAlert);
                 }
