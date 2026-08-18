@@ -45,6 +45,7 @@ export default function Timer() {
   const alertedChunksRef = useRef(timerLastAlertedChunks);
   const isUnlockingAudioRef = useRef(false);
   const isIntervalRingingRef = useRef(false);
+  const lastIntervalAlertMinsRef = useRef(taskIntervalAlertMins);
 
   // Inline editing state
   const [isEditingTime, setIsEditingTime] = useState(false);
@@ -176,23 +177,33 @@ export default function Timer() {
             // Interval Alert Beep
             if (activeTaskId && isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0 && remaining > 0) {
               const alertIntervalSecs = taskIntervalAlertMins * 60;
-              const currentIntervalBoundary = Math.ceil(remaining / alertIntervalSecs);
 
-              if (alertedChunksRef.current === 0 || currentIntervalBoundary > alertedChunksRef.current) {
-                // Initialize or handle timer time increases
-                alertedChunksRef.current = currentIntervalBoundary;
+              if (
+                alertedChunksRef.current === 0 || 
+                lastIntervalAlertMinsRef.current !== taskIntervalAlertMins ||
+                remaining > alertedChunksRef.current + alertIntervalSecs + 5
+              ) {
+                // Initialize or handle timer time increases or interval changes
+                let nextAlert = remaining - alertIntervalSecs;
+                if (nextAlert === 0) nextAlert = -1; // Prevent beep precisely at 0 (timer end)
+                
+                alertedChunksRef.current = nextAlert;
+                lastIntervalAlertMinsRef.current = taskIntervalAlertMins;
                 if (isOwner) {
-                  setTimerLastAlertedChunks(currentIntervalBoundary);
+                  setTimerLastAlertedChunks(nextAlert);
                 }
-              } else if (currentIntervalBoundary < alertedChunksRef.current) {
+              } else if (remaining <= alertedChunksRef.current) {
                 // Crossed a boundary downwards!
-                alertedChunksRef.current = currentIntervalBoundary;
+                let nextAlert = remaining - alertIntervalSecs;
+                if (nextAlert === 0) nextAlert = -1;
+                
+                alertedChunksRef.current = nextAlert;
                 
                 // Only the device that started it (owner) will ring, preventing background ghosts on other laptops
                 if (isOwner) {
-                  setTimerLastAlertedChunks(currentIntervalBoundary);
+                  setTimerLastAlertedChunks(nextAlert);
                   if (enableAlarmSound || enableAlarmVibration) {
-                    console.log(`[AUDIO DEBUG] Interval beep triggered at boundary ${currentIntervalBoundary}.`);
+                    console.log(`[AUDIO DEBUG] Interval beep triggered. Next alert at ${nextAlert}s.`);
                     setIsIntervalRinging(true);
                     isIntervalRingingRef.current = true;
                     
