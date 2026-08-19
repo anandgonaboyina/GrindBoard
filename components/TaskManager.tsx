@@ -51,6 +51,8 @@ export default function TaskManager() {
     const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, editTaskTimeSpent, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, moveTaskTab, taskGroupNames, setTaskGroupName, activeTaskId } = useDashboardStore();
 
     const draggedIndexRef = useRef<number | null>(null);
+    const filteredTasksRef = useRef<any[]>([]);
+    const currentTasksRef = useRef<any[]>([]);
 
     useEffect(() => {
         draggedIndexRef.current = draggedIndex;
@@ -69,9 +71,17 @@ export default function TaskManager() {
                 if (taskEl) {
                     const targetIndex = parseInt(taskEl.getAttribute('data-task-index') || '', 10);
                     if (!isNaN(targetIndex) && targetIndex !== draggedIndexRef.current) {
-                        reorderTasks(activeTab, draggedIndexRef.current, targetIndex);
-                        draggedIndexRef.current = targetIndex;
-                        setDraggedIndex(targetIndex);
+                        const draggedTask = filteredTasksRef.current[draggedIndexRef.current];
+                        const targetTask = filteredTasksRef.current[targetIndex];
+                        if (draggedTask && targetTask) {
+                            const realDraggedIndex = currentTasksRef.current.findIndex(t => t.id === draggedTask.id);
+                            const realTargetIndex = currentTasksRef.current.findIndex(t => t.id === targetTask.id);
+                            if (realDraggedIndex !== -1 && realTargetIndex !== -1) {
+                                reorderTasks(activeTab, realDraggedIndex, realTargetIndex);
+                                draggedIndexRef.current = targetIndex;
+                                setDraggedIndex(targetIndex);
+                            }
+                        }
                     }
                 }
             }
@@ -188,6 +198,9 @@ export default function TaskManager() {
         if (aDone === bDone) return 0;
         return aDone ? 1 : -1;
     });
+
+    filteredTasksRef.current = filteredTasks;
+    currentTasksRef.current = currentTasks;
 
     const totalRemainingMinutes = currentTasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + (t.duration || 0), 0);
     const formatRemainingTime = (mins: number) => {
@@ -375,8 +388,17 @@ export default function TaskManager() {
                                     data-task-index={index}
                                     onPointerEnter={() => {
                                         if (draggedIndex !== null && draggedIndex !== index) {
-                                            reorderTasks(activeTab, draggedIndex, index);
-                                            setDraggedIndex(index);
+                                            const draggedTask = filteredTasks[draggedIndex];
+                                            const targetTask = filteredTasks[index];
+                                            if (draggedTask && targetTask) {
+                                                const realDraggedIndex = currentTasks.findIndex(t => t.id === draggedTask.id);
+                                                const realTargetIndex = currentTasks.findIndex(t => t.id === targetTask.id);
+                                                if (realDraggedIndex !== -1 && realTargetIndex !== -1) {
+                                                    reorderTasks(activeTab, realDraggedIndex, realTargetIndex);
+                                                    draggedIndexRef.current = index;
+                                                    setDraggedIndex(index);
+                                                }
+                                            }
                                         }
                                     }}
                                     className={`group flex items-start justify-between p-1.5 rounded-lg border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/30 hover:border-white/50'}`}
@@ -386,10 +408,12 @@ export default function TaskManager() {
                                             className="flex flex-col items-center opacity-40 hover:opacity-100 transition-opacity justify-center mt-1.5 shrink-0 -ml-0.5 cursor-grab active:cursor-grabbing touch-none select-none p-1"
                                             onPointerDown={(e) => {
                                                 e.stopPropagation();
+                                                draggedIndexRef.current = index;
                                                 setDraggedIndex(index);
                                             }}
                                             onTouchStart={(e) => {
                                                 e.stopPropagation();
+                                                draggedIndexRef.current = index;
                                                 setDraggedIndex(index);
                                             }}
                                             onMouseDown={(e) => e.stopPropagation()}
