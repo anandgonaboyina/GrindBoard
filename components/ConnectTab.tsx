@@ -40,7 +40,7 @@ export default function ConnectTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string, username: string, profilePicture?: string, alias?: string }[]>([]);
   const [hasSearchedFriends, setHasSearchedFriends] = useState(false);
-  const [friends, setFriends] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
+  const [friends, setFriends] = useState<{ id: string, taskSharing?: Record<string, boolean>, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
   const [pendingRequests, setPendingRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
   const [sentRequests, setSentRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
 
