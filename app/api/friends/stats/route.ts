@@ -97,12 +97,14 @@ export async function GET(request: Request) {
     }
     const friendAccount = await db.collection('User').findOne(userQuery);
 
+    const isTaskSharingEnabled = friendship.taskSharing?.[friendId] === true;
+
     const publicStats = {
       username: friendAccount?.username || friendId,
       history: parsedData.history || {},
       dailyTimes: parsedData.dailyTimes || {},
       tasksCompleted: (parsedData.tasks || []).filter((t: any) => t.completed).length,
-      tasks: parsedData.tasks || [],
+      tasks: isTaskSharingEnabled ? (parsedData.tasks || []) : undefined,
       deadlines: parsedData.deadlines || [],
       timetableGrid: parsedData.timetableGrid || null,
       timetableColors: parsedData.timetableColors || null,

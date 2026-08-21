@@ -114,8 +114,14 @@ interface DashboardState {
   settingsActiveTab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'update' | 'wallpaper' | 'quotes';
   toggleSettings: () => void;
   setSettingsActiveTab: (tab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'update' | 'wallpaper' | 'quotes') => void;
-  connectInitialTab?: 'profile' | 'friends' | 'leaderboard';
-  setConnectInitialTab: (tab?: 'profile' | 'friends' | 'leaderboard') => void;
+  connectInitialTab?: 'profile' | 'friends' | 'leaderboard' | 'groups';
+  setConnectInitialTab: (tab?: 'profile' | 'friends' | 'leaderboard' | 'groups') => void;
+  
+  userGroups: any[];
+  setUserGroups: (groups: any[]) => void;
+  selectedGroupId: string | null;
+  setSelectedGroupId: (id: string | null) => void;
+  
   timerTrigger: { mins: number; ts: number; taskId?: string; taskTitle?: string } | null;
   triggerTimer: (mins: number, taskId?: string, taskTitle?: string) => void;
 
@@ -167,6 +173,16 @@ interface DashboardState {
   setIsTaskIntervalAlertEnabled: (enabled: boolean) => void;
   taskIntervalRingSecs: number;
   setTaskIntervalRingSecs: (secs: number) => void;
+
+  isTimerIntervalEnabled: boolean;
+  setIsTimerIntervalEnabled: (enabled: boolean) => void;
+  timerIntervalMins: number;
+  setTimerIntervalMins: (mins: number) => void;
+
+  isStopwatchIntervalEnabled: boolean;
+  setIsStopwatchIntervalEnabled: (enabled: boolean) => void;
+  stopwatchIntervalMins: number;
+  setStopwatchIntervalMins: (mins: number) => void;
 
   // Quotes State
   currentQuote: { text: string; author: string } | null;
@@ -740,6 +756,10 @@ export const useDashboardStore = create<DashboardState>()(
       theme: 'dark',
       notesThemeOverride: 'light',
       timetableThemeOverride: 'light',
+      userGroups: [],
+      setUserGroups: (groups) => set({ userGroups: groups }),
+      selectedGroupId: null,
+      setSelectedGroupId: (id) => set({ selectedGroupId: id }),
       setTheme: (theme) => set({ theme, notesThemeOverride: null, timetableThemeOverride: null }),
       setNotesThemeOverride: (theme) => set({ notesThemeOverride: theme }),
       setTimetableThemeOverride: (theme) => set({ timetableThemeOverride: theme }),
@@ -972,18 +992,104 @@ export const useDashboardStore = create<DashboardState>()(
       activeTaskId: null,
       activeTaskTitle: null,
       setActiveTask: (id, title) => set({ activeTaskId: id, activeTaskTitle: title }),
-      updateTaskDuration: (id, decreaseMins) => set((state) => ({
-        tasks: state.tasks.map(t => t.id === id ? {
-          ...t,
-          duration: Math.max(0, t.duration - decreaseMins),
-          timeSpent: (t.timeSpent || 0) + decreaseMins
-        } : t),
-        tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? {
-          ...t,
-          duration: Math.max(0, t.duration - decreaseMins),
-          timeSpent: (t.timeSpent || 0) + decreaseMins
-        } : t)
-      })),
+      updateTaskDuration: (id, decreaseMins) => set((state) => {
+        const isPersonal = state.tasks.some(t => t.id === id) || state.tomorrowTasks.some(t => t.id === id);
+        
+        if (isPersonal) {
+          return {
+            tasks: state.tasks.map(t => t.id === id ? {
+              ...t,
+              duration: Math.max(0, t.duration - decreaseMins),
+              timeSpent: (t.timeSpent || 0) + decreaseMins
+            } : t),
+            tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? {
+              ...t,
+              duration: Math.max(0, t.duration - decreaseMins),
+              timeSpent: (t.timeSpent || 0) + decreaseMins
+            } : t)
+          };
+        }
+
+        let foundGroup: any = null;
+        let foundTask: any = null;
+        for (const g of state.userGroups) {
+           const t = g.tasks?.find((task: any) => task.id === id);
+           if (t) {
+             foundGroup = g;
+             foundTask = t;
+             break;
+           }
+        }
+
+        if (foundGroup) {
+          const username = localStorage.getItem('dashboard_username');
+          const myMemberInfo = foundGroup.members?.find((m: any) => m.username === username);
+          if (myMemberInfo) {
+             const d = new Date();
+             const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+             
+             let updatedCompletionParams = null;
+
+             const newUserGroups = state.userGroups.map(g => {
+                if (g._id === foundGroup._id) {
+                   const completions = g.completions || {};
+                   const userCompletions = completions[myMemberInfo.userId] || {};
+                   const todayCompletions = userCompletions[todayStr] || {};
+                   const taskCompletion = todayCompletions[id] || { timeSpent: 0, completed: false };
+                   
+                   const newTimeSpent = (taskCompletion.timeSpent || 0) + decreaseMins;
+                   let newCompleted = taskCompletion.completed;
+                   
+                   // Auto-complete if time spent equals or exceeds duration
+                   if (newTimeSpent >= (foundTask.duration || 0)) {
+                       newCompleted = true;
+                   }
+
+                   const newCompletions = {
+                      ...completions,
+                      [myMemberInfo.userId]: {
+                         ...userCompletions,
+                         [todayStr]: {
+                            ...todayCompletions,
+                            [id]: {
+                               ...taskCompletion,
+                               timeSpent: newTimeSpent,
+                               completed: newCompleted
+                            }
+                         }
+                      }
+                   };
+                   
+                   updatedCompletionParams = {
+                       dateStr: todayStr,
+                       taskId: id,
+                       completed: newCompleted,
+                       timeSpent: newTimeSpent
+                   };
+
+                   return {
+                      ...g,
+                      completions: newCompletions
+                   };
+                }
+                return g;
+             });
+
+             const token = localStorage.getItem('dashboard_sync_token');
+             if (token && updatedCompletionParams) {
+                fetch(`/api/groups/${foundGroup._id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ action: 'update_completion', ...((updatedCompletionParams as any) || {}) })
+                }).catch(() => {});
+             }
+
+             return { userGroups: newUserGroups };
+          }
+        }
+
+        return state;
+      }),
       editTaskDuration: (id, newDuration, tab = 'today') => set((state) => {
         if (tab === 'today') {
           return { tasks: state.tasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
@@ -1088,6 +1194,16 @@ export const useDashboardStore = create<DashboardState>()(
       setTaskIntervalAlertMins: (mins) => set({ taskIntervalAlertMins: mins }),
       taskIntervalRingSecs: 10,
       setTaskIntervalRingSecs: (secs) => set({ taskIntervalRingSecs: secs }),
+
+      isTimerIntervalEnabled: false,
+      setIsTimerIntervalEnabled: (enabled) => set({ isTimerIntervalEnabled: enabled }),
+      timerIntervalMins: 5,
+      setTimerIntervalMins: (mins) => set({ timerIntervalMins: mins }),
+
+      isStopwatchIntervalEnabled: false,
+      setIsStopwatchIntervalEnabled: (enabled) => set({ isStopwatchIntervalEnabled: enabled }),
+      stopwatchIntervalMins: 5,
+      setStopwatchIntervalMins: (mins) => set({ stopwatchIntervalMins: mins }),
       setEnablePanicButton: (val) => set({ enablePanicButton: val }),
       setPanicButtonMode: (val) => set({ panicButtonMode: val }),
 

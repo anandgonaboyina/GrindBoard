@@ -531,9 +531,16 @@ export async function POST(request: Request) {
       );
     }
     
+    let userQuery: any;
+    try {
+      userQuery = { _id: new ObjectId(user.userId) };
+    } catch {
+      userQuery = { _id: user.userId };
+    }
+    
     // Auto-update the active status in the Users collection
     await db.collection('User').updateOne(
-      { _id: new ObjectId(user.userId) },
+      userQuery,
       { $set: { lastActiveAt: new Date() } }
     );
 

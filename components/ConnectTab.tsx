@@ -2,16 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore, setAuthTransition } from '@/store/dashboardStore';
-import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame } from 'lucide-react';
+import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame, Calendar, Settings } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
+import ConnectGroupsTab from './ConnectGroupsTab';
+import Timetable from './Timetable';
 import Link from 'next/link';
 
 export default function ConnectTab() {
   const { history, tasks, timetableGrid, connectInitialTab, setConnectInitialTab } = useDashboardStore();
-  const [activeTab, setActiveTab] = useState<'profile' | 'friends' | 'leaderboard'>(connectInitialTab || 'profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'friends' | 'leaderboard' | 'groups'>(connectInitialTab || 'profile');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('');
+  const [showFriendTimetable, setShowFriendTimetable] = useState(false);
+  const [showFriendTasks, setShowFriendTasks] = useState(false);
+  const [friendSettingsModal, setFriendSettingsModal] = useState<any>(null);
 
   useEffect(() => {
     if (connectInitialTab) {
@@ -38,6 +43,9 @@ export default function ConnectTab() {
   const [friends, setFriends] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
   const [pendingRequests, setPendingRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
   const [sentRequests, setSentRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
+
+  // Group requests state for badge
+  const [groupRequestsCount, setGroupRequestsCount] = useState(0);
 
   // Info Modal state for Leaderboard
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -90,7 +98,16 @@ export default function ConnectTab() {
       setActiveTab('leaderboard');
     };
     window.addEventListener('open-leaderboard', handleOpenLeaderboard);
-    return () => window.removeEventListener('open-leaderboard', handleOpenLeaderboard);
+    
+    const handleGroupRequestsUpdate = (e: any) => {
+      setGroupRequestsCount(e.detail);
+    };
+    window.addEventListener('group-requests-updated', handleGroupRequestsUpdate);
+
+    return () => {
+      window.removeEventListener('open-leaderboard', handleOpenLeaderboard);
+      window.removeEventListener('group-requests-updated', handleGroupRequestsUpdate);
+    };
   }, []);
 
   useEffect(() => {
@@ -215,6 +232,16 @@ export default function ConnectTab() {
         setFriends((data.acceptedFriends || []).filter((f: any) => f && f.user));
         setPendingRequests((data.pendingRequests || []).filter((r: any) => r && r.user));
         setSentRequests((data.sentRequests || []).filter((r: any) => r && r.user));
+      }
+
+      // Also check group requests
+      const groupRes = await fetch('/api/groups/requests', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
+      });
+      if (groupRes.ok) {
+        const groupData = await groupRes.json();
+        setGroupRequestsCount((groupData.requests || []).length);
       }
     } catch (err) { }
   };
@@ -468,6 +495,63 @@ export default function ConnectTab() {
     } catch (err) { }
   };
 
+  const viewFriendTimetable = async (friendId: string, friendUsername: string) => {
+    const token = localStorage.getItem('dashboard_sync_token');
+    try {
+      const res = await fetch(`/api/friends/stats?friendId=${friendId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        useDashboardStore.getState().setViewingFriend({ username: friendUsername, stats: data.stats });
+        setShowFriendTimetable(true);
+      } else {
+        alert('Failed to fetch timetable: ' + data.error);
+      }
+    } catch (err) { }
+  };
+
+  const viewFriendTasks = async (friendId: string, friendUsername: string) => {
+    const token = localStorage.getItem('dashboard_sync_token');
+    try {
+      const res = await fetch(`/api/friends/stats?friendId=${friendId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        useDashboardStore.getState().setViewingFriend({ username: friendUsername, stats: data.stats });
+        setShowFriendTasks(true);
+      } else {
+        alert('Failed to fetch tasks: ' + data.error);
+      }
+    } catch (err) { }
+  };
+
+  const handleToggleTaskSharing = async (friendshipId: string, currentSharingState: any) => {
+    const token = localStorage.getItem('dashboard_sync_token');
+    if (!token) return;
+    try {
+      const myUserId = JSON.parse(atob(token.split('.')[1])).userId;
+      const isCurrentlySharing = currentSharingState?.[myUserId] === true;
+      const newTaskSharing = { ...currentSharingState, [myUserId]: !isCurrentlySharing };
+
+      const res = await fetch('/api/friends', {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendshipId, taskSharing: newTaskSharing })
+      });
+
+      if (res.ok) {
+        fetchFriendsData();
+        setFriendSettingsModal((prev: any) => prev ? { ...prev, taskSharing: newTaskSharing } : null);
+      } else {
+        alert('Failed to update sharing settings');
+      }
+    } catch (e) {
+      alert('Error updating sharing settings');
+    }
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="flex flex-col items-center justify-center h-full max-h-[80vh] w-full max-w-sm mx-auto p-4 overflow-hidden ">
@@ -635,6 +719,18 @@ export default function ConnectTab() {
         >
           <Trophy size={16} />
           <span className="text-[9px] font-bold">Ranks</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('groups')}
+          className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-all ${activeTab === 'groups' ? 'bg-blue-500 text-white shadow-md' : 'text-white/50 hover:text-white/90'}`}
+        >
+          <Users size={16} />
+          <span className="text-[9px] font-bold">Groups</span>
+          {groupRequestsCount > 0 && (
+            <span className="absolute top-1 right-3 sm:right-6 bg-red-500 text-white text-[8px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full shadow-md">
+              {groupRequestsCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -949,12 +1045,35 @@ export default function ConnectTab() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
+                      {f.taskSharing?.[f.user.id] && (
+                        <button
+                          onClick={() => viewFriendTasks(f.user.id, f.user.username)}
+                          className="p-1 md:px-2 md:py-1 bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-emerald-500/20 transition-colors h-6 md:h-7"
+                          title="View Tasks"
+                        >
+                          <Check size={10} className="md:w-3 md:h-3" /> <span className="hidden md:inline">Tasks</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => viewFriendTimetable(f.user.id, f.user.username)}
+                        className="p-1 md:px-2 md:py-1 bg-purple-500/10 text-purple-300 rounded border border-purple-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-purple-500/20 transition-colors h-6 md:h-7"
+                        title="View Timetable"
+                      >
+                        <Calendar size={10} className="md:w-3 md:h-3" /> <span className="hidden md:inline">TimeTable</span>
+                      </button>
                       <button
                         onClick={() => viewFriendStats(f.user.id, f.user.username)}
                         className="p-1 md:px-2 md:py-1 bg-blue-500/10 text-blue-300 rounded border border-blue-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-blue-500/20 transition-colors h-6 md:h-7"
                         title="View Stats"
                       >
                         <BarChart2 size={10} className="md:w-3 md:h-3" /> <span className="hidden md:inline">Stats</span>
+                      </button>
+                      <button
+                        onClick={() => setFriendSettingsModal(f)}
+                        className="text-white/40 hover:text-white w-6 h-6 md:w-7 md:h-7 rounded border border-transparent hover:border-white/10 hover:bg-white/5 flex items-center justify-center transition-colors shrink-0"
+                        title="Friend Settings"
+                      >
+                        <Settings size={12} className="md:w-3.5 md:h-3.5" />
                       </button>
                       <button
                         onClick={() => removeFriend(f.id, f.user?.username || 'Unknown')}
@@ -1424,6 +1543,135 @@ export default function ConnectTab() {
 
             <div className="flex flex-col items-center text-center">
               <h4 className="text-sm md:text-base font-bold text-white tracking-wide">{selectedImageOverlay.title}</h4>
+            </div>
+          </div>
+        </div>
+      )}
+      {activeTab === 'groups' && <ConnectGroupsTab />}
+
+      {/* Friend Timetable Modal */}
+      {showFriendTimetable && useDashboardStore.getState().viewingFriend && (
+        <div
+          className="fixed inset-0 z-[10005] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300 p-2 sm:p-4"
+          onClick={() => {
+            setShowFriendTimetable(false);
+            useDashboardStore.getState().setViewingFriend(null);
+          }}
+        >
+          <div
+            className="w-full max-w-3xl relative animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                setShowFriendTimetable(false);
+                useDashboardStore.getState().setViewingFriend(null);
+              }}
+              className="absolute -top-10 sm:-top-12 right-0 bg-white/10 hover:bg-white/20 p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-colors text-white"
+            >
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+            <Timetable />
+          </div>
+        </div>
+      )}
+
+      {/* Friend Tasks Modal */}
+      {showFriendTasks && useDashboardStore.getState().viewingFriend && (
+        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => {
+          setShowFriendTasks(false);
+          useDashboardStore.getState().setViewingFriend(null);
+        }}>
+          <div className="bg-[#0f0f13] w-full max-w-2xl max-h-[85vh] rounded-2xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setShowFriendTasks(false);
+                  useDashboardStore.getState().setViewingFriend(null);
+                }}
+                className="p-2 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl backdrop-blur-md transition-all shadow-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-4 border-b border-white/10 bg-black/40 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center border border-white/10 shadow-lg">
+                <Check className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white tracking-tight">{useDashboardStore.getState().viewingFriend?.username}'s Tasks</h2>
+                <p className="text-xs text-white/50">Viewing shared tasks</p>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-auto custom-scrollbar p-4">
+               {useDashboardStore.getState().viewingFriend?.stats?.tasks?.length > 0 ? (
+                 <div className="space-y-2">
+                   {useDashboardStore.getState().viewingFriend?.stats?.tasks.map((task: any) => (
+                     <div key={task.id} className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
+                       <div className="flex items-center gap-3">
+                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${task.completed ? 'bg-emerald-500 border-emerald-500' : 'border-white/20'}`}>
+                           {task.completed && <Check size={10} className="text-white" />}
+                         </div>
+                         <span className={`text-sm font-semibold ${task.completed ? 'text-white/40 line-through' : 'text-white/90'}`}>{task.title}</span>
+                       </div>
+                       <div className="flex items-center gap-2 text-xs font-bold text-white/50 bg-black/40 px-2 py-1 rounded-full border border-white/5">
+                         <Clock size={10} className="text-emerald-400" />
+                         <span>{task.timeSpent || 0}m / {task.duration}m</span>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               ) : (
+                 <p className="text-white/40 text-center italic text-sm mt-8">No tasks found for this user.</p>
+               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Friend Settings Modal */}
+      {friendSettingsModal && (
+        <div className="fixed inset-0 z-[10006] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setFriendSettingsModal(null)}>
+          <div className="bg-[#12121a] w-full max-w-sm rounded-2xl border border-white/10 shadow-2xl p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-white flex items-center gap-2"><Settings size={16} className="text-blue-400" /> Friendship Settings</h3>
+              <button onClick={() => setFriendSettingsModal(null)} className="text-white/50 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-white/60 mb-6">Manage what <strong className="text-white">{friendSettingsModal.user?.username}</strong> can see on your profile.</p>
+
+            <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-white/90">Share Tasks</span>
+                <span className="text-[10px] text-white/50">Allow them to view your daily tasks</span>
+              </div>
+              <button
+                onClick={() => handleToggleTaskSharing(friendSettingsModal.id, friendSettingsModal.taskSharing)}
+                className={`w-10 h-5 rounded-full relative transition-colors ${(() => {
+                  try {
+                    const token = localStorage.getItem('dashboard_sync_token');
+                    if (token) {
+                      const myUserId = JSON.parse(atob(token.split('.')[1])).userId;
+                      return friendSettingsModal.taskSharing?.[myUserId] === true ? 'bg-emerald-500' : 'bg-white/20';
+                    }
+                  } catch (e) {}
+                  return 'bg-white/20';
+                })()}`}
+              >
+                <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${(() => {
+                  try {
+                    const token = localStorage.getItem('dashboard_sync_token');
+                    if (token) {
+                      const myUserId = JSON.parse(atob(token.split('.')[1])).userId;
+                      return friendSettingsModal.taskSharing?.[myUserId] === true ? 'translate-x-5' : '';
+                    }
+                  } catch (e) {}
+                  return '';
+                })()}`} />
+              </button>
             </div>
           </div>
         </div>

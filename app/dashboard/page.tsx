@@ -20,13 +20,14 @@ import RightToolbar from "@/components/RightToolbar";
 import DeadlineAlerts from "@/components/DeadlineAlerts";
 import StartupUpdateChecker from "@/components/StartupUpdateChecker";
 import FriendRequestPopup from "@/components/FriendRequestPopup";
+import GroupRequestPopup from "@/components/GroupRequestPopup";
 import GlobalBroadcastPopup from "@/components/GlobalBroadcastPopup";
 import VideoBackground from "@/components/VideoBackground";
 import LoadingScreen from "@/components/LoadingScreen";
 import NewsModal from "@/components/NewsModal";
 
 import { useEffect, useState, useRef } from "react";
-import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper } from "lucide-react";
+import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users } from "lucide-react";
 import { useDashboardStore, hasUnsavedChanges } from "@/store/dashboardStore";
 import { fetchQuote } from "@/utils/quoteEngine";
 
@@ -331,6 +332,28 @@ export default function Dashboard() {
                 <Calendar size={20} className="sm:w-6 sm:h-6" />
               </div>
 
+              {/* Edge Peek Tab for Leaderboard */}
+              <div
+                className={`fixed left-0 top-[28vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'}`}
+                onClick={() => {
+                  useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'leaderboard' });
+                }}
+                title="Open Leaderboard"
+              >
+                <Trophy size={20} className="sm:w-6 sm:h-6" />
+              </div>
+
+              {/* Edge Peek Tab for Groups */}
+              <div
+                className={`fixed left-0 top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'}`}
+                onClick={() => {
+                  useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'groups' });
+                }}
+                title="Open Groups"
+              >
+                <Users size={20} className="sm:w-6 sm:h-6" />
+              </div>
+
               <div
                 className={`fixed top-[100px] left-0 h-auto max-h-[calc(100vh-140px)] w-auto max-w-[85vw] pb-4 pl-2 pr-0 sm:pl-4 flex flex-col transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] group pointer-events-auto select-none ${isCalendarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-[calc(100%+20px)] pointer-events-none'}`}
                 onTouchStart={(e) => setEdgeTouchStartX(e.touches[0].clientX)}
@@ -515,6 +538,7 @@ export default function Dashboard() {
 
       {/* Global Friend Request Notification */}
       <FriendRequestPopup />
+      <GroupRequestPopup />
 
       {/* Global Developer Broadcast Notification */}
       <GlobalBroadcastPopup />

@@ -1,12 +1,16 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Square, VolumeX, Check, ListTodo, ChevronUp, ChevronDown, BarChart2, StickyNote, Map, Settings } from 'lucide-react';
+import { Play, Pause, Square, VolumeX, Check, ListTodo, ChevronUp, ChevronDown, BarChart2, StickyNote, Map, Settings, BellRing } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
 import DraggableWidget from './DraggableWidget';
 import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { getDeviceId } from '@/utils/deviceId';
+
+const HR_OPTIONS = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+const MIN_OPTIONS = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+const AMPM_OPTIONS = ['AM', 'PM'];
 
 export default function Timer() {
   const {
@@ -20,6 +24,7 @@ export default function Timer() {
     timerLastSavedChunks, setTimerLastSavedChunks,
     timerLastAlertedChunks, setTimerLastAlertedChunks, taskIntervalAlertMins,
     taskIntervalRingSecs, isTaskIntervalAlertEnabled,
+    isTimerIntervalEnabled, setIsTimerIntervalEnabled, timerIntervalMins, setTimerIntervalMins,
     isAlarmPlaying, setIsAlarmPlaying,
     addMins,
     showQuotePopup, isHidden,
@@ -52,6 +57,68 @@ export default function Timer() {
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [editHours, setEditHours] = useState('00');
   const [editMins, setEditMins] = useState('25');
+  const [selectedHr, setSelectedHr] = useState('12');
+  const [selectedMin, setSelectedMin] = useState('00');
+  const [selectedAmPm, setSelectedAmPm] = useState('AM');
+  const [openDropdown, setOpenDropdown] = useState<'hr' | 'min' | 'ampm' | null>(null);
+  const [highlightedField, setHighlightedField] = useState<'clock' | 'minutes' | null>(null);
+
+  useEffect(() => {
+    const now = new Date();
+    let h = now.getHours();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    setSelectedHr(h.toString().padStart(2, '0'));
+    setSelectedMin(now.getMinutes().toString().padStart(2, '0'));
+    setSelectedAmPm(ampm);
+  }, []);
+
+  const updateTargetTime = (hStr: string, mStr: string, ampm: string) => {
+    let h = parseInt(hStr);
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    const m = parseInt(mStr);
+
+    const now = new Date();
+    const targetDate = new Date();
+    targetDate.setHours(h, m, 0, 0);
+    if (targetDate < now) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    const diffInMs = targetDate.getTime() - now.getTime();
+    let diffInMins = Math.floor(diffInMs / 1000 / 60);
+    if (diffInMins > 720) diffInMins = 720; // Cap at 12 hours
+    setCustomMins(diffInMins);
+
+    // Highlight the minutes field
+    setHighlightedField('minutes');
+    setTimeout(() => setHighlightedField(null), 1000);
+  };
+
+  const handleCustomMinsChange = (val: string) => {
+    let m = parseInt(val);
+    if (!isNaN(m) && m > 720) m = 720; // Cap at 12 hours
+
+    const finalVal = isNaN(m) ? '' : m.toString();
+    setCustomMins(finalVal);
+
+    if (!isNaN(m) && m > 0) {
+      const targetDate = new Date();
+      targetDate.setMinutes(targetDate.getMinutes() + m);
+      let h = targetDate.getHours();
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      if (h === 0) h = 12;
+      setSelectedHr(h.toString().padStart(2, '0'));
+      setSelectedMin(targetDate.getMinutes().toString().padStart(2, '0'));
+      setSelectedAmPm(ampm);
+
+      // Highlight the clock fields
+      setHighlightedField('clock');
+      setTimeout(() => setHighlightedField(null), 1000);
+    }
+  };
 
   const [lastInteractionTime, setLastInteractionTime] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -68,7 +135,7 @@ export default function Timer() {
   };
 
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
-  
+
   // Suppress harmless NotSupportedError unhandled rejections caused by Lively Wallpaper/Chromium forcing play() on invalid media sources before fallback kicks in
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -140,7 +207,7 @@ export default function Timer() {
     setActiveTask(null, null);
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
-    
+
     // Safety clear of interval beep
     if (intervalAudioRef.current) {
       intervalAudioRef.current.pause();
@@ -181,61 +248,75 @@ export default function Timer() {
             }
 
             // Interval Alert Beep
-            if (activeTaskId && isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0 && remaining > 0) {
-              const alertIntervalSecs = taskIntervalAlertMins * 60;
+            if (remaining > 0) {
+              let isIntervalActive = false;
+              let activeIntervalMins = 0;
 
-              if (
-                alertedChunksRef.current === 0 || 
-                lastIntervalAlertMinsRef.current !== taskIntervalAlertMins ||
-                lastIsIntervalEnabledRef.current !== isTaskIntervalAlertEnabled ||
-                remaining > alertedChunksRef.current + alertIntervalSecs + 5
-              ) {
-                // Initialize or handle timer time increases or interval changes
-                let nextAlert = remaining - alertIntervalSecs;
-                if (nextAlert === 0) nextAlert = -1; // Prevent beep precisely at 0 (timer end)
-                
-                alertedChunksRef.current = nextAlert;
-                lastIntervalAlertMinsRef.current = taskIntervalAlertMins;
-                lastIsIntervalEnabledRef.current = isTaskIntervalAlertEnabled;
-                if (isOwner) {
-                  setTimerLastAlertedChunks(nextAlert);
-                }
-              } else if (remaining <= alertedChunksRef.current) {
-                // Crossed a boundary downwards!
-                let nextAlert = remaining - alertIntervalSecs;
-                if (nextAlert === 0) nextAlert = -1;
-                
-                alertedChunksRef.current = nextAlert;
-                
-                // Only the device that started it (owner) will ring, preventing background ghosts on other laptops
-                if (isOwner) {
-                  setTimerLastAlertedChunks(nextAlert);
-                  if (enableAlarmSound || enableAlarmVibration) {
-                    console.log(`[AUDIO DEBUG] Interval beep triggered. Next alert at ${nextAlert}s.`);
-                    setIsIntervalRinging(true);
-                    isIntervalRingingRef.current = true;
-                    
-                    if (enableAlarmSound && intervalAudioRef.current) {
-                      const vol = alarmVolume !== undefined ? alarmVolume : 1;
-                      intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
-                      intervalAudioRef.current.currentTime = 0;
-                      intervalAudioRef.current.play().catch(e => console.log('Interval beep failed:', e));
-                    }
-                    
-                    if (enableAlarmVibration) {
-                      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                        try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
-                      }
-                    }
+              if (activeTaskId) {
+                isIntervalActive = isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0;
+                activeIntervalMins = taskIntervalAlertMins;
+              } else {
+                isIntervalActive = isTimerIntervalEnabled && timerIntervalMins > 0;
+                activeIntervalMins = timerIntervalMins;
+              }
 
-                    const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
-                    setTimeout(() => {
-                      if (intervalAudioRef.current) {
-                        intervalAudioRef.current.pause();
+              if (isIntervalActive) {
+                const alertIntervalSecs = activeIntervalMins * 60;
+
+                if (
+                  alertedChunksRef.current === 0 ||
+                  lastIntervalAlertMinsRef.current !== activeIntervalMins ||
+                  lastIsIntervalEnabledRef.current !== isIntervalActive ||
+                  remaining > alertedChunksRef.current + alertIntervalSecs + 5
+                ) {
+                  // Initialize or handle timer time increases or interval changes
+                  let nextAlert = remaining - alertIntervalSecs;
+                  if (nextAlert === 0) nextAlert = -1; // Prevent beep precisely at 0 (timer end)
+
+                  alertedChunksRef.current = nextAlert;
+                  lastIntervalAlertMinsRef.current = activeIntervalMins;
+                  lastIsIntervalEnabledRef.current = isIntervalActive;
+                  if (isOwner) {
+                    setTimerLastAlertedChunks(nextAlert);
+                  }
+                } else if (remaining <= alertedChunksRef.current) {
+                  // Crossed a boundary downwards!
+                  let nextAlert = remaining - alertIntervalSecs;
+                  if (nextAlert === 0) nextAlert = -1;
+
+                  alertedChunksRef.current = nextAlert;
+
+                  // Only the device that started it (owner) will ring, preventing background ghosts on other laptops
+                  if (isOwner) {
+                    setTimerLastAlertedChunks(nextAlert);
+                    if (enableAlarmSound || enableAlarmVibration) {
+                      console.log(`[AUDIO DEBUG] Interval beep triggered. Next alert at ${nextAlert}s. enableAlarmSound: ${enableAlarmSound}, hasAudioRef: ${!!intervalAudioRef.current}`);
+                      setIsIntervalRinging(true);
+                      isIntervalRingingRef.current = true;
+
+                      if (enableAlarmSound && intervalAudioRef.current) {
+                        const vol = alarmVolume !== undefined ? alarmVolume : 1;
+                        intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
+                        intervalAudioRef.current.currentTime = 0;
+                        console.log(`[AUDIO DEBUG] Playing interval audio...`);
+                        intervalAudioRef.current.play().then(() => console.log('[AUDIO DEBUG] Interval audio play success')).catch(e => console.error('[AUDIO DEBUG] Interval beep failed:', e));
                       }
-                      setIsIntervalRinging(false);
-                      isIntervalRingingRef.current = false;
-                    }, duration);
+
+                      if (enableAlarmVibration) {
+                        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                          try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) { }
+                        }
+                      }
+
+                      const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
+                      setTimeout(() => {
+                        if (intervalAudioRef.current) {
+                          intervalAudioRef.current.pause();
+                        }
+                        setIsIntervalRinging(false);
+                        isIntervalRingingRef.current = false;
+                      }, duration);
+                    }
                   }
                 }
               }
@@ -265,7 +346,7 @@ export default function Timer() {
           // Timer finished!
           clearInterval(interval);
           setLocalTimeLeft(0);
-          
+
           if (isOwner) {
             setTimerEndAt(null);
             setTimerPausedLeft(null);
@@ -317,7 +398,7 @@ export default function Timer() {
     }
 
     return () => clearInterval(interval);
-  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, lastInteractionTime, isTaskIntervalAlertEnabled, taskIntervalRingSecs, timerDeviceId]);
+  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, timerIntervalMins, isTimerIntervalEnabled, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, lastInteractionTime, isTaskIntervalAlertEnabled, taskIntervalRingSecs, timerDeviceId]);
 
   // Listen for timer triggers from other components
   useEffect(() => {
@@ -392,7 +473,7 @@ export default function Timer() {
   };
 
   const playAlarm = async () => {
-    console.log('[AUDIO DEBUG] playAlarm triggered: Main timer finished.');
+    console.log(`[AUDIO DEBUG] playAlarm triggered: Main timer finished. enableAlarmSound: ${enableAlarmSound}, hasAudioRef: ${!!audioRef.current}`);
     setIsAlarmPlaying(true);
     useDashboardStore.setState({ isTimerOpen: true });
     const durationSecs = useDashboardStore.getState().alarmDurationSecs || 60;
@@ -576,6 +657,7 @@ export default function Timer() {
   const handleCustomStart = () => {
     let mins = parseInt(customMins);
     if (!isNaN(mins) && mins > 0) {
+      if (mins > 720) mins = 720;
       startTimer(mins * 60);
       setCustomMins('');
     }
@@ -633,250 +715,347 @@ export default function Timer() {
         onPointerDown={updateInteraction}
         className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying || isIntervalRinging ? '' : 'hidden'}`}
       >
-        <div className="w-64 rounded-3xl glass-panel border border-white/20 p-3 text-white flex flex-col gap-2 shadow-2xl">
-          {/* Timer Display / Editor */}
-          <div className="text-center min-h-[80px] flex flex-col items-center justify-center relative">
-            {activeTaskTitle && (
-              <div className="w-full max-w-[220px] mb-3 text-sm font-bold text-white flex items-center justify-center gap-2 bg-blue-600/50 backdrop-blur-md border border-blue-400/50 px-2 py-2 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-                <span className="shrink-0 w-2 h-2 rounded-full bg-blue-200 animate-pulse mt-[5px] self-start"></span>
-                <span className="break-words whitespace-normal text-center leading-snug drop-shadow-md">{activeTaskTitle}</span>
-              </div>
-            )}
-            <div className="flex items-center justify-center w-full relative">
-              {/* Quick Presets Right */}
-              {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !isAlarmPlaying && (
-                <div className="absolute right-1 top-1 mt-[20px] ml-[5px] -translate-y-1/2 flex flex-col gap-1.5">
-                  {[5, 15, 25].map((preset) => (
-                    <button
-                      key={preset}
-                      onClick={() => startTimer(preset * 60)}
-                      className="w-10 py-1 text-xs bg-white/5 hover:bg-white/20 rounded-lg transition-colors border border-white/10 font-medium"
-                    >
-                      {preset}m
-                    </button>
-                  ))}
+        <div className="w-64 rounded-3xl glass-panel border border-white/20 text-white flex flex-col shadow-2xl overflow-hidden">
+
+          {/* Top Title Bar */}
+
+          {activeTaskTitle ? "" : <span className="absolute left-2 top-1 text-[10px] -full md:text-[15px] font-black tracking-widest text-blue-400 uppercase pointer-events-none">Timer</span>}
+
+
+          {/* Body */}
+          <div className="p-3 flex flex-col gap-2 cursor-default">
+            {/* Timer Display / Editor */}
+            <div className="text-center min-h-[80px] flex flex-col items-center justify-center relative">
+              {activeTaskTitle && (
+                <div className="w-full max-w-[220px] mb-3 text-sm font-bold text-white flex items-center justify-center gap-2 bg-blue-600/50 backdrop-blur-md border border-blue-400/50 px-2 py-2 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                  <span className="shrink-0 w-2 h-2 rounded-full bg-blue-200 animate-pulse mt-[5px] self-start"></span>
+                  <span className="break-words whitespace-normal text-center leading-snug drop-shadow-md">{activeTaskTitle}</span>
                 </div>
               )}
-              {isEditingTime ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="flex flex-col items-center">
-
-                    <button onClick={() => adjustEditTime('h', 1)} className="hover:text-white/60 p-1"><ChevronUp size={20} /></button>
-                    <input
-                      type="number"
-                      value={editHours}
-                      onChange={(e) => setEditHours(e.target.value.padStart(2, '0'))}
-                      onKeyDown={(e) => e.key === 'Enter' && saveEditor()}
-                      className="w-16 bg-transparent text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
-                      min="0"
-                      max="99"
-                    />
-                    <button onClick={() => adjustEditTime('h', -1)} className="hover:text-white/60 p-1"><ChevronDown size={20} /></button>
+              <div className="flex items-center justify-center w-full relative">
+                {/* Quick Presets Right */}
+                {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !isAlarmPlaying && (
+                  <div className="absolute right-1 top-1 mt-[20px] ml-[5px] -translate-y-1/2 flex flex-col gap-1.5">
+                    {[5, 15, 25].map((preset) => (
+                      <button
+                        key={preset}
+                        onClick={() => startTimer(preset * 60)}
+                        className="w-10 py-1 text-xs bg-white/5 hover:bg-white/20 rounded-lg transition-colors border border-white/10 font-medium"
+                      >
+                        {preset}m
+                      </button>
+                    ))}
                   </div>
-                  <span className="text-5xl font-light opacity-50 mb-0">:</span>
-                  <div className="flex flex-col items-center">
-                    <button onClick={() => adjustEditTime('m', 1)} className="hover:text-white/60 p-1"><ChevronUp size={20} /></button>
-                    <input
-                      type="number"
-                      value={editMins}
-                      onChange={(e) => setEditMins(e.target.value.padStart(2, '0'))}
-                      onKeyDown={(e) => e.key === 'Enter' && saveEditor()}
-                      className="w-16 bg-transparent text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
-                      min="0"
-                      max="59"
-                    />
-                    <button onClick={() => adjustEditTime('m', -1)} className="hover:text-white/60 p-1"><ChevronDown size={20} /></button>
-                  </div>
-                  <button onClick={saveEditor} className="ml-1 p-2 bg-blue-500/80 hover:bg-blue-500 rounded-xl transition-colors">
-                    <Check size={20} />
-                  </button>
-                </div>
-              ) : (
-                <div
-                  onClick={openEditor}
-                  className={`text-5xl font-light tracking-widest tabular-nums drop-shadow-md transition-opacity ${!timerEndAt && !isAlarmPlaying ? 'cursor-pointer hover:opacity-80' : ''}`}
-                  title={!timerEndAt && !isAlarmPlaying ? "Click to set time" : ""}
-                >
+                )}
+                {isEditingTime ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="flex flex-col items-center">
 
-                  {formatTime(localTimeLeft)}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Alarm State */}
-          {isAlarmPlaying ? (
-            showContinuePrompt ? (
-              <div className="flex flex-col items-center gap-3 w-full py-2">
-                <p className="text-sm font-semibold text-blue-300">Are you still working?</p>
-                <div className="flex gap-2 w-full">
-                  <button
-                    onClick={() => {
-                      setShowContinuePrompt(false);
-                      setIsAlarmPlaying(false);
-                      // Resume timer
-                      if (timerPausedLeft !== null) {
-                        setTimerEndAt(Date.now() + timerPausedLeft * 1000);
-                        setTimerPausedLeft(null);
-                        setTimerDeviceId(getDeviceId());
-                        updateInteraction();
-                      }
-                    }}
-                    className="flex-1 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-xs font-bold transition-colors"
-                  >
-                    Continue
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowContinuePrompt(false);
-                      setIsAlarmPlaying(false);
-                    }}
-                    className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors"
-                  >
-                    Stop
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={stopAlarm}
-                className="w-full py-2 flex items-center justify-center gap-2 bg-red-500/80 hover:bg-red-500 rounded-xl font-medium transition-colors animate-pulse"
-              >
-                <VolumeX size={20} />
-                STOP TIMER
-              </button>
-            )
-          ) : isIntervalRinging ? (
-            <button
-              onClick={() => {
-                if (intervalAudioRef.current) {
-                  intervalAudioRef.current.pause();
-                  intervalAudioRef.current.currentTime = 0;
-                }
-                setIsIntervalRinging(false);
-                isIntervalRingingRef.current = false;
-              }}
-              className="w-full py-2 px-3 flex flex-col items-center justify-center gap-0.5 bg-sky-500/80 hover:bg-sky-500 rounded-xl transition-colors animate-pulse shadow-lg"
-            >
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">
-                {taskIntervalAlertMins || 5}m Span ({doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m"} / {(timerInitialMins || 0) >= 60 ? Math.floor((timerInitialMins || 0) / 60) + "h " + ((timerInitialMins || 0) % 60) + "m" : (timerInitialMins || 0) + "m"})
-              </span>
-              <span className="text-base font-bold tracking-wide flex items-center gap-1 text-white">
-                <Check size={18} strokeWidth={2.5} /> Okay
-              </span>
-            </button>
-          ) : (
-            <>
-              {/* Controls */}
-              {!isEditingTime && (timerEndAt || timerPausedLeft) && timerDeviceId === getDeviceId() && (
-                <div className="flex justify-center gap-2">
-                  <button
-                    onClick={togglePause}
-                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                    title={timerEndAt ? "Pause" : "Resume"}
-                  >
-                    {timerEndAt ? <Pause size={20} /> : <Play size={20} />}
-                  </button>
-                  <button
-                    onClick={resetTimer}
-                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                    title="Stop Timer"
-                  >
-                    <Square size={20} className="fill-current" />
-                  </button>
-                </div>
-              )}
-
-              {/* Custom Input */}
-              {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
-                <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-white/10">
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1 group">
-                      <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Set Time</span>
-                      <input
-                        type="time"
-                        className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-2 py-1.5 text-sm outline-none transition-all placeholder:text-white/20 text-white/90 shadow-inner [color-scheme:dark]"
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                          const timeValue = e.target.value;
-                          if (!timeValue) return;
-                          const [hours, minutes] = timeValue.split(':').map(Number);
-                          const now = new Date();
-                          const targetDate = new Date();
-                          targetDate.setHours(hours, minutes, 0, 0);
-                          if (targetDate < now) {
-                            targetDate.setDate(targetDate.getDate() + 1);
-                          }
-                          const diffInMs = targetDate.getTime() - now.getTime();
-                          const diffInMins = Math.floor(diffInMs / 1000 / 60);
-                          setCustomMins(diffInMins);
-                        }}
-                      />
-                    </div>
-
-                    <span className="text-[9px] font-bold text-white/30 uppercase">or</span>
-
-                    <div className="relative flex-1 group">
-                      <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Minutes</span>
+                      <button onClick={() => adjustEditTime('h', 1)} className="hover:text-white/60 p-1"><ChevronUp size={20} /></button>
                       <input
                         type="number"
-                        placeholder="0"
-                        value={customMins}
-                        onChange={(e) => setCustomMins(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                        className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-2 py-1.5 text-sm text-center outline-none transition-all placeholder:text-white/20 text-white/90 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        min="1"
+                        value={editHours}
+                        onChange={(e) => setEditHours(e.target.value.padStart(2, '0'))}
+                        onKeyDown={(e) => e.key === 'Enter' && saveEditor()}
+                        className="w-16 bg-transparent text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
+                        min="0"
+                        max="99"
                       />
+                      <button onClick={() => adjustEditTime('h', -1)} className="hover:text-white/60 p-1"><ChevronDown size={20} /></button>
                     </div>
+                    <span className="text-5xl font-light opacity-50 mb-0">:</span>
+                    <div className="flex flex-col items-center">
+                      <button onClick={() => adjustEditTime('m', 1)} className="hover:text-white/60 p-1"><ChevronUp size={20} /></button>
+                      <input
+                        type="number"
+                        value={editMins}
+                        onChange={(e) => setEditMins(e.target.value.padStart(2, '0'))}
+                        onKeyDown={(e) => e.key === 'Enter' && saveEditor()}
+                        className="w-16 bg-transparent text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
+                        min="0"
+                        max="59"
+                      />
+                      <button onClick={() => adjustEditTime('m', -1)} className="hover:text-white/60 p-1"><ChevronDown size={20} /></button>
+                    </div>
+                    <button onClick={saveEditor} className="ml-1 p-2 bg-blue-500/80 hover:bg-blue-500 rounded-xl transition-colors">
+                      <Check size={20} />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={openEditor}
+                    className={`text-5xl font-light tracking-widest tabular-nums drop-shadow-md transition-opacity ${!timerEndAt && !isAlarmPlaying ? 'cursor-pointer hover:opacity-80' : ''}`}
+                    title={!timerEndAt && !isAlarmPlaying ? "Click to set time" : ""}
+                  >
 
+                    {formatTime(localTimeLeft)}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Alarm State */}
+            {isAlarmPlaying ? (
+              showContinuePrompt ? (
+                <div className="flex flex-col items-center gap-3 w-full py-2">
+                  <p className="text-sm font-semibold text-blue-300">Are you still working?</p>
+                  <div className="flex gap-2 w-full">
                     <button
-                      onClick={handleCustomStart}
-                      className="px-2.5 py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
-                      title="Start custom timer"
+                      onClick={() => {
+                        setShowContinuePrompt(false);
+                        setIsAlarmPlaying(false);
+                        // Resume timer
+                        if (timerPausedLeft !== null) {
+                          setTimerEndAt(Date.now() + timerPausedLeft * 1000);
+                          setTimerPausedLeft(null);
+                          setTimerDeviceId(getDeviceId());
+                          updateInteraction();
+                        }
+                      }}
+                      className="flex-1 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-xs font-bold transition-colors"
                     >
-                      <Play className="w-4 h-4 fill-current" />
+                      Continue
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowContinuePrompt(false);
+                        setIsAlarmPlaying(false);
+                      }}
+                      className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors"
+                    >
+                      Stop
                     </button>
                   </div>
                 </div>
-              )}
-            </>
-          )}
+              ) : (
+                <button
+                  onClick={stopAlarm}
+                  className="w-full py-2 flex items-center justify-center gap-2 bg-red-500/80 hover:bg-red-500 rounded-xl font-medium transition-colors animate-pulse"
+                >
+                  <VolumeX size={20} />
+                  STOP TIMER
+                </button>
+              )
+            ) : isIntervalRinging ? (
+              <button
+                onClick={() => {
+                  if (intervalAudioRef.current) {
+                    intervalAudioRef.current.pause();
+                    intervalAudioRef.current.currentTime = 0;
+                  }
+                  setIsIntervalRinging(false);
+                  isIntervalRingingRef.current = false;
+                }}
+                className="w-full py-2 px-3 flex flex-col items-center justify-center gap-0.5 bg-sky-500/80 hover:bg-sky-500 rounded-xl transition-colors animate-pulse shadow-lg"
+              >
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">
+                  {activeTaskId ? (taskIntervalAlertMins || 5) : (timerIntervalMins || 5)}m Span ({doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m"} / {(timerInitialMins || 0) >= 60 ? Math.floor((timerInitialMins || 0) / 60) + "h " + ((timerInitialMins || 0) % 60) + "m" : (timerInitialMins || 0) + "m"})
+                </span>
+                <span className="text-base font-bold tracking-wide flex items-center gap-1 text-white">
+                  <Check size={18} strokeWidth={2.5} /> Okay
+                </span>
+              </button>
+            ) : (
+              <>
+                {/* Controls */}
+                {!isEditingTime && (timerEndAt || timerPausedLeft) && timerDeviceId === getDeviceId() && (
+                  <div className="flex justify-center gap-2">
+                    <button
+                      onClick={togglePause}
+                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                      title={timerEndAt ? "Pause" : "Resume"}
+                    >
+                      {timerEndAt ? <Pause size={20} /> : <Play size={20} />}
+                    </button>
+                    <button
+                      onClick={resetTimer}
+                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                      title="Stop Timer"
+                    >
+                      <Square size={20} className="fill-current" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Custom Input */}
+                {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
+                  <div className="flex flex-col gap-2 pt-2 border-t border-white/10">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1 group/time">
+                        <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover/time:text-blue-300">Set Time</span>
+
+                        <div className="flex gap-1">
+                          {/* HR Dropdown */}
+                          <div className="relative w-1/3">
+                            <button
+                              onClick={() => setOpenDropdown(openDropdown === 'hr' ? null : 'hr')}
+                              className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1 sm:px-1.5 py-1.5 text-[11px] outline-none transition-all text-white/90 shadow-inner flex items-center justify-between ${highlightedField === 'clock' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
+                            >
+                              <span className="truncate">{selectedHr}</span>
+                              <ChevronDown size={10} className="text-white/50 shrink-0" />
+                            </button>
+                            {openDropdown === 'hr' && (
+                              <div className="absolute left-0 right-0 bottom-full mb-1 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl overflow-hidden z-[100] max-h-48 flex flex-col">
+                                <div className="overflow-y-auto max-h-48 custom-scrollbar">
+                                  {HR_OPTIONS.map((opt) => (
+                                    <button
+                                      key={opt}
+                                      onClick={() => {
+                                        setSelectedHr(opt);
+                                        setOpenDropdown(null);
+                                        updateTargetTime(opt, selectedMin, selectedAmPm);
+                                      }}
+                                      className={`w-full text-center px-1 py-1.5 text-[10px] sm:text-xs transition-colors ${selectedHr === opt ? 'bg-blue-500/30 text-blue-300' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* MIN Dropdown */}
+                          <div className="relative w-1/3">
+                            <button
+                              onClick={() => setOpenDropdown(openDropdown === 'min' ? null : 'min')}
+                              className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1 sm:px-1.5 py-1.5 text-[11px] outline-none transition-all text-white/90 shadow-inner flex items-center justify-between ${highlightedField === 'clock' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
+                            >
+                              <span className="truncate">{selectedMin}</span>
+                              <ChevronDown size={10} className="text-white/50 shrink-0" />
+                            </button>
+                            {openDropdown === 'min' && (
+                              <div className="absolute left-0 right-0 bottom-full mb-1 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl overflow-hidden z-[100] max-h-48 flex flex-col">
+                                <div className="overflow-y-auto max-h-48 custom-scrollbar">
+                                  {MIN_OPTIONS.map((opt) => (
+                                    <button
+                                      key={opt}
+                                      onClick={() => {
+                                        setSelectedMin(opt);
+                                        setOpenDropdown(null);
+                                        updateTargetTime(selectedHr, opt, selectedAmPm);
+                                      }}
+                                      className={`w-full text-center px-1 py-1.5 text-[10px] sm:text-xs transition-colors ${selectedMin === opt ? 'bg-blue-500/30 text-blue-300' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* AM/PM Dropdown */}
+                          <div className="relative w-1/3">
+                            <button
+                              onClick={() => setOpenDropdown(openDropdown === 'ampm' ? null : 'ampm')}
+                              className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1 sm:px-1.5 py-1.5 text-[11px] outline-none transition-all text-white/90 shadow-inner flex items-center justify-between ${highlightedField === 'clock' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
+                            >
+                              <span className="truncate"><pre>{selectedAmPm}</pre></span>
+                              <ChevronDown size={10} className="text-white/50 shrink-0" />
+                            </button>
+                            {openDropdown === 'ampm' && (
+                              <div className="absolute left-0 right-0 bottom-full mb-1 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl overflow-hidden z-[100] max-h-48 flex flex-col">
+                                <div className="overflow-y-auto max-h-48 custom-scrollbar">
+                                  {AMPM_OPTIONS.map((opt) => (
+                                    <button
+                                      key={opt}
+                                      onClick={() => {
+                                        setSelectedAmPm(opt);
+                                        setOpenDropdown(null);
+                                        updateTargetTime(selectedHr, selectedMin, opt);
+                                      }}
+                                      className={`w-full text-center px-1 py-1.5 text-[10px] sm:text-xs transition-colors ${selectedAmPm === opt ? 'bg-blue-500/30 text-blue-300' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="text-[9px] font-bold text-white/30 uppercase">or</span>
+
+                      <div className="relative flex-1 group">
+                        <span className="absolute -top-2  px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Minutes</span>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={customMins}
+                          onChange={(e) => handleCustomMinsChange(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
+                          className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-2 py-1.5 text-sm text-center outline-none transition-all placeholder:text-white/20 text-white/90 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${highlightedField === 'minutes' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
+                          min="1"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleCustomStart}
+                        className="px-2.5 py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
+                        title="Start custom timer"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-start gap-1 pt-1 border-t border-white/5 w-full">
+                      <div className="flex items-center gap-1 cursor-pointer" onClick={() => setIsTimerIntervalEnabled(!isTimerIntervalEnabled)}>
+                        <BellRing size={12} className={isTimerIntervalEnabled ? "text-sky-300" : "text-white/40"} />
+                        <span className="text-[9px] font-medium text-white/70">Interval</span>
+                        <button
+                          className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTimerIntervalEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
+                        >
+                          <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isTimerIntervalEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+                      {isTimerIntervalEnabled && (
+                        <div className="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-white/10">
+                          <input
+                            type="number"
+                            value={timerIntervalMins || ''}
+                            onChange={(e) => {
+                              if (e.target.value === '') {
+                                setTimerIntervalMins(0);
+                              } else {
+                                const parsed = parseInt(e.target.value);
+                                if (!isNaN(parsed) && parsed >= 0) {
+                                  setTimerIntervalMins(parsed);
+                                }
+                              }
+                            }}
+                            className="w-7 bg-black/40 border border-white/20 rounded px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                            min="1"
+                          />
+                          <span className="text-[8px] font-bold text-white/40">min</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+          </div>
 
           {/* Hidden Audio Elements */}
           <audio
             ref={audioRef}
-            src={resolvedAlarmUrl || alarmSound}
+            src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))}
             loop
             preload="auto"
             onError={(e) => {
-              useDashboardStore.getState().setAlarmSound('/ringtones/alarm.mp3');
-            }}
-            onPlay={(e) => {
-              // Prevent Lively Wallpaper / Chromium from auto-resuming media on focus
-              const isAlarmPlaying = useDashboardStore.getState().isAlarmPlaying;
-              if (!isAlarmPlaying && !isUnlockingAudioRef.current) {
-                console.log('[AUDIO DEBUG] Blocked auto-resume on MAIN alarm. isAlarmPlaying:', isAlarmPlaying, 'isUnlockingAudio:', isUnlockingAudioRef.current);
-                e.currentTarget.pause();
-                e.currentTarget.currentTime = 0;
-              } else {
-                console.log('[AUDIO DEBUG] Allowed MAIN alarm play. isAlarmPlaying:', isAlarmPlaying, 'isUnlockingAudio:', isUnlockingAudioRef.current);
-              }
+              console.log('Main alarm audio failed to load:', e);
             }}
           />
           <audio
             ref={intervalAudioRef}
-            src={resolvedAlarmUrl || alarmSound}
+            src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))}
             preload="auto"
             onError={(e) => {
-              useDashboardStore.getState().setAlarmSound('/ringtones/alarm.mp3');
-            }}
-            onPlay={(e) => {
-              if (!isIntervalRingingRef.current && !isUnlockingAudioRef.current) {
-                console.log('[AUDIO DEBUG] Blocked auto-resume on INTERVAL beep. isIntervalRinging:', isIntervalRingingRef.current, 'isUnlockingAudio:', isUnlockingAudioRef.current);
-                e.currentTarget.pause();
-                e.currentTarget.currentTime = 0;
-              } else {
-                console.log('[AUDIO DEBUG] Allowed INTERVAL beep play. isIntervalRinging:', isIntervalRingingRef.current, 'isUnlockingAudio:', isUnlockingAudioRef.current);
-              }
+              console.log('Interval alarm audio failed to load:', e);
             }}
           />
         </div>

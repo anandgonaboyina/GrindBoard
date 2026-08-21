@@ -71,8 +71,8 @@ export async function GET(request: Request) {
       .filter(f => f.user);
     
     const acceptedFriends = [
-      ...received.filter(f => f.status === 'ACCEPTED').map(f => ({ id: f._id.toString(), user: userMap.get(f.senderId?.toString()) })),
-      ...sent.filter(f => f.status === 'ACCEPTED').map(f => ({ id: f._id.toString(), user: userMap.get(f.receiverId?.toString()) }))
+      ...received.filter(f => f.status === 'ACCEPTED').map(f => ({ id: f._id.toString(), user: userMap.get(f.senderId?.toString()), taskSharing: f.taskSharing || {} })),
+      ...sent.filter(f => f.status === 'ACCEPTED').map(f => ({ id: f._id.toString(), user: userMap.get(f.receiverId?.toString()), taskSharing: f.taskSharing || {} }))
     ].filter(f => f.user);
 
     return NextResponse.json({ pendingRequests, sentRequests, acceptedFriends });
@@ -119,12 +119,25 @@ export async function PATCH(request: Request) {
     const user = authenticate(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { friendshipId, status } = await request.json();
+    const { friendshipId, status, taskSharing } = await request.json();
 
     const client = await clientPromise;
     const db = client.db();
 
     const friendship = await db.collection('Friendship').findOne({ _id: new ObjectId(friendshipId) });
+    
+    if (taskSharing !== undefined) {
+      if (!friendship || (friendship.senderId?.toString() !== user.userId && friendship.receiverId?.toString() !== user.userId)) {
+        return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+      }
+      const updateKey = `taskSharing.${user.userId}`;
+      await db.collection('Friendship').updateOne(
+        { _id: new ObjectId(friendshipId) },
+        { $set: { [updateKey]: taskSharing } }
+      );
+      return NextResponse.json({ success: true });
+    }
+
     if (!friendship || friendship.receiverId?.toString() !== user.userId) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }

@@ -9,6 +9,7 @@ import Timetable from './Timetable';
 export default function StatsModal() {
   const { history: myHistory, dailyTimes: myDailyTimes, isStatsOpen, toggleStats, viewingFriend, setViewingFriend } = useDashboardStore();
   const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
+  const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
   const [showFriendTimetable, setShowFriendTimetable] = useState(false);
 
   const history = viewingFriend ? viewingFriend.stats.history || {} : myHistory;
@@ -131,6 +132,10 @@ export default function StatsModal() {
 
   const toggleMonthExpand = (month: string) => {
     setExpandedMonths(prev => ({ ...prev, [month]: !prev[month] }));
+  };
+
+  const toggleWeekExpand = (weekKey: string) => {
+    setExpandedWeeks(prev => ({ ...prev, [weekKey]: !prev[weekKey] }));
   };
 
   const formatMinutes = (mins: number) => {
@@ -436,42 +441,115 @@ export default function StatsModal() {
                         {/* Days inside Month */}
                         {isMonthExpanded && (
                           <div className="flex flex-col p-1 sm:p-1.5 bg-black/20 gap-0.5 sm:gap-1 border-t border-white/5">
-                            {data.days.map((date: string) => {
-                              const dTime = dailyTimes[date];
-                              return (
-                                <div key={date} className="flex flex-row items-center justify-between p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition-colors border border-white/10 gap-1.5 sm:gap-2">
+                            {(() => {
+                              const weeks: Record<string, { total: number, days: string[] }> = {};
+                              const weekKeys: string[] = [];
 
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <div className="w-1 h-1 rounded-full bg-orange-400" />
-                                    <span className="font-semibold text-white/90 text-[9px] sm:text-[10px] leading-none">
-                                      {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                    </span>
-                                  </div>
+                              data.days.forEach((date: string) => {
+                                const d = new Date(date);
+                                const day = d.getDay();
+                                const diffToMonday = day === 0 ? 6 : day - 1;
+                                
+                                const mondayDate = new Date(d);
+                                mondayDate.setDate(d.getDate() - diffToMonday);
+                                
+                                const sundayDate = new Date(mondayDate);
+                                sundayDate.setDate(mondayDate.getDate() + 6);
+                                
+                                const weekStart = new Date(mondayDate);
+                                if (weekStart.getMonth() !== d.getMonth()) {
+                                   weekStart.setMonth(d.getMonth(), 1);
+                                }
+                                
+                                const weekEnd = new Date(sundayDate);
+                                if (weekEnd.getMonth() !== d.getMonth()) {
+                                   weekEnd.setMonth(d.getMonth() + 1, 0);
+                                }
+                                
+                                const startStr = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                const endStr = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                const weekKey = startStr === endStr ? startStr : `${startStr} - ${endStr}`;
+                                
+                                if (!weeks[weekKey]) {
+                                  const todayCalc = new Date();
+                                  todayCalc.setHours(0,0,0,0);
+                                  const endCalc = weekEnd > todayCalc ? todayCalc : weekEnd;
+                                  let physicalDays = Math.round((endCalc.getTime() - weekStart.getTime()) / (1000 * 3600 * 24)) + 1;
+                                  if (physicalDays < 1) physicalDays = 1;
 
-                                  <div className="flex items-center justify-end w-full gap-1.5 sm:gap-2">
-                                    {dTime ? (
-                                      <div className="flex items-center gap-0.5 sm:gap-1">
-                                        {dTime.wakeupTime && (
-                                          <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-blue-200 bg-blue-500/20 px-1 py-px rounded border border-blue-400/30">
-                                            <span className="font-bold leading-none">Wake: {new Date(dTime.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                          </div>
-                                        )}
-                                        {dTime.bedTime && (
-                                          <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-indigo-200 bg-indigo-500/20 px-1 py-px rounded border border-indigo-400/30">
-                                            <span className="font-bold leading-none">Last Active: {new Date(dTime.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                          </div>
-                                        )}
+                                  weeks[weekKey] = { total: 0, days: [], physicalDays } as any;
+                                  weekKeys.push(weekKey);
+                                }
+                                weeks[weekKey].days.push(date);
+                                weeks[weekKey].total += (history[date] as number) || 0;
+                              });
+
+                              return weekKeys.map(weekKey => {
+                                const week = weeks[weekKey] as any;
+                                const isWeekExpanded = expandedWeeks[weekKey];
+                                const weekAvg = Math.round(week.total / week.physicalDays);
+
+                                return (
+                                  <div key={weekKey} className="flex flex-col gap-0.5 sm:gap-1 mb-2 last:mb-0">
+                                    <div 
+                                      className="flex justify-between items-center px-1.5 py-1 bg-black/40 hover:bg-black/60 cursor-pointer rounded border border-white/5 mb-0.5 transition-colors group"
+                                      onClick={() => toggleWeekExpand(weekKey)}
+                                    >
+                                      <div className="flex items-center gap-1.5">
+                                        <div className={`p-0.5 rounded transition-transform ${isWeekExpanded ? 'rotate-90' : ''}`}>
+                                          <ChevronRight className="w-3 h-3 text-white/50 group-hover:text-white/80" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-white/60 tracking-wider uppercase">{weekKey}</span>
                                       </div>
-                                    ) : <div className="flex-1" />}
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold text-white/40 bg-white/5 px-1.5 py-px rounded border border-white/10" title="Daily Average">
+                                          avg: {formatMinutes(weekAvg)}/d
+                                        </span>
+                                        <span className="text-[10px] font-bold text-orange-300 bg-orange-500/10 px-1.5 py-px rounded border border-orange-500/20" title="Week Total">
+                                          {formatMinutes(week.total)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {isWeekExpanded && week.days.map((date: string) => {
+                                      const dTime = dailyTimes[date];
+                                      return (
+                                        <div key={date} className="flex flex-row items-center justify-between p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition-colors border border-white/10 gap-1.5 sm:gap-2 ml-4">
 
-                                    <span className="font-bold text-orange-200 bg-orange-500/20 px-1 py-px rounded border border-orange-400/30 text-[9px] sm:text-[10px] leading-none shrink-0">
-                                      {formatMinutes(history[date] as number)}
-                                    </span>
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <div className="w-1 h-1 rounded-full bg-orange-400" />
+                                            <span className="font-semibold text-white/90 text-[9px] sm:text-[10px] leading-none">
+                                              {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                            </span>
+                                          </div>
+
+                                          <div className="flex items-center justify-end w-full gap-1.5 sm:gap-2">
+                                            {dTime ? (
+                                              <div className="flex items-center gap-0.5 sm:gap-1">
+                                                {dTime.wakeupTime && (
+                                                  <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-blue-200 bg-blue-500/20 px-1 py-px rounded border border-blue-400/30">
+                                                    <span className="font-bold leading-none">Wake: {new Date(dTime.wakeupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                  </div>
+                                                )}
+                                                {dTime.bedTime && (
+                                                  <div className="flex items-center gap-0.5 text-[8px] sm:text-[9px] text-indigo-200 bg-indigo-500/20 px-1 py-px rounded border border-indigo-400/30">
+                                                    <span className="font-bold leading-none">Last Active: {new Date(dTime.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ) : <div className="flex-1" />}
+
+                                            <span className="font-bold text-orange-200 bg-orange-500/20 px-1 py-px rounded border border-orange-400/30 text-[9px] sm:text-[10px] leading-none shrink-0">
+                                              {formatMinutes(history[date] as number)}
+                                            </span>
+                                          </div>
+
+                                        </div>
+                                      );
+                                    })}
                                   </div>
-
-                                </div>
-                              );
-                            })}
+                                );
+                              });
+                            })()}
                           </div>
                         )}
                       </div>

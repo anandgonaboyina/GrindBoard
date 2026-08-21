@@ -1,18 +1,37 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Play, Pause, Square, History, Trash2, ChevronLeft, Check } from 'lucide-react';
+import { Play, Pause, Square, History, Trash2, ChevronLeft, Check, BellRing } from 'lucide-react';
 import DraggableWidget from './DraggableWidget';
 import ConfirmationModal from './ConfirmationModal';
 import { getLocalDateString } from '@/utils/date';
 import { getDeviceId } from '@/utils/deviceId';
 
 export default function Stopwatch() {
-  const { isStopwatchOpen, stopwatchStartTime, setStopwatchStartTime, stopwatchLastSavedChunks, setStopwatchLastSavedChunks, addMins, stopwatchAddToStats, setStopwatchAddToStats, stopwatchDeviceId, setStopwatchDeviceId } = useDashboardStore();
-  
+  const {
+    isStopwatchOpen, stopwatchStartTime, setStopwatchStartTime, stopwatchLastSavedChunks, setStopwatchLastSavedChunks,
+    addMins, stopwatchAddToStats, setStopwatchAddToStats, stopwatchDeviceId, setStopwatchDeviceId,
+    isStopwatchIntervalEnabled, setIsStopwatchIntervalEnabled, stopwatchIntervalMins, setStopwatchIntervalMins,
+    enableAlarmSound, enableAlarmVibration, alarmSound, alarmVolume, taskIntervalRingSecs
+  } = useDashboardStore();
+
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSecs, setElapsedSecs] = useState(0);
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
+  const [isIntervalRinging, setIsIntervalRinging] = useState(false);
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: React.ReactNode;
+    isDestructive?: boolean;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
+
+  const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
+  const resolvedAlarmUrl = useAudioUrl(alarmSound);
+  const stopwatchAlertedChunksRef = useRef<number>(0);
 
   const updateInteraction = () => {
     if (typeof window !== 'undefined') {
@@ -27,10 +46,10 @@ export default function Stopwatch() {
       const now = Date.now();
       const storedLastActive = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_last_active') : null;
       const lastActive = storedLastActive ? parseInt(storedLastActive) : now;
-      
+
       const timeSinceActive = Math.floor((now - lastActive) / 1000);
       const isOwner = stopwatchDeviceId === getDeviceId();
-      
+
       if (timeSinceActive >= 7200 && isOwner) {
         const cappedElapsed = Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000);
         setIsRunning(false);
@@ -40,7 +59,7 @@ export default function Stopwatch() {
           useDashboardStore.getState().setIsAlarmPlaying(true);
         }
         useDashboardStore.setState({ isStopwatchOpen: true });
-        
+
         if (typeof window !== 'undefined') {
           localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
         }
@@ -69,7 +88,7 @@ export default function Stopwatch() {
         const lastActive = stored ? parseInt(stored) : now;
         const timeSinceActive = Math.floor((now - lastActive) / 1000);
         const isOwner = stopwatchDeviceId === getDeviceId();
-        
+
         if (timeSinceActive >= 7200 && isOwner) {
           setIsRunning(false);
           if (now - (lastActive + 7200000) < 120000) {
@@ -78,7 +97,7 @@ export default function Stopwatch() {
           useDashboardStore.setState({ isStopwatchOpen: true });
           setShowContinuePrompt(true);
           updateInteraction();
-          
+
           const cappedElapsed = Math.max(0, Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000));
           if (typeof window !== 'undefined') {
             localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
@@ -102,16 +121,44 @@ export default function Stopwatch() {
             setStopwatchLastSavedChunks(chunks);
           }
         }
-      }, 250); 
+
+        if (isStopwatchIntervalEnabled && stopwatchIntervalMins > 0 && currentElapsed > 0) {
+          const alertIntervalSecs = stopwatchIntervalMins * 60;
+          const chunks = Math.floor(currentElapsed / alertIntervalSecs);
+          if (chunks > stopwatchAlertedChunksRef.current) {
+            stopwatchAlertedChunksRef.current = chunks;
+            if (isOwner) {
+              if (enableAlarmSound || enableAlarmVibration) {
+                setIsIntervalRinging(true);
+                if (enableAlarmSound && intervalAudioRef.current) {
+                  const vol = alarmVolume !== undefined ? alarmVolume : 1;
+                  intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4;
+                  intervalAudioRef.current.currentTime = 0;
+                  intervalAudioRef.current.play().catch(e => console.log('Interval beep failed:', e));
+                }
+                if (enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) {
+                  try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) { }
+                }
+                const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
+                setTimeout(() => {
+                  if (intervalAudioRef.current) intervalAudioRef.current.pause();
+                  setIsIntervalRinging(false);
+                }, duration);
+              }
+            }
+          }
+        }
+      }, 250);
     }
     return () => clearInterval(interval);
-  }, [isRunning, stopwatchStartTime, stopwatchAddToStats, stopwatchLastSavedChunks]);
+  }, [isRunning, stopwatchStartTime, stopwatchAddToStats, stopwatchLastSavedChunks, isStopwatchIntervalEnabled, stopwatchIntervalMins, enableAlarmSound, enableAlarmVibration, alarmVolume, taskIntervalRingSecs]);
 
   const handleStart = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!isRunning) {
       if (elapsedSecs === 0) {
         setStopwatchLastSavedChunks(0);
+        stopwatchAlertedChunksRef.current = 0;
       }
       setStopwatchStartTime(Date.now() - elapsedSecs * 1000);
       setStopwatchDeviceId(getDeviceId());
@@ -124,6 +171,21 @@ export default function Stopwatch() {
         setTimeout(() => {
           useDashboardStore.setState({ isStopwatchOpen: false });
         }, 3000);
+      }
+
+      // Unlock audio for mobile browsers during this user interaction
+      if (intervalAudioRef.current && enableAlarmSound) {
+        intervalAudioRef.current.volume = 0;
+        intervalAudioRef.current.play().then(() => {
+          setTimeout(() => {
+            if (intervalAudioRef.current) {
+              intervalAudioRef.current.pause();
+              intervalAudioRef.current.currentTime = 0;
+            }
+          }, 50); // Silent unlock
+        }).catch(e => {
+          console.log('Stopwatch Audio unlock failed:', e);
+        });
       }
     }
   };
@@ -141,7 +203,20 @@ export default function Stopwatch() {
 
   const handleStop = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    finalizeStop(stopwatchAddToStats);
+    if (!stopwatchAddToStats && elapsedSecs >= 300) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Discard Session?',
+        message: 'You have chosen not to add this session to your stats. The recorded time will be discarded permanently.',
+        isDestructive: true,
+        onConfirm: () => {
+          finalizeStop(false);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      });
+    } else {
+      finalizeStop(stopwatchAddToStats);
+    }
   };
 
   const finalizeStop = (saveToStats: boolean) => {
@@ -155,16 +230,22 @@ export default function Stopwatch() {
         addMins(getLocalDateString(), finalUnsavedMins);
       }
     }
-    
+
     setIsRunning(false);
     setElapsedSecs(0);
     setStopwatchStartTime(null);
     setStopwatchDeviceId(null);
     setStopwatchLastSavedChunks(0);
+    stopwatchAlertedChunksRef.current = 0;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('stopwatch_paused_secs');
       localStorage.removeItem('stopwatch_last_active');
     }
+    if (intervalAudioRef.current) {
+      intervalAudioRef.current.pause();
+      intervalAudioRef.current.currentTime = 0;
+    }
+    setIsIntervalRinging(false);
   };
 
   const toggleStatsCheckbox = (e: React.MouseEvent) => {
@@ -184,21 +265,20 @@ export default function Stopwatch() {
 
   return (
     <DraggableWidget id="stopwatch">
-      <div 
-        className={`relative pointer-events-auto select-none ${isStopwatchOpen ? '' : 'hidden'}`} 
+      <div
+        className={`relative pointer-events-auto select-none ${isStopwatchOpen ? '' : 'hidden'}`}
       >
+
         <div className="w-48 rounded-3xl glass-panel border border-white/20 text-white flex flex-col min-h-[90px] overflow-hidden shadow-2xl">
-          
-          {/* Top Handle - Draggable */}
-          <div 
-            className="w-full h-5 bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center cursor-grab active:cursor-grabbing group border-b border-white/5"
+
+          <div
+            className="w-full py-1.5 px-3 bg-white/5 hover:bg-white/10 transition-colors flex items-center border-b border-white/5 cursor-grab active:cursor-grabbing"
             onPointerDown={updateInteraction}
           >
-            <div className="w-8 h-1 rounded-full bg-white/20 group-hover:bg-white/40 transition-colors" />
           </div>
-
+          <span className="absolute left-2 top-1 text-[10px] md:text-[15px] font-black tracking-widest text-blue-400 uppercase pointer-events-none">Stopwatch</span>
           {/* Body - Non-draggable */}
-          <div 
+          <div
             className="p-3 flex flex-col gap-1 cursor-default"
             onPointerDown={(e) => {
               e.stopPropagation();
@@ -214,7 +294,7 @@ export default function Stopwatch() {
                       e.stopPropagation();
                       setShowContinuePrompt(false);
                       useDashboardStore.getState().setIsAlarmPlaying(false);
-                      
+
                       if (typeof window !== 'undefined') {
                         localStorage.removeItem('stopwatch_paused_secs');
                       }
@@ -249,7 +329,7 @@ export default function Stopwatch() {
                 </div>
 
                 {/* Add to Stats Toggle */}
-                <div 
+                <div
                   className="flex items-center justify-center gap-1.5 cursor-pointer opacity-70 hover:opacity-100 transition-opacity my-0.5"
                   onClick={toggleStatsCheckbox}
                 >
@@ -262,24 +342,24 @@ export default function Stopwatch() {
                 {/* Controls */}
                 <div className="flex justify-center items-center gap-2">
                   {!isRunning ? (
-                    <button 
-                      onClick={handleStart} 
+                    <button
+                      onClick={handleStart}
                       className="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
                       title="Start Stopwatch"
                     >
                       <Play fill="currentColor" size={14} className="ml-0.5" />
                     </button>
                   ) : (
-                    <button 
-                      onClick={handlePause} 
+                    <button
+                      onClick={handlePause}
                       className="w-8 h-8 flex items-center justify-center rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
                       title="Pause Stopwatch"
                     >
                       <Pause fill="currentColor" size={14} />
                     </button>
                   )}
-                  <button 
-                    onClick={handleStop} 
+                  <button
+                    onClick={handleStop}
                     disabled={elapsedSecs === 0}
                     className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
                     title="Stop & Save"
@@ -287,11 +367,67 @@ export default function Stopwatch() {
                     <Square fill="currentColor" size={12} />
                   </button>
                 </div>
+
+                <div className="flex items-center justify-start gap-1 pt-1 border-t border-white/5 w-full">
+                  <div className="flex items-center gap-1 cursor-pointer" onClick={() => setIsStopwatchIntervalEnabled(!isStopwatchIntervalEnabled)}>
+                    <BellRing size={12} className={isStopwatchIntervalEnabled ? "text-sky-300" : "text-white/40"} />
+                    <span className="text-[9px] font-medium text-white/70">Interval</span>
+                    <button
+                      className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isStopwatchIntervalEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
+                    >
+                      <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isStopwatchIntervalEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                  {isStopwatchIntervalEnabled && (
+                    <div className="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-white/10">
+                      <input
+                        type="number"
+                        value={stopwatchIntervalMins || ''}
+                        onChange={(e) => {
+                          if (e.target.value === '') {
+                            setStopwatchIntervalMins(0);
+                          } else {
+                            const parsed = parseInt(e.target.value);
+                            if (!isNaN(parsed) && parsed >= 0) {
+                              setStopwatchIntervalMins(parsed);
+                            }
+                          }
+                        }}
+                        className="w-7 bg-black/40 border border-white/20 rounded px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                        min="1"
+                      />
+                      <span className="text-[8px] font-bold text-white/40">min</span>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
+
+          <audio
+            ref={intervalAudioRef}
+            src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : alarmSound) || undefined}
+            preload="auto"
+            onError={(e) => {
+              console.log('Stopwatch interval alarm audio failed to load:', e);
+              const target = e.currentTarget as HTMLAudioElement;
+              if (!target.src.endsWith('/ringtones/narutoBGM.mp3')) {
+                target.src = '/ringtones/narutoBGM.mp3';
+              }
+            }}
+          />
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        isDestructive={confirmModal.isDestructive}
+        confirmText="Discard Session"
+      />
     </DraggableWidget>
   );
 }

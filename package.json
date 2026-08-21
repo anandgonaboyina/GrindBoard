@@ -1,6 +1,9 @@
 {
   "name": "dashboard-cloud",
-  "version": "2.1.5",
+  "version": "2.1.8",
+  "grindboardVersions": {
+    "2.1.8": "Fixed TaskManager drag handles; all perfect"
+  },
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
