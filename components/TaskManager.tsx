@@ -241,7 +241,7 @@ export default function TaskManager() {
             totalRemainingMinutes = activeGroup.tasks.filter((t: any) => !myCompletions[t.id]?.completed).reduce((sum: number, t: any) => sum + Math.max(0, (t.duration || 0) - (myCompletions[t.id]?.timeSpent || 0)), 0);
         }
     } else {
-        totalRemainingMinutes = groupFilteredTasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + (t.duration || 0), 0);
+        totalRemainingMinutes = currentTasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + (t.duration || 0), 0);
     }
     const formatRemainingTime = (mins: number) => {
         if (mins < 60) return `${mins}m left`;
@@ -765,34 +765,35 @@ export default function TaskManager() {
                 <ConfirmationModal
                     isOpen={isInfoOpen}
                     onClose={() => setIsInfoOpen(false)}
-                    title="How Task Manager Works"
+                    title="Plan Your Day — Task Manager Guide"
                     message={
                         <ScrollableWithArrows className="max-h-[60vh] pr-2 flex flex-col gap-4 text-sm mt-1">
                             <div>
-                                <h4 className="font-bold text-sky-400 mb-1 text-base">📅 Customizable Tabs & Groups</h4>
+                                <h4 className="font-bold text-sky-400 mb-1 text-base">📅 Tabs, Drag Handles & Groups</h4>
                                 <ul className="list-disc list-inside mt-2 space-y-1 text-white/90">
-                                    <li><strong>Tabs:</strong> Use the tabs at the top to categorize tasks. <strong>Double-click any tab name</strong> to rename it!</li>
-                                    <li><strong>Groups Switch:</strong> Click the settings (⚙️) icon to switch from your Personal workspace to any of your Cloud Groups. Group tasks are shared and synced live!</li>
-                                    <li><strong>Move Tasks:</strong> Click the move arrow on a task to quickly swap it between tabs.</li>
+                                    <li><strong>Custom Tabs:</strong> Switch between tabs to organize tasks. <strong>Double-click any tab name</strong> to rename it!</li>
+                                    <li><strong>Drag & Drop Reordering:</strong> Drag the grip handle (⋮⋮) on the left of any task to easily reorder your list.</li>
+                                    <li><strong>Cloud Groups Sync:</strong> Click the settings (⚙️) icon to switch from Personal tasks to any of your Cloud Groups. Shared tasks and durations sync in real-time for all group members!</li>
+                                    <li><strong>Move Tasks:</strong> Click the arrow button on a task to quickly swap it between tabs.</li>
                                 </ul>
                             </div>
                             <div>
-                                <h4 className="font-bold text-emerald-400 mb-1 text-base">⏱️ Focus Timer & Task Editing</h4>
-                                <p>Click the play button next to a task to start a focus timer.</p>
+                                <h4 className="font-bold text-emerald-400 mb-1 text-base">⏱️ Durations, Focus Timer & Editing</h4>
                                 <ul className="list-disc list-inside mt-2 space-y-1 text-white/90">
-                                    <li><strong>Double-click any task title</strong> to edit its name.</li>
-                                    <li><strong>Double-click the "m left" badge</strong> to manually edit the task's planned duration.</li>
-                                    <li><strong>Double-click the "m done" badge</strong> to manually log completed time. This will automatically deduct from the time left! (Note: Manually adding done time keeps your task progress clean but will <em>not</em> add to your global "Today's Focus" daily streak).</li>
-                                    <li><strong>Drag the handle</strong> on the left edge of any task to easily reorder your list.</li>
+                                    <li><strong>Start Task Timer:</strong> Click the play (▶) button next to any task to launch the Focus Timer specifically for that task.</li>
+                                    <li><strong>Double-click Task Title:</strong> Instantly edit the task title inline.</li>
+                                    <li><strong>Edit "m left" Badge:</strong> Double-click the remaining duration badge to change planned time.</li>
+                                    <li><strong>Edit "m done" Badge:</strong> Double-click the done badge to manually add completed duration (deducts from time left automatically).</li>
                                 </ul>
                                 <div className="mt-2 p-2 bg-emerald-500/10 rounded-md border border-emerald-500/20 text-emerald-100/80 text-[11px] leading-relaxed">
-                                    <strong className="text-emerald-300">Why are stats updated in 5-minute blocks?</strong><br />
-                                    Focus time is saved in 5-minute spans. This ensures you maintain deep, uninterrupted focus on a task for a meaningful amount of time before it counts towards your daily completed statistics!
+                                    <strong className="text-emerald-300">5-Minute Focus Chunking:</strong><br />
+                                    Focus time is logged in completed 5-minute increments to encourage continuous, deep work on tasks.
                                 </div>
                             </div>
                             <div>
-                                <h4 className="font-bold text-purple-400 mb-1 text-base flex items-center gap-1"><BellRing size={16} /> Interval Alert</h4>
-                                <p className="mb-2">Plays a short beep every X minutes while a task timer is running. Toggle this using the bell icon at the top of the Task Manager. You can configure the interval time and beep duration under <strong>Settings &rarr; Sound</strong>.</p>
+                                <h4 className="font-bold text-purple-400 mb-1 text-base flex items-center gap-1"><BellRing size={16} /> Task Interval Beep Alert</h4>
+                                <p className="mb-1 text-white/90">Click the bell (🔔) icon at the top of Task Manager to enable recurring interval alerts while running a task timer.</p>
+                                <p className="text-[11px] text-white/70">Configure your alert frequency and ring duration under <strong>Settings &rarr; Sound &rarr; Task Interval Alert</strong>.</p>
                             </div>
                         </ScrollableWithArrows>
                     }

@@ -175,16 +175,19 @@ export default function Stopwatch() {
 
       // Unlock audio for mobile browsers during this user interaction
       if (intervalAudioRef.current && enableAlarmSound) {
+        intervalAudioRef.current.muted = true;
         intervalAudioRef.current.volume = 0;
         intervalAudioRef.current.play().then(() => {
           setTimeout(() => {
             if (intervalAudioRef.current) {
               intervalAudioRef.current.pause();
               intervalAudioRef.current.currentTime = 0;
+              intervalAudioRef.current.muted = false;
             }
           }, 50); // Silent unlock
         }).catch(e => {
           console.log('Stopwatch Audio unlock failed:', e);
+          if (intervalAudioRef.current) intervalAudioRef.current.muted = false;
         });
       }
     }

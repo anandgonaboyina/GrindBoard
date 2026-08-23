@@ -404,11 +404,10 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                                                             }}
                                                             className={`shrink-0 text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded-full border transition-colors shadow-sm ${isTaskDone ? 'text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20 cursor-default' : 'text-emerald-200 bg-emerald-500/20 hover:bg-emerald-500/40 cursor-pointer border-emerald-400/20'}`}
                                                         >
-                                                            {isTaskDone ? (
-                                                                (timeSpent + (task.duration || 0)) >= 60 ? Math.floor((timeSpent + (task.duration || 0)) / 60) + "h " + ((timeSpent + (task.duration || 0)) % 60) + "m" : (timeSpent + (task.duration || 0)) + "m"
-                                                            ) : (
-                                                                timeSpent >= 60 ? Math.floor(timeSpent / 60) + "h " + (timeSpent % 60) + "m" : timeSpent + "m"
-                                                            )} done
+                                                            {(() => {
+                                                                const doneMins = isTaskDone ? Math.max(timeSpent || 0, task.duration || 0) : (timeSpent || 0);
+                                                                return doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m";
+                                                            })()} done
                                                         </span>
                                                     )
                                                 )}

@@ -151,12 +151,9 @@ export default function Timer() {
     }
   }, []);
 
-  // Keep the ref mirror in sync for resets (0 or -1), but ignore cloud sync overwrites of active state
-  // to prevent ghost interval beeps or double-saving stats.
+  // Keep the ref mirror in sync with timerLastSavedChunks to prevent double-saving chunks on tab updates/rehydrations
   useEffect(() => {
-    if (timerLastSavedChunks === 0) {
-      savedChunksRef.current = 0;
-    }
+    savedChunksRef.current = timerLastSavedChunks;
   }, [timerLastSavedChunks]);
 
   useEffect(() => {
@@ -179,7 +176,8 @@ export default function Timer() {
 
   // Helper to clear timer state and save partial minutes IF minimum 5-min span is reached
   const saveAndClearActiveTaskTimer = () => {
-    if (timerInitialMins) {
+    // Only calculate elapsed time if timer was actually running or paused!
+    if (timerInitialMins && (timerEndAt || timerPausedLeft !== null)) {
       let currentRemaining = localTimeLeft;
       if (timerEndAt) {
         currentRemaining = Math.max(0, Math.floor((timerEndAt - Date.now()) / 1000));
@@ -207,6 +205,7 @@ export default function Timer() {
     setActiveTask(null, null);
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
+    setTimerInitialMins(null);
 
     // Safety clear of interval beep
     if (intervalAudioRef.current) {
@@ -295,6 +294,7 @@ export default function Timer() {
                       isIntervalRingingRef.current = true;
 
                       if (enableAlarmSound && intervalAudioRef.current) {
+                        intervalAudioRef.current.muted = false;
                         const vol = alarmVolume !== undefined ? alarmVolume : 1;
                         intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
                         intervalAudioRef.current.currentTime = 0;
@@ -377,13 +377,13 @@ export default function Timer() {
                   updateTaskDuration(activeTaskId, finalUnsavedMins);
                 }
               }
-              setTimerLastSavedChunks(0);
-              setTimerLastAlertedChunks(0);
-              if (activeTaskId) {
-                setActiveTask(null, null);
-              }
-              setTimerInitialMins(null);
             }
+            setTimerLastSavedChunks(0);
+            setTimerLastAlertedChunks(0);
+            if (activeTaskId) {
+              setActiveTask(null, null);
+            }
+            setTimerInitialMins(null);
             savedChunksRef.current = 0;
           }
 
@@ -455,6 +455,7 @@ export default function Timer() {
   useEffect(() => {
     if (audioRef.current) {
       if (isAlarmPlaying && enableAlarmSound) {
+        audioRef.current.muted = false;
         const vol = alarmVolume !== undefined ? alarmVolume : 1;
         audioRef.current.volume = vol > 1 ? vol / 100 : vol;
         audioRef.current.play().catch(e => console.error('Failed to play alarm:', e));
@@ -553,34 +554,42 @@ export default function Timer() {
     }
 
     // Unlock audio for mobile browsers during this user interaction
-    // We unlock silently by setting volume to 0. Real alarms will reset the volume before playing.
+    // We unlock silently by setting muted = true and volume to 0. Real alarms will reset muted and volume before playing.
     if (audioRef.current && enableAlarmSound) {
       isUnlockingAudioRef.current = true;
+      audioRef.current.muted = true;
       audioRef.current.volume = 0;
       audioRef.current.play().then(() => {
         setTimeout(() => {
           if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
+            audioRef.current.muted = false;
           }
           isUnlockingAudioRef.current = false;
         }, 50); // Silent unlock
       }).catch(e => {
         console.log('Audio unlock failed:', e);
+        if (audioRef.current) audioRef.current.muted = false;
         isUnlockingAudioRef.current = false;
       });
     }
 
     if (intervalAudioRef.current && enableAlarmSound) {
+      intervalAudioRef.current.muted = true;
       intervalAudioRef.current.volume = 0;
       intervalAudioRef.current.play().then(() => {
         setTimeout(() => {
           if (intervalAudioRef.current) {
             intervalAudioRef.current.pause();
             intervalAudioRef.current.currentTime = 0;
+            intervalAudioRef.current.muted = false;
           }
         }, 50);
-      }).catch(e => console.log('Interval Audio unlock failed:', e));
+      }).catch(e => {
+        console.log('Interval Audio unlock failed:', e);
+        if (intervalAudioRef.current) intervalAudioRef.current.muted = false;
+      });
     }
 
     if (typeof window !== 'undefined' && 'Notification' in window) {

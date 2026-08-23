@@ -2,12 +2,157 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore, setAuthTransition } from '@/store/dashboardStore';
-import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame, Calendar, Settings } from 'lucide-react';
+import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame, Calendar, Settings, Sparkles, UserX } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 import ConnectGroupsTab from './ConnectGroupsTab';
 import Timetable from './Timetable';
 import Link from 'next/link';
+
+function EmptyFriendsState() {
+  return (
+    <div className="flex flex-col items-center justify-center p-4 md:p-5 rounded-2xl bg-gradient-to-b from-indigo-950/30 via-black/40 to-black/60 border border-indigo-500/25 text-center shadow-lg relative overflow-hidden my-2 group">
+      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-500"></div>
+      
+      <div className="relative mb-2.5 flex items-center justify-center">
+        <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 border border-indigo-400/35 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.25)] animate-pulse">
+          <UserPlus className="w-5 h-5 text-indigo-300 animate-bounce" style={{ animationDuration: '2.5s' }} />
+        </div>
+        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-purple-500/20 border border-purple-400/40 flex items-center justify-center">
+          <Sparkles className="w-3 h-3 text-purple-300 animate-spin" style={{ animationDuration: '4s' }} />
+        </div>
+      </div>
+
+      <h4 className="text-xs md:text-sm font-bold text-white tracking-wide mb-1 flex items-center justify-center gap-1.5">
+        Connect & Study Together!
+      </h4>
+      <p className="text-[10px] md:text-xs text-white/60 max-w-xs leading-relaxed mb-3">
+        You haven't added any friends yet. Add friends to share daily task lists, view timetables, and compare focus stats!
+      </p>
+
+      <div className="flex flex-col gap-1.5 w-full max-w-xs bg-black/40 p-2.5 rounded-xl border border-white/5 text-[9.5px] md:text-[10.5px] text-white/70 text-left">
+        <div className="flex items-center gap-2">
+          <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-300 font-bold text-[9px] flex items-center justify-center shrink-0 border border-blue-500/30">1</span>
+          <span>Use the <strong>"Find with User Name"</strong> box below to search.</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 font-bold text-[9px] flex items-center justify-center shrink-0 border border-purple-500/30">2</span>
+          <span>Click <strong>"Add Friend"</strong> to send a connection request.</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyFriendSearchState({ query }: { query: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-3.5 rounded-xl bg-black/40 border border-white/10 text-center my-1">
+      <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-1.5 shadow-inner">
+        <UserX className="w-4.5 h-4.5 text-white/40 animate-pulse" />
+      </div>
+      <h5 className="text-xs font-bold text-white/80">No User Found</h5>
+      <p className="text-[10px] text-white/50 max-w-xs mt-0.5 leading-relaxed">
+        No registered account matches "{query}". Please double-check the spelling of their username or alias.
+      </p>
+    </div>
+  );
+}
+
+function FriendsLoadingSkeleton() {
+  return (
+    <div className="flex flex-col gap-2.5 w-full py-2 animate-in fade-in duration-300">
+      <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-indigo-950/40 via-blue-900/30 to-purple-950/40 border border-blue-500/30 shadow-md relative overflow-hidden">
+        <div className="flex items-center gap-3">
+          <div className="relative flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full bg-blue-500/20 border border-blue-400/50 flex items-center justify-center animate-pulse">
+              <Users className="w-4 h-4 text-blue-400 animate-bounce" />
+            </div>
+            <div className="absolute -inset-1 rounded-full border border-blue-400/40 border-t-blue-400 animate-spin" style={{ animationDuration: '2.5s' }}></div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-blue-200 tracking-wide">Syncing Friends</span>
+              <Sparkles className="w-3 h-3 text-blue-300 animate-spin" style={{ animationDuration: '3s' }} />
+            </div>
+            <div className="h-2 w-28 bg-white/10 rounded animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2 opacity-70">
+        {[1, 2].map((i) => (
+          <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-white/5 animate-pulse">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-400/30"></div>
+              <div className="flex flex-col gap-1">
+                <div className="h-2.5 w-20 bg-white/20 rounded"></div>
+                <div className="h-2 w-28 bg-white/10 rounded"></div>
+              </div>
+            </div>
+            <div className="h-6 w-16 bg-white/10 rounded-md"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FriendsSearchLoadingSkeleton() {
+  return (
+    <div className="flex flex-col gap-2.5 w-full py-2 animate-in fade-in duration-300">
+      <div className="flex items-center justify-center gap-2 py-3 text-indigo-300 text-xs font-bold animate-pulse bg-indigo-950/20 rounded-xl border border-indigo-500/20">
+        <Search className="w-4 h-4 text-indigo-400 animate-spin" style={{ animationDuration: '2s' }} />
+        <span>Searching User Directory...</span>
+        <Sparkles className="w-3.5 h-3.5 text-indigo-300 animate-pulse" />
+      </div>
+      {[1, 2].map((i) => (
+        <div key={i} className="p-2 rounded-lg bg-black/40 border border-white/10 animate-pulse flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-white/10"></div>
+            <div className="h-2.5 w-24 bg-white/20 rounded"></div>
+          </div>
+          <div className="h-5 w-12 bg-blue-500/20 rounded"></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LeaderboardLoadingSkeleton() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-6 w-full animate-in fade-in duration-300">
+      <div className="relative flex items-center justify-center">
+        <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500/30 via-yellow-500/40 to-amber-300/20 border-2 border-yellow-400/60 flex items-center justify-center shadow-[0_0_25px_rgba(234,179,8,0.4)] animate-pulse">
+          <Trophy className="w-7 h-7 text-yellow-300 animate-bounce" />
+        </div>
+        <div className="absolute -inset-1.5 rounded-full border border-yellow-400/40 border-t-yellow-300 animate-spin" style={{ animationDuration: '2s' }}></div>
+        <div className="absolute -top-1 -right-1">
+          <Flame className="w-4 h-4 text-amber-400 animate-pulse" />
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-spin" style={{ animationDuration: '3s' }} />
+        <span className="text-xs font-bold tracking-wider text-yellow-300/90 uppercase animate-pulse">
+          Computing Leaderboard Rankings...
+        </span>
+        <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-spin" style={{ animationDuration: '3s' }} />
+      </div>
+
+      <div className="w-full flex flex-col gap-2 mt-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-950/20 via-black/40 to-yellow-950/20 border border-yellow-500/10 animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center text-[10px] font-bold text-yellow-400">#{i}</div>
+              <div className="w-7 h-7 rounded-full bg-white/10"></div>
+              <div className="h-3 w-24 bg-white/15 rounded"></div>
+            </div>
+            <div className="h-4 w-16 bg-yellow-500/20 rounded-md"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function ConnectTab() {
   const { history, tasks, timetableGrid, connectInitialTab, setConnectInitialTab } = useDashboardStore();
@@ -16,6 +161,8 @@ export default function ConnectTab() {
   const [username, setUsername] = useState('');
   const [showFriendTimetable, setShowFriendTimetable] = useState(false);
   const [showFriendTasks, setShowFriendTasks] = useState(false);
+  const [friendTaskTab, setFriendTaskTab] = useState<'today' | 'tomorrow'>('today');
+  const [friendTaskGroupTab, setFriendTaskGroupTab] = useState<number>(0);
   const [friendSettingsModal, setFriendSettingsModal] = useState<any>(null);
 
   useEffect(() => {
@@ -40,6 +187,8 @@ export default function ConnectTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string, username: string, profilePicture?: string, alias?: string }[]>([]);
   const [hasSearchedFriends, setHasSearchedFriends] = useState(false);
+  const [isFriendsLoading, setIsFriendsLoading] = useState(true);
+  const [isSearchingFriends, setIsSearchingFriends] = useState(false);
   const [friends, setFriends] = useState<{ id: string, taskSharing?: Record<string, boolean>, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
   const [pendingRequests, setPendingRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
   const [sentRequests, setSentRequests] = useState<{ id: string, user: { id: string, username: string, lastActive?: string, profilePicture?: string, alias?: string } }[]>([]);
@@ -217,7 +366,10 @@ export default function ConnectTab() {
 
   const fetchFriendsData = async () => {
     const token = localStorage.getItem('dashboard_sync_token');
-    if (!token) return;
+    if (!token) {
+      setIsFriendsLoading(false);
+      return;
+    }
     try {
       const res = await fetch('/api/friends', {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -244,6 +396,9 @@ export default function ConnectTab() {
         setGroupRequestsCount((groupData.requests || []).length);
       }
     } catch (err) { }
+    finally {
+      setIsFriendsLoading(false);
+    }
   };
 
 
@@ -389,6 +544,7 @@ export default function ConnectTab() {
     e.preventDefault();
     if (!searchQuery || searchQuery.length < 1) return;
     setHasSearchedFriends(true);
+    setIsSearchingFriends(true);
     const token = localStorage.getItem('dashboard_sync_token');
     try {
       const res = await fetch(`/api/friends/search?q=${encodeURIComponent(searchQuery)}`, {
@@ -398,6 +554,9 @@ export default function ConnectTab() {
       if (res.ok) setSearchResults(data.users || []);
       else setSearchResults([]);
     } catch (err) { setSearchResults([]); }
+    finally {
+      setIsSearchingFriends(false);
+    }
   };
 
   const sendFriendRequest = async (receiverId: string) => {
@@ -1015,8 +1174,10 @@ export default function ConnectTab() {
                 <BarChart2 size={14} /> My Stats
               </button>
             </div>
-            {friends.length === 0 ? (
-              <p className="text-white/40 italic text-xs">No friends added.</p>
+            {isFriendsLoading ? (
+              <FriendsLoadingSkeleton />
+            ) : friends.length === 0 ? (
+              <EmptyFriendsState />
             ) : (
               <div className="flex flex-col gap-2 w-full min-w-0">
                 {friends.map(f => (
@@ -1045,13 +1206,13 @@ export default function ConnectTab() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {f.taskSharing?.[f.user.id] && (
+                      {f.taskSharing?.[f.user.id] !== false && (
                         <button
                           onClick={() => viewFriendTasks(f.user.id, f.user.username)}
                           className="p-1 md:px-2 md:py-1 bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-emerald-500/20 transition-colors h-6 md:h-7"
                           title="View Tasks"
                         >
-                          <Check size={10} className="md:w-3 md:h-3" /> <span className="hidden md:inline">Tasks</span>
+                          <Check size={10} className="md:w-3 md:h-3" /> <span>View Tasks</span>
                         </button>
                       )}
                       <button
@@ -1111,9 +1272,11 @@ export default function ConnectTab() {
             </button>
           </form>
 
-          {hasSearchedFriends && searchResults.length === 0 && (
-            <p className="text-white/40 italic text-[10px] md:text-xs pl-2">No user found.</p>
-          )}
+          {isSearchingFriends ? (
+            <FriendsSearchLoadingSkeleton />
+          ) : hasSearchedFriends && searchResults.length === 0 ? (
+            <EmptyFriendSearchState query={searchQuery} />
+          ) : null}
 
           {searchResults.length > 0 && (
             <div className="bg-white/5 rounded-xl border border-white/10 p-3 w-full min-w-0">
@@ -1280,7 +1443,7 @@ export default function ConnectTab() {
           </div>
 
           {leaderboardLoading && leaderboardData.length === 0 ? (
-            <p className="text-white/40 italic text-center py-2 text-[9px] md:text-xs">Loading...</p>
+            <LeaderboardLoadingSkeleton />
           ) : (
             <div className="flex-1 relative overflow-hidden min-h-0 w-full pb-1">
               <ScrollableWithArrows className="flex flex-col gap-1 w-full min-w-0 pr-1 h-full pb-10">
@@ -1424,33 +1587,39 @@ export default function ConnectTab() {
                         </div>
 
                         {/* Expanded Stats */}
-                        {expandedLeaderboardUserId === user.id && leaderboardFilter === 'today' && leaderboardPeriod === 'current' && (
-                          <div className="w-full mt-1 pt-1 border-t border-white/10 flex flex-col gap-1 animate-fade-in min-w-0">
-                            <div className="text-[7.5px] md:text-[8.5px] text-white/60 font-mono text-left bg-black/30 px-2 py-0.5 rounded select-all cursor-text flex items-center justify-between border border-white/5">
-                              <span className="uppercase tracking-widest font-semibold text-white/40">User ID:</span>
-                              <span>{user.id.slice(0, 5)}...{user.id.slice(-4)}</span>
-                            </div>
+                        {expandedLeaderboardUserId === user.id && leaderboardFilter === 'today' && leaderboardPeriod === 'current' && (() => {
+                          const daysPassedThisWeek = new Date().getDay() === 0 ? 7 : new Date().getDay();
+                          const thisWeekDailyAvg = Math.round((user.thisWeekFocused || 0) / daysPassedThisWeek);
+                          const lastWeekDailyAvg = Math.round((user.lastWeekFocused || 0) / 7);
 
-                            <div className="grid grid-cols-4 gap-0.5 sm:gap-1 text-center min-w-0">
-                              <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-yellow-500/20 min-w-0 justify-center items-center">
-                                <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-yellow-400 font-bold uppercase tracking-wider truncate">Today</span>
-                                <span className="font-mono text-[8px] sm:text-[9.5px] md:text-[11px] font-bold text-yellow-300 truncate">{Math.floor(user.todayFocused / 60)}h {user.todayFocused % 60}m</span>
+                          return (
+                            <div className="w-full mt-1 pt-1 border-t border-white/10 flex flex-col gap-1 animate-fade-in min-w-0">
+                              <div className="text-[7.5px] md:text-[8.5px] text-white/60 font-mono text-left bg-black/30 px-2 py-0.5 rounded select-all cursor-text flex items-center justify-between border border-white/5">
+                                <span className="uppercase tracking-widest font-semibold text-white/40">User ID:</span>
+                                <span>{user.id.slice(0, 5)}...{user.id.slice(-4)}</span>
                               </div>
-                              <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-amber-500/20 min-w-0 justify-center items-center">
-                                <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-amber-400 font-bold uppercase tracking-wider truncate">Yesterday</span>
-                                <span className="font-mono text-[8px] sm:text-[9.5px] md:text-[11px] font-bold text-amber-300 truncate">{Math.floor(user.yesterdayFocused / 60)}h {user.yesterdayFocused % 60}m</span>
-                              </div>
-                              <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-purple-500/20 min-w-0 justify-center items-center">
-                                <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-purple-400 font-bold uppercase tracking-wider truncate">This Week</span>
-                                <span className="font-mono text-[7.5px] sm:text-[8.5px] md:text-[10.5px] font-bold text-purple-300 truncate">{Math.floor(user.thisWeekFocused / 60)}h {user.thisWeekFocused % 60}m</span>
-                              </div>
-                              <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-emerald-500/20 min-w-0 justify-center items-center">
-                                <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-emerald-400 font-bold uppercase tracking-wider truncate">This Month</span>
-                                <span className="font-mono text-[7.5px] sm:text-[8.5px] md:text-[10.5px] font-bold text-emerald-300 truncate">{Math.floor(user.thisMonthFocused / 60)}h {user.thisMonthFocused % 60}m</span>
+
+                              <div className="grid grid-cols-4 gap-0.5 sm:gap-1 text-center min-w-0">
+                                <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-yellow-500/20 min-w-0 justify-center items-center">
+                                  <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-yellow-400 font-bold uppercase tracking-wider truncate" title="Daily Average of This Week">This Wk Avg</span>
+                                  <span className="font-mono text-[7.5px] sm:text-[8.5px] md:text-[10.5px] font-bold text-yellow-300 truncate">{Math.floor(thisWeekDailyAvg / 60)}h {thisWeekDailyAvg % 60}m</span>
+                                </div>
+                                <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-amber-500/20 min-w-0 justify-center items-center">
+                                  <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-amber-400 font-bold uppercase tracking-wider truncate" title="Daily Average of Last Week">Last Wk Avg</span>
+                                  <span className="font-mono text-[7.5px] sm:text-[8.5px] md:text-[10.5px] font-bold text-amber-300 truncate">{Math.floor(lastWeekDailyAvg / 60)}h {lastWeekDailyAvg % 60}m</span>
+                                </div>
+                                <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-purple-500/20 min-w-0 justify-center items-center">
+                                  <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-purple-400 font-bold uppercase tracking-wider truncate">This Week</span>
+                                  <span className="font-mono text-[7.5px] sm:text-[8.5px] md:text-[10.5px] font-bold text-purple-300 truncate">{Math.floor(user.thisWeekFocused / 60)}h {user.thisWeekFocused % 60}m</span>
+                                </div>
+                                <div className="flex flex-col bg-black/30 p-0.5 sm:p-1 rounded border border-emerald-500/20 min-w-0 justify-center items-center">
+                                  <span className="text-[6.5px] sm:text-[7.5px] md:text-[8.5px] text-emerald-400 font-bold uppercase tracking-wider truncate">This Month</span>
+                                  <span className="font-mono text-[7.5px] sm:text-[8.5px] md:text-[10.5px] font-bold text-emerald-300 truncate">{Math.floor(user.thisMonthFocused / 60)}h {user.thisMonthFocused % 60}m</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     );
                   });
@@ -1577,59 +1746,172 @@ export default function ConnectTab() {
       )}
 
       {/* Friend Tasks Modal */}
-      {showFriendTasks && useDashboardStore.getState().viewingFriend && (
-        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => {
-          setShowFriendTasks(false);
-          useDashboardStore.getState().setViewingFriend(null);
-        }}>
-          <div className="bg-[#0f0f13] w-full max-w-2xl max-h-[85vh] rounded-2xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
-            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setShowFriendTasks(false);
-                  useDashboardStore.getState().setViewingFriend(null);
-                }}
-                className="p-2 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl backdrop-blur-md transition-all shadow-lg"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-4 border-b border-white/10 bg-black/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center border border-white/10 shadow-lg">
-                <Check className="w-5 h-5 text-white" />
+      {showFriendTasks && useDashboardStore.getState().viewingFriend && (() => {
+        const viewingFriend = useDashboardStore.getState().viewingFriend;
+        const friendStats = viewingFriend?.stats || {};
+        const friendTasksList = friendTaskTab === 'today' ? (friendStats.tasks || []) : (friendStats.tomorrowTasks || []);
+        const friendGroupNames = friendStats.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3'];
+
+        const isTaskDone = (t: any) => {
+          if (Boolean(t.completed) && t.completed !== 'false') return true;
+          if (t.duration !== undefined && t.duration <= 0) return true;
+          return false;
+        };
+
+        const groupFilteredTasks = friendTasksList.filter((t: any) => (t.groupId || 0) === friendTaskGroupTab);
+
+        const sortedTasks = [...groupFilteredTasks].sort((a: any, b: any) => {
+          const aDone = isTaskDone(a);
+          const bDone = isTaskDone(b);
+          if (aDone === bDone) return 0;
+          return aDone ? 1 : -1;
+        });
+
+        const totalRemainingMinutes = friendTasksList
+          .filter((t: any) => !isTaskDone(t))
+          .reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
+
+        const formatDuration = (mins: number) => {
+          if (!mins || mins <= 0) return '0m';
+          if (mins < 60) return `${mins}m`;
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          return m > 0 ? `${h}h ${m}m` : `${h}h`;
+        };
+
+        return (
+          <div className="fixed inset-0 z-[10005] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => {
+            setShowFriendTasks(false);
+            useDashboardStore.getState().setViewingFriend(null);
+          }}>
+            <div className="bg-[#0f0f13] w-full max-w-2xl max-h-[85vh] rounded-2xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
+              <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setShowFriendTasks(false);
+                    useDashboardStore.getState().setViewingFriend(null);
+                  }}
+                  className="p-2 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl backdrop-blur-md transition-all shadow-lg"
+                >
+                  <X size={20} />
+                </button>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-white tracking-tight">{useDashboardStore.getState().viewingFriend?.username}'s Tasks</h2>
-                <p className="text-xs text-white/50">Viewing shared tasks</p>
+
+              <div className="p-4 border-b border-white/10 bg-black/40 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center border border-white/10 shadow-lg shrink-0">
+                  <Check className="w-5 h-5 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-bold text-white tracking-tight truncate">{viewingFriend?.username}'s Tasks</h2>
+                  <p className="text-xs text-white/50">Viewing shared personal tasks</p>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex-1 overflow-auto custom-scrollbar p-4">
-               {useDashboardStore.getState().viewingFriend?.stats?.tasks?.length > 0 ? (
-                 <div className="space-y-2">
-                   {useDashboardStore.getState().viewingFriend?.stats?.tasks.map((task: any) => (
-                     <div key={task.id} className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
-                       <div className="flex items-center gap-3">
-                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${task.completed ? 'bg-emerald-500 border-emerald-500' : 'border-white/20'}`}>
-                           {task.completed && <Check size={10} className="text-white" />}
-                         </div>
-                         <span className={`text-sm font-semibold ${task.completed ? 'text-white/40 line-through' : 'text-white/90'}`}>{task.title}</span>
-                       </div>
-                       <div className="flex items-center gap-2 text-xs font-bold text-white/50 bg-black/40 px-2 py-1 rounded-full border border-white/5">
-                         <Clock size={10} className="text-emerald-400" />
-                         <span>{task.timeSpent || 0}m / {task.duration}m</span>
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-               ) : (
-                 <p className="text-white/40 text-center italic text-sm mt-8">No tasks found for this user.</p>
-               )}
+
+              {/* Header Controls: Today/Tomorrow Tabs & Total Left */}
+              <div className="border-b border-white/5 bg-black/20 p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shrink-0">
+                    <button
+                      onClick={() => setFriendTaskTab('today')}
+                      className={`px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors ${friendTaskTab === 'today' ? 'bg-sky-500/20 text-sky-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                    >
+                      Today
+                    </button>
+                    <button
+                      onClick={() => setFriendTaskTab('tomorrow')}
+                      className={`px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors ${friendTaskTab === 'tomorrow' ? 'bg-purple-500/20 text-purple-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                    >
+                      Tomorrow
+                    </button>
+                  </div>
+
+                  {totalRemainingMinutes > 0 && (
+                    <div className="relative group">
+                      <span className="text-[10px] sm:text-xs font-bold text-sky-300 flex items-center gap-1 px-2.5 py-1 bg-sky-500/20 rounded-md border border-sky-500/30 shadow-sm">
+                        Total Left: {formatDuration(totalRemainingMinutes)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sub-tabs for grouping (Tab 1, Tab 2, Tab 3) */}
+                <div className="flex items-start gap-1 mt-1">
+                  {[0, 1, 2].map((idx) => {
+                    const tabTasks = friendTasksList.filter((t: any) => (t.groupId || 0) === idx);
+                    const tabRemaining = tabTasks.filter((t: any) => !isTaskDone(t)).reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`relative flex flex-col flex-1 min-w-0 rounded-md border transition-all h-[28px] cursor-pointer ${friendTaskGroupTab === idx
+                          ? 'bg-blue-500/20 border-blue-500/50 text-blue-200'
+                          : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10 hover:text-white/80'
+                          }`}
+                        onClick={() => setFriendTaskGroupTab(idx)}
+                      >
+                        <div className="w-full px-2 py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-left truncate select-none">
+                          {friendGroupNames[idx] || `Tab ${idx + 1}`}
+                        </div>
+                        {tabRemaining > 0 && (
+                          <div className={`absolute bottom-0 right-0 text-[7.5px] font-bold uppercase tracking-widest px-1 py-[1px] rounded-tl-md rounded-br-md border-t border-l shadow-sm ${friendTaskGroupTab === idx ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-black/60 text-white/40 border-white/20'}`}>
+                            {formatDuration(tabRemaining)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto custom-scrollbar p-4">
+                {sortedTasks.length > 0 ? (
+                  <div className="space-y-2">
+                    {sortedTasks.map((task: any, index: number) => {
+                      const done = isTaskDone(task);
+                      return (
+                        <div key={task.id || index} className={`flex items-center justify-between p-3 rounded-lg border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${done ? 'opacity-75 grayscale-[30%] border-white/10' : 'border-white/20'}`}>
+                          <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                            <div className="flex items-center justify-center shrink-0">
+                              {done ? (
+                                <div className="w-4 h-4 rounded-[4px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] flex items-center justify-center">
+                                  <Check size={11} className="text-white stroke-[3]" />
+                                </div>
+                              ) : (
+                                <div className="w-4 h-4 rounded-[4px] border-[1.5px] border-white/40" />
+                              )}
+                            </div>
+                            <span className="text-[11px] font-black text-sky-300/90 tabular-nums select-none shrink-0">{index + 1}</span>
+                            <span className={`text-xs md:text-sm font-semibold truncate ${done ? 'text-white/40 line-through' : 'text-white/90'}`}>
+                              {task.title}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {task.duration > 0 && !done && (
+                              <span className="text-[9px] md:text-[10px] font-semibold tracking-wide text-white/90 bg-sky-500/20 px-2 py-0.5 rounded-full border border-sky-400/20 shadow-sm">
+                                {formatDuration(task.duration)} left
+                              </span>
+                            )}
+                            <span className={`text-[9px] md:text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full border shadow-sm ${done ? 'text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20' : 'text-emerald-200 bg-emerald-500/20 border-emerald-400/20'}`}>
+                              {done ? (
+                                formatDuration(Math.max(task.timeSpent || 0, task.duration || 0)) + ' done'
+                              ) : (
+                                formatDuration(task.timeSpent || 0) + ' done'
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-white/40 text-center italic text-sm mt-8">No {friendTaskTab} tasks found in this tab.</p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Friend Settings Modal */}
       {friendSettingsModal && (

@@ -1,17 +1,153 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock } from 'lucide-react';
+import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock, Sparkles, Flame } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
+
+function EmptyCreatedGroupsState({ onOpenCreate }: { onOpenCreate: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-sky-950/30 via-black/40 to-black/60 border border-sky-500/25 text-center shadow-lg relative overflow-hidden my-2 group">
+      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-sky-500/20 transition-all duration-500"></div>
+
+      <div className="relative mb-2.5 flex items-center justify-center">
+        <div className="w-11 h-11 rounded-2xl bg-sky-500/15 border border-sky-400/35 flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.25)] animate-pulse">
+          <Users className="w-5 h-5 text-sky-300 animate-bounce" style={{ animationDuration: '2.8s' }} />
+        </div>
+        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center">
+          <Sparkles className="w-3 h-3 text-blue-300 animate-spin" style={{ animationDuration: '3.5s' }} />
+        </div>
+      </div>
+
+      <h4 className="text-xs md:text-sm font-bold text-white tracking-wide mb-1 flex items-center justify-center gap-1.5">
+        Build Your Focus Circle!
+      </h4>
+      <p className="text-[10px] md:text-xs text-white/60 max-w-xs leading-relaxed mb-3">
+        You haven't created any groups yet. Creating a group gives you a live shared task list where members can sync work and track done duration together!
+      </p>
+
+      <button
+        onClick={onOpenCreate}
+        className="px-3.5 py-1.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-xl text-[10px] md:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer border border-sky-400/30"
+      >
+        <Plus size={13} className="animate-pulse" /> Create Your First Group
+      </button>
+    </div>
+  );
+}
+
+function EmptyJoinedGroupsState({ onSwitchToSearch }: { onSwitchToSearch: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-purple-950/30 via-black/40 to-black/60 border border-purple-500/25 text-center shadow-lg relative overflow-hidden my-2 group">
+      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/20 transition-all duration-500"></div>
+
+      <div className="relative mb-2.5 flex items-center justify-center">
+        <div className="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-400/35 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.25)] animate-pulse">
+          <Search className="w-5 h-5 text-purple-300 animate-bounce" style={{ animationDuration: '3s' }} />
+        </div>
+        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center">
+          <Sparkles className="w-3 h-3 text-indigo-300 animate-spin" style={{ animationDuration: '4s' }} />
+        </div>
+      </div>
+
+      <h4 className="text-xs md:text-sm font-bold text-white tracking-wide mb-1 flex items-center justify-center gap-1.5">
+        Explore Joined Groups
+      </h4>
+      <p className="text-[10px] md:text-xs text-white/60 max-w-xs leading-relaxed mb-3">
+        You haven't joined any groups yet. Search the group directory to discover public study groups or ask group admins for join access!
+      </p>
+
+      <button
+        onClick={onSwitchToSearch}
+        className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-[10px] md:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer border border-purple-400/30"
+      >
+        <Search size={13} className="animate-pulse" /> Find Groups to Join
+      </button>
+    </div>
+  );
+}
+
+function EmptyGroupSearchState({ query }: { query: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-black/40 border border-white/10 text-center my-2">
+      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-2 shadow-inner">
+        <Search className="w-5 h-5 text-white/40 animate-pulse" />
+      </div>
+      <h5 className="text-xs font-bold text-white/80">No Groups Found</h5>
+      <p className="text-[10px] text-white/50 max-w-xs mt-0.5 leading-relaxed">
+        {query ? `No public or requested groups match "${query}". Try a different search term!` : 'No groups found in directory right now.'}
+      </p>
+    </div>
+  );
+}
+
+function GroupsLoadingSkeleton() {
+  return (
+    <div className="flex flex-col gap-3 w-full py-2 animate-in fade-in duration-300">
+      <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-sky-950/40 via-blue-900/30 to-indigo-950/40 border border-sky-500/30 shadow-md relative overflow-hidden">
+        <div className="flex items-center gap-3">
+          <div className="relative flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-400/50 flex items-center justify-center animate-pulse">
+              <Users className="w-4.5 h-4.5 text-sky-400 animate-bounce" />
+            </div>
+            <div className="absolute -inset-1 rounded-xl border border-sky-400/40 border-t-sky-300 animate-spin" style={{ animationDuration: '3s' }}></div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-sky-200 tracking-wide">Fetching Groups</span>
+              <Sparkles className="w-3 h-3 text-sky-300 animate-spin" style={{ animationDuration: '4s' }} />
+            </div>
+            <div className="h-2 w-32 bg-white/10 rounded animate-pulse"></div>
+          </div>
+        </div>
+        <Clock className="w-4 h-4 text-sky-300/70 animate-spin" style={{ animationDuration: '5s' }} />
+      </div>
+
+      <div className="flex flex-col gap-2 mt-1">
+        <div className="h-2.5 w-24 bg-white/10 rounded animate-pulse mb-0.5"></div>
+        {[1, 2].map((i) => (
+          <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-black/40 border border-white/10 animate-pulse">
+            <div className="flex flex-col gap-1.5">
+              <div className="h-3 w-32 bg-white/20 rounded"></div>
+              <div className="h-2 w-44 bg-white/10 rounded"></div>
+            </div>
+            <ArrowRight size={14} className="text-white/20" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GroupSearchLoadingSkeleton() {
+  return (
+    <div className="flex flex-col gap-2.5 w-full py-2 animate-in fade-in duration-300">
+      <div className="flex items-center justify-center gap-2 py-3 text-sky-300 text-xs font-bold animate-pulse bg-sky-950/20 rounded-xl border border-sky-500/20">
+        <Search className="w-4 h-4 text-sky-400 animate-spin" style={{ animationDuration: '2s' }} />
+        <span>Searching Groups Directory...</span>
+        <Sparkles className="w-3.5 h-3.5 text-sky-300 animate-pulse" />
+      </div>
+      {[1, 2].map((i) => (
+        <div key={i} className="p-2.5 rounded-xl bg-black/40 border border-white/10 animate-pulse flex items-center justify-between">
+          <div className="flex flex-col gap-1.5">
+            <div className="h-3 w-28 bg-white/20 rounded"></div>
+            <div className="h-2 w-40 bg-white/10 rounded"></div>
+          </div>
+          <div className="h-5 w-14 bg-blue-500/20 rounded-md"></div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function ConnectGroupsTab() {
   const { userGroups, setUserGroups, selectedGroupId, setSelectedGroupId } = useDashboardStore();
   const [activeSubTab, setActiveSubTab] = useState<'groups' | 'search'>('groups');
   const [groups, setGroups] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isSearchingGroups, setIsSearchingGroups] = useState(false);
   const [requests, setRequests] = useState<any[]>([]);
   const [sentRequests, setSentRequests] = useState<any[]>([]);
   const [newGroupTitle, setNewGroupTitle] = useState('');
@@ -87,13 +223,19 @@ export default function ConnectGroupsTab() {
 
   const fetchSearch = async () => {
     setHasSearched(true);
+    setIsSearchingGroups(true);
+    const token = localStorage.getItem('dashboard_sync_token');
     try {
       const q = searchQuery.trim();
-      const res = await fetch(`/api/groups/search${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/api/groups/search${q ? `?q=${encodeURIComponent(q)}` : ''}`, { headers });
       const data = await res.json();
       setSearchResults(data.groups || []);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSearchingGroups(false);
     }
   };
 
@@ -359,30 +501,29 @@ export default function ConnectGroupsTab() {
     const d = new Date();
     const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     
-    let totalGroupSpent = 0;
-    let mySpent = 0;
-    
+    let myDone = 0;
     const tasks = group.tasks || [];
     const totalDuration = tasks.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
     
-    const myMemberInfo = group.members?.find((m: any) => m.isMe);
+    const myMemberInfo = group.members?.find((m: any) => m.isMe || m.username === myUsername);
     const myUserId = myMemberInfo ? myMemberInfo.userId : null;
     
-    if (group.completions) {
-        for (const [userId, dates] of Object.entries(group.completions)) {
-            const todayComps = (dates as any)[todayStr] || {};
-            for (const taskId in todayComps) {
-                const spent = todayComps[taskId]?.timeSpent || 0;
-                totalGroupSpent += spent;
-                if (userId === myUserId) {
-                    mySpent += spent;
+    if (group.completions && myUserId) {
+        const todayComps = group.completions[myUserId]?.[todayStr] || {};
+        for (const t of tasks) {
+            const comp = todayComps[t.id];
+            if (comp) {
+                if (comp.completed) {
+                    myDone += Math.max(comp.timeSpent || 0, t.duration || 0);
+                } else {
+                    myDone += (comp.timeSpent || 0);
                 }
             }
         }
     }
     
-    const myTimeLeft = Math.max(0, totalDuration - mySpent);
-    return { totalGroupSpent, myTimeLeft };
+    const myTimeLeft = Math.max(0, totalDuration - myDone);
+    return { totalDuration, myDone, myTimeLeft };
   };
 
   const globalFormatTime = (mins: number) => {
@@ -394,136 +535,148 @@ export default function ConnectGroupsTab() {
   if (viewingGroup) {
       return (
         <div className="flex flex-col w-full animate-in fade-in slide-in-from-right-2">
-            <div className="flex items-center gap-2 mb-3 bg-white/5 p-2 rounded-xl border border-white/10">
-                <button onClick={() => setViewingGroup(null)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
-                    <ArrowLeft size={16} className="text-white/70" />
-                </button>
-                <div className="flex-1 min-w-0">
-                    {editingGroupId === viewingGroup._id ? (
-                        <form onSubmit={handleUpdateGroupInfo} className="flex flex-col gap-1">
-                            <input 
-                                autoFocus
-                                value={editGroupTitle}
-                                onChange={e => setEditGroupTitle(e.target.value)}
-                                className="bg-black/40 border border-white/20 rounded px-1.5 py-0.5 text-sm font-bold text-white outline-none focus:border-blue-500 w-full"
-                            />
-                            <input 
-                                value={editGroupDesc}
-                                onChange={e => setEditGroupDesc(e.target.value)}
-                                className="bg-black/40 border border-white/20 rounded px-1.5 py-0.5 text-[10px] text-white outline-none focus:border-blue-500 w-full"
-                            />
-                            <label className="flex items-center gap-1.5 mt-1 cursor-pointer w-fit">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3 bg-white/5 p-2.5 sm:p-3 rounded-xl border border-white/10 shadow-sm">
+                <div className="flex items-start sm:items-center gap-2 min-w-0 flex-1">
+                    <button 
+                        onClick={() => setViewingGroup(null)} 
+                        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors shrink-0 text-white/70 hover:text-white mt-0.5 sm:mt-0"
+                        title="Back to groups"
+                    >
+                        <ArrowLeft size={16} />
+                    </button>
+                    <div className="flex flex-col min-w-0 flex-1">
+                        {editingGroupId === viewingGroup._id ? (
+                            <form onSubmit={handleUpdateGroupInfo} className="flex flex-col gap-1 w-full">
                                 <input 
-                                    type="checkbox" 
-                                    checked={editGroupIsPrivate}
-                                    onChange={e => setEditGroupIsPrivate(e.target.checked)}
-                                    className="accent-blue-500"
+                                    autoFocus
+                                    value={editGroupTitle}
+                                    onChange={e => setEditGroupTitle(e.target.value)}
+                                    className="bg-black/40 border border-white/20 rounded px-1.5 py-0.5 text-xs sm:text-sm font-bold text-white outline-none focus:border-blue-500 w-full"
                                 />
-                                <span className="text-[10px] text-white/70">Private Group (Hide tasks from non-members)</span>
-                            </label>
-                            <label className="flex items-center gap-1.5 mt-1 cursor-pointer w-fit">
                                 <input 
-                                    type="checkbox" 
-                                    checked={editGroupAllowRequests}
-                                    onChange={e => setEditGroupAllowRequests(e.target.checked)}
-                                    className="accent-blue-500"
+                                    value={editGroupDesc}
+                                    onChange={e => setEditGroupDesc(e.target.value)}
+                                    className="bg-black/40 border border-white/20 rounded px-1.5 py-0.5 text-[9px] sm:text-[10px] text-white outline-none focus:border-blue-500 w-full"
                                 />
-                                <span className="text-[10px] text-white/70">Allow Join Requests</span>
-                            </label>
-                            <div className="flex gap-1 mt-1">
-                                <button type="submit" className="px-2 py-0.5 bg-blue-500 text-white text-[9px] rounded font-bold">Save</button>
-                                <button type="button" onClick={() => setEditingGroupId(null)} className="px-2 py-0.5 bg-white/10 text-white text-[9px] rounded font-bold">Cancel</button>
-                            </div>
-                        </form>
-                    ) : (
-                        <div 
-                            onDoubleClick={() => {
-                                if (viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin') {
-                                    setEditGroupTitle(viewingGroup.title);
-                                    setEditGroupDesc(viewingGroup.description || '');
-                                    setEditingGroupId(viewingGroup._id);
-                                }
-                            }}
-                            className={`group/title flex items-start justify-between gap-2 ${viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "cursor-text" : ""}`}
-                            title={viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "Double click to edit" : ""}
-                        >
-                            <div className="flex flex-col min-w-0 gap-1 w-full">
-                                <h3 className="font-bold truncate text-white/90 text-sm">{viewingGroup.title}</h3>
-                                {viewingGroup.description && (
-                                    <p className="text-[10px] text-white/50 whitespace-normal leading-snug pr-2">
-                                        {viewingGroup.description}
-                                    </p>
-                                )}
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                    <button 
-                                        type="button"
-                                        onClick={() => {
-                                            if (viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin') {
-                                                handleToggleGroupPrivacy(viewingGroup._id, viewingGroup.isPrivate);
-                                            }
-                                        }}
-                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shadow-sm transition-colors ${viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${viewingGroup.isPrivate ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}
-                                        title={viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "Click to toggle privacy" : "Privacy status"}
-                                    >
-                                        {viewingGroup.isPrivate ? <><ShieldAlert size={8} /> Private</> : <><Check size={8} /> Public</>}
-                                    </button>
-                                    <button 
-                                        type="button"
-                                        onClick={() => {
-                                            if (viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin') {
-                                                const currentStatus = viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true;
-                                                handleToggleGroupRequests(viewingGroup._id, currentStatus);
-                                            }
-                                        }}
-                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shadow-sm transition-colors ${viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'}`}
-                                        title={viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "Click to toggle join requests" : "Join requests status"}
-                                    >
-                                        {(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? <><Check size={8} /> Requests Allowed</> : <><ShieldAlert size={8} /> Requests Blocked</>}
-                                    </button>
+                                <label className="flex items-center gap-1.5 mt-1 cursor-pointer w-fit">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={editGroupIsPrivate}
+                                        onChange={e => setEditGroupIsPrivate(e.target.checked)}
+                                        className="accent-blue-500"
+                                    />
+                                    <span className="text-[9px] sm:text-[10px] text-white/70">Private Group (Hide tasks from non-members)</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 mt-1 cursor-pointer w-fit">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={editGroupAllowRequests}
+                                        onChange={e => setEditGroupAllowRequests(e.target.checked)}
+                                        className="accent-blue-500"
+                                    />
+                                    <span className="text-[9px] sm:text-[10px] text-white/70">Allow Join Requests</span>
+                                </label>
+                                <div className="flex gap-1 mt-1">
+                                    <button type="submit" className="px-2 py-0.5 bg-blue-500 text-white text-[9px] rounded font-bold">Save</button>
+                                    <button type="button" onClick={() => setEditingGroupId(null)} className="px-2 py-0.5 bg-white/10 text-white text-[9px] rounded font-bold">Cancel</button>
                                 </div>
-                            </div>
-                            {viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' && (
-                                <button 
-                                    onClick={() => {
+                            </form>
+                        ) : (
+                            <div 
+                                onDoubleClick={() => {
+                                    if (viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin') {
                                         setEditGroupTitle(viewingGroup.title);
                                         setEditGroupDesc(viewingGroup.description || '');
                                         setEditGroupIsPrivate(viewingGroup.isPrivate || false);
+                                        setEditGroupAllowRequests(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true);
                                         setEditingGroupId(viewingGroup._id);
-                                    }}
-                                    className="px-2 py-1 flex items-center gap-1.5 rounded-md bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors shrink-0 cursor-pointer text-[9px] font-bold uppercase tracking-wider ml-2"
-                                    title="Group Settings"
-                                >
-                                    <Settings size={12} />
-                                    <span>Settings</span>
-                                </button>
-                            )}
-                        </div>
+                                    }
+                                }}
+                                className={`flex flex-col min-w-0 gap-1 ${viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "cursor-text" : ""}`}
+                                title={viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "Double click to edit title & description" : ""}
+                            >
+                                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                    <h3 className="font-bold truncate text-white/90 text-xs sm:text-sm md:text-base">{viewingGroup.title}</h3>
+                                    <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                if (viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin') {
+                                                    handleToggleGroupPrivacy(viewingGroup._id, viewingGroup.isPrivate);
+                                                }
+                                            }}
+                                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shadow-sm transition-colors ${viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${viewingGroup.isPrivate ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}
+                                            title={viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "Click to toggle privacy" : "Privacy status"}
+                                        >
+                                            {viewingGroup.isPrivate ? <><ShieldAlert size={8} /> Private</> : <><Check size={8} /> Public</>}
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                if (viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin') {
+                                                    const currentStatus = viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true;
+                                                    handleToggleGroupRequests(viewingGroup._id, currentStatus);
+                                                }
+                                            }}
+                                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shadow-sm transition-colors ${viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'}`}
+                                            title={viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "Click to toggle join requests" : "Join requests status"}
+                                        >
+                                            {(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? <><Check size={8} /> Requests Allowed</> : <><ShieldAlert size={8} /> Requests Blocked</>}
+                                        </button>
+                                    </div>
+                                </div>
+                                {viewingGroup.description && (
+                                    <p className="text-[9.5px] sm:text-[10px] text-white/50 whitespace-normal leading-snug">
+                                        {viewingGroup.description}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    {viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' && (
+                        <button 
+                            onClick={() => {
+                                setEditGroupTitle(viewingGroup.title);
+                                setEditGroupDesc(viewingGroup.description || '');
+                                setEditGroupIsPrivate(viewingGroup.isPrivate || false);
+                                setEditGroupAllowRequests(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true);
+                                setEditingGroupId(viewingGroup._id);
+                            }}
+                            className="px-2 py-1 flex items-center gap-1 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-sm border border-white/10"
+                            title="Group Settings"
+                        >
+                            <Settings size={12} />
+                            <span>Settings</span>
+                        </button>
+                    )}
+                    {!viewingGroup.members.find((m: any) => m.isMe) && (
+                        (viewingGroup.isPrivate && viewingGroup.allowJoinRequests === false) ? (
+                            <span className="p-1.5 px-2.5 bg-red-500/20 text-red-400 text-[9px] sm:text-[10px] font-bold rounded-lg border border-red-500/30 whitespace-nowrap">
+                                Requests Not Allowed
+                            </span>
+                        ) : (
+                            <button 
+                                onClick={() => handleJoinRequest(viewingGroup._id)}
+                                disabled={sentRequests.some(r => String(r.groupId) === String(viewingGroup._id))}
+                                className="p-1.5 px-3 bg-blue-500 hover:bg-blue-600 text-white text-[9px] sm:text-[10px] font-bold rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                            >
+                                {sentRequests.some(r => String(r.groupId) === String(viewingGroup._id)) ? 'Pending' : viewingGroup.isPrivate ? 'Request' : 'Join'}
+                            </button>
+                        )
+                    )}
+                    {viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' && (
+                        <button 
+                            type="button"
+                            onClick={() => handleDeleteGroup(viewingGroup._id, viewingGroup.title)} 
+                            className="px-2 py-1 text-[9px] sm:text-[10px] font-bold bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-colors cursor-pointer border border-red-500/20"
+                        >
+                            Delete
+                        </button>
                     )}
                 </div>
-                {!viewingGroup.members.find((m: any) => m.isMe) && (
-                    (viewingGroup.isPrivate && viewingGroup.allowJoinRequests === false) ? (
-                        <span className="p-1.5 px-3 bg-red-500/20 text-red-400 text-[10px] font-bold rounded-lg ml-2 border border-red-500/30 whitespace-nowrap">
-                            Requests Not Allowed
-                        </span>
-                    ) : (
-                        <button 
-                            onClick={() => handleJoinRequest(viewingGroup._id)}
-                            disabled={sentRequests.some(r => String(r.groupId) === String(viewingGroup._id))}
-                            className="p-1.5 px-3 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold rounded-lg transition-colors ml-2 disabled:opacity-50 whitespace-nowrap"
-                        >
-                            {sentRequests.some(r => String(r.groupId) === String(viewingGroup._id)) ? 'Pending' : viewingGroup.isPrivate ? 'Request' : 'Join'}
-                        </button>
-                    )
-                )}
-                {viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' && (
-                    <button 
-                        type="button"
-                        onClick={() => handleDeleteGroup(viewingGroup._id, viewingGroup.title)} 
-                        className="px-2.5 py-1.5 text-[10px] font-bold bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-colors ml-2 cursor-pointer"
-                    >
-                        Delete
-                    </button>
-                )}
             </div>
 
             {requests.filter(r => String(r.groupId) === String(viewingGroup._id)).length > 0 && viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' && (
@@ -550,7 +703,7 @@ export default function ConnectGroupsTab() {
                 </div>
             )}
 
-            {!viewingGroup.members.find((m: any) => m.isMe) && viewingGroup.isPrivate ? (
+            {(!viewingGroup.members.find((m: any) => m.isMe) && !groups.some(g => String(g._id) === String(viewingGroup._id))) && viewingGroup.isPrivate ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-black/20 border border-white/5 rounded-xl my-4">
                     <ShieldAlert size={32} className="text-white/20 mb-3" />
                     <h4 className="text-sm font-bold text-white/70 mb-1">Private Group</h4>
@@ -562,10 +715,42 @@ export default function ConnectGroupsTab() {
             ) : (
                 <>
                     <div className="flex flex-col items-center gap-2 mb-3 w-full">
-                        <div className="text-[10px] font-bold text-white/50 tracking-wider flex items-center gap-1.5 bg-black/40 px-3 py-1.5 rounded-full border border-white/5 shadow-sm">
-                            <Clock size={12} className="text-sky-400" />
-                            Total Reference Time: <span className="text-sky-300">{globalFormatTime((viewingGroup.tasks || []).reduce((sum: number, t: any) => sum + (t.duration || 0), 0))}</span>
-                        </div>
+                    {(() => {
+                        const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
+                        const myCompletionsForDay = myMemberInfo ? (viewingGroup.completions?.[myMemberInfo.userId]?.[dateStr] || {}) : {};
+                        const groupTasks = viewingGroup.tasks || [];
+                        const groupReferenceDuration = groupTasks.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
+                        const myDoneForDay = groupTasks.reduce((sum: number, t: any) => {
+                            const comp = myCompletionsForDay[t.id];
+                            if (!comp) return sum;
+                            if (comp.completed) {
+                                return sum + Math.max(comp.timeSpent || 0, t.duration || 0);
+                            }
+                            return sum + (comp.timeSpent || 0);
+                        }, 0);
+
+                        const myTimeLeftForDay = Math.max(0, groupReferenceDuration - myDoneForDay);
+
+                        return (
+                            <div className="flex items-center justify-center flex-wrap gap-2 mb-3 w-full">
+                                <div className="flex items-center gap-1.5 bg-gradient-to-r from-sky-950/70 via-blue-900/40 to-sky-950/70 px-3 py-1.5 rounded-xl border border-sky-400/35 shadow-md hover:border-sky-400/50 transition-all">
+                                    <Clock size={13} className="text-sky-300 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-sky-200/80 tracking-wider">Group Ref:</span>
+                                    <span className="text-[11px] font-black text-sky-300 font-mono tracking-tight">{globalFormatTime(groupReferenceDuration)}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-950/70 via-teal-900/40 to-emerald-950/70 px-3 py-1.5 rounded-xl border border-emerald-400/35 shadow-md hover:border-emerald-400/50 transition-all">
+                                    <Check size={13} className="text-emerald-300" />
+                                    <span className="text-[10px] font-bold text-emerald-200/80 tracking-wider">My Done:</span>
+                                    <span className="text-[11px] font-black text-emerald-300 font-mono tracking-tight">{globalFormatTime(myDoneForDay)}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-950/70 via-purple-900/40 to-indigo-950/70 px-3 py-1.5 rounded-xl border border-indigo-400/35 shadow-md hover:border-indigo-400/50 transition-all">
+                                    <Flame size={13} className="text-indigo-300 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-indigo-200/80 tracking-wider">Time Left:</span>
+                                    <span className="text-[11px] font-black text-indigo-300 font-mono tracking-tight">{globalFormatTime(myTimeLeftForDay)}</span>
+                                </div>
+                            </div>
+                        );
+                    })()}
                         <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10 w-fit">
                             <button
                                 onClick={() => setViewingDay('yesterday')}
@@ -594,7 +779,7 @@ export default function ConnectGroupsTab() {
                     </div>
 
                     <ScrollableWithArrows className="max-h-[50vh] pr-1">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {viewingGroup.members.map((member: any) => {
                             // Calculate completions for this member for the specific day
                             const allTasks = viewingGroup.tasks || [];
@@ -615,37 +800,37 @@ export default function ConnectGroupsTab() {
                             const isGroupAdmin = viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin';
 
                             return (
-                                <div key={member.userId} className="bg-black/40 border border-white/10 p-2 sm:p-3 rounded-xl flex flex-col gap-2 shadow-sm">
-                                    <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2">
+                                <div key={member.userId} className="bg-black/40 border border-white/10 p-2 sm:p-3 rounded-xl flex flex-col gap-1.5 sm:gap-2 shadow-sm">
+                                    <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-1.5 sm:pb-2">
                                         <div className="flex flex-col min-w-0 flex-1">
-                                            <span className="text-[11px] sm:text-xs font-bold text-white/90 flex items-center gap-1.5 truncate">
+                                            <span className="text-[10px] sm:text-xs font-bold text-white/90 flex items-center gap-1.5 truncate">
                                                 {member.username} {member.role === 'admin' && <ShieldAlert size={10} className="text-yellow-400 shrink-0" />}
                                             </span>
                                             <div className="flex flex-col mt-0.5">
-                                                <div className="text-[9px] sm:text-[10px] text-white/60">
+                                                <div className="text-[8px] sm:text-[10px] text-white/60">
                                                     Tasks: <span className="font-mono text-blue-300">{completedTasks}/{totalTasks}</span>
                                                 </div>
-                                                <div className="text-[9px] sm:text-[10px] text-white/60">
+                                                <div className="text-[8px] sm:text-[10px] text-white/60">
                                                     Time left: <span className="font-mono text-sky-300">{formatTime(timeRemaining)}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         
                                         {isGroupAdmin && !member.isMe && (
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <label className="text-[9px] text-white/50 flex items-center gap-1 cursor-pointer">
+                                            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                                <label className="text-[8px] sm:text-[9px] text-white/50 flex items-center gap-1 cursor-pointer">
                                                     Edit Rights
                                                     <input 
                                                         type="checkbox" 
                                                         checked={member.canEdit || false}
                                                         onChange={(e) => handleGrantEdit(viewingGroup._id, member.userId, e.target.checked)}
-                                                        className="accent-blue-500"
+                                                        className="accent-blue-500 scale-90 sm:scale-100"
                                                     />
                                                 </label>
                                                 <button 
                                                     type="button"
                                                     onClick={() => handleRemoveMember(viewingGroup._id, member.userId, member.username)}
-                                                    className="px-2 py-1 text-[9px] font-bold bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white rounded transition-colors cursor-pointer shadow-sm"
+                                                    className="px-1.5 py-0.5 sm:px-2 sm:py-1 text-[8px] sm:text-[9px] font-bold bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white rounded transition-colors cursor-pointer shadow-sm"
                                                     title="Remove member"
                                                 >
                                                     Remove
@@ -656,30 +841,30 @@ export default function ConnectGroupsTab() {
                                     
                                     {/* Render Tasks as Cards */}
                                     {tasks.length > 0 ? (
-                                        <div className="flex flex-col gap-1.5 mt-1">
+                                        <div className="flex flex-col gap-1 sm:gap-1.5 mt-0.5 sm:mt-1">
                                             {tasks.map((task: any, index: number) => {
                                                 const isTaskDone = completions[task.id]?.completed || false;
                                                 const timeSpent = completions[task.id]?.timeSpent || 0;
                                                 return (
                                                     <div
                                                         key={task.id}
-                                                        className={`group flex items-start justify-between p-1.5 rounded-lg border bg-white/[0.02] transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} border-white/30`}
+                                                        className={`group flex items-start justify-between p-1 sm:p-1.5 rounded-lg border bg-white/[0.02] transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} border-white/30`}
                                                     >
-                                                        <div className="flex items-start gap-1.5 flex-1 min-w-0 pl-1">
+                                                        <div className="flex items-start gap-1 sm:gap-1.5 flex-1 min-w-0 pl-0.5 sm:pl-1">
                                                             <div className="flex flex-col items-center justify-center gap-0.5 mt-0.5 shrink-0 px-0.5">
                                                                 <div className="flex items-center justify-center">
                                                                     {isTaskDone ? (
-                                                                        <div className="w-3.5 h-3.5 rounded-[4px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] flex items-center justify-center">
-                                                                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                                        <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-[3px] sm:rounded-[4px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] flex items-center justify-center">
+                                                                            <svg className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="w-3.5 h-3.5 rounded-[4px] border-[1.5px] border-white/40 transition-colors" />
+                                                                        <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-[3px] sm:rounded-[4px] border-[1.5px] border-white/40 transition-colors" />
                                                                     )}
                                                                 </div>
-                                                                <span className="text-[11px] font-black text-sky-300/90 tabular-nums select-none leading-none mt-0.5">{index + 1}</span>
+                                                                <span className="text-[9px] sm:text-[11px] font-black text-sky-300/90 tabular-nums select-none leading-none mt-0.5">{index + 1}</span>
                                                             </div>
-                                                            <div className="flex flex-col gap-0.5 flex-1 min-w-0 w-full ml-0.5 ">
-                                                                <div className={`w-full text-[11px] leading-snug px-1 -mx-1 cursor-default whitespace-pre-wrap ${isTaskDone ? 'line-through text-white/60' : 'text-white/90'}`}>
+                                                            <div className="flex flex-col gap-0.5 flex-1 min-w-0 w-full ml-0.5">
+                                                                <div className={`w-full text-[9.5px] sm:text-[11px] leading-snug px-0.5 cursor-default whitespace-pre-wrap ${isTaskDone ? 'line-through text-white/60' : 'text-white/90'}`}>
                                                                     {task.title}
                                                                 </div>
                                                                 <div className="flex items-center gap-1 mt-0.5 overflow-hidden w-full">
@@ -687,14 +872,14 @@ export default function ConnectGroupsTab() {
                                                                         (() => {
                                                                             const timeLeft = Math.max(0, task.duration - timeSpent);
                                                                             return editingGroupTaskDurationId === task.id && isGroupAdmin ? (
-                                                                                <div className="shrink-0 flex items-center bg-sky-500/30 rounded-full border border-sky-400/30 px-1.5 py-px shadow-sm">
+                                                                                <div className="shrink-0 flex items-center bg-sky-500/30 rounded-full border border-sky-400/30 px-1 py-px sm:px-1.5 shadow-sm">
                                                                                     <input
                                                                                         autoFocus
                                                                                         type="number"
                                                                                         defaultValue={timeLeft}
                                                                                         min="0"
                                                                                         max="999"
-                                                                                        className="w-8 bg-transparent text-[9px] font-bold text-white outline-none placeholder:text-white/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                        className="w-7 sm:w-8 bg-transparent text-[8px] sm:text-[9px] font-bold text-white outline-none placeholder:text-white/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         onBlur={(e) => {
                                                                                             const dur = parseInt(e.target.value);
                                                                                             if (!isNaN(dur) && dur >= 0) handleEditGroupTaskDuration(viewingGroup._id, task.id, dur + timeSpent);
@@ -708,7 +893,7 @@ export default function ConnectGroupsTab() {
                                                                                             }
                                                                                         }}
                                                                                     />
-                                                                                    <span className="text-[9px] font-semibold text-white/80 ml-0.5">m</span>
+                                                                                    <span className="text-[8px] sm:text-[9px] font-semibold text-white/80 ml-0.5">m</span>
                                                                                 </div>
                                                                             ) : (
                                                                                 <span
@@ -718,7 +903,7 @@ export default function ConnectGroupsTab() {
                                                                                             setEditingGroupTaskDurationId(task.id);
                                                                                         }
                                                                                     }}
-                                                                                    className={`shrink-0 text-[9px] font-semibold tracking-wide text-white/90 bg-sky-500/20 px-1.5 py-0.5 rounded-full border border-sky-400/20 transition-colors shadow-sm ${isGroupAdmin ? 'cursor-pointer hover:bg-sky-500/40' : 'cursor-default'}`}
+                                                                                    className={`shrink-0 text-[8px] sm:text-[9px] font-semibold tracking-wide text-white/90 bg-sky-500/20 px-1 sm:px-1.5 py-0.5 rounded-full border border-sky-400/20 transition-colors shadow-sm ${isGroupAdmin ? 'cursor-pointer hover:bg-sky-500/40' : 'cursor-default'}`}
                                                                                     title={isGroupAdmin ? "Double click to edit duration" : "Duration"}
                                                                                 >
                                                                                     {timeLeft >= 60 ? Math.floor(timeLeft / 60) + "h " + (timeLeft % 60) + "m" : timeLeft + "m"} left
@@ -727,12 +912,15 @@ export default function ConnectGroupsTab() {
                                                                         })()
                                                                     )}
                                                                     {(!isTaskDone && timeSpent > 0) ? (
-                                                                        <span className={`shrink-0 text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded-full border transition-colors shadow-sm text-emerald-200 bg-emerald-500/20 cursor-default border-emerald-400/20`}>
+                                                                        <span className={`shrink-0 text-[8px] sm:text-[9px] font-semibold tracking-wide px-1 sm:px-1.5 py-0.5 rounded-full border transition-colors shadow-sm text-emerald-200 bg-emerald-500/20 cursor-default border-emerald-400/20`}>
                                                                             {timeSpent >= 60 ? Math.floor(timeSpent / 60) + "h " + (timeSpent % 60) + "m" : timeSpent + "m"} done
                                                                         </span>
                                                                     ) : isTaskDone ? (
-                                                                        <span className={`shrink-0 text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded-full border transition-colors shadow-sm text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20 cursor-default`}>
-                                                                            {((timeSpent || 0) + (task.duration || 0)) >= 60 ? Math.floor(((timeSpent || 0) + (task.duration || 0)) / 60) + "h " + (((timeSpent || 0) + (task.duration || 0)) % 60) + "m" : ((timeSpent || 0) + (task.duration || 0)) + "m"} done
+                                                                        <span className={`shrink-0 text-[8px] sm:text-[9px] font-semibold tracking-wide px-1 sm:px-1.5 py-0.5 rounded-full border transition-colors shadow-sm text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20 cursor-default`}>
+                                                                            {(() => {
+                                                                                const doneMins = Math.max(timeSpent || 0, task.duration || 0);
+                                                                                return doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m";
+                                                                            })()} done
                                                                         </span>
                                                                     ) : null}
                                                                 </div>
@@ -911,42 +1099,70 @@ export default function ConnectGroupsTab() {
                   </div>
               )}
 
-              {myGroupsList.length === 0 ? (
-                  <p className="text-xs text-white/40 italic text-center py-4">You haven't created any groups.</p>
+              {loading ? (
+                  <GroupsLoadingSkeleton />
               ) : (
-                  myGroupsList.map(group => (
-                      <div key={group._id} onClick={() => setViewingGroup(group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between shadow-sm">
-                          <div className="flex flex-col min-w-0 pointer-events-none">
-                              <span className="text-sm font-bold text-white/90 flex items-center gap-1.5">
-                                  {group.title} <ShieldAlert size={12} className="text-yellow-400" />
-                              </span>
-                              <span className="text-[10px] text-white/50 truncate">
-                                  {group.members.length} members &bull; Group Done: {globalFormatTime(getGroupStats(group).totalGroupSpent)} &bull; My Left: {globalFormatTime(getGroupStats(group).myTimeLeft)}
-                              </span>
+                <>
+                  {myGroupsList.length === 0 ? (
+                      <EmptyCreatedGroupsState onOpenCreate={() => setIsCreateFormOpen(true)} />
+                  ) : (
+                      myGroupsList.map(group => (
+                          <div key={group._id} onClick={() => setViewingGroup(group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between shadow-sm">
+                              <div className="flex flex-col min-w-0 pointer-events-none">
+                                  <span className="text-sm font-bold text-white/90 flex items-center gap-1.5">
+                                      {group.title} <ShieldAlert size={12} className="text-yellow-400" />
+                                  </span>
+                                  <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                      <span className="text-[9.5px] font-medium text-white/60 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+                                          {group.members.length} members
+                                      </span>
+                                      <span className="text-[9.5px] font-bold text-sky-300 bg-sky-500/15 px-1.5 py-0.5 rounded border border-sky-400/25">
+                                          Ref: {globalFormatTime(getGroupStats(group).totalDuration)}
+                                      </span>
+                                      <span className="text-[9.5px] font-bold text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-400/25">
+                                          Done: {globalFormatTime(getGroupStats(group).myDone)}
+                                      </span>
+                                      <span className="text-[9.5px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-400/25">
+                                          Left: {globalFormatTime(getGroupStats(group).myTimeLeft)}
+                                      </span>
+                                  </div>
+                              </div>
+                              <ArrowRight size={14} className="text-white/30 pointer-events-none" />
                           </div>
-                          <ArrowRight size={14} className="text-white/30 pointer-events-none" />
-                      </div>
-                  ))
-              )}
+                      ))
+                  )}
 
-              <div className="w-full h-px bg-white/10 my-3"></div>
+                  <div className="w-full h-px bg-white/10 my-3"></div>
 
-              {/* Joined Groups Section */}
-              <h4 className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1 px-1">Groups you joined</h4>
-              {joinedGroupsList.length === 0 ? (
-                  <p className="text-xs text-white/40 italic text-center py-4">You haven't joined any groups yet.</p>
-              ) : (
-                  joinedGroupsList.map(group => (
-                      <div key={group._id} onClick={() => setViewingGroup(group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between group-item shadow-sm">
-                          <div className="flex flex-col min-w-0 pointer-events-none">
-                              <span className="text-sm font-bold text-white/90 truncate">{group.title}</span>
-                              <span className="text-[10px] text-white/50 truncate">
-                                  {group.members.length} members &bull; Group Done: {globalFormatTime(getGroupStats(group).totalGroupSpent)} &bull; My Left: {globalFormatTime(getGroupStats(group).myTimeLeft)}
-                              </span>
+                  {/* Joined Groups Section */}
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1 px-1">Groups you joined</h4>
+                  {joinedGroupsList.length === 0 ? (
+                      <EmptyJoinedGroupsState onSwitchToSearch={() => setActiveSubTab('search')} />
+                  ) : (
+                      joinedGroupsList.map(group => (
+                          <div key={group._id} onClick={() => setViewingGroup(group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between group-item shadow-sm">
+                              <div className="flex flex-col min-w-0 pointer-events-none">
+                                  <span className="text-sm font-bold text-white/90 truncate">{group.title}</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                      <span className="text-[9.5px] font-medium text-white/60 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+                                          {group.members.length} members
+                                      </span>
+                                      <span className="text-[9.5px] font-bold text-sky-300 bg-sky-500/15 px-1.5 py-0.5 rounded border border-sky-400/25">
+                                          Ref: {globalFormatTime(getGroupStats(group).totalDuration)}
+                                      </span>
+                                      <span className="text-[9.5px] font-bold text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-400/25">
+                                          Done: {globalFormatTime(getGroupStats(group).myDone)}
+                                      </span>
+                                      <span className="text-[9.5px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-400/25">
+                                          Left: {globalFormatTime(getGroupStats(group).myTimeLeft)}
+                                      </span>
+                                  </div>
+                              </div>
+                              <ArrowRight size={14} className="text-white/30 group-hover:text-white/70 pointer-events-none" />
                           </div>
-                          <ArrowRight size={14} className="text-white/30 group-hover:text-white/70 pointer-events-none" />
-                      </div>
-                  ))
+                      ))
+                  )}
+                </>
               )}
             </>
         )}
@@ -966,14 +1182,16 @@ export default function ConnectGroupsTab() {
                   </button>
               </form>
 
-              {searchResults.length > 0 ? (
+              {isSearchingGroups ? (
+                  <GroupSearchLoadingSkeleton />
+              ) : searchResults.length > 0 ? (
                   <div className="flex flex-col gap-1.5">
                       {searchResults.map(group => {
-                          const isMember = groups.some(g => String(g._id) === String(group._id));
+                          const isMember = groups.some(g => String(g._id) === String(group._id)) || group.members?.some((m: any) => m.isMe);
                           const hasSentReq = sentRequests.some(r => String(r.groupId) === String(group._id));
                           
                           return (
-                              <div key={group._id} onClick={() => setViewingGroup(group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl flex items-center justify-between shadow-sm cursor-pointer hover:bg-white/5 transition-colors">
+                              <div key={group._id} onClick={() => setViewingGroup(groups.find(g => String(g._id) === String(group._id)) || group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl flex items-center justify-between shadow-sm cursor-pointer hover:bg-white/5 transition-colors">
                                   <div className="flex flex-col min-w-0 flex-1 pr-2">
                                       <span className="text-xs font-bold text-white/90 truncate">{group.title}</span>
                                       <span className="text-[9px] text-white/50 truncate">{group.description}</span>
@@ -997,7 +1215,7 @@ export default function ConnectGroupsTab() {
                       })}
                   </div>
               ) : hasSearched ? (
-                  <p className="text-xs text-white/40 italic text-center py-4">No groups found.</p>
+                  <EmptyGroupSearchState query={searchQuery} />
               ) : null}
             </>
         )}

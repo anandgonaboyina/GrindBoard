@@ -3,7 +3,7 @@
 ## 0. Introduction
 
 **What is this app?**
-Grind Board is a personal productivity web app that works on both desktop and mobile (installable as a PWA — Progressive Web App). It combines a focus timer, stopwatch, weekly timetable, task manager, roadmap planner, rich-text notes, health tracker, leaderboard, friends system, calendar with deadlines, countdown widgets, wallpaper system, and live quotes — all synced to the cloud so your data follows you everywhere.
+Grind Board is a personal productivity web app that works on both desktop and mobile (installable as a PWA — Progressive Web App). It combines a focus timer, stopwatch, weekly timetable, task manager, roadmap planner, rich-text notes, daily routine times, leaderboard, friends system, calendar with deadlines, countdown widgets, wallpaper system, and live quotes — all synced to the cloud so your data follows you everywhere.
 
 ### Core Features
 - **Unified Workspace**: Eliminate distractions with a clean, centralized hub.
@@ -49,9 +49,9 @@ This app is a **PWA (Progressive Web App)** — it installs like a native app di
 The app is designed to keep working even when your internet connection drops.
 
 ### What works without internet
-- The **Focus Timer** runs entirely on-device. It will not stop, pause, or lose time if you go offline.
+- The **Focus Timer & Stopwatch** run entirely on-device. They will not stop, pause, or lose time if you go offline.
 - **Tasks, Notes, Timetable, Roadmap, Countdowns** — you can view and edit all of them. Changes are saved locally in your browser instantly.
-- **Health logs, Stats** — readable and writable offline.
+- **Daily Routine logs, Stats** — readable and writable offline.
 
 ### What requires internet
 - **Logging in / registering** — needs internet for the OTP and authentication.
@@ -65,7 +65,7 @@ Your data is saved to your browser first (instant, always works), and then pushe
 - When internet reconnects, the app automatically detects this and pushes the pending data to the cloud.
 - **You will not lose data** by going offline mid-session.
 
-> **Important:** Data lives in your browser's local storage AND the cloud. If you clear your browser data / use a different browser without logging in, your local copy is gone — but the cloud copy is safe. Logging in on any device restores your data from the cloud.
+> **Important:** Data lives in your browser's local storage AND the cloud. Logging in on any device restores your data from the cloud.
 
 ---
 
@@ -80,7 +80,7 @@ When you open the app for the first time, you will land on the **Login screen**,
 4. Enter the OTP on the next screen to verify your email.
 
 > **If the app gets stuck on a "Syncing..." or loading screen after registration:**
-> This is a known first-load quirk. Simply **close the browser tab / app window completely and reopen it**. Then log in normally with your username and password. Your account is already created — do not register again.
+> Simply **close the browser tab / app window completely and reopen it**. Then log in normally with your username and password. Your account is already created — do not register again.
 
 ### Logging In
 - Enter your **Username or Email** + **Password** → Login.
@@ -97,17 +97,17 @@ When you open the app for the first time, you will land on the **Login screen**,
 After login, you see the main dashboard — a full-screen wallpaper with floating widgets.
 
 - **Bottom Dock** — quick-launch buttons for Timer, Tasks, Notes, Roadmap, Stats, Calendar, Timetable, etc.
-- **Right Toolbar** — Health, Stopwatch, Settings and other secondary toggle icons.
-- **Draggable Widgets** — Clock, Calendar, Timer, Countdowns. Drag them anywhere on the screen.
+- **Right Toolbar** — Stopwatch, Settings, Daily Routine, and secondary toggle icons.
+- **Draggable Widgets** — Clock, Calendar, Timer, Stopwatch, Countdowns, Tasks. Drag them anywhere on the screen.
 - **Settings (⚙️)** — accessed via the dock or toolbar; contains all configuration panels.
 
-The loading screen that appears on startup shows your profile picture and intro text while data is syncing. If syncing takes longer than expected, it automatically switches to **Motivator Mode** — showing a random motivational quote and a feature carousel to keep you engaged while the data loads.
+The loading screen that appears on startup shows your profile picture and intro text while data is syncing. If syncing takes longer than expected, it automatically switches to **Motivator Mode** — showing a random motivational quote and a feature carousel while data loads.
 
 ---
 
 ## 3. Account & Cloud Sync (Connect Tab)
 
-Go to **Settings → Connect & News** after login.
+Go to **Settings → Connect & Ranks** after login.
 
 Inside the Connect tab there are four sub-tabs: **Profile**, **Friends**, **News**, **Ranks**.
 
@@ -123,7 +123,7 @@ Inside the Connect tab there are four sub-tabs: **Profile**, **Friends**, **News
 
 ## 4. Focus Timer
 
-The **Timer widget** sits on the main dashboard and is draggable.
+The **Focus Timer widget** sits on the main dashboard and is freely draggable (can be locked in place or reset via Settings → Preferences).
 
 ### Starting the Timer
 
@@ -133,44 +133,28 @@ The **Timer widget** sits on the main dashboard and is draggable.
 | Custom minutes | Type a number in the "Custom mins..." box → press **Set** or Enter |
 | Click the display | When idle (showing `00:00`), click the big digits to open the editor and set hours:minutes manually |
 
+### Display Clock Time Toggle
+Click the small **Clock (🕑)** icon to toggle the timer display to show the estimated completion time (e.g. "Ends at 2:15 PM") instead of countdown digits. Click it again to switch back.
+
+### Interval Beep Alert
+Click the **🔔 Interval** bell icon to enable a recurring alert during your session.
+- Set your alert frequency (e.g., every 5 or 10 minutes).
+- The timer rings a short beep each time that interval elapses.
+- Customize alert sound & ring duration under **Settings → Sound Settings**.
+
+### 2-Hour Idle Protection
+To prevent continuous unattended timer runs, the app includes automatic idle monitoring: **If the timer runs for 2 continuous hours without interaction, it pauses automatically and rings the alarm.**
+A prompt will ask **"Are you still working?"** with **Continue** or **Stop** options. Clicking Continue resumes the session right where it paused (works even if the browser was closed).
+
 ### Controls while running
 - **▶ / ⏸** — Start or Pause
-- **⏹** — Stop/Reset — saves any focus minutes already earned, then resets
+- **⏹** — Stop/Reset — saves any completed focus minutes to history before resetting
 
-### What happens if you cancel in the middle?
-If you press **⏹ Reset** mid-session, the app does **not lose your time**. Any minutes elapsed are saved to your focus history before the timer clears.
-
-> **Example:** Timer set to 45 min. You stop it at 20 min. Those 20 minutes are saved to today's focus log immediately.
-
-### Auto-save while running (internet loss protection)
-The timer saves progress **every 10 minutes automatically** as you work — no internet required for the countdown itself. The saving happens in the background.
-
-- If you lose internet mid-session, the timer **keeps running locally** — it does not stop.
-- When internet returns, the next 10-minute checkpoint or the final save will sync to the cloud.
-- You will **never lose a completed or partially-done session** due to a connection drop.
+### Auto-Save & Offline Protection
+Focus time is logged in **5-minute completed chunks** to ensure quality focus. The timer auto-saves progress every 10 minutes locally and pushes to the cloud when online.
 
 ### Linking Timer to a Task
-From the **Tasks** panel, click the **▶** button next to any task. The timer starts and tracks focus time specifically for that task. The task name appears in a label above the timer display.
-
-### When the timer finishes
-- Alarm plays (if enabled in Settings → Sound).
-- A motivational quote popup appears.
-- All minutes for the session are recorded to your Stats.
-
-### Advanced: Background Alarm via MacroDroid (Android)
-Because mobile operating systems suspend background web apps, the browser may not be able to continuously play a looping alarm sound if you close the app or lock the screen. 
-To guarantee a full alarm rings even while the app is closed, you can use an automation app like **MacroDroid** to intercept the app's push notification.
-
-**How to set it up in MacroDroid:**
-1. Create a new Macro.
-2. **Trigger:** Select `Notification Present`. Choose `Any Application` (or your browser/PWA) and set the **Text Content** to strictly match one of the following exact titles:
-   - `PWA_ALARM_RING_VIBRATE` (Triggered when both sound and vibration are enabled in your app settings)
-   - `PWA_ALARM_RING` (Triggered when only sound is enabled)
-   - `PWA_ALARM_VIBRATE` (Triggered when only vibration is enabled)
-   - `PWA_ALARM_TRIGGER` (Fallback title)
-3. **Action:** Set it to `Play/Stop Sound` and choose your preferred alarm tone, or `Vibrate` depending on the notification title.
-4. **Constraint (Optional):** Only run if the screen is off.
-5. Create a second macro to **Stop** the sound when you interact with the phone (e.g., **Trigger:** `Device Shake` or `Volume Button Pressed` → **Action:** `Play/Stop Sound` -> Stop).
+From the **Tasks** panel, click the play (**▶**) button next to any task. The Focus Timer launches with that task's title attached, logging focus time directly for that specific task.
 
 ---
 
@@ -181,28 +165,44 @@ Open via the **📊 Stats** button on the dock/toolbar.
 **Left panel:**
 - **Today's Focus** — minutes logged today
 - **All Time** — total ever logged
-- **This Week Total / Avg** — total minutes and daily average for the current week (Mon-Sun)
+- **7-Day Avg / 30-Day Avg** — daily averages for recent periods
 - **Days Logged** — number of days you've used the timer
 
 **Right panel — Monthly Breakdown:**
 - Lists all months, sorted newest first.
 - Click any month row to expand it → shows individual day entries.
-- Each day entry also shows **Academic / Reading / Vocab** minutes if you logged Health data that day.
+- Each day entry also shows your **Wake Time and Bed Time** if you logged Daily Routine data that day.
 
 You can also click any **friend's 📊 Stats icon** in the Friends tab to view their breakdown in the same panel.
 
 ---
 
-## 6. Tasks
+## 6. Tasks & Task Manager (Plan Your Day)
 
-Open from the dock. A focused task list to plan your work session.
+Open from the dock. A comprehensive task planner organized by Customizable Tabs, Drag-and-Drop Handles, and Cloud Groups.
 
-- **Add a task:** Click the **+** button. Fill in title, optional due date, and time estimate.
-- **Start timer for a task:** Press **▶** next to any task — the Focus Timer starts and shows that task's name as context.
-- **Check off tasks:** Tap/click the checkbox on the left to mark as done.
-- **Delete a task:** Click the trash icon next to it.
+### Task Tabs
+- Categorize tasks into customizable **Tabs** at the top (e.g., Work, Personal, Urgent).
+- **Double-click** any tab name to rename it.
+- Click the move arrow on a task to transfer it between tabs.
 
-Tasks with deadlines near the alert threshold trigger a **banner popup on the dashboard** (configure in Settings → Preferences → Deadline Alerts).
+### Drag & Drop Reordering
+- Click and drag the **grip handle (⋮⋮)** on the left edge of any task to reorder tasks instantly within the current tab view.
+
+### Cloud Groups Integration
+- Click the settings (**⚙️**) icon in Task Manager to switch between your **Personal** workspace and any **Cloud Group**.
+- Group tasks sync in real-time — all group members can view task progress, remaining time, and completions.
+- The total time left updates dynamically for the selected group.
+
+### Managing Tasks & Manual Time Editing
+- **Add Task:** Click the **+** button. Enter title, due date, and duration.
+- **Edit Task Title:** Double-click any task title to edit inline.
+- **Edit Time Left ("m left"):** Double-click the remaining duration badge to update planned time.
+- **Edit Time Done ("m done"):** Double-click the done badge to log completed minutes manually (automatically deducts from time left).
+- **Task Timer:** Click the play (**▶**) button next to any task to launch the Focus Timer for that task.
+
+### Task Interval Beep Alert
+- Click the bell (**🔔**) icon at the top of Task Manager to enable recurring interval beeps specifically while tracking task timers.
 
 ---
 
@@ -278,33 +278,43 @@ Click the **⚙️** settings icon next to the schedule title:
 
 ## 9. Focus Mode & Panic Mode
 
-### Desktop Controls (Keyboard & Click)
-On Desktop, there is no Eye icon. Instead, you can control visibility using two methods:
-1. **Keyboard Shortcuts**: Configure separate shortcuts in **Settings → Focus / Panic Mode**.
-   - **Focus Mode**: Hides only the widgets you specifically selected in the "Focus Specific Setup" list. Press the shortcut again to restore them.
-   - **Panic Mode**: Instantly hides ALL widgets, regardless of your focus setup.
-2. **Top Pill Click**: You can simply click on the **Today Focus** pill at the top of the dashboard to quickly toggle your hidden state without using the keyboard.
+### Desktop — Keyboard Shortcuts
+Configure shortcuts in **Settings → Focus / Panic Mode**.
 
+| Mode | What it does |
+|---|---|
+| **Focus Mode** | Hides the widgets you selected in the "Focus Specific Setup" section. Press again to restore. |
+| **Panic Mode** | Instantly hides ALL widgets. Press again to restore. |
+
+- Click the shortcut input box → press your desired key combo (e.g. `Ctrl + H`) → it saves automatically.
+- You can also click **"Trigger"** button to test it manually.
 - **Switch Wallpaper on Panic** — toggle ON if you want the wallpaper to also change when Panic is triggered.
 
-### Mobile Controls (Eye Icon)
-On mobile devices, you use the **👁️ Eye icon** located on the right side of the screen. 
-- You can configure this icon in Settings to either act as a **Panic** button (hiding everything) or a **Focus** button (hiding only your selected widgets).
-- Tap the eye icon again to bring everything back.
+### Mobile — Eye Icon Panic
+On mobile, there is no keyboard. Instead:
 
-### Panic Actions
-If you trigger Panic Mode (or configure the Eye Icon to act as Panic), you can choose what happens:
+- Look for the **👁️ Eye icon** on the right side of the screen.
+- Tap it to trigger the Panic action instantly.
+
+**Panic Action has two modes** (set in Settings → Focus / Panic Mode → Panic Action):
 
 | Mode | What happens |
 |---|---|
 | **Redirect** | The browser immediately navigates to a random/neutral website, making the dashboard completely invisible to anyone looking. To return: press **Back** in the browser — the dashboard reloads and your session is still active. |
-| **Hide UI** | All widgets disappear and the screen goes transparent/blank. |
+| **Hide UI** | All widgets disappear and the screen goes transparent/blank. Tap the eye icon again to bring everything back. |
 
 ---
 
-## 10. Friends
+## 10. Friends & Groups
 
-**Settings → Connect & News → Friends tab** (requires login).
+**Settings → Connect & Ranks → Friends tab / Groups tab** (requires login).
+
+### Groups (Collaborative Work)
+- **Create Groups:** Create up to 3 cloud-synced groups. You can set them as Public or Private, and toggle whether they accept Join Requests.
+- **Task Sharing:** Groups share a common Task Manager. When you switch to a Group in your Task Manager, any tasks completed or time spent is synced to the group.
+- **Member Progress:** Peek into groups to see member completion rates and time remaining for shared tasks.
+- **Join Requests:** You can request to join private groups (unless the admin disables requests), or instantly join public groups.
+- **Admin Controls:** Admins can grant Edit Rights to specific members, remove members, or delete the group.
 
 ### Adding a Friend
 1. Use the **search bar** to find users by username.
@@ -315,9 +325,9 @@ If you trigger Panic Mode (or configure the Eye Icon to act as Panic), you can c
 - A red number badge on the Friends tab shows pending incoming requests.
 - Tap the request to **Accept ✓** or **Reject ✗**.
 
-### Viewing Friend Stats
-- In your friends list, click the **📊 Stats** icon next to a friend's name.
-- A panel opens showing their focus history — today's time, total time, and daily breakdown by month.
+### Viewing Friend Stats & Timetables
+- In your friends list, click the **📊 Stats** icon next to a friend's name to view their focus history.
+- Click the **📅 TimeTable** icon next to a friend to instantly load their weekly schedule into your Timetable view (read-only).
 - Click **"My Stats"** button to switch back to your own stats in the same view.
 
 ### Friend Request Notifications
@@ -330,7 +340,7 @@ Click the 🗑️ trash icon next to any friend → confirm.
 
 ## 11. Leaderboard
 
-**Settings → Connect & News → Ranks tab** (requires login).
+**Settings → Connect & Ranks → Ranks tab** (requires login).
 
 ### How the Leaderboard Works
 - The leaderboard tracks your total accumulated focus time via the Timer.
@@ -338,7 +348,19 @@ Click the 🗑️ trash icon next to any friend → confirm.
 - Your own row is highlighted in the list.
 - Your **alias** is shown if you set one; otherwise your username is shown.
 - Use the search bar to find a specific user.
-- Click any user row to expand and see their stats breakdown.
+- Click any user row to expand and see their stats breakdown (including **Daily Avg: This Week** and **Daily Avg: Last Week**).
+
+### Daily Streaks & Daily Routine Times
+- **🔥 Streaks**: You earn a streak day by accumulating at least 60 minutes of focus time. Miss a day, and your current streak resets. Your active streak and all-time Max Streak are visible to everyone.
+- **⏱️ Routine**: If you use the Daily Routine widget, your Wake, Work, and Last Active times are also visible on your leaderboard card.
+
+### Badges & Achievements
+As you accumulate focused work hours, you can earn dynamic badges that appear next to your name on the leaderboard. Badges are awarded automatically to the top user who meets the strict minimum requirements:
+- **Daily Badge (🏆)**: Requires a minimum of **6 hours** of focus time in a single day.
+- **Weekly Badge (🌟)**: Requires a minimum of **42 hours** of focus time over the last 7 days.
+- **Monthly Badge (👑)**: Requires a minimum of **180 hours** of focus time over the last 30 days.
+
+*Note: Badges are incrementable! If you win the daily top spot with 6+ hours multiple times, your badge count will increase (e.g., "🏆 2 Day").*
 
 > Set your alias in **Settings → Connect → Profile → Security & Alias** (requires password unlock) to appear anonymously on the leaderboard.
 
@@ -425,32 +447,40 @@ Open from the dock. A rich-text, multi-note writing space.
 
 ---
 
-## 14. Health Tracker
+## 14. Daily Routine
 
-Open via the ❤️ icon on the right toolbar.
+Open via the Morning/Night icon on the right toolbar or dashboard.
 
-Log daily metrics to track habits alongside your focus sessions:
+Log your daily routine schedule alongside your focus sessions:
 
-| Field | What to log |
+| Field | What it means |
 |---|---|
-| **Academic minutes** | Formal study / coursework time |
-| **Reading minutes** | Books, articles, research papers |
-| **Vocab words** | New words or concepts learned |
+| **Wake Up Time** | When you woke up today. Once logged, this is permanent for the day. |
+| **Start Work Time** | When you began your first focus block. Once logged, this is permanent. |
+| **Last Active** | Automatically logged based on your last active time tracking session (e.g. Focus Timer stops). Requires no manual interaction. |
 
-These appear in the **Monthly Breakdown in Stats** alongside your Focus Timer data — giving you a full picture of your learning day.
+These appear in the **Monthly Breakdown in Stats** alongside your Focus Timer data and also on your **Leaderboard User Card**, letting you and your friends see your daily schedule.
 
 ---
 
 ## 15. Stopwatch
 
-Separate from the Focus Timer. Records raw elapsed time for any activity.
+The **Stopwatch** is a dedicated timing tool for tracking open-ended sessions.
 
-- **Start / Pause** — standard start and pause controls.
-- **Lap** — records the current time as a split point while continuing to count.
+### Widget Positioning & Drag Controls
+- Accessible via the **Stopwatch icon** on the right toolbar or dock.
+- When visible on the dashboard, it is a **draggable widget** — click and drag its header to position it anywhere. Lock or reset positions via **Settings → Preferences**.
+
+### Controls
+- **Start / Pause** — start or pause elapsed timing.
+- **Lap** — records the current elapsed time as a split lap point while continuing to run.
 - **Reset** — clears the current session.
-- Each completed session is saved with its timestamp and visible in your Stats history.
 
-> Use the Stopwatch for activities where you want to **measure time** without a countdown — e.g. reading sessions, workout durations, or any open-ended work blocks.
+### Interval Beep Support
+- Supports recurring interval alert beeps during active timing (configured in **Settings → Sound**).
+
+### 2-Hour Idle Protection
+Just like the Focus Timer, if the Stopwatch runs for **2 continuous hours** without interaction, it automatically pauses, plays your alarm sound, and shows the **"Are you still working?"** prompt. Clicking **Continue** resumes timing immediately.
 
 ---
 
@@ -458,14 +488,15 @@ Separate from the Focus Timer. Records raw elapsed time for any activity.
 
 A widget showing a list of upcoming target events with day countdowns.
 
-### Mobile Access
-- On mobile devices, you can quickly access the Countdowns widget by **swiping down on the top pill/notch area** of the screen.
+### Mobile & Drag Access
+- Access or toggle the Countdowns widget by **swiping left or right on the top Focus Pill** of the screen.
+- Swipe **UP** directly on the widget to quickly dismiss/hide it.
 
 ### Features
-- **Add an event:** Click **+** in the Countdowns widget → enter the event name and target date.
-- The widget shows **"X days left"** for each event.
-- Events within your **Deadline Alert Days** threshold (set in Settings → Preferences) trigger a dashboard popup banner automatically.
-- If you have more than one countdown, a **chevron button (▲/▼)** at the bottom of the widget expands or collapses the full list.
+- **Add Event:** Click **+** in the Countdowns widget → enter event name and target date.
+- Displays **"X days left"** for each event.
+- Events within your **Deadline Alert Days** threshold trigger dashboard warning popups.
+- Use the **chevron (▲/▼)** button at the bottom of the widget to expand/collapse the full event list.
 
 ---
 
@@ -478,10 +509,31 @@ A widget showing a list of upcoming target events with day countdowns.
 - Click a wallpaper thumbnail to make it active immediately.
 
 ### Custom Wallpapers via URL
-- You can add your own custom images or video loops (like `.mp4` or `.webm`) by pasting a direct URL to the file.
-- The app stores up to **4 custom wallpapers specifically for Desktop**, and **4 completely separate ones for Mobile**. 
-- This ensures your phone gets appropriately sized vertical backgrounds while your PC gets widescreen ones.
-- Click the trash can icon on any custom wallpaper thumbnail to delete it and free up one of your slots.
+- Add up to **4 custom wallpapers for Desktop** and **4 for Mobile** by pasting an image URL.
+- The app stores separate wallpaper sets for desktop and mobile — so your phone gets an appropriately sized background.
+
+### Slideshow Mode
+- Toggle **Slideshow** on to have the wallpaper auto-cycle through your active wallpapers.
+- Set the **interval in minutes** — e.g. 30 minutes to switch wallpaper every half hour.
+
+### Locking & Hiding Wallpapers
+| Option | What it does |
+|---|---|
+| **Lock** | Slideshow skips this wallpaper — it stays as the permanent background until unlocked |
+| **Hide** | Removes the wallpaper from slideshow rotation without deleting it |
+
+### 🖥️ Set as Windows Live Desktop Wallpaper
+You can run Grind Board directly as your interactive Windows desktop background instead of using it in a browser window!
+
+1. Download and install Lively Wallpaper:
+   - **[Direct Download (Google Drive)](https://drive.google.com/file/d/1TJWAWPTtTbKNMaNVAwz2GwbSb04NO-J5/view?usp=drivesdk)** (Recommended)
+   - **[Official Source](https://rocksdanister.github.io/lively/)** (Alternative)
+2. Open Lively Wallpaper and click **"Add Wallpaper"** (the + icon).
+3. Under **"Enter URL"**, type the live URL of the Grind Board app `https://wallpaper-dashboard-cloud.vercel.app/` and press **→**.
+4. Lively will load the webpage as your desktop background! You can click and interact with all the widgets directly on your desktop.
+5. **Enable Auto Start:**
+   - Open Lively Wallpaper Settings (⚙️) → **General** → Toggle **"Start with Windows"** ON.
+   - Open Windows **Task Manager** (Ctrl+Shift+Esc) → Go to the **Startup Apps** tab → Right-click on **Lively Wallpaper** and select **Enable**.
 
 ---
 
@@ -492,22 +544,16 @@ A widget showing a list of upcoming target events with day countdowns.
 ### Widget Visibility
 Toggle any widget on or off. Hidden widgets do not appear on the dashboard at all.
 
-Available toggles: Timer, Clock (with Today's Work), Calendar, Tasks, Notes, Timetable, Health, Stats, Plans (Roadmap), Stopwatch, Countdowns, Dock, Deadline Alerts, Settings Button.
+Available toggles: Timer, Clock (with Today's Work), Calendar, Tasks, Notes, Timetable, Daily Routine, Stats, Plans (Roadmap), Stopwatch, Countdowns, Dock, Deadline Alerts, Settings Button.
 
-### Widget Drag Locking
-- When unlocked, all draggable widgets can be repositioned by dragging.
-- Toggle **lock** on any specific widget to prevent it from being moved accidentally. Other widgets remain draggable.
-- **Reset Default Positions** — resets ALL draggable widgets back to their original layout positions.
-
-### Right Toolbar Position
-Adjust the **vertical height offset** of the right-side toolbar (Health, Stopwatch, etc.). Use the slider to move it up or down to avoid overlapping other elements on your layout.
+### Widget Drag Locking & Position Reset
+- **Drag Unlock/Lock:** When unlocked, all dashboard widgets (Timer, Stopwatch, Clock, Calendar, Countdowns, Tasks) can be freely repositioned by dragging.
+- Toggle the **Lock** switch on any specific widget to freeze it in place.
+- **Reset Default Positions:** Click this button to snap all draggable widgets back to their original default layout locations.
 
 ### Display Options
-- **24-Hour Clock** — toggle between 12h AM/PM and 24h military format for the Big Clock.
-- **Deadline Alert Days** — how many days before a deadline the alert popup triggers on the dashboard.
-
-### Focus Mode — Specific Widget Setup
-In the **Focus / Panic Mode** tab, you can individually select which widgets should be hidden when Focus Mode is triggered — so only your most important widgets remain visible during a focused work session.
+- **24-Hour Clock:** Toggle between 12h AM/PM and 24h military format for the Big Clock.
+- **Deadline Alert Days:** Configure how many days in advance deadline warning banners appear on the dashboard.
 
 ---
 
@@ -517,10 +563,11 @@ In the **Focus / Panic Mode** tab, you can individually select which widgets sho
 
 | Setting | Description |
 |---|---|
-| **Enable Alarm Sound** | Plays audio when the Focus Timer ends |
-| **Enable Device Vibrate** | Vibrates your phone/tablet when the timer ends (mobile only) |
-| **Auto Stop Timer** | Slider from 5 seconds to 2 minutes — controls how long the alarm rings before stopping itself automatically |
-| **Select Alarm Sound** | Choose from a list of available ringtone options |
+| **Enable Alarm Sound** | Plays audio when the Focus Timer ends, Stopwatch interval triggers, or when 2-hour idle protection prompts appear. |
+| **Enable Device Vibrate** | Vibrates mobile devices when alarms or idle prompts fire. |
+| **Auto Stop Timer** | Slider (5 seconds to 2 minutes) controlling how long alarms ring before silencing automatically. |
+| **Task Interval Alert** | Configure interval frequency (in minutes) and ring duration for Task Manager focus timers. |
+| **Select Alarm Sound** | Pick from curated ringtones. |
 
 ---
 
@@ -528,43 +575,43 @@ In the **Focus / Panic Mode** tab, you can individually select which widgets sho
 
 **Settings → Data & Backup**
 
-- **Export Data** — downloads a full `.json` backup of all your data (focus logs, tasks, notes, roadmap, health, etc.). Requires being logged in.
-- **Import Data** — upload a `.json` backup file.
-  - **Merge:** Combines the backup with your existing data (no data lost from either side).
-  - **Overwrite:** Replaces everything with the backup file.
-- **Clear Old Data** — delete focus history entries older than a chosen number of days.
-- **Clear All Data** — wipes all local data (irreversible).
+### Real-Time Cloud Synchronization
+Your data (tasks, focus history, timetable, daily routines, roadmap, notes, and preferences) is automatically synced to the cloud in real-time when logged in. Logging in on any device restores your account state.
 
-> **Tip:** Export your backup before clearing browser data or switching devices to avoid losing your local copy.
-
----
-
-## 21. Feedback & Bugs
-
-**Settings → Feedback & Bugs**
-
-Submit feedback directly to the developer from inside the app:
-
-- **💡 Feature request** — suggest a new feature you'd like to see.
-- **🐛 Bug report** — describe something that isn't working correctly.
-- **💬 General feedback** — any other comment or message.
-
-View your submission status:
-- *Reviewing* — received, not yet looked at
-- *Reviewed* — seen by developer
-- *✓ Roadmap!* — accepted and planned for a future update
+### Backup & Management
+- **Export Data:** Downloads a complete `.json` backup file of all your account data.
+- **Import Data:** Upload a `.json` backup file:
+  - **Merge:** Safely combines the backup file with your existing data without losing anything.
+  - **Overwrite:** Replaces your current dashboard data completely with the imported file.
+- **Reset Timetable:** Resets your weekly schedule grid and slot colors back to default.
+- **Clear Old Data:** Deletes focus history entries older than chosen days (30, 60, 90 days) to optimize load speed.
+- **Factory Reset Profile:** Permanently wipes all local and cloud data (requires typing *delete all* to confirm).
 
 ---
 
-## 22.Hidden Widget Drag Controls
+## 21. Feedback & Developer Support
 
-many widgets can be controlled using swipe gestures instead of buttons for a faster experience:
+**Settings → About Dev**
 
-- **Countdowns**: Swipe left or right on the widget to switch between your countdowns. Swipe **UP** directly on the widget to close/hide it. You can also do a right or left swipe on the top Focus Pill to toggle the Countdowns widget open or closed.
-- **Calendar**: The calendar rests hidden at the left edge of the screen. Hover or tap the edge to slide it open. It will automatically hide after 8 seconds of inactivity.
-- **Task Manager**: Swipe left or right near top-right edge on screen to show or hide the tasks quickly without calender button you can hide it from settings if you want.
-- **Menus & Modals**: You can use mouse click and drag (or swipe on touch screens) to close or navigate the Settings side menu and the Health & Habits modal.
-- **Edge Panels**: The Health Rings (bottom-left) and Right Toolbar hide at the screen edges. Click or hover the exposed edge to expand them. Swipe right on the Toolbar to hide it, while the Health Rings will auto-hide after 8 seconds.
+Have suggestions, feedback, or found a bug? You can contact the developer directly:
+
+- **💼 LinkedIn:** Go to **Settings → About Dev** and click the **LinkedIn** button ("Message me") to open the developer profile and send a direct message with your bug report or feedback text.
+- **💬 Telegram:** Message `@gAnandKumar` on Telegram for direct support.
+- **🌐 Portfolio:** View other projects by the developer directly from the About Dev panel.
+
+---
+
+## 22. Hidden Widget Drag & Gesture Controls
+
+Control widgets effortlessly using swipe and drag gestures:
+
+- **Countdowns:** Swipe left/right on the widget to switch countdown events. Swipe **UP** directly on the widget to close it. Swipe left or right on the top Focus Pill to open/close Countdowns.
+- **Calendar:** Swipe near the top-left edge of the screen to quickly toggle Calendar visibility.
+- **Task Manager:** Swipe near the top-right edge of the screen to toggle Task Manager visibility.
+- **Task Reordering:** Drag the grip handle (⋮⋮) on the left of any task to reorder tasks in the active tab.
+- **Widget Dragging:** Drag any widget by its top header to reposition it on the screen (lock/unlock in Settings → Preferences).
+- **Settings & Menus:** Drag or swipe to navigate or dismiss the Settings panel.
+- **Right Toolbar:** Hides at screen edge — hover/click edge to expand, or swipe right to hide.
 
 ---
 
@@ -575,29 +622,19 @@ many widgets can be controlled using swipe gestures instead of buttons for a fas
 | Start focus timer | Timer widget on dashboard |
 | See your focus logs | 📊 Stats button on dock |
 | Set weekly schedule | Timetable (dock) |
-| Add a deadline to a date | Click the date on the Calendar widget |
-| Set deadline alert threshold | Settings → Preferences → Deadline Alerts |
+| Add a deadline to a date | Click date on Calendar widget |
 | Plan long-term goals | Plans / Roadmap (dock) |
-| Add a roadmap topic | Roadmap → "Add Main Topic" button |
-| Filter roadmap by status | Click ⚪ / 🔵 / ✅ in the Roadmap legend bar |
-| Switch roadmaps | Click roadmap name at top of Roadmap view |
-| Write and format notes | Notes (dock) — use floating toolbar at bottom |
-| Export a single note | Notes sidebar → ⬇️ icon next to note title |
-| Export all notes | Notes → ⬇️ icon at top of sidebar |
-| Log health data (study/reading/vocab) | ❤️ icon on right toolbar |
-| Time an open-ended activity | Stopwatch (right toolbar) |
+| Manage & drag reorder tasks | Task Manager (dock) — drag grip handle (⋮⋮) to reorder |
+| Switch task tabs / groups | Task Manager header / settings (⚙️) |
+| Log daily routine times | Morning/Night icon on toolbar/dashboard |
+| Time an open-ended activity | Stopwatch (right toolbar / widget) |
 | Add a countdown event | + button in Countdowns widget |
-| Check the leaderboard | Settings → Connect → Ranks tab |
-| Add / accept friends | Settings → Connect → Friends tab |
-| View a friend's stats | Friends tab → 📊 icon next to their name |
-| Backup your data | Settings → Data & Backup → Export |
-| Change wallpaper | Settings → Wallpapers |
-| Hide/show widgets | Settings → Preferences → Widget Visibility |
-| Lock widgets in place | Settings → Preferences → Widget Drag Locking |
-| Reset widget positions | Settings → Preferences → Reset Default Positions |
-| Panic button (mobile) | Tap 👁️ Eye icon on right side of screen to hide/enter to panic mode and click same place to get back note eye icon remains same place but invisible or use top pill to do same thing by click on it |
-| Panic / Focus shortcut (desktop) | Settings → Focus / Panic Mode |
-| Set alias for leaderboard | Settings → Connect → Profile → Security & Alias |
-| Reset password | Login screen → "Forgot Password?" |
-| Submit a bug or feature request | Settings → Feedback & Bugs |
-| Delete your account | Settings → Connect → Profile → (unlock) → Delete Account |
+| Check leaderboard & averages | Settings → Connect & Ranks → Ranks tab |
+| Backup your data (.json) | Settings → Data & Backup → Export |
+| Import backup (Merge / Overwrite) | Settings → Data & Backup → Import |
+| Factory Reset profile | Settings → Data & Backup → Factory Reset |
+| Change wallpaper / slideshow | Settings → Wallpapers |
+| Drag lock & reset widget positions | Settings → Preferences → Widget Drag Locking |
+| Submit bug / feedback to dev | Settings → About Dev → Click LinkedIn |
+| Mobile Panic button | Tap 👁️ Eye icon on right side of screen |
+| Set alias for leaderboard | Settings → Connect & Ranks → Profile → Alias |

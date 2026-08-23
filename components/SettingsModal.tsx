@@ -79,7 +79,7 @@ const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, aspec
 };
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, is24HourClock, toggle24HourClock, clockScale, setClockScale, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs } = useDashboardStore();
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
 
@@ -92,34 +92,45 @@ export default function SettingsModal() {
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isDefaultDropdownOpen, setIsDefaultDropdownOpen] = useState(false);
 
-  const handleTogglePreviewAudio = async (url: string) => {
-    if (previewingAudioUrl === url) {
-      if (previewAudioRef.current) {
+  const stopPreviewAudio = () => {
+    if (previewAudioRef.current) {
+      try {
         previewAudioRef.current.pause();
         previewAudioRef.current.currentTime = 0;
-      }
-      setPreviewingAudioUrl(null);
+        previewAudioRef.current.removeAttribute('src');
+        previewAudioRef.current.load();
+      } catch (e) { }
+      previewAudioRef.current = null;
+    }
+    setPreviewingAudioUrl(null);
+  };
+
+  const handleTogglePreviewAudio = async (url: string) => {
+    if (previewingAudioUrl === url) {
+      stopPreviewAudio();
     } else {
-      if (previewAudioRef.current) {
-        previewAudioRef.current.pause();
-      }
+      stopPreviewAudio();
       const resolvedUrl = await getResolvedAudioUrl(url);
       const audio = new Audio(resolvedUrl);
       const vol = alarmVolume !== undefined ? alarmVolume : 1;
       audio.volume = vol > 1 ? vol / 100 : vol;
-      audio.play().catch(e => console.error("Audio preview error:", e));
-      audio.onended = () => setPreviewingAudioUrl(null);
+      audio.onended = () => stopPreviewAudio();
+      audio.onerror = () => stopPreviewAudio();
+      audio.play().catch(e => {
+        console.error("Audio preview error:", e);
+        stopPreviewAudio();
+      });
       previewAudioRef.current = audio;
       setPreviewingAudioUrl(url);
     }
   };
 
   useEffect(() => {
+    if (!isSettingsOpen) {
+      stopPreviewAudio();
+    }
     return () => {
-      if (previewAudioRef.current) {
-        previewAudioRef.current.pause();
-        previewAudioRef.current = null;
-      }
+      stopPreviewAudio();
     };
   }, [settingsActiveTab, isSettingsOpen]);
 
@@ -297,18 +308,21 @@ export default function SettingsModal() {
       title: 'Data & Backup',
       content: (
         <div className="space-y-3 text-sm text-gray-700 dark:text-white/ pb-2">
-          <p className="text-[11px] leading-relaxed">Your data automatically syncs to the cloud in real-time, but you can manage your local browser storage directly here.</p>
-          <h4 className="font-bold text-gray-900 dark:text-white text-[13px] mt-2">Export Data</h4>
-          <p className="text-[11px] leading-relaxed">Downloads a full <code>.json</code> backup file containing your entire history, tasks, roadmap, calendar deadlines, and notes. Requires being logged in.</p>
-          <h4 className="font-bold text-gray-900 dark:text-white text-[13px] mt-2">Import Data</h4>
+          <p className="text-[11px] leading-relaxed">Your data automatically syncs to the cloud in real-time. You can also manage offline backups, restore data, or clear history here.</p>
+          <h4 className="font-bold text-gray-900 dark:text-white text-[13px] mt-2">Cloud Real-Time Sync</h4>
+          <p className="text-[11px] leading-relaxed">All changes (tasks, focus logs, timetable, daily routines, settings) are continuously saved to your account in the cloud. Logging in on any device restores your full data.</p>
+          <h4 className="font-bold text-gray-900 dark:text-white text-[13px] mt-2">Export Data (.json)</h4>
+          <p className="text-[11px] leading-relaxed">Downloads a complete <code>.json</code> backup file containing your entire history, tasks, roadmap, calendar deadlines, notes, and preferences.</p>
+          <h4 className="font-bold text-gray-900 dark:text-white text-[13px] mt-2">Import Data (.json)</h4>
           <ul className="list-disc pl-4 space-y-1 text-[11px]">
-            <li><strong>Merge:</strong> Upload a backup file and safely combine it with your existing data. No existing data is lost.</li>
-            <li><strong>Overwrite:</strong> WARNING: This entirely replaces your current dashboard data with the contents of the uploaded backup file.</li>
+            <li><strong>Merge:</strong> Upload a backup file and safely combine it with your existing data without losing anything.</li>
+            <li><strong>Overwrite:</strong> Replaces your current dashboard data entirely with the backup file contents.</li>
           </ul>
-          <h4 className="font-bold text-gray-900 dark:text-white text-[13px] mt-2">Data Clearing</h4>
+          <h4 className="font-bold text-gray-900 dark:text-white text-[13px] mt-2">Reset & Data Clearing</h4>
           <ul className="list-disc pl-4 space-y-1 text-[11px]">
-            <li><strong>Clear Old Data:</strong> Safely deletes only old focus history entries (older than 30, 60, or 90 days) to speed up load times.</li>
-            <li><strong>Clear All Data:</strong> Wipes all local browser storage completely. (If you are logged in, logging in again will re-download it from the cloud).</li>
+            <li><strong>Reset Timetable:</strong> Resets your weekly schedule and custom slot colors back to defaults.</li>
+            <li><strong>Clear Old Data:</strong> Deletes focus history entries older than chosen days to optimize performance.</li>
+            <li><strong>Factory Reset Profile:</strong> Permanently wipes all local and cloud tasks, notes, history, and settings (requires typing <em>delete all</em>).</li>
           </ul>
         </div>
       )
@@ -402,6 +416,13 @@ export default function SettingsModal() {
       ref.current.scrollBy({ top: direction === 'up' ? -300 : 300, behavior: 'smooth' });
     }
   };
+
+  useEffect(() => {
+    if (isSettingsOpen && connectInitialTab) {
+      setSettingsActiveTab('connect');
+      setIsMobileDetailView(true);
+    }
+  }, [isSettingsOpen, connectInitialTab, setSettingsActiveTab]);
 
   useEffect(() => {
     const handleOpenLeaderboard = () => {
@@ -764,6 +785,7 @@ export default function SettingsModal() {
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={() => {
+          stopPreviewAudio();
           toggleSettings();
           setIsMobileDetailView(false); // Reset to menu on close
         }}
@@ -837,6 +859,7 @@ export default function SettingsModal() {
             )}
             <button
               onClick={() => {
+                stopPreviewAudio();
                 toggleSettings();
                 setIsMobileDetailView(false);
               }}
@@ -1240,6 +1263,7 @@ export default function SettingsModal() {
                                     <div
                                       key={sound.id}
                                       onClick={() => {
+                                        stopPreviewAudio();
                                         setAlarmSound(sound.url);
                                         setIsDefaultDropdownOpen(false);
                                       }}
@@ -1329,7 +1353,10 @@ export default function SettingsModal() {
                               >
                                 <div
                                   className="flex items-center gap-2 md:gap-2.5 cursor-pointer flex-1 min-w-0 pr-2"
-                                  onClick={() => setAlarmSound(sound.url)}
+                                  onClick={() => {
+                                    stopPreviewAudio();
+                                    setAlarmSound(sound.url);
+                                  }}
                                 >
                                   <div className={`w-3 h-3 md:w-3.5 md:h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-purple-400' : 'border-white/30'}`}>
                                     {isActive && <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
@@ -1353,10 +1380,7 @@ export default function SettingsModal() {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      if (isPreviewing && previewAudioRef.current) {
-                                        previewAudioRef.current.pause();
-                                        setPreviewingAudioUrl(null);
-                                      }
+                                      stopPreviewAudio();
                                       if (sound.url.startsWith('custom-audio-')) {
                                         deleteAudioFromDB(sound.url);
                                       }
@@ -2162,7 +2186,7 @@ export default function SettingsModal() {
 
                     <div className="flex flex-col items-start text-left z-10 w-full">
                       <p className="text-[9px] md:text-[11px] text-white/60 mb-2 md:mb-3 leading-relaxed max-w-xl">
-                        Suggestions or bugs? Message me on LinkedIn or Telegram!
+                        Have suggestions, feedback, or found a bug? Click on LinkedIn below to message me directly!
                       </p>
 
                       <div className="grid grid-cols-2 gap-1.5 md:gap-1.5 w-full mb-1">

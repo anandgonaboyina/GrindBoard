@@ -67,7 +67,7 @@ export async function GET(request: Request) {
         if (settingsRecord && settingsRecord[key] !== undefined) parsedData[key] = settingsRecord[key];
       });
 
-      const TASK_KEYS = ['tasks', 'countdowns', 'deadlines', 'syntheticDeadlines'];
+      const TASK_KEYS = ['tasks', 'tomorrowTasks', 'taskGroupNames', 'countdowns', 'deadlines', 'syntheticDeadlines'];
       TASK_KEYS.forEach(key => {
         if (tasksRecord && tasksRecord[key] !== undefined) parsedData[key] = tasksRecord[key];
       });
@@ -97,7 +97,9 @@ export async function GET(request: Request) {
     }
     const friendAccount = await db.collection('User').findOne(userQuery);
 
-    const isTaskSharingEnabled = friendship.taskSharing?.[friendId] === true;
+    const isTaskSharingEnabled =
+      friendship.taskSharing?.[friendId] !== false &&
+      friendship.taskSharing?.[friendId?.toString()] !== false;
 
     const publicStats = {
       username: friendAccount?.username || friendId,
@@ -105,6 +107,8 @@ export async function GET(request: Request) {
       dailyTimes: parsedData.dailyTimes || {},
       tasksCompleted: (parsedData.tasks || []).filter((t: any) => t.completed).length,
       tasks: isTaskSharingEnabled ? (parsedData.tasks || []) : undefined,
+      tomorrowTasks: isTaskSharingEnabled ? (parsedData.tomorrowTasks || []) : undefined,
+      taskGroupNames: isTaskSharingEnabled ? (parsedData.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3']) : undefined,
       deadlines: parsedData.deadlines || [],
       timetableGrid: parsedData.timetableGrid || null,
       timetableColors: parsedData.timetableColors || null,

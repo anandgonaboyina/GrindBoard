@@ -797,7 +797,7 @@ export const useDashboardStore = create<DashboardState>()(
           const newTotal = oldTotal + mins;
           
           if (newTotal >= 60 && typeof window !== 'undefined') {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('dashboard_sync_token') || localStorage.getItem('token');
             if (token) {
               fetch('/api/users/streak', {
                 method: 'POST',
@@ -1802,11 +1802,19 @@ export const useDashboardStore = create<DashboardState>()(
       ),
       merge: (persistedState: any, currentState: DashboardState) => {
         if (!persistedState) return currentState;
-        // Clean up expired timers from past sessions
+        // Clean up expired or inactive timers from past sessions to prevent ghost minutes
         if (persistedState.timerEndAt && persistedState.timerEndAt < Date.now()) {
           persistedState.timerEndAt = null;
           persistedState.timerPausedLeft = null;
           persistedState.timerInitialMins = null;
+          persistedState.timerLastSavedChunks = 0;
+          persistedState.timerLastAlertedChunks = 0;
+          persistedState.activeTaskId = null;
+          persistedState.activeTaskTitle = null;
+        } else if (!persistedState.timerEndAt && persistedState.timerPausedLeft === null) {
+          persistedState.timerInitialMins = null;
+          persistedState.timerLastSavedChunks = 0;
+          persistedState.timerLastAlertedChunks = 0;
           persistedState.activeTaskId = null;
           persistedState.activeTaskTitle = null;
         }
