@@ -40,7 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local scripts
+# local scripts & guides
 migrate-to-cloud.js
 seed-quotes.js
 seed-demo-data.js
+MERN_STACK_GUIDE.md
