@@ -1,8 +1,9 @@
 {
   "name": "dashboard-cloud",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "grindboardVersions": {
-    "2.1.8": "Fixed TaskManager drag handles; all perfect"
+    "2.1.8": "Fixed TaskManager drag handles; all perfect",
+    "2.2.1": "Refined Day Start Morning Routine, fixed audio playback on sleep/wake, auto-purged calendar deadlines older than 7 days"
   },
   "private": true,
   "scripts": {
