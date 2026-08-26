@@ -119,22 +119,22 @@ export default function DayStartModal() {
         if (e.target === e.currentTarget) toggleDayStartModal();
       }}
     >
-      {/* Inspirational Daily Quote Card (Wider Banner Positioned Outside & Above Modal) */}
-      <div className="w-full max-w-xl sm:max-w-2xl relative p-4.5 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-950/90 via-amber-950/30 to-slate-950/90 backdrop-blur-xl border border-amber-400/40 shadow-[0_0_40px_rgba(251,191,36,0.2)] flex flex-col gap-2.5 overflow-hidden animate-in slide-in-from-top-6 duration-300 group">
+      {/* Inspirational Daily Quote Card (70vw Banner Positioned Outside & Above Modal) */}
+      <div className="w-[92vw] md:w-[70vw] max-w-4xl relative p-4.5 sm:p-5 md:p-6 rounded-2xl bg-gradient-to-br from-slate-950/90 via-amber-950/30 to-slate-950/90 backdrop-blur-xl border border-amber-400/40 shadow-[0_0_40px_rgba(251,191,36,0.2)] flex flex-col gap-2.5 overflow-hidden animate-in slide-in-from-top-6 duration-300 group">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-[10px] uppercase tracking-widest shadow-sm">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-[10px] sm:text-xs uppercase tracking-widest shadow-sm">
             <QuoteIcon className="w-3.5 h-3.5 text-amber-300" />
             <span>Daily Inspiration</span>
           </div>
           <Sparkles className="w-4 h-4 text-amber-300 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
         </div>
 
-        <blockquote className="text-sm sm:text-base md:text-lg font-extrabold text-white leading-relaxed tracking-wide font-serif italic drop-shadow-md">
+        <blockquote className="text-sm sm:text-base md:text-xl font-extrabold text-white leading-relaxed tracking-wide font-serif italic drop-shadow-md text-center sm:text-left">
           "{quote ? quote.text : "Every morning brings new potential, but only if you wake up and create it."}"
         </blockquote>
 
         <div className="flex items-center justify-end gap-2 text-xs sm:text-sm font-bold text-amber-200/90 tracking-wider not-italic">
-          <span className="w-6 h-[1px] bg-amber-400/50"></span>
+          <span className="w-8 h-[1px] bg-amber-400/50"></span>
           <span>{quote ? quote.author : "Unknown"}</span>
         </div>
       </div>
