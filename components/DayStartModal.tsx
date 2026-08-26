@@ -13,7 +13,13 @@ const FALLBACK_MORNING_QUOTES = [
   { text: "Your future is created by what you do today, not tomorrow.", author: "Robert Kiyosaki" },
   { text: "Discipline is choosing between what you want now and what you want most.", author: "Abraham Lincoln" },
   { text: "Small daily improvements over time lead to stunning results.", author: "Robin Sharma" },
-  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" }
+  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+  { text: "Hard work beats talent when talent fails to work hard.", author: "Tim Notke" },
+  { text: "There are no shortcuts to any place worth going.", author: "Beverly Sills" },
+  { text: "Success isn't always about greatness. It's about consistency. Consistent hard work leads to success.", author: "Dwayne Johnson" },
+  { text: "Push yourself, because no one else is going to do it for you.", author: "Unknown" },
+  { text: "Work hard in silence, let your success be your noise.", author: "Frank Ocean" },
+  { text: "Don't count the days, make the days count.", author: "Muhammad Ali" }
 ];
 
 export default function DayStartModal() {
@@ -114,33 +120,36 @@ export default function DayStartModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[990] flex flex-col items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 gap-3.5"
+      className="fixed inset-0 z-[990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
       onClick={(e) => {
         if (e.target === e.currentTarget) toggleDayStartModal();
       }}
     >
-      {/* Inspirational Daily Quote Card (70vw Banner Positioned Outside & Above Modal) */}
-      <div className="w-[92vw] md:w-[70vw] max-w-4xl relative p-4.5 sm:p-5 md:p-6 rounded-2xl bg-gradient-to-br from-slate-950/90 via-amber-950/30 to-slate-950/90 backdrop-blur-xl border border-amber-400/40 shadow-[0_0_40px_rgba(251,191,36,0.2)] flex flex-col gap-2.5 overflow-hidden animate-in slide-in-from-top-6 duration-300 group">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-[10px] sm:text-xs uppercase tracking-widest shadow-sm">
-            <QuoteIcon className="w-3.5 h-3.5 text-amber-300" />
-            <span>Daily Inspiration</span>
+      {/* Relative wrapper centering the modal on screen */}
+      <div className="relative w-full max-w-md flex flex-col items-center justify-center">
+
+        {/* Inspirational Daily Quote Card (Floating Directly Above Centered Modal) */}
+        <div className="absolute bottom-full mb-3 sm:mb-5 w-[92vw] md:w-[70vw] max-w-4xl left-1/2 -translate-x-1/2 p-4 sm:p-5 md:p-5.5 rounded-2xl bg-gradient-to-br from-slate-950/95 via-amber-950/40 to-slate-950/95 backdrop-blur-xl border border-amber-400/40 shadow-[0_0_40px_rgba(251,191,36,0.2)] flex flex-col gap-2.5 overflow-hidden animate-in slide-in-from-top-6 duration-300 group">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-[10px] sm:text-xs uppercase tracking-widest shadow-sm">
+              <QuoteIcon className="w-3.5 h-3.5 text-amber-300" />
+              <span>Daily Inspiration</span>
+            </div>
+            <Sparkles className="w-4 h-4 text-amber-300 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
           </div>
-          <Sparkles className="w-4 h-4 text-amber-300 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
+
+          <blockquote className="text-sm sm:text-base md:text-lg font-extrabold text-white leading-relaxed tracking-wide font-serif italic drop-shadow-md text-center sm:text-left">
+            "{quote ? quote.text : "Every morning brings new potential, but only if you wake up and create it."}"
+          </blockquote>
+
+          <div className="flex items-center justify-end gap-2 text-xs sm:text-sm font-bold text-amber-200/90 tracking-wider not-italic">
+            <span className="w-8 h-[1px] bg-amber-400/50"></span>
+            <span>{quote ? quote.author : "Unknown"}</span>
+          </div>
         </div>
 
-        <blockquote className="text-sm sm:text-base md:text-xl font-extrabold text-white leading-relaxed tracking-wide font-serif italic drop-shadow-md text-center sm:text-left">
-          "{quote ? quote.text : "Every morning brings new potential, but only if you wake up and create it."}"
-        </blockquote>
-
-        <div className="flex items-center justify-end gap-2 text-xs sm:text-sm font-bold text-amber-200/90 tracking-wider not-italic">
-          <span className="w-8 h-[1px] bg-amber-400/50"></span>
-          <span>{quote ? quote.author : "Unknown"}</span>
-        </div>
-      </div>
-
-      {/* Main Day Start Modal Box */}
-      <div className="relative w-full max-w-md rounded-2xl bg-slate-950/80 backdrop-blur-xl border border-white/20 shadow-[0_0_50px_rgba(56,189,248,0.2)] overflow-hidden animate-in zoom-in-95 duration-300">
+        {/* Main Day Start Modal Box - Perfectly Centered */}
+        <div className="relative w-full rounded-2xl bg-slate-950/80 backdrop-blur-xl border border-white/20 shadow-[0_0_50px_rgba(56,189,248,0.2)] overflow-hidden animate-in zoom-in-95 duration-300">
 
         {/* Glowing ambient background circle */}
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-56 h-56 bg-gradient-to-tr from-amber-500/20 via-sky-500/20 to-purple-500/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -259,5 +268,6 @@ export default function DayStartModal() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
