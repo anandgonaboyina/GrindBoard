@@ -216,15 +216,59 @@ export default function Timer() {
     isIntervalRingingRef.current = false;
   };
 
+  // Track last tick timestamp to detect laptop sleep/wake execution gaps
+  const lastTickTimeRef = useRef<number>(Date.now());
+
+  // Window Focus / Visibility Change Cleanup: Ensure no stray audio plays when laptop wakes up from sleep
+  useEffect(() => {
+    const handleSleepWakeCleanup = () => {
+      const isAlarm = useDashboardStore.getState().isAlarmPlaying;
+      if (!isAlarm) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        if (intervalAudioRef.current) {
+          intervalAudioRef.current.pause();
+          intervalAudioRef.current.currentTime = 0;
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleSleepWakeCleanup);
+      document.addEventListener('visibilitychange', handleSleepWakeCleanup);
+      return () => {
+        window.removeEventListener('focus', handleSleepWakeCleanup);
+        document.removeEventListener('visibilitychange', handleSleepWakeCleanup);
+      };
+    }
+  }, []);
+
   // Main tick interval
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
     if (timerEndAt) {
+      lastTickTimeRef.current = Date.now();
       interval = setInterval(() => {
         const now = Date.now();
+        const gap = now - (lastTickTimeRef.current || now);
+        lastTickTimeRef.current = now;
+        const wasSleeping = gap > 8000; // Gap > 8 seconds means system slept / suspended!
+
         const remaining = Math.floor((timerEndAt - now) / 1000);
         const isOwner = timerDeviceId === getDeviceId();
+
+        if (wasSleeping) {
+          // If system was sleeping, sync interval alert ref to avoid firing retroactive beeps on wake up
+          let activeIntervalMins = activeTaskId ? taskIntervalAlertMins : timerIntervalMins;
+          if (activeIntervalMins > 0) {
+            let nextAlert = remaining - (activeIntervalMins * 60);
+            if (nextAlert === 0) nextAlert = -1;
+            alertedChunksRef.current = nextAlert;
+          }
+        }
 
         if (timerInitialMins) {
           const elapsedSeconds = (timerInitialMins * 60) - remaining;
@@ -247,7 +291,7 @@ export default function Timer() {
             }
 
             // Interval Alert Beep
-            if (remaining > 0) {
+            if (remaining > 0 && !wasSleeping) {
               let isIntervalActive = false;
               let activeIntervalMins = 0;
 
@@ -333,7 +377,7 @@ export default function Timer() {
             const actualRemaining = Math.max(0, Math.floor((timerEndAt - intendedPauseTime) / 1000));
             setTimerPausedLeft(actualRemaining);
             setTimerEndAt(null);
-            if (now - intendedPauseTime < 120000) {
+            if (!wasSleeping && now - intendedPauseTime < 120000) {
               playAlarm();
             }
             setShowContinuePrompt(true);
@@ -360,7 +404,8 @@ export default function Timer() {
           setIsIntervalRinging(false);
           isIntervalRingingRef.current = false;
 
-          if (isOwner && now - timerEndAt < 120000) {
+          // Only trigger alarm if system was active and NOT sleeping when timer expired
+          if (isOwner && !wasSleeping && now - timerEndAt < 120000) {
             playAlarm();
           }
 
@@ -464,7 +509,7 @@ export default function Timer() {
         audioRef.current.currentTime = 0;
       }
     }
-  }, [isAlarmPlaying, enableAlarmSound, alarmVolume]);
+  }, [isAlarmPlaying, enableAlarmSound, alarmVolume, resolvedAlarmUrl, alarmSound]);
 
   const getAlarmTitle = () => {
     if (enableAlarmSound && enableAlarmVibration) return 'PWA_ALARM_RING_VIBRATE';

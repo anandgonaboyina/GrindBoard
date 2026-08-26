@@ -32,6 +32,29 @@ export default function Stopwatch() {
   const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
   const resolvedAlarmUrl = useAudioUrl(alarmSound);
   const stopwatchAlertedChunksRef = useRef<number>(0);
+  const lastTickTimeRef = useRef<number>(Date.now());
+
+  // Window Focus / Visibility Change Cleanup: Ensure no stray audio plays when laptop wakes up from sleep
+  useEffect(() => {
+    const handleSleepWakeCleanup = () => {
+      const isAlarm = useDashboardStore.getState().isAlarmPlaying;
+      if (!isAlarm) {
+        if (intervalAudioRef.current) {
+          intervalAudioRef.current.pause();
+          intervalAudioRef.current.currentTime = 0;
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleSleepWakeCleanup);
+      document.addEventListener('visibilitychange', handleSleepWakeCleanup);
+      return () => {
+        window.removeEventListener('focus', handleSleepWakeCleanup);
+        document.removeEventListener('visibilitychange', handleSleepWakeCleanup);
+      };
+    }
+  }, []);
 
   const updateInteraction = () => {
     if (typeof window !== 'undefined') {
@@ -82,8 +105,13 @@ export default function Stopwatch() {
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isRunning && stopwatchStartTime) {
+      lastTickTimeRef.current = Date.now();
       interval = setInterval(() => {
         const now = Date.now();
+        const gap = now - (lastTickTimeRef.current || now);
+        lastTickTimeRef.current = now;
+        const wasSleeping = gap > 8000;
+
         const stored = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_last_active') : null;
         const lastActive = stored ? parseInt(stored) : now;
         const timeSinceActive = Math.floor((now - lastActive) / 1000);
@@ -91,7 +119,7 @@ export default function Stopwatch() {
 
         if (timeSinceActive >= 7200 && isOwner) {
           setIsRunning(false);
-          if (now - (lastActive + 7200000) < 120000) {
+          if (!wasSleeping && now - (lastActive + 7200000) < 120000) {
             useDashboardStore.getState().setIsAlarmPlaying(true);
           }
           useDashboardStore.setState({ isStopwatchOpen: true });
@@ -110,6 +138,15 @@ export default function Stopwatch() {
 
         const currentElapsed = Math.max(0, Math.floor((now - stopwatchStartTime) / 1000));
         setElapsedSecs(currentElapsed);
+
+        if (wasSleeping) {
+          // If system slept, sync interval alerted chunks without ringing audio
+          if (isStopwatchIntervalEnabled && stopwatchIntervalMins > 0) {
+            const alertIntervalSecs = stopwatchIntervalMins * 60;
+            stopwatchAlertedChunksRef.current = Math.floor(currentElapsed / alertIntervalSecs);
+          }
+          return;
+        }
 
         if (stopwatchAddToStats && isOwner) {
           const chunks = Math.floor(currentElapsed / 300); // 5 minutes = 300 seconds
