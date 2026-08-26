@@ -114,11 +114,32 @@ export default function DayStartModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[990] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-300"
+      className="fixed inset-0 z-[990] flex flex-col items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 gap-3.5"
       onClick={(e) => {
         if (e.target === e.currentTarget) toggleDayStartModal();
       }}
     >
+      {/* Inspirational Daily Quote Card (Positioned Outside & Above Modal) */}
+      <div className="w-full max-w-md relative p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-slate-950/90 via-amber-950/20 to-slate-950/90 backdrop-blur-xl border border-amber-400/40 shadow-[0_0_35px_rgba(251,191,36,0.2)] flex flex-col gap-2 overflow-hidden animate-in slide-in-from-top-6 duration-300 group">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-[10px] uppercase tracking-widest shadow-sm">
+            <QuoteIcon className="w-3 h-3 text-amber-300" />
+            <span>Daily Inspiration</span>
+          </div>
+          <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
+        </div>
+
+        <blockquote className="text-sm sm:text-base font-extrabold text-white leading-relaxed tracking-wide font-serif italic drop-shadow-md">
+          "{quote ? quote.text : "Every morning brings new potential, but only if you wake up and create it."}"
+        </blockquote>
+
+        <div className="flex items-center justify-end gap-2 text-xs font-bold text-amber-200/90 tracking-wider not-italic">
+          <span className="w-4 h-[1px] bg-amber-400/50"></span>
+          <span>{quote ? quote.author : "Unknown"}</span>
+        </div>
+      </div>
+
+      {/* Main Day Start Modal Box */}
       <div className="relative w-full max-w-md rounded-2xl bg-slate-950/80 backdrop-blur-xl border border-white/20 shadow-[0_0_50px_rgba(56,189,248,0.2)] overflow-hidden animate-in zoom-in-95 duration-300">
 
         {/* Glowing ambient background circle */}
@@ -152,26 +173,6 @@ export default function DayStartModal() {
 
         {/* Content */}
         <div className="p-4 sm:p-5 flex flex-col gap-4 relative z-10">
-
-          {/* Inspirational Daily Quote Card */}
-          <div className="relative p-4 rounded-2xl bg-gradient-to-br from-amber-500/15 via-sky-500/10 to-purple-500/15 border border-amber-400/35 shadow-[0_0_25px_rgba(251,191,36,0.15)] flex flex-col gap-2 overflow-hidden group">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-[10px] uppercase tracking-wider shadow-sm">
-                <QuoteIcon className="w-3 h-3 text-amber-300" />
-                <span>Daily Inspiration</span>
-              </div>
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
-            </div>
-
-            <blockquote className="text-sm sm:text-base font-extrabold text-white leading-snug tracking-tight font-serif italic drop-shadow-md">
-              "{quote ? quote.text : "Every morning brings new potential, but only if you wake up and create it."}"
-            </blockquote>
-
-            <div className="flex items-center justify-end gap-1.5 text-xs font-semibold text-amber-200/90 not-italic">
-              <span className="w-4 h-[1px] bg-amber-400/50"></span>
-              <span>{quote ? quote.author : "Unknown"}</span>
-            </div>
-          </div>
 
           {/* Late Night Session Notice (Highly Legible & Prominent) */}
           <div className="p-3.5 bg-gradient-to-r from-purple-950/60 via-indigo-950/40 to-slate-900/60 border border-purple-400/40 rounded-xl flex flex-col gap-2 shadow-lg">
