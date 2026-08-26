@@ -48,8 +48,34 @@ export type Roadmap = {
 export interface DailyTime {
   wakeupTime?: number;
   workStartedTime?: number;
-  bedTime?: number;
+  sleepTime?: number;
+  customFields?: Record<string, number>;
 }
+
+export const filterActiveDeadlines = (deadlines: any[]) => {
+  if (!Array.isArray(deadlines)) return [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return deadlines.filter((d: any) => {
+    if (!d || !d.date) return false;
+    const parts = String(d.date).split('-');
+    if (parts.length < 3) return false;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
+
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
+
+    const dDate = new Date(year, month - 1, day);
+    dDate.setHours(0, 0, 0, 0);
+
+    const diffTime = today.getTime() - dDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    // Keep if it is in the future, today, or up to 7 days in the past (diffDays <= 7)
+    return diffDays <= 7;
+  });
+};
 
 export type TimetableGrid = Record<string, Record<string, string>>;
 
@@ -245,6 +271,7 @@ interface DashboardState {
   deleteDeadline: (id: string) => void;
   deleteAllDeadlinesForDay: (date: string) => void;
   deleteAllDeadlines: () => void;
+  cleanOldDeadlines: () => void;
   deadlineAlertDays: number;
   setDeadlineAlertDays: (days: number) => void;
   dismissedDeadlineAlerts: string[];
@@ -1347,7 +1374,7 @@ export const useDashboardStore = create<DashboardState>()(
       addDeadline: (date, text) => {
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
         set((state) => ({
-          deadlines: [...state.deadlines, { id, date, text }]
+          deadlines: [...filterActiveDeadlines(state.deadlines), { id, date, text }]
         }));
         return id;
       },
@@ -1361,6 +1388,9 @@ export const useDashboardStore = create<DashboardState>()(
         deadlines: state.deadlines.filter(d => d.date !== date)
       })),
       deleteAllDeadlines: () => set({ deadlines: [] }),
+      cleanOldDeadlines: () => set((state) => ({
+        deadlines: filterActiveDeadlines(state.deadlines)
+      })),
 
       deadlineAlertDays: 0,
       setDeadlineAlertDays: (days) => set({ deadlineAlertDays: Math.max(0, days) }),
@@ -1865,15 +1895,7 @@ export const useDashboardStore = create<DashboardState>()(
 
         // Auto-cleanup deadlines that are more than 7 days in the past
         if (persistedState.deadlines && Array.isArray(persistedState.deadlines)) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          persistedState.deadlines = persistedState.deadlines.filter((d: any) => {
-            const dDate = new Date(d.date);
-            dDate.setHours(0, 0, 0, 0);
-            const diffTime = today.getTime() - dDate.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays <= 7; // Keep if it is in the future, today, or up to 7 days past
-          });
+          persistedState.deadlines = filterActiveDeadlines(persistedState.deadlines);
         }
 
         if (!persistedState.tomorrowTasks) {
@@ -1892,6 +1914,7 @@ export const useDashboardStore = create<DashboardState>()(
         safeState.tomorrowTasks = Array.isArray(persistedState.tomorrowTasks) ? persistedState.tomorrowTasks : currentState.tomorrowTasks;
         safeState.notes = Array.isArray(persistedState.notes) ? persistedState.notes : currentState.notes;
         safeState.roadmaps = Array.isArray(persistedState.roadmaps) ? persistedState.roadmaps : currentState.roadmaps;
+        safeState.deadlines = filterActiveDeadlines(persistedState.deadlines || []);
 
         // Deep merge records/objects to ensure we don't drop newly added default keys
         if (persistedState.history && typeof persistedState.history === 'object') {
@@ -1918,6 +1941,9 @@ export const useDashboardStore = create<DashboardState>()(
       onRehydrateStorage: () => (state, error) => {
         if (error) {
           console.error("Hydration failed!", error);
+        }
+        if (state && typeof state.cleanOldDeadlines === 'function') {
+          state.cleanOldDeadlines();
         }
         // Guarantee hydration completion so UI never gets stuck
         if (state && typeof state.setHasHydrated === 'function') {

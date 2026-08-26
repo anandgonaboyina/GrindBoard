@@ -25,7 +25,14 @@ export default function MiniCalendar() {
     onConfirm: () => {},
   });
 
-  const { deadlines, addDeadline, updateDeadline, deleteDeadline, deleteAllDeadlinesForDay, deleteAllDeadlines, toggleCalendar, setIsCalendarBusy } = useDashboardStore();
+  const { deadlines, addDeadline, updateDeadline, deleteDeadline, deleteAllDeadlinesForDay, deleteAllDeadlines, cleanOldDeadlines, toggleCalendar, setIsCalendarBusy } = useDashboardStore();
+
+  // Auto-clean deadlines older than 7 days when calendar mounts
+  useEffect(() => {
+    if (cleanOldDeadlines) {
+      cleanOldDeadlines();
+    }
+  }, [cleanOldDeadlines]);
 
   // Sync busy state so Dashboard doesn't auto-hide the calendar while editing
   useEffect(() => {
