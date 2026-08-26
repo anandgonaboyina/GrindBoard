@@ -144,32 +144,26 @@ export default function NewsModal() {
     <div
       className="fixed inset-0 z-[990] flex flex-col items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
     >
-      {/* Early Close Warning Banner */}
+      {/* Early Close Warning Banner (No visible timer digits) */}
       {showWarning && (
         <div className="fixed top-20 sm:top-24 left-1/2 -translate-x-1/2 z-[1010] w-[92%] max-w-md p-3.5 bg-gradient-to-r from-amber-950/90 via-slate-900/90 to-amber-950/90 backdrop-blur-xl border border-amber-400/50 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.3)] animate-in fade-in slide-in-from-top-4 duration-300 flex items-start gap-3">
           <div className="p-2 bg-amber-500/20 border border-amber-400/40 rounded-xl shrink-0">
             <ShieldAlert className="w-5 h-5 text-amber-300 animate-bounce" />
           </div>
           <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <h4 className="text-xs font-bold text-amber-200 uppercase tracking-wide">Please Read Latest News</h4>
+            <h4 className="text-xs font-bold text-amber-200 uppercase tracking-wide">Please Read Today's Updates</h4>
             <p className="text-[11px] text-white/90 leading-snug">
-              Important updates! Please review before closing. You can close in <strong className="text-amber-300 font-mono font-bold">{timeLeft}s</strong>.
+              Important news & updates available! Please take a moment to review the news before closing.
             </p>
           </div>
-          <button onClick={() => setShowWarning(false)} className="text-white/40 hover:text-white p-1">
+          <button onClick={() => setShowWarning(false)} className="text-white/40 hover:text-white p-1 cursor-pointer">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Floating Top Bar (Timer + Close Button) */}
+      {/* Floating Top Bar (Close Button) */}
       <div className="absolute top-8 right-4 sm:top-20 sm:right-36 flex items-center gap-2.5 z-[1000]">
-        {isAutoOpened && timeLeft > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 border border-amber-500/40 rounded-full text-amber-300 font-mono text-xs shadow-md animate-pulse">
-            <Clock className="w-3.5 h-3.5 text-amber-300 animate-spin" style={{ animationDuration: '4s' }} />
-            <span>Read ({timeLeft}s)</span>
-          </div>
-        )}
         <button
           onClick={() => handleAttemptClose(() => toggleNews())}
           className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-full text-white/80 hover:text-white transition-all border border-white/10 shadow-2xl active:scale-95 cursor-pointer"
