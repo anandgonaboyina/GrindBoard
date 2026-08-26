@@ -5,21 +5,31 @@ import { getLocalDateString } from '@/utils/date';
 import { useEffect, useState } from 'react';
 import { fetchQuote } from '@/utils/quoteEngine';
 
-const FALLBACK_MORNING_QUOTES = [
-  { text: "Every morning brings new potential, but only if you wake up and create it.", author: "Unknown" },
-  { text: "Today's accomplishments were yesterday's impossibilities.", author: "Robert H. Schuller" },
-  { text: "Wake up with determination. Go to bed with satisfaction.", author: "George Horace Lorimer" },
-  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
-  { text: "Your future is created by what you do today, not tomorrow.", author: "Robert Kiyosaki" },
+const MORNING_HARDWORK_QUOTES = [
+  { text: "Every morning brings new potential, but only if you wake up and execute.", author: "Unknown" },
   { text: "Discipline is choosing between what you want now and what you want most.", author: "Abraham Lincoln" },
-  { text: "Small daily improvements over time lead to stunning results.", author: "Robin Sharma" },
-  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
   { text: "Hard work beats talent when talent fails to work hard.", author: "Tim Notke" },
-  { text: "There are no shortcuts to any place worth going.", author: "Beverly Sills" },
-  { text: "Success isn't always about greatness. It's about consistency. Consistent hard work leads to success.", author: "Dwayne Johnson" },
-  { text: "Push yourself, because no one else is going to do it for you.", author: "Unknown" },
+  { text: "Wake up with determination. Go to bed with satisfaction.", author: "George Horace Lorimer" },
   { text: "Work hard in silence, let your success be your noise.", author: "Frank Ocean" },
-  { text: "Don't count the days, make the days count.", author: "Muhammad Ali" }
+  { text: "Small daily improvements over time lead to stunning results.", author: "Robin Sharma" },
+  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+  { text: "Success isn't always about greatness. It's about consistency. Consistent hard work leads to success.", author: "Dwayne Johnson" },
+  { text: "Your future is created by what you do today, not tomorrow.", author: "Robert Kiyosaki" },
+  { text: "Don't count the days, make the days count.", author: "Muhammad Ali" },
+  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+  { text: "Push yourself, because no one else is going to do it for you.", author: "Unknown" },
+  { text: "There are no shortcuts to any place worth going.", author: "Beverly Sills" },
+  { text: "Great things never come from comfort zones.", author: "Anonymous" },
+  { text: "Opportunities don't happen. You create them.", author: "Chris Grosser" },
+  { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
+  { text: "Focus on being productive instead of busy.", author: "Tim Ferriss" },
+  { text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin D. Roosevelt" },
+  { text: "Do what you have to do until you can do what you want to do.", author: "Oprah Winfrey" },
+  { text: "Action is the foundational key to all success.", author: "Pablo Picasso" },
+  { text: "Your time is limited, so don't waste it living someone else's life.", author: "Steve Jobs" },
+  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+  { text: "I find that the harder I work, the more luck I seem to have.", author: "Thomas Jefferson" },
+  { text: "Dreams don't work unless you do.", author: "John C. Maxwell" }
 ];
 
 export default function DayStartModal() {
@@ -45,38 +55,30 @@ export default function DayStartModal() {
     setHasPrompted(true);
   }, [hasPrompted, _hasHydrated, todayTimes.wakeupTime, isDayStartModalOpen]);
 
-  // Fetch inspirational quote on modal open (API with local fallback)
+  // Load curated motivational & hardwork quote on modal open
   useEffect(() => {
     if (!isDayStartModalOpen) return;
 
     let isMounted = true;
     async function loadMorningQuote() {
       try {
-        const res = await fetch('https://dummyjson.com/quotes/random', { signal: AbortSignal.timeout(3000) });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.quote && data.author && isMounted) {
-            setQuote({ text: data.quote, author: data.author });
+        const engineQuote = await fetchQuote();
+        if (engineQuote && engineQuote.text && isMounted) {
+          // Verify quote relevance
+          const textLower = engineQuote.text.toLowerCase();
+          const isMotivational = ['work', 'success', 'discipline', 'future', 'dream', 'focus', 'start', 'today', 'great', 'do', 'win', 'action'].some(word => textLower.includes(word));
+          if (isMotivational) {
+            setQuote({ text: engineQuote.text, author: engineQuote.author });
             return;
           }
         }
       } catch (e) {
-        // API fallback
-      }
-
-      try {
-        const engineQuote = await fetchQuote();
-        if (engineQuote && engineQuote.text && isMounted) {
-          setQuote({ text: engineQuote.text, author: engineQuote.author });
-          return;
-        }
-      } catch (e) {
-        // hardcoded fallback
+        // Fallback to curated list
       }
 
       if (isMounted) {
-        const randomFallback = FALLBACK_MORNING_QUOTES[Math.floor(Math.random() * FALLBACK_MORNING_QUOTES.length)];
-        setQuote(randomFallback);
+        const randomQuote = MORNING_HARDWORK_QUOTES[Math.floor(Math.random() * MORNING_HARDWORK_QUOTES.length)];
+        setQuote(randomQuote);
       }
     }
 
