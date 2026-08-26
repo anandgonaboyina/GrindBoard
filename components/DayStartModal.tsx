@@ -1,8 +1,20 @@
 'use client';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Sunrise, Sparkles, Moon, Coffee, Check, X, AlertTriangle } from 'lucide-react';
+import { Sunrise, Sparkles, Moon, Coffee, Check, X, AlertTriangle, Quote as QuoteIcon } from 'lucide-react';
 import { getLocalDateString } from '@/utils/date';
 import { useEffect, useState } from 'react';
+import { fetchQuote } from '@/utils/quoteEngine';
+
+const FALLBACK_MORNING_QUOTES = [
+  { text: "Every morning brings new potential, but only if you wake up and create it.", author: "Unknown" },
+  { text: "Today's accomplishments were yesterday's impossibilities.", author: "Robert H. Schuller" },
+  { text: "Wake up with determination. Go to bed with satisfaction.", author: "George Horace Lorimer" },
+  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+  { text: "Your future is created by what you do today, not tomorrow.", author: "Robert Kiyosaki" },
+  { text: "Discipline is choosing between what you want now and what you want most.", author: "Abraham Lincoln" },
+  { text: "Small daily improvements over time lead to stunning results.", author: "Robin Sharma" },
+  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" }
+];
 
 export default function DayStartModal() {
   const { dailyTimes, updateDailyTime, isDayStartModalOpen, toggleDayStartModal, _hasHydrated } = useDashboardStore();
@@ -13,6 +25,7 @@ export default function DayStartModal() {
   const [pendingTime, setPendingTime] = useState<number | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [hasPrompted, setHasPrompted] = useState(false);
+  const [quote, setQuote] = useState<{ text: string; author: string } | null>(null);
 
   // Auto-open if missing wakeup time for today (only once per page load)
   useEffect(() => {
@@ -25,6 +38,45 @@ export default function DayStartModal() {
     }
     setHasPrompted(true);
   }, [hasPrompted, _hasHydrated, todayTimes.wakeupTime, isDayStartModalOpen]);
+
+  // Fetch inspirational quote on modal open (API with local fallback)
+  useEffect(() => {
+    if (!isDayStartModalOpen) return;
+
+    let isMounted = true;
+    async function loadMorningQuote() {
+      try {
+        const res = await fetch('https://dummyjson.com/quotes/random', { signal: AbortSignal.timeout(3000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.quote && data.author && isMounted) {
+            setQuote({ text: data.quote, author: data.author });
+            return;
+          }
+        }
+      } catch (e) {
+        // API fallback
+      }
+
+      try {
+        const engineQuote = await fetchQuote();
+        if (engineQuote && engineQuote.text && isMounted) {
+          setQuote({ text: engineQuote.text, author: engineQuote.author });
+          return;
+        }
+      } catch (e) {
+        // hardcoded fallback
+      }
+
+      if (isMounted) {
+        const randomFallback = FALLBACK_MORNING_QUOTES[Math.floor(Math.random() * FALLBACK_MORNING_QUOTES.length)];
+        setQuote(randomFallback);
+      }
+    }
+
+    loadMorningQuote();
+    return () => { isMounted = false; };
+  }, [isDayStartModalOpen]);
 
   const handleTimeAction = () => {
     setPendingTime(Date.now());
@@ -100,6 +152,26 @@ export default function DayStartModal() {
 
         {/* Content */}
         <div className="p-4 sm:p-5 flex flex-col gap-4 relative z-10">
+
+          {/* Inspirational Daily Quote Card */}
+          <div className="relative p-4 rounded-2xl bg-gradient-to-br from-amber-500/15 via-sky-500/10 to-purple-500/15 border border-amber-400/35 shadow-[0_0_25px_rgba(251,191,36,0.15)] flex flex-col gap-2 overflow-hidden group">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-[10px] uppercase tracking-wider shadow-sm">
+                <QuoteIcon className="w-3 h-3 text-amber-300" />
+                <span>Daily Inspiration</span>
+              </div>
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
+            </div>
+
+            <blockquote className="text-sm sm:text-base font-extrabold text-white leading-snug tracking-tight font-serif italic drop-shadow-md">
+              "{quote ? quote.text : "Every morning brings new potential, but only if you wake up and create it."}"
+            </blockquote>
+
+            <div className="flex items-center justify-end gap-1.5 text-xs font-semibold text-amber-200/90 not-italic">
+              <span className="w-4 h-[1px] bg-amber-400/50"></span>
+              <span>{quote ? quote.author : "Unknown"}</span>
+            </div>
+          </div>
 
           {/* Late Night Session Notice (Highly Legible & Prominent) */}
           <div className="p-3.5 bg-gradient-to-r from-purple-950/60 via-indigo-950/40 to-slate-900/60 border border-purple-400/40 rounded-xl flex flex-col gap-2 shadow-lg">
