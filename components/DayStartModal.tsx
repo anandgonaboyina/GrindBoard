@@ -223,25 +223,27 @@ export default function DayStartModal() {
       {/* Relative wrapper centering the modal on screen */}
       <div className="relative w-full max-w-md flex flex-col items-center justify-center">
 
-        {/* Inspirational Daily Quote Card (Floating Directly Above Centered Modal) */}
-        <div className="absolute bottom-full mb-3 sm:mb-5 w-[92vw] md:w-[70vw] max-w-4xl left-1/2 -translate-x-1/2 p-4 sm:p-5 md:p-5.5 rounded-2xl bg-gradient-to-br from-slate-950/95 via-amber-950/40 to-slate-950/95 backdrop-blur-xl border border-amber-400/40 shadow-[0_0_40px_rgba(251,191,36,0.2)] flex flex-col gap-2.5 overflow-hidden animate-in slide-in-from-top-6 duration-300 group">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-[10px] sm:text-xs uppercase tracking-widest shadow-sm">
-              <QuoteIcon className="w-3.5 h-3.5 text-amber-300" />
-              <span>Daily Morning Inspiration</span>
+        {/* Inspirational Daily Quote Card (Floating Directly Above Centered Modal - Hidden after log confirmation) */}
+        {!isLoggedCelebration && (
+          <div className="absolute bottom-full mb-3 sm:mb-5 w-[92vw] md:w-[70vw] max-w-4xl left-1/2 -translate-x-1/2 p-4 sm:p-5 md:p-5.5 rounded-2xl bg-gradient-to-br from-slate-950/95 via-amber-950/40 to-slate-950/95 backdrop-blur-xl border border-amber-400/40 shadow-[0_0_40px_rgba(251,191,36,0.2)] flex flex-col gap-2.5 overflow-hidden animate-in slide-in-from-top-6 duration-300 group">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 font-bold text-[10px] sm:text-xs uppercase tracking-widest shadow-sm">
+                <QuoteIcon className="w-3.5 h-3.5 text-amber-300" />
+                <span>Daily Morning Inspiration</span>
+              </div>
+              <Sparkles className="w-4 h-4 text-amber-300 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
             </div>
-            <Sparkles className="w-4 h-4 text-amber-300 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
-          </div>
 
-          <blockquote className="text-sm sm:text-base md:text-lg font-extrabold text-white leading-relaxed tracking-wide font-serif italic drop-shadow-md text-center sm:text-left">
-            "{quote ? quote.text : "Every morning brings new potential, but only if you wake up and create it."}"
-          </blockquote>
+            <blockquote className="text-sm sm:text-base md:text-lg font-extrabold text-white leading-relaxed tracking-wide font-serif italic drop-shadow-md text-center sm:text-left">
+              "{quote ? quote.text : "Every morning brings new potential, but only if you wake up and create it."}"
+            </blockquote>
 
-          <div className="flex items-center justify-end gap-2 text-xs sm:text-sm font-bold text-amber-200/90 tracking-wider not-italic">
-            <span className="w-8 h-[1px] bg-amber-400/50"></span>
-            <span>{quote ? quote.author : "Unknown"}</span>
+            <div className="flex items-center justify-end gap-2 text-xs sm:text-sm font-bold text-amber-200/90 tracking-wider not-italic">
+              <span className="w-8 h-[1px] bg-amber-400/50"></span>
+              <span>{quote ? quote.author : "Unknown"}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Main Day Start Modal Box - Perfectly Centered */}
         {isLoggedCelebration ? (
