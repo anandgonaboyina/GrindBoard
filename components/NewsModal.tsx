@@ -1,6 +1,6 @@
 'use client';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Newspaper, X, Check, Calendar, Image as ImageIcon, Video, FileCode2, Loader2, ChevronRight, ChevronLeft, Plus } from 'lucide-react';
+import { Newspaper, X, Check, Loader2, Plus, Clock, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NewsCardStack from './NewsCardStack';
@@ -10,11 +10,13 @@ import { syncNewsMediaCache } from '@/lib/newsMediaCache';
 export default function NewsModal() {
   const { isNewsOpen, toggleNews, hasUnreadNews, setHasUnreadNews } = useDashboardStore();
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
+  const [isAutoOpened, setIsAutoOpened] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [showWarning, setShowWarning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [news, setNews] = useState<NewsPost[]>([]);
   const [unreadIds, setUnreadIds] = useState<string[]>([]);
   const [marking, setMarking] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
@@ -62,14 +64,49 @@ export default function NewsModal() {
     initNews();
   }, [setHasUnreadNews]);
 
+  // Auto-open logic with 10-second reading timer flag
   useEffect(() => {
     if (hasUnreadNews && !hasAutoOpened && !loading) {
       if (!isNewsOpen) {
         useDashboardStore.setState({ isNewsOpen: true });
+        setIsAutoOpened(true);
+        setTimeLeft(10);
       }
       setHasAutoOpened(true);
     }
   }, [hasUnreadNews, hasAutoOpened, isNewsOpen, loading]);
+
+  // Timer countdown effect for auto-opened news
+  useEffect(() => {
+    if (!isNewsOpen || !isAutoOpened || timeLeft <= 0) return;
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setShowWarning(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isNewsOpen, isAutoOpened, timeLeft]);
+
+  // Reset warning when modal closes
+  useEffect(() => {
+    if (!isNewsOpen) {
+      setShowWarning(false);
+    }
+  }, [isNewsOpen]);
+
+  const handleAttemptClose = (onCanClose: () => void) => {
+    if (isAutoOpened && timeLeft > 0) {
+      setShowWarning(true);
+      setTimeout(() => setShowWarning(false), 3500);
+      return;
+    }
+    onCanClose();
+  };
 
   const handleMarkAsRead = async () => {
     if (unreadIds.length === 0) {
@@ -107,13 +144,40 @@ export default function NewsModal() {
     <div
       className="fixed inset-0 z-[990] flex flex-col items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
     >
-      {/* Floating Close Button */}
-      <button
-        onClick={toggleNews}
-        className="absolute top-8 right-4 sm:top-20 sm:right-36 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-full text-white/80 hover:text-white transition-all border border-white/10 shadow-2xl z-[1000] active:scale-95"
-      >
-        <X className="w-6 h-6" />
-      </button>
+      {/* Early Close Warning Banner */}
+      {showWarning && (
+        <div className="fixed top-20 sm:top-24 left-1/2 -translate-x-1/2 z-[1010] w-[92%] max-w-md p-3.5 bg-gradient-to-r from-amber-950/90 via-slate-900/90 to-amber-950/90 backdrop-blur-xl border border-amber-400/50 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.3)] animate-in fade-in slide-in-from-top-4 duration-300 flex items-start gap-3">
+          <div className="p-2 bg-amber-500/20 border border-amber-400/40 rounded-xl shrink-0">
+            <ShieldAlert className="w-5 h-5 text-amber-300 animate-bounce" />
+          </div>
+          <div className="flex flex-col gap-1 min-w-0 flex-1">
+            <h4 className="text-xs font-bold text-amber-200 uppercase tracking-wide">Please Read Latest News</h4>
+            <p className="text-[11px] text-white/90 leading-snug">
+              Important updates! Please review before closing. You can close in <strong className="text-amber-300 font-mono font-bold">{timeLeft}s</strong>.
+            </p>
+          </div>
+          <button onClick={() => setShowWarning(false)} className="text-white/40 hover:text-white p-1">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Floating Top Bar (Timer + Close Button) */}
+      <div className="absolute top-8 right-4 sm:top-20 sm:right-36 flex items-center gap-2.5 z-[1000]">
+        {isAutoOpened && timeLeft > 0 && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 border border-amber-500/40 rounded-full text-amber-300 font-mono text-xs shadow-md animate-pulse">
+            <Clock className="w-3.5 h-3.5 text-amber-300 animate-spin" style={{ animationDuration: '4s' }} />
+            <span>Read ({timeLeft}s)</span>
+          </div>
+        )}
+        <button
+          onClick={() => handleAttemptClose(() => toggleNews())}
+          className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-full text-white/80 hover:text-white transition-all border border-white/10 shadow-2xl active:scale-95 cursor-pointer"
+          title="Close Updates"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
 
       {/* Floating Title */}
       <div className="absolute top-12 left-6 sm:left-10 flex items-center gap-3 z-[1000] pointer-events-none">
@@ -124,8 +188,6 @@ export default function NewsModal() {
           What's New
         </h2>
       </div>
-
-
 
       {/* Content */}
       <div className="w-full flex-1 flex flex-col items-center justify-center max-w-3xl mx-auto relative z-10">
@@ -149,17 +211,17 @@ export default function NewsModal() {
       <div className="absolute bottom-16 sm:bottom-25 left-1/2 -translate-x-1/2 flex justify-center z-[1000]">
         {hasUnreadNews ? (
           <button
-            onClick={handleMarkAsRead}
+            onClick={() => handleAttemptClose(() => handleMarkAsRead())}
             disabled={marking}
-            className="px-6 sm:px-8 py-3 bg-blue-500/80 hover:bg-blue-500 backdrop-blur-xl active:scale-95 text-white font-bold rounded-full text-xs sm:text-sm flex items-center gap-2 transition-all shadow-[0_10px_40px_rgba(59,130,246,0.4)] border border-blue-400/50 disabled:opacity-70 uppercase tracking-wider whitespace-nowrap"
+            className="px-6 sm:px-8 py-3 bg-blue-500/80 hover:bg-blue-500 backdrop-blur-xl active:scale-95 text-white font-bold rounded-full text-xs sm:text-sm flex items-center gap-2 transition-all shadow-[0_10px_40px_rgba(59,130,246,0.4)] border border-blue-400/50 disabled:opacity-70 uppercase tracking-wider whitespace-nowrap cursor-pointer"
           >
             {marking ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
             {marking ? 'Updating...' : 'Mark as Read & Close'}
           </button>
         ) : (
           <button
-            onClick={toggleNews}
-            className="px-6 sm:px-8 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl active:scale-95 text-white font-bold rounded-full text-xs sm:text-sm transition-all border border-white/20 shadow-2xl uppercase tracking-wider whitespace-nowrap"
+            onClick={() => handleAttemptClose(() => toggleNews())}
+            className="px-6 sm:px-8 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl active:scale-95 text-white font-bold rounded-full text-xs sm:text-sm transition-all border border-white/20 shadow-2xl uppercase tracking-wider whitespace-nowrap cursor-pointer"
           >
             Close Updates
           </button>
@@ -170,7 +232,7 @@ export default function NewsModal() {
       {isAdmin && (
         <button
           onClick={() => { toggleNews(); router.push('/admin'); }}
-          className="absolute bottom-28 sm:bottom-25 right-4 sm:right-10 p-3 sm:p-4 bg-green-500/80 hover:bg-green-500 backdrop-blur-xl rounded-full text-white transition-all border border-green-400/50 shadow-[0_10px_40px_rgba(34,197,94,0.4)] z-[1000] active:scale-95 flex items-center justify-center"
+          className="absolute bottom-28 sm:bottom-25 right-4 sm:right-10 p-3 sm:p-4 bg-green-500/80 hover:bg-green-500 backdrop-blur-xl rounded-full text-white transition-all border border-green-400/50 shadow-[0_10px_40px_rgba(34,197,94,0.4)] z-[1000] active:scale-95 flex items-center justify-center cursor-pointer"
           title="Add News (Admin)"
         >
           <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
