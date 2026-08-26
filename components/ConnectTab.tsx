@@ -13,7 +13,7 @@ function EmptyFriendsState() {
   return (
     <div className="flex flex-col items-center justify-center p-4 md:p-5 rounded-2xl bg-gradient-to-b from-indigo-950/30 via-black/40 to-black/60 border border-indigo-500/25 text-center shadow-lg relative overflow-hidden my-2 group">
       <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-500"></div>
-      
+
       <div className="relative mb-2.5 flex items-center justify-center">
         <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 border border-indigo-400/35 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.25)] animate-pulse">
           <UserPlus className="w-5 h-5 text-indigo-300 animate-bounce" style={{ animationDuration: '2.5s' }} />
@@ -33,7 +33,7 @@ function EmptyFriendsState() {
       <div className="flex flex-col gap-1.5 w-full max-w-xs bg-black/40 p-2.5 rounded-xl border border-white/5 text-[9.5px] md:text-[10.5px] text-white/70 text-left">
         <div className="flex items-center gap-2">
           <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-300 font-bold text-[9px] flex items-center justify-center shrink-0 border border-blue-500/30">1</span>
-          <span>Use the <strong>"Find with User Name"</strong> box below to search.</span>
+          <span>Use the <strong>"Find with User Name/Alias Name"</strong> box below to search.</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 font-bold text-[9px] flex items-center justify-center shrink-0 border border-purple-500/30">2</span>
@@ -129,7 +129,7 @@ function LeaderboardLoadingSkeleton() {
           <Flame className="w-4 h-4 text-amber-400 animate-pulse" />
         </div>
       </div>
-      
+
       <div className="flex items-center gap-2">
         <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-spin" style={{ animationDuration: '3s' }} />
         <span className="text-xs font-bold tracking-wider text-yellow-300/90 uppercase animate-pulse">
@@ -247,7 +247,7 @@ export default function ConnectTab() {
       setActiveTab('leaderboard');
     };
     window.addEventListener('open-leaderboard', handleOpenLeaderboard);
-    
+
     const handleGroupRequestsUpdate = (e: any) => {
       setGroupRequestsCount(e.detail);
     };
@@ -1458,7 +1458,7 @@ export default function ConnectTab() {
                     return [...users].sort((a, b) => {
                       const valA = getVal(a) || 0;
                       const valB = getVal(b) || 0;
-                      
+
                       // 1. Primary: Sort by selected period focus time (descending)
                       if (valA !== valB) return valB - valA;
 
@@ -1466,7 +1466,7 @@ export default function ConnectTab() {
                       const wakeA = a.wakeupTime ? new Date(a.wakeupTime).getTime() : Infinity;
                       const wakeB = b.wakeupTime ? new Date(b.wakeupTime).getTime() : Infinity;
                       if (wakeA !== wakeB) {
-                         return wakeA < wakeB ? -1 : 1;
+                        return wakeA < wakeB ? -1 : 1;
                       }
 
                       // 3. Tie breaker: streak (descending)
@@ -1939,7 +1939,7 @@ export default function ConnectTab() {
                       const myUserId = JSON.parse(atob(token.split('.')[1])).userId;
                       return friendSettingsModal.taskSharing?.[myUserId] === true ? 'bg-emerald-500' : 'bg-white/20';
                     }
-                  } catch (e) {}
+                  } catch (e) { }
                   return 'bg-white/20';
                 })()}`}
               >
@@ -1950,7 +1950,7 @@ export default function ConnectTab() {
                       const myUserId = JSON.parse(atob(token.split('.')[1])).userId;
                       return friendSettingsModal.taskSharing?.[myUserId] === true ? 'translate-x-5' : '';
                     }
-                  } catch (e) {}
+                  } catch (e) { }
                   return '';
                 })()}`} />
               </button>

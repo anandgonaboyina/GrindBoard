@@ -6,30 +6,30 @@ import ConfirmationModal from './ConfirmationModal';
 
 function EmptyCreatedGroupsState({ onOpenCreate }: { onOpenCreate: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-sky-950/30 via-black/40 to-black/60 border border-sky-500/25 text-center shadow-lg relative overflow-hidden my-2 group">
-      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-sky-500/20 transition-all duration-500"></div>
+    <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-b from-sky-950/30 via-black/40 to-black/60 border border-sky-500/25 text-center shadow-lg relative my-1.5 group w-full box-border">
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-28 h-28 bg-sky-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-sky-500/20 transition-all duration-500"></div>
 
-      <div className="relative mb-2.5 flex items-center justify-center">
-        <div className="w-11 h-11 rounded-2xl bg-sky-500/15 border border-sky-400/35 flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.25)] animate-pulse">
-          <Users className="w-5 h-5 text-sky-300 animate-bounce" style={{ animationDuration: '2.8s' }} />
+      <div className="relative mb-1.5 flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-500/15 border border-sky-400/35 flex items-center justify-center shadow-[0_0_12px_rgba(56,189,248,0.25)] animate-pulse">
+          <Users className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-sky-300 animate-bounce" style={{ animationDuration: '2.8s' }} />
         </div>
-        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center">
-          <Sparkles className="w-3 h-3 text-blue-300 animate-spin" style={{ animationDuration: '3.5s' }} />
+        <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center">
+          <Sparkles className="w-2.5 h-2.5 text-blue-300 animate-spin" style={{ animationDuration: '3.5s' }} />
         </div>
       </div>
 
-      <h4 className="text-xs md:text-sm font-bold text-white tracking-wide mb-1 flex items-center justify-center gap-1.5">
+      <h4 className="text-xs sm:text-sm font-bold text-white tracking-wide mb-1 px-1 text-center w-full leading-tight">
         Build Your Focus Circle!
       </h4>
-      <p className="text-[10px] md:text-xs text-white/60 max-w-xs leading-relaxed mb-3">
-        You haven't created any groups yet. Creating a group gives you a live shared task list where members can sync work and track done duration together!
+      <p className="text-[10px] sm:text-xs text-white/60 w-full max-w-[280px] sm:max-w-xs leading-relaxed mb-2.5 px-2 break-words text-center">
+        You haven't created any groups yet. Create a group to share tasks and sync focus progress with friends!
       </p>
 
       <button
         onClick={onOpenCreate}
-        className="px-3.5 py-1.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-xl text-[10px] md:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer border border-sky-400/30"
+        className="px-3 py-1.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-lg text-[10px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer border border-sky-400/30 shrink-0"
       >
-        <Plus size={13} className="animate-pulse" /> Create Your First Group
+        <Plus size={13} className="animate-pulse shrink-0" /> <span>Create Your First Group</span>
       </button>
     </div>
   );
@@ -37,30 +37,30 @@ function EmptyCreatedGroupsState({ onOpenCreate }: { onOpenCreate: () => void })
 
 function EmptyJoinedGroupsState({ onSwitchToSearch }: { onSwitchToSearch: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-purple-950/30 via-black/40 to-black/60 border border-purple-500/25 text-center shadow-lg relative overflow-hidden my-2 group">
-      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/20 transition-all duration-500"></div>
+    <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-b from-purple-950/30 via-black/40 to-black/60 border border-purple-500/25 text-center shadow-lg relative my-1.5 group w-full box-border">
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-28 h-28 bg-purple-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/20 transition-all duration-500"></div>
 
-      <div className="relative mb-2.5 flex items-center justify-center">
-        <div className="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-400/35 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.25)] animate-pulse">
-          <Search className="w-5 h-5 text-purple-300 animate-bounce" style={{ animationDuration: '3s' }} />
+      <div className="relative mb-1.5 flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-500/15 border border-purple-400/35 flex items-center justify-center shadow-[0_0_12px_rgba(168,85,247,0.25)] animate-pulse">
+          <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-purple-300 animate-bounce" style={{ animationDuration: '3s' }} />
         </div>
-        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center">
-          <Sparkles className="w-3 h-3 text-indigo-300 animate-spin" style={{ animationDuration: '4s' }} />
+        <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center">
+          <Sparkles className="w-2.5 h-2.5 text-indigo-300 animate-spin" style={{ animationDuration: '4s' }} />
         </div>
       </div>
 
-      <h4 className="text-xs md:text-sm font-bold text-white tracking-wide mb-1 flex items-center justify-center gap-1.5">
+      <h4 className="text-xs sm:text-sm font-bold text-white tracking-wide mb-1 px-1 text-center w-full leading-tight">
         Explore Joined Groups
       </h4>
-      <p className="text-[10px] md:text-xs text-white/60 max-w-xs leading-relaxed mb-3">
-        You haven't joined any groups yet. Search the group directory to discover public study groups or ask group admins for join access!
+      <p className="text-[10px] sm:text-xs text-white/60 w-full max-w-[280px] sm:max-w-xs leading-relaxed mb-2.5 px-2 break-words text-center">
+        You haven't joined any groups yet. Search the directory to discover public groups or join friends!
       </p>
 
       <button
         onClick={onSwitchToSearch}
-        className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-[10px] md:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer border border-purple-400/30"
+        className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg text-[10px] sm:text-xs font-bold transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer border border-purple-400/30 shrink-0"
       >
-        <Search size={13} className="animate-pulse" /> Find Groups to Join
+        <Search size={13} className="animate-pulse shrink-0" /> <span>Find Groups to Join</span>
       </button>
     </div>
   );
@@ -778,7 +778,7 @@ export default function ConnectGroupsTab() {
                         </div>
                     </div>
 
-                    <ScrollableWithArrows className="max-h-[50vh] pr-1">
+                    <div className="pb-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {viewingGroup.members.map((member: any) => {
                             // Calculate completions for this member for the specific day
@@ -937,7 +937,7 @@ export default function ConnectGroupsTab() {
                             );
                         })}
                         </div>
-                    </ScrollableWithArrows>
+                    </div>
                 </>
             )}
             <ConfirmationModal
@@ -971,7 +971,7 @@ export default function ConnectGroupsTab() {
         </button>
       </div>
 
-      <ScrollableWithArrows className="max-h-[50vh] pr-1 flex flex-col gap-2">
+      <div className="flex flex-col gap-2 pb-6">
         {activeSubTab === 'groups' && (
             <>
               {sentRequests.length > 0 && (
@@ -1107,27 +1107,27 @@ export default function ConnectGroupsTab() {
                       <EmptyCreatedGroupsState onOpenCreate={() => setIsCreateFormOpen(true)} />
                   ) : (
                       myGroupsList.map(group => (
-                          <div key={group._id} onClick={() => setViewingGroup(group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between shadow-sm">
-                              <div className="flex flex-col min-w-0 pointer-events-none">
-                                  <span className="text-sm font-bold text-white/90 flex items-center gap-1.5">
-                                      {group.title} <ShieldAlert size={12} className="text-yellow-400" />
+                          <div key={group._id} onClick={() => setViewingGroup(group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between gap-2 shadow-sm">
+                              <div className="flex flex-col min-w-0 flex-1 pr-1 pointer-events-none">
+                                  <span className="text-sm font-bold text-white/90 flex items-center gap-1.5 truncate">
+                                      <span className="truncate">{group.title}</span> <ShieldAlert size={12} className="text-yellow-400 shrink-0" />
                                   </span>
                                   <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                                      <span className="text-[9.5px] font-medium text-white/60 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+                                      <span className="text-[9.5px] font-medium text-white/60 bg-white/5 px-1.5 py-0.5 rounded border border-white/10 whitespace-nowrap">
                                           {group.members.length} members
                                       </span>
-                                      <span className="text-[9.5px] font-bold text-sky-300 bg-sky-500/15 px-1.5 py-0.5 rounded border border-sky-400/25">
+                                      <span className="text-[9.5px] font-bold text-sky-300 bg-sky-500/15 px-1.5 py-0.5 rounded border border-sky-400/25 whitespace-nowrap">
                                           Ref: {globalFormatTime(getGroupStats(group).totalDuration)}
                                       </span>
-                                      <span className="text-[9.5px] font-bold text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-400/25">
+                                      <span className="text-[9.5px] font-bold text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-400/25 whitespace-nowrap">
                                           Done: {globalFormatTime(getGroupStats(group).myDone)}
                                       </span>
-                                      <span className="text-[9.5px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-400/25">
+                                      <span className="text-[9.5px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-400/25 whitespace-nowrap">
                                           Left: {globalFormatTime(getGroupStats(group).myTimeLeft)}
                                       </span>
                                   </div>
                               </div>
-                              <ArrowRight size={14} className="text-white/30 pointer-events-none" />
+                              <ArrowRight size={14} className="text-white/30 shrink-0 pointer-events-none" />
                           </div>
                       ))
                   )}
@@ -1140,25 +1140,25 @@ export default function ConnectGroupsTab() {
                       <EmptyJoinedGroupsState onSwitchToSearch={() => setActiveSubTab('search')} />
                   ) : (
                       joinedGroupsList.map(group => (
-                          <div key={group._id} onClick={() => setViewingGroup(group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between group-item shadow-sm">
-                              <div className="flex flex-col min-w-0 pointer-events-none">
+                          <div key={group._id} onClick={() => setViewingGroup(group)} className="bg-black/40 border border-white/10 p-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between gap-2 group-item shadow-sm">
+                              <div className="flex flex-col min-w-0 flex-1 pr-1 pointer-events-none">
                                   <span className="text-sm font-bold text-white/90 truncate">{group.title}</span>
                                   <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                                      <span className="text-[9.5px] font-medium text-white/60 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+                                      <span className="text-[9.5px] font-medium text-white/60 bg-white/5 px-1.5 py-0.5 rounded border border-white/10 whitespace-nowrap">
                                           {group.members.length} members
                                       </span>
-                                      <span className="text-[9.5px] font-bold text-sky-300 bg-sky-500/15 px-1.5 py-0.5 rounded border border-sky-400/25">
+                                      <span className="text-[9.5px] font-bold text-sky-300 bg-sky-500/15 px-1.5 py-0.5 rounded border border-sky-400/25 whitespace-nowrap">
                                           Ref: {globalFormatTime(getGroupStats(group).totalDuration)}
                                       </span>
-                                      <span className="text-[9.5px] font-bold text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-400/25">
+                                      <span className="text-[9.5px] font-bold text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-400/25 whitespace-nowrap">
                                           Done: {globalFormatTime(getGroupStats(group).myDone)}
                                       </span>
-                                      <span className="text-[9.5px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-400/25">
+                                      <span className="text-[9.5px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-400/25 whitespace-nowrap">
                                           Left: {globalFormatTime(getGroupStats(group).myTimeLeft)}
                                       </span>
                                   </div>
                               </div>
-                              <ArrowRight size={14} className="text-white/30 group-hover:text-white/70 pointer-events-none" />
+                              <ArrowRight size={14} className="text-white/30 group-hover:text-white/70 shrink-0 pointer-events-none" />
                           </div>
                       ))
                   )}
@@ -1219,7 +1219,7 @@ export default function ConnectGroupsTab() {
               ) : null}
             </>
         )}
-      </ScrollableWithArrows>
+      </div>
 
       <ConfirmationModal
         isOpen={confirmModal.isOpen}

@@ -22,6 +22,11 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
     const [activeGroupTab, setActiveGroupTab] = useState<number>(0);
     const [editingGroupIndex, setEditingGroupIndex] = useState<number | null>(null);
     const [tabNames, setTabNames] = useState<string[]>(group?.tabNames || ['Tab 1', 'Tab 2', 'Tab 3']);
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+    const draggedIndexRef = useRef<number | null>(null);
+    const filteredTasksRef = useRef<any[]>([]);
+    const currentTasksRef = useRef<any[]>([]);
 
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
@@ -37,6 +42,75 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
     const username = localStorage.getItem('dashboard_username');
     const myMemberInfo = members.find((m: any) => m.username === username);
     const canEdit = myMemberInfo?.role === 'admin' || myMemberInfo?.canEdit;
+
+    useEffect(() => {
+        draggedIndexRef.current = draggedIndex;
+    }, [draggedIndex]);
+
+    const reorderGroupTasks = (fromIndex: number, toIndex: number) => {
+        if (!canEdit) return;
+        const updatedTasks = [...tasks];
+        const [movedTask] = updatedTasks.splice(fromIndex, 1);
+        updatedTasks.splice(toIndex, 0, movedTask);
+
+        setTasks(updatedTasks);
+        const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, tasks: updatedTasks } : g);
+        setUserGroups(updatedGroups);
+        updateTasksInDB(updatedTasks);
+    };
+
+    useEffect(() => {
+        const handlePointerMove = (e: PointerEvent | TouchEvent) => {
+            if (draggedIndexRef.current === null || !canEdit) return;
+            const clientX = 'touches' in e ? e.touches[0]?.clientX : (e as PointerEvent).clientX;
+            const clientY = 'touches' in e ? e.touches[0]?.clientY : (e as PointerEvent).clientY;
+            if (clientX === undefined || clientY === undefined) return;
+
+            const el = document.elementFromPoint(clientX, clientY);
+            if (el) {
+                const taskEl = el.closest('[data-task-index]');
+                if (taskEl) {
+                    const targetIndex = parseInt(taskEl.getAttribute('data-task-index') || '', 10);
+                    if (!isNaN(targetIndex) && targetIndex !== draggedIndexRef.current) {
+                        const draggedTask = filteredTasksRef.current[draggedIndexRef.current];
+                        const targetTask = filteredTasksRef.current[targetIndex];
+                        if (draggedTask && targetTask) {
+                            const realDraggedIndex = currentTasksRef.current.findIndex(t => t.id === draggedTask.id);
+                            const realTargetIndex = currentTasksRef.current.findIndex(t => t.id === targetTask.id);
+                            if (realDraggedIndex !== -1 && realTargetIndex !== -1) {
+                                reorderGroupTasks(realDraggedIndex, realTargetIndex);
+                                draggedIndexRef.current = targetIndex;
+                                setDraggedIndex(targetIndex);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        const handlePointerUp = () => {
+            if (draggedIndexRef.current !== null) {
+                draggedIndexRef.current = null;
+                setDraggedIndex(null);
+            }
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('touchmove', handlePointerMove, { passive: false });
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        window.addEventListener('touchend', handlePointerUp);
+        window.addEventListener('touchcancel', handlePointerUp);
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('touchmove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+            window.removeEventListener('touchend', handlePointerUp);
+            window.removeEventListener('touchcancel', handlePointerUp);
+        };
+    }, [canEdit, tasks]);
 
     const getLocalDateString = () => {
         const d = new Date();
@@ -189,7 +263,7 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
 
     const groupFilteredTasks = tasks.filter(t => (t.groupId || 0) === activeGroupTab);
 
-    const filteredTasks = groupFilteredTasks.sort((a, b) => {
+    const filteredTasks = [...groupFilteredTasks].sort((a, b) => {
         if (a.id === activeTaskId && b.id !== activeTaskId) return -1;
         if (b.id === activeTaskId && a.id !== activeTaskId) return 1;
 
@@ -198,6 +272,9 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
         if (aDone === bDone) return 0;
         return aDone ? 1 : -1;
     });
+
+    filteredTasksRef.current = filteredTasks;
+    currentTasksRef.current = tasks;
 
     const totalRemainingMinutes = tasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + Math.max(0, (t.duration || 0) - (myCompletions[t.id]?.timeSpent || 0)), 0);
     const formatRemainingTime = (mins: number) => {
@@ -258,6 +335,13 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                         </div>
                     );
                 })}
+                <button
+                    onClick={() => setIsInfoOpen(true)}
+                    className="p-1 text-sky-300 hover:text-white hover:bg-white/10 rounded-md transition-colors shrink-0 self-center"
+                    title="Group Task Rules & Reset Info"
+                >
+                    <Info size={14} />
+                </button>
             </div>
 
             <ScrollableWithArrows className="p-1.5 max-h-[350px] ">
@@ -266,16 +350,56 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                         No tasks in this group.
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-1.5 ">
+                    <div
+                        className="flex flex-col gap-1.5 "
+                        onPointerDown={() => setDraggedIndex(null)}
+                        onPointerUp={() => setDraggedIndex(null)}
+                        onPointerCancel={() => setDraggedIndex(null)}
+                        onMouseLeave={() => setDraggedIndex(null)}
+                    >
                         {filteredTasks.map((task, index) => {
                             const isTaskDone = isTaskCompleted(task);
                             const timeSpent = myCompletions[task.id]?.timeSpent || 0;
                             return (
                                 <div
                                     key={task.id}
-                                    className={`group flex items-start justify-between p-1.5 rounded-lg border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} border-white/30 hover:border-white/50`}
+                                    data-task-index={index}
+                                    onPointerEnter={() => {
+                                        if (draggedIndex !== null && draggedIndex !== index && canEdit) {
+                                            const draggedTask = filteredTasks[draggedIndex];
+                                            const targetTask = filteredTasks[index];
+                                            if (draggedTask && targetTask) {
+                                                const realDraggedIndex = tasks.findIndex(t => t.id === draggedTask.id);
+                                                const realTargetIndex = tasks.findIndex(t => t.id === targetTask.id);
+                                                if (realDraggedIndex !== -1 && realTargetIndex !== -1) {
+                                                    reorderGroupTasks(realDraggedIndex, realTargetIndex);
+                                                    draggedIndexRef.current = index;
+                                                    setDraggedIndex(index);
+                                                }
+                                            }
+                                        }
+                                    }}
+                                    className={`group flex items-start justify-between p-1.5 rounded-lg border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/30 hover:border-white/50'}`}
                                 >
                                     <div className="flex items-start gap-1.5 flex-1 min-w-0 pl-1">
+                                        {canEdit && (
+                                            <div
+                                                className="flex flex-col items-center opacity-40 hover:opacity-100 transition-opacity justify-center mt-1.5 shrink-0 -ml-0.5 cursor-grab active:cursor-grabbing touch-none select-none p-1"
+                                                onPointerDown={(e) => {
+                                                    e.stopPropagation();
+                                                    draggedIndexRef.current = index;
+                                                    setDraggedIndex(index);
+                                                }}
+                                                onTouchStart={(e) => {
+                                                    e.stopPropagation();
+                                                    draggedIndexRef.current = index;
+                                                    setDraggedIndex(index);
+                                                }}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                                <svg className="w-3.5 h-3.5 text-white/50 hover:text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /></svg>
+                                            </div>
+                                        )}
                                         <div className="flex flex-col items-center justify-center gap-0.5 mt-0.5 shrink-0 px-0.5">
                                             <button onClick={() => handleToggleTask(task.id)} className="text-white/50 hover:text-white hover:scale-110 transition-all active:scale-95 flex items-center justify-center">
                                                 {isTaskDone ? (
@@ -518,6 +642,30 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                 title={confirmModal.title}
                 message={confirmModal.message}
                 isDestructive={confirmModal.isDestructive}
+            />
+
+            <ConfirmationModal
+                isOpen={isInfoOpen}
+                onClose={() => setIsInfoOpen(false)}
+                title={`Group Tasks Guide — ${group?.title || 'Group'}`}
+                message={
+                    <ScrollableWithArrows className="max-h-[60vh] pr-2 flex flex-col gap-4 text-sm mt-1">
+                        <div className="p-3 bg-purple-500/15 border border-purple-400/30 rounded-xl">
+                            <h4 className="font-bold text-purple-300 mb-1 text-base flex items-center gap-1.5">
+                                👥 How Group Tasks Work
+                            </h4>
+                            <ul className="list-disc list-inside space-y-1.5 text-white/90 text-[12px] leading-relaxed">
+                                <li><strong>🔄 Daily Automatic Reset:</strong> Group tasks automatically reset completion status every day at 00:00 local time, so all members start fresh together each morning.</li>
+                                <li><strong>🤝 Work Together:</strong> Track live completion status, remaining time, and completed focus duration for every task in real-time.</li>
+                                <li><strong>✨ Drag to Reorder:</strong> Admins can reorder tasks using the drag handle (⋮⋮) on the left of any task item.</li>
+                                <li><strong>➕ Add Friends:</strong> Invite friends to join your group or share your group invite reference to build a powerful productivity squad!</li>
+                            </ul>
+                        </div>
+                    </ScrollableWithArrows>
+                }
+                onConfirm={() => setIsInfoOpen(false)}
+                confirmText="Got it!"
+                hideCancel={true}
             />
         </div>
     );

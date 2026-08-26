@@ -261,51 +261,72 @@ export default function TaskManager() {
                 <div className="border-b border-white/5 bg-black/20 flex flex-col pt-3 pb-1 px-3 gap-1">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
-                            {userGroups && userGroups.length > 0 ? (
-                                <div className="relative group/groupselect mt-1">
-                                    <button
-                                        onClick={() => setIsGroupDropdownOpen(!isGroupDropdownOpen)}
-                                        className="flex items-center gap-1 text-[11px] sm:text-xs font-bold tracking-wider text-white bg-white/5 border border-white/20 hover:bg-white/10 px-2 py-1 rounded-md transition-colors outline-none cursor-pointer max-w-[150px]"
-                                    >
-                                        <span className="truncate">
-                                            {selectedGroupId ? userGroups.find(g => g._id === selectedGroupId)?.title : 'Personal Tasks'}
-                                        </span>
-                                        <ChevronDown size={14} className="opacity-70" />
-                                    </button>
+                            <div className="relative group/groupselect mt-1">
+                                <button
+                                    onClick={() => setIsGroupDropdownOpen(!isGroupDropdownOpen)}
+                                    className="flex items-center gap-1 text-[11px] sm:text-xs font-bold tracking-wider text-white bg-white/5 border border-white/20 hover:bg-white/10 px-2 py-1 rounded-md transition-colors outline-none cursor-pointer max-w-[160px]"
+                                >
+                                    <span className="truncate">
+                                        {selectedGroupId ? userGroups.find(g => g._id === selectedGroupId)?.title : 'Personal Tasks'}
+                                    </span>
+                                    <ChevronDown size={14} className="opacity-70 shrink-0" />
+                                </button>
 
-                                    {isGroupDropdownOpen && (
-                                        <>
-                                            <div
-                                                className="fixed inset-0 z-40"
-                                                onClick={() => setIsGroupDropdownOpen(false)}
-                                            />
-                                            <div className="absolute top-full left-0 mt-1 w-40 bg-[#0f0f13] border border-white/20 rounded-lg shadow-xl z-50 overflow-hidden flex flex-col max-h-48 overflow-y-auto">
+                                {isGroupDropdownOpen && (
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-40"
+                                            onClick={() => setIsGroupDropdownOpen(false)}
+                                        />
+                                        <div className="absolute top-full left-0 mt-1 w-44 bg-[#0f0f13] border border-white/20 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-60 overflow-y-auto p-1 backdrop-blur-xl">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedGroupId(null);
+                                                    setIsGroupDropdownOpen(false);
+                                                }}
+                                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold text-left transition-colors flex items-center justify-between ${!selectedGroupId ? 'bg-blue-500/20 text-blue-300' : 'text-white/80 hover:bg-white/10'}`}
+                                            >
+                                                <span>Personal Tasks</span>
+                                                {!selectedGroupId && <CheckCircle size={12} className="text-blue-400 shrink-0" />}
+                                            </button>
+
+                                            {userGroups && userGroups.length > 0 && (
+                                                <>
+                                                    <div className="px-2.5 py-1 mt-1 text-[8.5px] font-bold uppercase tracking-wider text-white/40 border-t border-white/10 pt-1.5">
+                                                        Your Groups
+                                                    </div>
+                                                    {userGroups.map(g => (
+                                                        <button
+                                                            key={g._id}
+                                                            onClick={() => {
+                                                                setSelectedGroupId(g._id);
+                                                                setIsGroupDropdownOpen(false);
+                                                            }}
+                                                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold text-left truncate transition-colors flex items-center justify-between ${selectedGroupId === g._id ? 'bg-blue-500/20 text-blue-300' : 'text-white/80 hover:bg-white/10'}`}
+                                                        >
+                                                            <span className="truncate">{g.title}</span>
+                                                            {selectedGroupId === g._id && <CheckCircle size={12} className="text-blue-400 shrink-0" />}
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            )}
+
+                                            <div className="border-t border-white/10 mt-1 pt-1">
                                                 <button
                                                     onClick={() => {
-                                                        setSelectedGroupId(null);
                                                         setIsGroupDropdownOpen(false);
+                                                        useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'groups' });
                                                     }}
-                                                    className={`px-3 py-2 text-xs font-bold text-left transition-colors ${!selectedGroupId ? 'bg-blue-500/20 text-blue-300' : 'text-white/80 hover:bg-white/10'}`}
+                                                    className="w-full px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-left text-purple-300 hover:bg-purple-500/20 hover:text-purple-200 transition-colors flex items-center gap-1.5"
                                                 >
-                                                    Personal Tasks
+                                                    <Plus size={13} className="text-purple-400 shrink-0" />
+                                                    <span>Create / Join Group</span>
                                                 </button>
-                                                {userGroups.map(g => (
-                                                    <button
-                                                        key={g._id}
-                                                        onClick={() => {
-                                                            setSelectedGroupId(g._id);
-                                                            setIsGroupDropdownOpen(false);
-                                                        }}
-                                                        className={`px-3 py-2 text-xs font-bold text-left truncate transition-colors ${selectedGroupId === g._id ? 'bg-blue-500/20 text-blue-300' : 'text-white/80 hover:bg-white/10'}`}
-                                                    >
-                                                        {g.title}
-                                                    </button>
-                                                ))}
                                             </div>
-                                        </>
-                                    )}
-                                </div>
-                            ) : ("")}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                             <button
                                 onClick={() => setIsInfoOpen(true)}
                                 className={`transition-colors rounded-full p-0.5 text-blue-300 hover:text-white hover:bg-white/10`}
@@ -765,21 +786,32 @@ export default function TaskManager() {
                 <ConfirmationModal
                     isOpen={isInfoOpen}
                     onClose={() => setIsInfoOpen(false)}
-                    title="Plan Your Day — Task Manager Guide"
+                    title="Plan Your Day — Task Manager & Group Tasks Guide"
                     message={
                         <ScrollableWithArrows className="max-h-[60vh] pr-2 flex flex-col gap-4 text-sm mt-1">
+                            <div className="p-3 bg-purple-500/15 border border-purple-400/30 rounded-xl">
+                                <h4 className="font-bold text-purple-300 mb-1 text-base flex items-center gap-1.5">
+                                    👥 Group Tasks & Friend Collaboration
+                                </h4>
+                                <ul className="list-disc list-inside space-y-1.5 text-white/90 text-[12px] leading-relaxed">
+                                    <li><strong>🔄 Daily Automatic Reset:</strong> Unlike personal tasks which remain active until completed, <strong>Group Tasks automatically reset completion progress every day at 00:00</strong> so group members start fresh together each day.</li>
+                                    <li><strong>🤝 Work Together with Friends:</strong> Join your friends' task groups or create your own group to share tasks. Everyone tracks each other's live daily progress, reference time, and done minutes.</li>
+                                    <li><strong>✨ Drag to Reorder:</strong> Group admins can reorder group tasks using the grip handle (⋮⋮) on the left of any task, updating the list in real-time for all group members.</li>
+                                    <li><strong>🚀 How to Get Started:</strong> Click the Task Dropdown at the top left of Task Manager and select <strong>+ Create / Join Group</strong> (or go to Connect &rarr; Groups) to build or join a group with friends!</li>
+                                </ul>
+                            </div>
+
                             <div>
-                                <h4 className="font-bold text-sky-400 mb-1 text-base">📅 Tabs, Drag Handles & Groups</h4>
-                                <ul className="list-disc list-inside mt-2 space-y-1 text-white/90">
+                                <h4 className="font-bold text-sky-400 mb-1 text-base">📅 Tabs, Drag Handles & Personal Tasks</h4>
+                                <ul className="list-disc list-inside mt-2 space-y-1 text-white/90 text-[12px]">
                                     <li><strong>Custom Tabs:</strong> Switch between tabs to organize tasks. <strong>Double-click any tab name</strong> to rename it!</li>
                                     <li><strong>Drag & Drop Reordering:</strong> Drag the grip handle (⋮⋮) on the left of any task to easily reorder your list.</li>
-                                    <li><strong>Cloud Groups Sync:</strong> Click the settings (⚙️) icon to switch from Personal tasks to any of your Cloud Groups. Shared tasks and durations sync in real-time for all group members!</li>
-                                    <li><strong>Move Tasks:</strong> Click the arrow button on a task to quickly swap it between tabs.</li>
+                                    <li><strong>Move Tasks:</strong> Click the arrow button on a task to quickly swap it between Today and Tomorrow.</li>
                                 </ul>
                             </div>
                             <div>
                                 <h4 className="font-bold text-emerald-400 mb-1 text-base">⏱️ Durations, Focus Timer & Editing</h4>
-                                <ul className="list-disc list-inside mt-2 space-y-1 text-white/90">
+                                <ul className="list-disc list-inside mt-2 space-y-1 text-white/90 text-[12px]">
                                     <li><strong>Start Task Timer:</strong> Click the play (▶) button next to any task to launch the Focus Timer specifically for that task.</li>
                                     <li><strong>Double-click Task Title:</strong> Instantly edit the task title inline.</li>
                                     <li><strong>Edit "m left" Badge:</strong> Double-click the remaining duration badge to change planned time.</li>
@@ -792,7 +824,7 @@ export default function TaskManager() {
                             </div>
                             <div>
                                 <h4 className="font-bold text-purple-400 mb-1 text-base flex items-center gap-1"><BellRing size={16} /> Task Interval Beep Alert</h4>
-                                <p className="mb-1 text-white/90">Click the bell (🔔) icon at the top of Task Manager to enable recurring interval alerts while running a task timer.</p>
+                                <p className="mb-1 text-white/90 text-[12px]">Click the bell (🔔) icon at the top of Task Manager to enable recurring interval alerts while running a task timer.</p>
                                 <p className="text-[11px] text-white/70">Configure your alert frequency and ring duration under <strong>Settings &rarr; Sound &rarr; Task Interval Alert</strong>.</p>
                             </div>
                         </ScrollableWithArrows>
