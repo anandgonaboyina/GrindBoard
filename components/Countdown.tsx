@@ -123,6 +123,13 @@ export default function Countdown({
               Target Countdowns
             </span>
           </div>
+          <button
+            onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
+            className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+            title="Hide Countdowns"
+          >
+            <X size={13} />
+          </button>
         </div>
 
         <div className="flex flex-col items-center justify-center p-3 text-center gap-2 bg-white/5 border border-white/10 rounded-xl my-1">
@@ -226,6 +233,15 @@ export default function Countdown({
               <Trash2 size={13} />
             </button>
           )}
+
+          {/* Hide/Close Button */}
+          <button
+            onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
+            className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+            title="Hide Countdowns"
+          >
+            <X size={13} />
+          </button>
         </div>
       </div>
 

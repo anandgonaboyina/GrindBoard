@@ -28,7 +28,7 @@ import NewsModal from "@/components/NewsModal";
 import ConnectionStatusToast from "@/components/ConnectionStatusToast";
 
 import { useEffect, useState, useRef } from "react";
-import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users, Hourglass } from "lucide-react";
 import { useDashboardStore, hasUnsavedChanges } from "@/store/dashboardStore";
 import { fetchQuote } from "@/utils/quoteEngine";
 
@@ -222,8 +222,11 @@ export default function Dashboard() {
   }, [_hasHydrated, showQuotePopup]);
 
   useEffect(() => {
-    // Auto-open Countdowns widget on every refresh / app load
-    useDashboardStore.getState().setIsMobileCountdownsVisible(true);
+    // Auto-open Countdowns widget on every refresh / app load if enabled in preferences
+    const autoOpen = useDashboardStore.getState().autoOpenCountdowns;
+    if (autoOpen) {
+      useDashboardStore.getState().setIsMobileCountdownsVisible(true);
+    }
     const token = localStorage.getItem('dashboard_sync_token');
     if (!token || token === 'null') {
       window.location.href = '/';
@@ -278,56 +281,29 @@ export default function Dashboard() {
           {/* Roadmap & Plans */}
           {(!isHidden || !hideConfig.plans) && showPlans && <RoadmapManager />}
 
-          {/* Top Center: Target Countdowns */}
+          {/* Bottom Left: Target Countdowns (Placed directly above Deadlines Modal) */}
           {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
             <div
-              style={{ zIndex: widgetZIndices.countdowns || 50 }}
-              className={`absolute top-[140px] md:top-36 left-1/2 -translate-x-1/2 scale-[0.85] md:scale-100 origin-top pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex justify-center ${!isMobileCountdownsVisible ? '-translate-y-[150%] opacity-0' : 'translate-y-0 opacity-100'}`}
+              style={{ zIndex: (widgetZIndices.countdowns || 50) + 8900 }}
+              className={`fixed left-3 sm:left-4 bottom-[65px] sm:bottom-[75px] pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${!isMobileCountdownsVisible ? '-translate-x-[150%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}
             >
-              <div
-                className="relative flex items-center justify-center group pointer-events-auto"
-                onTouchStart={(e) => {
-                  setTouchStartX(e.touches[0].clientX);
-                  setTouchStartY(e.touches[0].clientY);
-                }}
-                onTouchEnd={(e) => {
-                  if (touchStartX === null || touchStartY === null) return;
-                  const touchEndX = e.changedTouches[0].clientX;
-                  const touchEndY = e.changedTouches[0].clientY;
-                  const diffX = touchStartX - touchEndX;
-                  const diffY = touchStartY - touchEndY;
-
-                  // Hide if swiped UP significantly
-                  if (diffY > 50 && Math.abs(diffY) > Math.abs(diffX)) {
-                    useDashboardStore.getState().setIsMobileCountdownsVisible(false);
-                  } else if (diffX > 40) {
-                    setActiveCountdownIndex(p => Math.min(countdowns.length - 1, p + 1));
-                  } else if (diffX < -40) {
-                    setActiveCountdownIndex(p => Math.max(0, p - 1));
-                  }
-
-                  setTouchStartX(null);
-                  setTouchStartY(null);
-                }}
-              >
-                {countdowns.length > 0 ? (() => {
-                  const safeIndex = Math.min(activeCountdownIndex, Math.max(0, countdowns.length - 1));
-                  return (
-                    <Countdown
-                      key={countdowns[safeIndex].id}
-                      id={countdowns[safeIndex].id}
-                      hasPrev={safeIndex > 0}
-                      hasNext={safeIndex < countdowns.length - 1}
-                      onPrev={() => setActiveCountdownIndex(p => p - 1)}
-                      onNext={() => setActiveCountdownIndex(p => p + 1)}
-                      currentIndex={safeIndex}
-                      totalCount={countdowns.length}
-                    />
-                  );
-                })() : (
-                  <Countdown totalCount={0} />
-                )}
-              </div>
+              {countdowns.length > 0 ? (() => {
+                const safeIndex = Math.min(activeCountdownIndex, Math.max(0, countdowns.length - 1));
+                return (
+                  <Countdown
+                    key={countdowns[safeIndex].id}
+                    id={countdowns[safeIndex].id}
+                    hasPrev={safeIndex > 0}
+                    hasNext={safeIndex < countdowns.length - 1}
+                    onPrev={() => setActiveCountdownIndex(p => p - 1)}
+                    onNext={() => setActiveCountdownIndex(p => p + 1)}
+                    currentIndex={safeIndex}
+                    totalCount={countdowns.length}
+                  />
+                );
+              })() : (
+                <Countdown totalCount={0} />
+              )}
             </div>
           )}
 
@@ -368,6 +344,17 @@ export default function Dashboard() {
               >
                 <Users size={20} className="sm:w-6 sm:h-6" />
               </div>
+
+              {/* Edge Peek Tab for Target Countdowns */}
+              {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
+                <div
+                  className={`fixed left-0 top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'}`}
+                  onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(true)}
+                  title="Open Target Countdowns"
+                >
+                  <Hourglass size={20} className="sm:w-6 sm:h-6 text-indigo-400 animate-pulse" />
+                </div>
+              )}
 
               <div
                 className={`fixed top-[100px] left-0 h-auto max-h-[calc(100vh-140px)] w-auto max-w-[85vw] pb-4 pl-2 pr-0 sm:pl-4 flex flex-col transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] group pointer-events-auto select-none ${isCalendarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-[calc(100%+20px)] pointer-events-none'}`}

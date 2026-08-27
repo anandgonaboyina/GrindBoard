@@ -273,6 +273,8 @@ interface DashboardState {
   addCountdown: (title?: string, endDate?: string | null) => string;
   updateCountdown: (id: string, title: string, endDate: string | null) => void;
   deleteCountdown: (id: string) => void;
+  autoOpenCountdowns: boolean;
+  setAutoOpenCountdowns: (enabled: boolean) => void;
 
   // Deadlines
   deadlines: any[];
@@ -1408,9 +1410,9 @@ export const useDashboardStore = create<DashboardState>()(
       setDockOffset: (offset) => set({ dockOffset: offset }),
 
       // Countdowns
-      countdowns: [
-        { id: '1', title: 'Target 1', endDate: null },
-      ],
+      countdowns: [],
+      autoOpenCountdowns: true,
+      setAutoOpenCountdowns: (enabled) => set({ autoOpenCountdowns: enabled }),
       addCountdown: (title = 'New Target', endDate = null) => {
         let newId = '';
         set((state) => {
