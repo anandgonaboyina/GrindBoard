@@ -533,148 +533,180 @@ export default function ConnectGroupsTab() {
   };
 
   if (viewingGroup) {
+    const isAdmin = viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin';
+    const isMember = viewingGroup.members.some((m: any) => m.isMe);
+
     return (
       <div className="flex flex-col w-full animate-in fade-in slide-in-from-right-2">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3 bg-white/5 p-2.5 sm:p-3 rounded-xl border border-white/10 shadow-sm">
-          <div className="flex items-start sm:items-center gap-2 min-w-0 flex-1">
-            <button
-              onClick={() => setViewingGroup(null)}
-              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors shrink-0 text-white/70 hover:text-white mt-0.5 sm:mt-0"
-              title="Back to groups"
-            >
-              <ArrowLeft size={16} />
-            </button>
-            <div className="flex flex-col min-w-0 flex-1">
-              {editingGroupId === viewingGroup._id ? (
-                <form onSubmit={handleUpdateGroupInfo} className="flex flex-col gap-1 w-full">
-                  <input
-                    autoFocus
-                    value={editGroupTitle}
-                    onChange={e => setEditGroupTitle(e.target.value)}
-                    className="bg-black/40 border border-white/20 rounded px-1.5 py-0.5 text-xs sm:text-sm font-bold text-white outline-none focus:border-blue-500 w-full"
-                  />
-                  <input
-                    value={editGroupDesc}
-                    onChange={e => setEditGroupDesc(e.target.value)}
-                    className="bg-black/40 border border-white/20 rounded px-1.5 py-0.5 text-[9px] sm:text-[10px] text-white outline-none focus:border-blue-500 w-full"
-                  />
-                  <label className="flex items-center gap-1.5 mt-1 cursor-pointer w-fit">
-                    <input
-                      type="checkbox"
-                      checked={editGroupIsPrivate}
-                      onChange={e => setEditGroupIsPrivate(e.target.checked)}
-                      className="accent-blue-500"
-                    />
-                    <span className="text-[9px] sm:text-[10px] text-white/70">Private Group (Hide tasks from non-members)</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 mt-1 cursor-pointer w-fit">
-                    <input
-                      type="checkbox"
-                      checked={editGroupAllowRequests}
-                      onChange={e => setEditGroupAllowRequests(e.target.checked)}
-                      className="accent-blue-500"
-                    />
-                    <span className="text-[9px] sm:text-[10px] text-white/70">Allow Join Requests</span>
-                  </label>
-                  <div className="flex gap-1 mt-1">
-                    <button type="submit" className="px-2 py-0.5 bg-blue-500 text-white text-[9px] rounded font-bold">Save</button>
-                    <button type="button" onClick={() => setEditingGroupId(null)} className="px-2 py-0.5 bg-white/10 text-white text-[9px] rounded font-bold">Cancel</button>
-                  </div>
-                </form>
-              ) : (
-                <div
-                  onDoubleClick={() => {
-                    if (viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin') {
+        {/* Slim & Compact Group Header Card */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-blue-950/50 via-slate-900/70 to-purple-950/50 p-2 sm:p-2.5 rounded-xl border border-white/15 shadow-sm mb-2.5 backdrop-blur-md">
+          {/* Ambient Decorative Glow */}
+          <div className="absolute -top-10 -right-10 w-24 h-24 bg-blue-500/10 rounded-full blur-xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col gap-1.5 w-full">
+            {/* Top Bar: Back Button + Group Title + Status Badges + Action Buttons */}
+            <div className="flex items-center justify-between gap-2 w-full flex-wrap">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
+                <button
+                  onClick={() => setViewingGroup(null)}
+                  className="p-1 sm:px-2 sm:py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors text-[10.5px] font-semibold border border-white/10 shrink-0 flex items-center gap-1"
+                  title="Back to groups"
+                >
+                  <ArrowLeft size={13} />
+                  <span className="hidden sm:inline">Back</span>
+                </button>
+
+                <h3 className="font-bold text-white text-xs sm:text-sm md:text-base tracking-tight truncate max-w-[180px] sm:max-w-xs md:max-w-md">
+                  {viewingGroup.title}
+                </h3>
+
+                {/* Status Badges */}
+                <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isAdmin) {
+                        handleToggleGroupPrivacy(viewingGroup._id, viewingGroup.isPrivate);
+                      }
+                    }}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-colors ${isAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${viewingGroup.isPrivate ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}
+                    title={isAdmin ? "Click to toggle privacy" : "Privacy status"}
+                  >
+                    {viewingGroup.isPrivate ? <><ShieldAlert size={8} /> Private</> : <><Check size={8} /> Public</>}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isAdmin) {
+                        const currentStatus = viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true;
+                        handleToggleGroupRequests(viewingGroup._id, currentStatus);
+                      }
+                    }}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-colors ${isAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'}`}
+                    title={isAdmin ? "Click to toggle join requests" : "Join requests status"}
+                  >
+                    {(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? <><Check size={8} /> Requests Allowed</> : <><ShieldAlert size={8} /> Requests Blocked</>}
+                  </button>
+
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
+                    <Users size={8} /> {viewingGroup.members?.length || 0}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                {isAdmin && (
+                  <button
+                    onClick={() => {
                       setEditGroupTitle(viewingGroup.title);
                       setEditGroupDesc(viewingGroup.description || '');
                       setEditGroupIsPrivate(viewingGroup.isPrivate || false);
                       setEditGroupAllowRequests(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true);
                       setEditingGroupId(viewingGroup._id);
-                    }
-                  }}
-                  className={`flex flex-col min-w-0 gap-1 ${viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "cursor-text" : ""}`}
-                  title={viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "Double click to edit title & description" : ""}
-                >
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <h3 className="font-bold truncate text-white/90 text-xs sm:text-sm md:text-base">{viewingGroup.title}</h3>
-                    <div className="flex items-center gap-1 shrink-0 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin') {
-                            handleToggleGroupPrivacy(viewingGroup._id, viewingGroup.isPrivate);
-                          }
-                        }}
-                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shadow-sm transition-colors ${viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${viewingGroup.isPrivate ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}
-                        title={viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "Click to toggle privacy" : "Privacy status"}
-                      >
-                        {viewingGroup.isPrivate ? <><ShieldAlert size={8} /> Private</> : <><Check size={8} /> Public</>}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin') {
-                            const currentStatus = viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true;
-                            handleToggleGroupRequests(viewingGroup._id, currentStatus);
-                          }
-                        }}
-                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shadow-sm transition-colors ${viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'}`}
-                        title={viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' ? "Click to toggle join requests" : "Join requests status"}
-                      >
-                        {(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? <><Check size={8} /> Requests Allowed</> : <><ShieldAlert size={8} /> Requests Blocked</>}
-                      </button>
-                    </div>
-                  </div>
-                  {viewingGroup.description && (
-                    <p className="text-[9.5px] sm:text-[10px] text-white/50 whitespace-normal leading-snug">
-                      {viewingGroup.description}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+                    }}
+                    className="px-2 py-0.5 flex items-center gap-1 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-white transition-colors cursor-pointer text-[10px] font-bold uppercase tracking-wider border border-blue-500/30 shadow-sm"
+                    title="Edit Group Settings"
+                  >
+                    <Settings size={10} />
+                    <span>Edit</span>
+                  </button>
+                )}
 
-          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-            {viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' && (
-              <button
-                onClick={() => {
-                  setEditGroupTitle(viewingGroup.title);
-                  setEditGroupDesc(viewingGroup.description || '');
-                  setEditGroupIsPrivate(viewingGroup.isPrivate || false);
-                  setEditGroupAllowRequests(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true);
-                  setEditingGroupId(viewingGroup._id);
+                {!isMember && (
+                  (viewingGroup.isPrivate && viewingGroup.allowJoinRequests === false) ? (
+                    <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold rounded-md border border-red-500/30 whitespace-nowrap">
+                      Blocked
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleJoinRequest(viewingGroup._id)}
+                      disabled={sentRequests.some(r => String(r.groupId) === String(viewingGroup._id))}
+                      className="px-2.5 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold rounded-md transition-colors disabled:opacity-50 whitespace-nowrap shadow-sm"
+                    >
+                      {sentRequests.some(r => String(r.groupId) === String(viewingGroup._id)) ? 'Pending' : viewingGroup.isPrivate ? 'Request' : 'Join'}
+                    </button>
+                  )
+                )}
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteGroup(viewingGroup._id, viewingGroup.title)}
+                    className="px-2 py-0.5 text-[10px] font-bold bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-md transition-colors cursor-pointer border border-red-500/30"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Editing Form or Description Strip */}
+            {editingGroupId === viewingGroup._id ? (
+              <form onSubmit={handleUpdateGroupInfo} className="flex flex-col gap-1.5 bg-black/40 p-2 rounded-lg border border-white/10 mt-0.5 w-full">
+                <div className="flex flex-col gap-0.5 w-full">
+                  <label className="text-[9px] text-white/50 font-bold uppercase">Group Title</label>
+                  <input
+                    autoFocus
+                    value={editGroupTitle}
+                    onChange={e => setEditGroupTitle(e.target.value)}
+                    className="bg-black/60 border border-white/20 rounded px-2 py-1 text-xs font-bold text-white outline-none focus:border-blue-500 w-full"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5 w-full">
+                  <label className="text-[9px] text-white/50 font-bold uppercase">Group Description</label>
+                  <textarea
+                    rows={2}
+                    value={editGroupDesc}
+                    onChange={e => setEditGroupDesc(e.target.value)}
+                    placeholder="Enter group description..."
+                    className="bg-black/60 border border-white/20 rounded px-2 py-1 text-[10.5px] text-white outline-none focus:border-blue-500 w-full resize-none"
+                  />
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editGroupIsPrivate}
+                      onChange={e => setEditGroupIsPrivate(e.target.checked)}
+                      className="accent-blue-500 w-3 h-3"
+                    />
+                    <span className="text-[10px] text-white/80">Private</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editGroupAllowRequests}
+                      onChange={e => setEditGroupAllowRequests(e.target.checked)}
+                      className="accent-blue-500 w-3 h-3"
+                    />
+                    <span className="text-[10px] text-white/80">Allow Requests</span>
+                  </label>
+                </div>
+                <div className="flex gap-1.5 mt-1">
+                  <button type="submit" className="px-2.5 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] rounded font-bold">Save</button>
+                  <button type="button" onClick={() => setEditingGroupId(null)} className="px-2.5 py-0.5 bg-white/10 hover:bg-white/20 text-white text-[10px] rounded font-bold">Cancel</button>
+                </div>
+              </form>
+            ) : viewingGroup.description && (
+              <div
+                onDoubleClick={() => {
+                  if (isAdmin) {
+                    setEditGroupTitle(viewingGroup.title);
+                    setEditGroupDesc(viewingGroup.description || '');
+                    setEditGroupIsPrivate(viewingGroup.isPrivate || false);
+                    setEditGroupAllowRequests(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true);
+                    setEditingGroupId(viewingGroup._id);
+                  }
                 }}
-                className="px-2 py-1 flex items-center gap-1 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-sm border border-white/10"
-                title="Group Settings"
+                className={`w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-1 ${isAdmin ? 'cursor-text' : ''}`}
+                title={isAdmin ? "Double click to edit" : ""}
               >
-                <Settings size={12} />
-                <span>Settings</span>
-              </button>
-            )}
-            {!viewingGroup.members.find((m: any) => m.isMe) && (
-              (viewingGroup.isPrivate && viewingGroup.allowJoinRequests === false) ? (
-                <span className="p-1.5 px-2.5 bg-red-500/20 text-red-400 text-[9px] sm:text-[10px] font-bold rounded-lg border border-red-500/30 whitespace-nowrap">
-                  Requests Not Allowed
-                </span>
-              ) : (
-                <button
-                  onClick={() => handleJoinRequest(viewingGroup._id)}
-                  disabled={sentRequests.some(r => String(r.groupId) === String(viewingGroup._id))}
-                  className="p-1.5 px-3 bg-blue-500 hover:bg-blue-600 text-white text-[9px] sm:text-[10px] font-bold rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
-                >
-                  {sentRequests.some(r => String(r.groupId) === String(viewingGroup._id)) ? 'Pending' : viewingGroup.isPrivate ? 'Request' : 'Join'}
-                </button>
-              )
-            )}
-            {viewingGroup.members.find((m: any) => m.isMe)?.role === 'admin' && (
-              <button
-                type="button"
-                onClick={() => handleDeleteGroup(viewingGroup._id, viewingGroup.title)}
-                className="px-2 py-1 text-[9px] sm:text-[10px] font-bold bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-colors cursor-pointer border border-red-500/20"
-              >
-                Delete
-              </button>
+                <p className="text-[10.5px] sm:text-xs text-white/80 leading-snug break-words">
+                  {viewingGroup.description}
+                </p>
+              </div>
             )}
           </div>
         </div>

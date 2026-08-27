@@ -17,7 +17,7 @@ import DraggableClock from "@/components/DraggableClock";
 import DraggableWidget from "@/components/DraggableWidget";
 import SettingsModal from "@/components/SettingsModal";
 import RightToolbar from "@/components/RightToolbar";
-import DeadlineAlerts from "@/components/DeadlineAlerts";
+import DeadlineTickerWidget from "@/components/DeadlineTickerWidget";
 import StartupUpdateChecker from "@/components/StartupUpdateChecker";
 import FriendRequestPopup from "@/components/FriendRequestPopup";
 import GroupRequestPopup from "@/components/GroupRequestPopup";
@@ -25,6 +25,7 @@ import GlobalBroadcastPopup from "@/components/GlobalBroadcastPopup";
 import VideoBackground from "@/components/VideoBackground";
 import LoadingScreen from "@/components/LoadingScreen";
 import NewsModal from "@/components/NewsModal";
+import ConnectionStatusToast from "@/components/ConnectionStatusToast";
 
 import { useEffect, useState, useRef } from "react";
 import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users } from "lucide-react";
@@ -47,6 +48,11 @@ export default function Dashboard() {
 
   const hideConfig = isMobile ? mobileHideConfig : baseHideConfig;
   const _hasHydrated = useDashboardStore((state) => state._hasHydrated);
+  const dashboardScale = useDashboardStore((state) => state.dashboardScale || 1);
+  const mobileDashboardScale = useDashboardStore((state) => state.mobileDashboardScale || 1);
+  const activeDashboardScale = isMobile ? mobileDashboardScale : dashboardScale;
+  const dockScale = useDashboardStore((state) => state.dockScale || 1);
+  const dockOffset = useDashboardStore((state) => state.dockOffset || 0);
 
   const toggleHide = useDashboardStore((state) => state.toggleHide);
   const currentBgType = useDashboardStore((state) => state.currentBgType);
@@ -233,11 +239,14 @@ export default function Dashboard() {
   const bottomRightZ = Math.max(tasksZ, stopwatchZ, timerZ, toolbarZ);
 
   return (
-    <main className="relative overflow-hidden w-full flex-1">
+    <main className="relative overflow-hidden w-full flex-1" style={{ zoom: activeDashboardScale }}>
+      <ConnectionStatusToast />
 
       <VideoBackground />
 
-      {(!isHidden || !hideConfig.deadlineAlerts) && showDeadlineAlerts && <DeadlineAlerts />}
+      {(!isHidden || !hideConfig.deadlineAlerts) && showDeadlineAlerts && (
+        <DeadlineTickerWidget />
+      )}
 
       {/* Background Switcher */}
       {!isPanicHidden && (!isHidden || !hideConfig.bgSwitcher) && showBgSwitcher && (
@@ -464,8 +473,11 @@ export default function Dashboard() {
           {/* Bottom Center (Above Dock): Timetable */}
           {(!isHidden || !hideConfig.timetable) && showTimetable && (
             <div
-              style={{ zIndex: widgetZIndices.timetable || 50 }}
-              className="absolute bottom-24  w-[calc(100vw)] md:bottom-40 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-auto flex flex-col items-center scale-[0.9] md:scale-100 origin-bottom pointer-events-none"
+              style={{
+                zIndex: widgetZIndices.timetable || 50,
+                bottom: isMobile ? `${96 + dockOffset}px` : `${160 + dockOffset}px`
+              }}
+              className="absolute left-1/2 -translate-x-1/2 w-[calc(100vw)] md:w-auto flex flex-col items-center scale-[0.9] md:scale-100 origin-bottom pointer-events-none transition-all duration-300"
             >
               {/* The Expanded Timetable */}
               <div
@@ -498,7 +510,14 @@ export default function Dashboard() {
 
           {/* Bottom Center: Dock */}
           {(!isHidden || !hideConfig.dock) && showDock && (
-            <div className="absolute bottom-2 md:bottom-18 left-1/2 -translate-x-1/2 z-50 scale-[0.85] md:scale-100 origin-bottom">
+            <div
+              style={{
+                bottom: isMobile ? `${8 + dockOffset}px` : `${72 + dockOffset}px`,
+                transform: `translateX(-50%) scale(${dockScale * (isMobile ? 0.85 : 1)})`,
+                transformOrigin: 'bottom center',
+              }}
+              className="absolute left-1/2 z-50 transition-all duration-300"
+            >
               <Dock onOpenNotes={() => console.log('Open Notes clicked')} />
             </div>
           )}

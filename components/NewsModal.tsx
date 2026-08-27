@@ -28,32 +28,40 @@ export default function NewsModal() {
 
         let readIds: string[] = [];
         if (token && username) {
-          const userRes = await fetch('/api/users', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            const me = userData.users?.find((u: any) => u.username === username);
-            readIds = me?.readNewsIds || [];
-            if (me?.isAdmin === true || me?.isAdmin === 'true') {
-              setIsAdmin(true);
+          try {
+            const userRes = await fetch('/api/users', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              const me = userData.users?.find((u: any) => u.username === username);
+              readIds = me?.readNewsIds || [];
+              if (me?.isAdmin === true || me?.isAdmin === 'true') {
+                setIsAdmin(true);
+              }
             }
+          } catch (err) {
+            console.warn('Unable to fetch user data for news:', err);
           }
         }
 
-        const newsRes = await fetch('/api/news');
-        if (newsRes.ok) {
-          const newsData = await newsRes.json();
-          if (newsData.news) {
-            const now = Date.now();
-            const broadcasted = newsData.news.filter((n: NewsPost) => new Date(n.broadcastDate).getTime() <= now);
-            const unread = broadcasted.filter((n: NewsPost) => n._id && !readIds.includes(n._id));
+        try {
+          const newsRes = await fetch('/api/news');
+          if (newsRes.ok) {
+            const newsData = await newsRes.json();
+            if (newsData.news) {
+              const now = Date.now();
+              const broadcasted = newsData.news.filter((n: NewsPost) => new Date(n.broadcastDate).getTime() <= now);
+              const unread = broadcasted.filter((n: NewsPost) => n._id && !readIds.includes(n._id));
 
-            setNews(broadcasted);
-            setUnreadIds(unread.map((n: NewsPost) => n._id!));
-            setHasUnreadNews(unread.length > 0);
-            syncNewsMediaCache(broadcasted);
+              setNews(broadcasted);
+              setUnreadIds(unread.map((n: NewsPost) => n._id!));
+              setHasUnreadNews(unread.length > 0);
+              syncNewsMediaCache(broadcasted);
+            }
           }
+        } catch (err) {
+          console.warn('Unable to fetch news feed:', err);
         }
       } catch (e) {
         console.error(e);

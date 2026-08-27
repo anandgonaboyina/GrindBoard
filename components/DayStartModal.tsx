@@ -52,13 +52,29 @@ export default function DayStartModal() {
   useEffect(() => {
     if (hasPrompted || !_hasHydrated) return;
 
-    if (!todayTimes.wakeupTime) {
+    let hasWakeupLogged = !!todayTimes.wakeupTime;
+    if (!hasWakeupLogged && typeof window !== 'undefined') {
+      try {
+        const rawLocal = localStorage.getItem('dashboard-storage');
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          const cachedToday = parsed?.state?.dailyTimes?.[today];
+          if (cachedToday?.wakeupTime) {
+            hasWakeupLogged = true;
+          }
+        }
+      } catch (e) {
+        // ignore fallback parse error
+      }
+    }
+
+    if (!hasWakeupLogged) {
       if (!isDayStartModalOpen) {
         useDashboardStore.setState({ isDayStartModalOpen: true });
       }
     }
     setHasPrompted(true);
-  }, [hasPrompted, _hasHydrated, todayTimes.wakeupTime, isDayStartModalOpen]);
+  }, [hasPrompted, _hasHydrated, todayTimes.wakeupTime, isDayStartModalOpen, today]);
 
   // Load fresh inspirational/fire-burning quote online (API first with keyword filter, local fallback if offline)
   useEffect(() => {

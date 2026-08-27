@@ -33,10 +33,13 @@ export default function Stopwatch() {
   const resolvedAlarmUrl = useAudioUrl(alarmSound);
   const stopwatchAlertedChunksRef = useRef<number>(0);
   const lastTickTimeRef = useRef<number>(Date.now());
+  const systemWakeTimeRef = useRef<number>(0);
+  const isSettingsOpen = useDashboardStore((state) => state.isSettingsOpen);
 
   // Window Focus / Visibility Change Cleanup: Ensure no stray audio plays when laptop wakes up from sleep
   useEffect(() => {
     const handleSleepWakeCleanup = () => {
+      systemWakeTimeRef.current = Date.now();
       const isAlarm = useDashboardStore.getState().isAlarmPlaying;
       if (!isAlarm) {
         if (intervalAudioRef.current) {
@@ -55,6 +58,16 @@ export default function Stopwatch() {
       };
     }
   }, []);
+
+  // Forcibly stop audio when settings modal is opened
+  useEffect(() => {
+    if (isSettingsOpen) {
+      if (intervalAudioRef.current) {
+        intervalAudioRef.current.pause();
+        intervalAudioRef.current.currentTime = 0;
+      }
+    }
+  }, [isSettingsOpen]);
 
   const updateInteraction = () => {
     if (typeof window !== 'undefined') {
@@ -111,6 +124,7 @@ export default function Stopwatch() {
         const gap = now - (lastTickTimeRef.current || now);
         lastTickTimeRef.current = now;
         const wasSleeping = gap > 8000;
+        const systemJustWoke = wasSleeping || (systemWakeTimeRef.current > 0 && now - systemWakeTimeRef.current < 5000);
 
         const stored = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_last_active') : null;
         const lastActive = stored ? parseInt(stored) : now;
@@ -119,7 +133,7 @@ export default function Stopwatch() {
 
         if (timeSinceActive >= 7200 && isOwner) {
           setIsRunning(false);
-          if (!wasSleeping && now - (lastActive + 7200000) < 120000) {
+          if (!systemJustWoke && now - (lastActive + 7200000) < 120000) {
             useDashboardStore.getState().setIsAlarmPlaying(true);
           }
           useDashboardStore.setState({ isStopwatchOpen: true });
@@ -139,8 +153,8 @@ export default function Stopwatch() {
         const currentElapsed = Math.max(0, Math.floor((now - stopwatchStartTime) / 1000));
         setElapsedSecs(currentElapsed);
 
-        if (wasSleeping) {
-          // If system slept, sync interval alerted chunks without ringing audio
+        if (systemJustWoke) {
+          // If system slept or just woke up, sync interval alerted chunks without ringing audio
           if (isStopwatchIntervalEnabled && stopwatchIntervalMins > 0) {
             const alertIntervalSecs = stopwatchIntervalMins * 60;
             stopwatchAlertedChunksRef.current = Math.floor(currentElapsed / alertIntervalSecs);

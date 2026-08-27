@@ -218,12 +218,21 @@ export default function Timer() {
 
   // Track last tick timestamp to detect laptop sleep/wake execution gaps
   const lastTickTimeRef = useRef<number>(Date.now());
+  const systemWakeTimeRef = useRef<number>(0);
+  const isSettingsOpen = useDashboardStore((state) => state.isSettingsOpen);
 
   // Window Focus / Visibility Change Cleanup: Ensure no stray audio plays when laptop wakes up from sleep
   useEffect(() => {
     const handleSleepWakeCleanup = () => {
-      const isAlarm = useDashboardStore.getState().isAlarmPlaying;
-      if (!isAlarm) {
+      systemWakeTimeRef.current = Date.now();
+      const storeState = useDashboardStore.getState();
+      const isAlarm = storeState.isAlarmPlaying;
+      
+      // Stop audio if not an active alarm or if timer is overdue / finished during sleep
+      if (!isAlarm || (storeState.timerEndAt && Date.now() - storeState.timerEndAt > 15000)) {
+        if (isAlarm) {
+          storeState.setIsAlarmPlaying(false);
+        }
         if (audioRef.current) {
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
@@ -245,17 +254,36 @@ export default function Timer() {
     }
   }, []);
 
+  // Forcibly stop audio when settings modal is opened
+  useEffect(() => {
+    if (isSettingsOpen) {
+      if (useDashboardStore.getState().isAlarmPlaying) {
+        useDashboardStore.getState().setIsAlarmPlaying(false);
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      if (intervalAudioRef.current) {
+        intervalAudioRef.current.pause();
+        intervalAudioRef.current.currentTime = 0;
+      }
+    }
+  }, [isSettingsOpen]);
+
   // Main tick interval
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
     if (timerEndAt) {
-      lastTickTimeRef.current = Date.now();
+      if (!lastTickTimeRef.current || Math.abs(Date.now() - lastTickTimeRef.current) > 30000) {
+        lastTickTimeRef.current = Date.now();
+      }
       interval = setInterval(() => {
         const now = Date.now();
         const gap = now - (lastTickTimeRef.current || now);
         lastTickTimeRef.current = now;
-        const wasSleeping = gap > 8000; // Gap > 8 seconds means system slept / suspended!
+        const wasSleeping = gap > 8000 || (systemWakeTimeRef.current > 0 && now - systemWakeTimeRef.current < 5000); // Gap > 8 seconds or recent wake event
 
         const remaining = Math.floor((timerEndAt - now) / 1000);
         const isOwner = timerDeviceId === getDeviceId();
@@ -404,8 +432,11 @@ export default function Timer() {
           setIsIntervalRinging(false);
           isIntervalRingingRef.current = false;
 
-          // Only trigger alarm if system was active and NOT sleeping when timer expired
-          if (isOwner && !wasSleeping && now - timerEndAt < 120000) {
+          const isOverdue = now - timerEndAt > 15000; // Timer expired > 15s ago
+          const systemJustWoke = wasSleeping || (systemWakeTimeRef.current > 0 && now - systemWakeTimeRef.current < 10000);
+
+          // Only trigger alarm if system was active and NOT sleeping / overdue when timer expired
+          if (isOwner && !systemJustWoke && !isOverdue) {
             playAlarm();
           }
 

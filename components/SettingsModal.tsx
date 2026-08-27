@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2 } from 'lucide-react';
+import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
 import ScrollableWithArrows from './ScrollableWithArrows';
@@ -79,9 +79,10 @@ const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, aspec
 };
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, dashboardScale, setDashboardScale, mobileDashboardScale, setMobileDashboardScale, dockScale, setDockScale, dockOffset, setDockOffset, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs } = useDashboardStore();
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
+  const [showThemeNotice, setShowThemeNotice] = useState(false);
 
   // Mobile specific drill-down state
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
@@ -974,27 +975,55 @@ export default function SettingsModal() {
 
                   <div className="flex flex-col gap-1.5 md:gap-2">
                     {/* Theme Toggle */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                          <Layout className="text-purple-400 w-4 h-4" />
+                    <div className="flex flex-col p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                            <Layout className="text-purple-400 w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 pr-2">
+                            <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Dashboard Theme</h4>
+                            <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Dark Mode active. Light & Auto themes coming in a future update.</p>
+                          </div>
                         </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Dashboard Theme</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Auto switches based on day time (6 AM to 6 PM is light).</p>
-                        </div>
-                      </div>
-                      <div className="flex bg-black/40 border border-white/10 rounded-lg p-0.5 self-end sm:self-auto shrink-0">
-                        {(['dark', 'auto', 'light'] as const).map(t => (
+
+                        <div className="flex bg-black/40 border border-white/10 rounded-lg p-0.5 self-end sm:self-auto shrink-0">
                           <button
-                            key={t}
-                            onClick={() => setTheme(t)}
-                            className={`px-3 py-1 text-[10px] md:text-xs font-medium rounded-md capitalize transition-all ${theme === t ? 'bg-purple-500 text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                            onClick={() => setTheme('dark')}
+                            className="px-3 py-1 text-[10px] md:text-xs font-bold rounded-md capitalize transition-all bg-purple-500 text-white shadow-md"
                           >
-                            {t}
+                            Dark
                           </button>
-                        ))}
+                          <button
+                            onClick={() => setShowThemeNotice(true)}
+                            className="px-2.5 py-1 text-[10px] md:text-xs font-medium rounded-md capitalize text-white/40 hover:text-amber-300 hover:bg-amber-500/10 transition-all flex items-center gap-1 cursor-pointer"
+                            title="Light & Auto themes coming soon"
+                          >
+                            <span>Auto</span>
+                            <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">Soon</span>
+                          </button>
+                          <button
+                            onClick={() => setShowThemeNotice(true)}
+                            className="px-2.5 py-1 text-[10px] md:text-xs font-medium rounded-md capitalize text-white/40 hover:text-amber-300 hover:bg-amber-500/10 transition-all flex items-center gap-1 cursor-pointer"
+                            title="Light & Auto themes coming soon"
+                          >
+                            <span>Light</span>
+                            <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">Soon</span>
+                          </button>
+                        </div>
                       </div>
+
+                      {showThemeNotice && (
+                        <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[10px] md:text-xs text-amber-200 flex items-center justify-between gap-2 animate-in fade-in">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span className="truncate">Light & Auto themes will be available in a future update! Dark Mode is optimized.</span>
+                          </div>
+                          <button onClick={() => setShowThemeNotice(false)} className="p-0.5 text-amber-300 hover:text-white rounded shrink-0">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Toggle 24-hour clock */}
@@ -1040,6 +1069,158 @@ export default function SettingsModal() {
                           className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
                         />
                         <span className="text-[9px] md:text-[10px] text-white/40">150%</span>
+                      </div>
+                    </div>
+
+                    {/* Desktop UI Scale */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                          <Monitor className="text-emerald-400 w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 pr-2">
+                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Desktop UI Scale</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Scale layout for desktop & large displays.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
+                        {/* Preset Quick Scale Pills */}
+                        <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
+                          {[0.75, 1.0, 1.25].map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setDashboardScale(s)}
+                              className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((dashboardScale || 1) - s) < 0.01 ? 'bg-emerald-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
+                            >
+                              {Math.round(s * 100)}%
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Precise Stepper (- / + step controls & percentage input) */}
+                        <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
+                          <button
+                            onClick={() => setDashboardScale(Math.max(0.5, Math.round(((dashboardScale || 1) - 0.05) * 100) / 100))}
+                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                            title="Decrease (-5%)"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+
+                          <div className="flex items-center font-mono text-[10px] md:text-xs text-emerald-300 font-bold px-0.5">
+                            <input
+                              type="number"
+                              min="50"
+                              max="150"
+                              step="1"
+                              value={Math.round((dashboardScale || 1) * 100)}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val)) {
+                                  setDashboardScale(Math.min(1.5, Math.max(0.5, val / 100)));
+                                }
+                              }}
+                              className="w-7 bg-transparent text-center text-emerald-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <span className="text-[9px] text-emerald-400/80">%</span>
+                          </div>
+
+                          <button
+                            onClick={() => setDashboardScale(Math.min(1.5, Math.round(((dashboardScale || 1) + 0.05) * 100) / 100))}
+                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                            title="Increase (+5%)"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Reset button if scale is not 100% */}
+                        {Math.abs((dashboardScale || 1) - 1.0) >= 0.01 && (
+                          <button
+                            onClick={() => setDashboardScale(1.0)}
+                            className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
+                            title="Reset to 100%"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mobile UI Scale */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                          <Smartphone className="text-sky-400 w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 pr-2">
+                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Mobile UI Scale</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Independent scale layout for mobile screens.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
+                        {/* Preset Quick Scale Pills */}
+                        <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
+                          {[0.75, 1.0, 1.25].map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setMobileDashboardScale(s)}
+                              className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((mobileDashboardScale || 1) - s) < 0.01 ? 'bg-sky-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
+                            >
+                              {Math.round(s * 100)}%
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Precise Stepper (- / + step controls & percentage input) */}
+                        <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
+                          <button
+                            onClick={() => setMobileDashboardScale(Math.max(0.5, Math.round(((mobileDashboardScale || 1) - 0.05) * 100) / 100))}
+                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                            title="Decrease (-5%)"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+
+                          <div className="flex items-center font-mono text-[10px] md:text-xs text-sky-300 font-bold px-0.5">
+                            <input
+                              type="number"
+                              min="50"
+                              max="150"
+                              step="1"
+                              value={Math.round((mobileDashboardScale || 1) * 100)}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val)) {
+                                  setMobileDashboardScale(Math.min(1.5, Math.max(0.5, val / 100)));
+                                }
+                              }}
+                              className="w-7 bg-transparent text-center text-sky-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <span className="text-[9px] text-sky-400/80">%</span>
+                          </div>
+
+                          <button
+                            onClick={() => setMobileDashboardScale(Math.min(1.5, Math.round(((mobileDashboardScale || 1) + 0.05) * 100) / 100))}
+                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                            title="Increase (+5%)"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Reset button if scale is not 100% */}
+                        {Math.abs((mobileDashboardScale || 1) - 1.0) >= 0.01 && (
+                          <button
+                            onClick={() => setMobileDashboardScale(1.0)}
+                            className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
+                            title="Reset to 100%"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -1093,6 +1274,112 @@ export default function SettingsModal() {
                         >
                           <ChevronUp className="w-3.5 h-3.5" />
                         </button>
+                      </div>
+                    </div>
+
+                    {/* Bottom Dock Position */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                          <Layout className="text-purple-400 w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 pr-2">
+                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Bottom Dock Position</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Move bottom dock & timetable toggle up or down.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 bg-black/40 border border-white/10 rounded-md p-1 self-end sm:self-auto">
+                        <button
+                          onClick={() => setDockOffset(dockOffset - 10)}
+                          className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                          title="Move Down"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="font-bold text-[10px] md:text-xs w-6 md:w-8 text-center text-purple-300">{dockOffset}</span>
+                        <button
+                          onClick={() => setDockOffset(dockOffset + 10)}
+                          className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                          title="Move Up"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Bottom Dock Size (Scale) */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                          <Sliders className="text-purple-400 w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 pr-2">
+                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Bottom Dock Size</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Resize bottom dock icons for your display.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
+                        {/* Preset Quick Scale Pills */}
+                        <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
+                          {[0.75, 1.0, 1.25].map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setDockScale(s)}
+                              className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((dockScale || 1) - s) < 0.01 ? 'bg-purple-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
+                            >
+                              {Math.round(s * 100)}%
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Precise Stepper (- / + step controls & percentage input) */}
+                        <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
+                          <button
+                            onClick={() => setDockScale(Math.max(0.5, Math.round(((dockScale || 1) - 0.05) * 100) / 100))}
+                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                            title="Decrease (-5%)"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+
+                          <div className="flex items-center font-mono text-[10px] md:text-xs text-purple-300 font-bold px-0.5">
+                            <input
+                              type="number"
+                              min="50"
+                              max="150"
+                              step="1"
+                              value={Math.round((dockScale || 1) * 100)}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val)) {
+                                  setDockScale(Math.min(1.5, Math.max(0.5, val / 100)));
+                                }
+                              }}
+                              className="w-7 bg-transparent text-center text-purple-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <span className="text-[9px] text-purple-400/80">%</span>
+                          </div>
+
+                          <button
+                            onClick={() => setDockScale(Math.min(1.5, Math.round(((dockScale || 1) + 0.05) * 100) / 100))}
+                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                            title="Increase (+5%)"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Reset button if scale is not 100% */}
+                        {Math.abs((dockScale || 1) - 1.0) >= 0.01 && (
+                          <button
+                            onClick={() => setDockScale(1.0)}
+                            className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
+                            title="Reset to 100%"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
 

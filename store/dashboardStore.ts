@@ -254,11 +254,19 @@ interface DashboardState {
   isPlansOpen: boolean;
   togglePlans: () => void;
 
-  // Clock Format & Size
+  // Clock Format & Size & Dashboard Scale
   is24HourClock: boolean;
   toggle24HourClock: () => void;
   clockScale: number;
   setClockScale: (scale: number) => void;
+  dashboardScale: number;
+  setDashboardScale: (scale: number) => void;
+  mobileDashboardScale: number;
+  setMobileDashboardScale: (scale: number) => void;
+  dockScale: number;
+  setDockScale: (scale: number) => void;
+  dockOffset: number;
+  setDockOffset: (offset: number) => void;
 
   // Countdowns
   countdowns: { id: string; title: string; endDate: string | null }[];
@@ -269,6 +277,7 @@ interface DashboardState {
   addDeadline: (date: string, text: string) => string;
   updateDeadline: (id: string, text: string) => void;
   deleteDeadline: (id: string) => void;
+  toggleDeadlineDone: (id: string) => void;
   deleteAllDeadlinesForDay: (date: string) => void;
   deleteAllDeadlines: () => void;
   cleanOldDeadlines: () => void;
@@ -410,7 +419,7 @@ interface DashboardState {
 // ---------------------------------------------------------------------------
 const getSyncToken = () => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('dashboard_sync_token');
+    return localStorage.getItem('dashboard_sync_token') || localStorage.getItem('token');
   }
   return null;
 };
@@ -437,6 +446,10 @@ let isSaving = false;
 export let isSyncingFromCloud = false;
 export let isAuthTransition = false;
 export const setAuthTransition = (val: boolean) => { isAuthTransition = val; };
+export let bypassCloudSync = false;
+export const setBypassCloudSync = (bypass: boolean = true) => {
+  bypassCloudSync = bypass;
+};
 
 const performSave = async () => {
   if (!pendingValue || isSyncingFromCloud || isAuthTransition) {
@@ -609,16 +622,40 @@ const performSave = async () => {
   }
 };
 
+if (typeof window !== 'undefined') {
+  const triggerAutoSyncOnOnline = () => {
+    try {
+      const stateObj = useDashboardStore.getState();
+      if (stateObj && typeof stateObj === 'object') {
+        const str = JSON.stringify({ state: stateObj });
+        pendingValue = str;
+        hasUnsavedChanges = true;
+        failedToLoadDB = false;
+        if (!saveTimeout) {
+          saveTimeout = setTimeout(performSave, 500);
+        }
+      }
+    } catch (e) {
+      console.warn("Auto sync trigger failed:", e);
+    }
+  };
+
+  window.addEventListener('online', triggerAutoSyncOnOnline);
+  window.addEventListener('app_sync_now', triggerAutoSyncOnOnline);
+}
+
 const fileStorage = createJSONStorage(() => ({
   getItem: async (_name: string): Promise<string | null> => {
     if (typeof window === 'undefined') return null;
 
     let retries = 0;
     const token = getSyncToken();
+    const isBypassed = bypassCloudSync;
+    bypassCloudSync = false; // Always consume bypass flag for current load so future syncs operate normally!
 
     while (retries < 15 && token) {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        console.warn("Device is offline. Bypassing cloud sync and loading local data instantly.");
+      if (isBypassed || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+        console.warn("Bypassing cloud sync and loading local data instantly.");
         break;
       }
       try {
@@ -627,6 +664,7 @@ const fileStorage = createJSONStorage(() => ({
           cache: 'no-store'
         });
         if (res.ok) {
+          failedToLoadDB = false;
           const json = await res.json();
           const localDataStr = localStorage.getItem('dashboard-storage');
           const localTimestampStr = localStorage.getItem('dashboard_last_modified');
@@ -998,7 +1036,7 @@ export const useDashboardStore = create<DashboardState>()(
       setHasUnreadNews: (val: boolean) => set(() => ({ hasUnreadNews: val })),
       settingsActiveTab: 'preferences',
       connectInitialTab: undefined,
-      toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
+      toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false })),
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
       setConnectInitialTab: (tab) => set({ connectInitialTab: tab }),
       timerTrigger: null,
@@ -1353,11 +1391,19 @@ export const useDashboardStore = create<DashboardState>()(
       isPlansOpen: false,
       togglePlans: () => set((state) => ({ isPlansOpen: !state.isPlansOpen })),
 
-      // Clock Format & Size
+      // Clock Format & Size & Dashboard Scale
       is24HourClock: false,
       toggle24HourClock: () => set((state) => ({ is24HourClock: !state.is24HourClock })),
       clockScale: 1,
       setClockScale: (scale) => set({ clockScale: scale }),
+      dashboardScale: 1,
+      setDashboardScale: (scale) => set({ dashboardScale: scale }),
+      mobileDashboardScale: 1,
+      setMobileDashboardScale: (scale) => set({ mobileDashboardScale: scale }),
+      dockScale: 1,
+      setDockScale: (scale) => set({ dockScale: scale }),
+      dockOffset: 0,
+      setDockOffset: (offset) => set({ dockOffset: offset }),
 
       // Countdowns
       countdowns: [
@@ -1383,6 +1429,9 @@ export const useDashboardStore = create<DashboardState>()(
       })),
       deleteDeadline: (id) => set((state) => ({
         deadlines: state.deadlines.filter(d => d.id !== id)
+      })),
+      toggleDeadlineDone: (id) => set((state) => ({
+        deadlines: state.deadlines.map(d => d.id === id ? { ...d, isDone: !d.isDone } : d)
       })),
       deleteAllDeadlinesForDay: (date) => set((state) => ({
         deadlines: state.deadlines.filter(d => d.date !== date)
@@ -1907,6 +1956,10 @@ export const useDashboardStore = create<DashboardState>()(
 
         // Create a safe merged state that defaults to current state
         const safeState = { ...currentState, ...persistedState };
+        safeState.dashboardScale = typeof persistedState.dashboardScale === 'number' ? persistedState.dashboardScale : 1;
+        safeState.mobileDashboardScale = typeof persistedState.mobileDashboardScale === 'number' ? persistedState.mobileDashboardScale : 1;
+        safeState.dockScale = typeof persistedState.dockScale === 'number' ? persistedState.dockScale : 1;
+        safeState.dockOffset = typeof persistedState.dockOffset === 'number' ? persistedState.dockOffset : 0;
 
         // Defensive fallbacks: Ensure critical arrays and objects are NEVER overwritten with undefined or null
         // due to schema mismatches, and always retain their expected types.
