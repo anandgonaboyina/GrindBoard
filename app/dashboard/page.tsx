@@ -249,10 +249,6 @@ export default function Dashboard() {
 
       <VideoBackground />
 
-      {(!isHidden || !hideConfig.deadlineAlerts) && showDeadlineAlerts && (
-        <DeadlineTickerWidget />
-      )}
-
       {/* Background Switcher */}
       {!isPanicHidden && (!isHidden || !hideConfig.bgSwitcher) && showBgSwitcher && (
         <button
@@ -281,31 +277,46 @@ export default function Dashboard() {
           {/* Roadmap & Plans */}
           {(!isHidden || !hideConfig.plans) && showPlans && <RoadmapManager />}
 
-          {/* Bottom Left: Target Countdowns (Placed directly above Deadlines Modal) */}
-          {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
-            <div
-              style={{ zIndex: (widgetZIndices.countdowns || 50) + 8900 }}
-              className={`fixed left-3 sm:left-4 bottom-[65px] sm:bottom-[75px] pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col ${!isMobileCountdownsVisible ? '-translate-x-[150%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}
-            >
-              {countdowns.length > 0 ? (() => {
-                const safeIndex = Math.min(activeCountdownIndex, Math.max(0, countdowns.length - 1));
-                return (
-                  <Countdown
-                    key={countdowns[safeIndex].id}
-                    id={countdowns[safeIndex].id}
-                    hasPrev={safeIndex > 0}
-                    hasNext={safeIndex < countdowns.length - 1}
-                    onPrev={() => setActiveCountdownIndex(p => p - 1)}
-                    onNext={() => setActiveCountdownIndex(p => p + 1)}
-                    currentIndex={safeIndex}
-                    totalCount={countdowns.length}
-                  />
-                );
-              })() : (
-                <Countdown totalCount={0} />
-              )}
-            </div>
-          )}
+          {/* Bottom Left Stacked Column Container: Target Countdowns (Top) & Deadlines Modal (Bottom) */}
+          <div
+            style={{
+              bottom: `${16 + dockOffset}px`,
+              zIndex: 8900
+            }}
+            className="fixed left-3 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300"
+          >
+            {/* Top Item: Target Countdowns */}
+            {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
+              <div
+                className={`pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isMobileCountdownsVisible ? '-translate-x-[150%] opacity-0 pointer-events-none h-0 overflow-hidden mb-0' : 'translate-x-0 opacity-100'}`}
+              >
+                {countdowns.length > 0 ? (() => {
+                  const safeIndex = Math.min(activeCountdownIndex, Math.max(0, countdowns.length - 1));
+                  return (
+                    <Countdown
+                      key={countdowns[safeIndex].id}
+                      id={countdowns[safeIndex].id}
+                      hasPrev={safeIndex > 0}
+                      hasNext={safeIndex < countdowns.length - 1}
+                      onPrev={() => setActiveCountdownIndex(p => p - 1)}
+                      onNext={() => setActiveCountdownIndex(p => p + 1)}
+                      currentIndex={safeIndex}
+                      totalCount={countdowns.length}
+                    />
+                  );
+                })() : (
+                  <Countdown totalCount={0} />
+                )}
+              </div>
+            )}
+
+            {/* Bottom Item: Deadline Ticker Widget */}
+            {(!isHidden || !hideConfig.deadlineAlerts) && showDeadlineAlerts && (
+              <div className="pointer-events-auto">
+                <DeadlineTickerWidget />
+              </div>
+            )}
+          </div>
 
           {/* Draggable Widgets */}
           <div className="absolute inset-0 pointer-events-none z-50">

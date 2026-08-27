@@ -65,8 +65,7 @@ export default function DeadlineTickerWidget() {
   if (activeAlerts.length === 0) {
     return (
       <div
-        style={{ bottom: bottomPos, zIndex: widgetZ }}
-        className="fixed left-4 pointer-events-auto transition-all duration-300"
+        className="pointer-events-auto transition-all duration-300"
       >
         {showEmptyInfo ? (
           <div className="w-[280px] sm:w-[310px] p-3 rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2">
@@ -173,7 +172,7 @@ export default function DeadlineTickerWidget() {
   return (
     <>
       {isMinimized && !hasPendingToday ? (
-        <div style={{ bottom: bottomPos, zIndex: widgetZ }} className="fixed left-4 pointer-events-auto transition-all duration-300">
+        <div className="pointer-events-auto transition-all duration-300">
           <button
             onClick={() => setIsMinimized(false)}
             className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/90 border border-red-500/40 text-white shadow-2xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group"
@@ -190,8 +189,7 @@ export default function DeadlineTickerWidget() {
         </div>
       ) : (
         <div
-          style={{ bottom: bottomPos, zIndex: widgetZ }}
-          className="fixed left-4 pointer-events-auto w-[280px] sm:w-[320px] max-h-[380px] flex flex-col rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
+          className="pointer-events-auto w-[280px] sm:w-[320px] max-h-[380px] flex flex-col rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
         >
           {/* Header Bar with Today's Date */}
           <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-red-500/20 via-slate-900 to-amber-500/10 border-b border-white/10 shrink-0">

@@ -150,15 +150,20 @@ export default function LoadingScreen() {
             </div>
           </div>
 
-          {/* INSTANT OFFLINE LOAD BUTTON */}
-          <button
-            onClick={handleLoadOffline}
-            className="mt-4 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2 backdrop-blur-md cursor-pointer group"
-            title="Skip waiting for online cloud sync and load instantly from local cache"
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 group-hover:scale-110 transition-transform animate-pulse" />
-            <span>Load Offline Instantly</span>
-          </button>
+          {/* INSTANT OFFLINE LOAD BUTTON & CONNECTION NOTICE */}
+          <div className="mt-4 flex flex-col items-center gap-1.5 w-full">
+            <span className="text-[11px] text-amber-200/90 font-medium">
+              No internet or bad connection? You can load offline instantly!
+            </span>
+            <button
+              onClick={handleLoadOffline}
+              className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2 backdrop-blur-md cursor-pointer group"
+              title="Skip waiting for online cloud sync and load instantly from local cache"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 group-hover:scale-110 transition-transform animate-pulse" />
+              <span>Load Offline Instantly</span>
+            </button>
+          </div>
 
           {/* Sync indicator subtext */}
           <div className="flex items-center gap-4 text-[10px] text-white/40 font-mono mt-3">
