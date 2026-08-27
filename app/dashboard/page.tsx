@@ -287,7 +287,7 @@ export default function Dashboard() {
               bottom: isMobile ? `${148 + dockOffset}px` : `${80 + dockOffset}px`,
               zIndex: 8900
             }}
-            className="fixed left-3 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300"
+            className="fixed left-1.5 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300"
           >
             {/* Top Item: Target Countdowns */}
             {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
@@ -361,10 +361,11 @@ export default function Dashboard() {
                 <Users size={20} className="sm:w-6 sm:h-6" />
               </div>
 
-              {/* Edge Peek Tab for Target Countdowns */}
+              {/* Edge Peek Tab for Target Countdowns - Aligned with widget vertical collapse position */}
               {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
                 <div
-                  className={`fixed left-0 top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'}`}
+                  style={{ bottom: isMobile ? `${260 + dockOffset}px` : `${200 + dockOffset}px` }}
+                  className={`fixed left-0 glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'}`}
                   onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(true)}
                   title="Open Target Countdowns"
                 >
