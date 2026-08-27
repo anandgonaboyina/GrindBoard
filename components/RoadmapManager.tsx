@@ -253,6 +253,8 @@ export default function RoadmapManager() {
     isDestructive?: boolean;
     isPrompt?: boolean;
     promptPlaceholder?: string;
+    confirmText?: string;
+    hideCancel?: boolean;
     onConfirm: (val?: string) => void;
   }>({
     isOpen: false,
@@ -260,6 +262,20 @@ export default function RoadmapManager() {
     message: '',
     onConfirm: () => {},
   });
+
+  const showAlertModal = (title: string, message: React.ReactNode, onConfirm?: () => void) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      hideCancel: true,
+      confirmText: 'Done',
+      onConfirm: () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!scrollRef.current) return;
@@ -360,7 +376,10 @@ export default function RoadmapManager() {
   };
 
   const deleteActiveRoadmap = () => {
-    if (roadmaps.length === 1) return alert("You must have at least one roadmap.");
+    if (roadmaps.length === 1) {
+      showAlertModal("Cannot Delete Roadmap", "You must have at least one roadmap.");
+      return;
+    }
     setConfirmModal({
       isOpen: true,
       title: 'Delete Roadmap',
@@ -705,6 +724,8 @@ export default function RoadmapManager() {
         isDestructive={confirmModal.isDestructive}
         isPrompt={confirmModal.isPrompt}
         promptPlaceholder={confirmModal.promptPlaceholder}
+        confirmText={confirmModal.confirmText}
+        hideCancel={confirmModal.hideCancel}
       />
     </div>
   );

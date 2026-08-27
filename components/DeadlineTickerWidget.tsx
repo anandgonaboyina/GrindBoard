@@ -387,7 +387,7 @@ export default function DeadlineTickerWidget() {
       {/* Deadline Action Modal: Choice to Mark as Done or Delete Permanently */}
       {actionModal.isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[900] flex items-center justify-center p-4 animate-in fade-in"
           onClick={() => setActionModal({ isOpen: false, deadlineId: '', deadlineText: '', isDone: false })}
         >
           <div

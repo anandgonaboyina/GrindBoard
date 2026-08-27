@@ -42,7 +42,7 @@ export default function DraggableWidget({ id, children }: { id: string, children
 
   // Sync with store when background changes
   useEffect(() => {
-    if (activeBgSrc && widgetOffsets[activeBgSrc]?.[id]) {
+    if (activeBgSrc && widgetOffsets[activeBgSrc]?.[id] && id !== 'timer' && id !== 'stopwatch') {
       setPosition(widgetOffsets[activeBgSrc][id]);
       latestPos.current = widgetOffsets[activeBgSrc][id];
     } else {
@@ -51,7 +51,7 @@ export default function DraggableWidget({ id, children }: { id: string, children
     }
   }, [activeBgSrc, widgetOffsets, id]);
 
-  const isLocked = lockedWidgets.includes(id) || (isMobile && id === 'countdowns');
+  const isLocked = lockedWidgets.includes(id) || id === 'timer' || id === 'stopwatch' || (isMobile && id === 'countdowns');
 
   const handlePointerDown = (e: React.PointerEvent) => {
     bringToFront(id);

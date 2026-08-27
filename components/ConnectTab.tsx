@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore, setAuthTransition } from '@/store/dashboardStore';
-import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame, Calendar, Settings, Sparkles, UserX } from 'lucide-react';
+import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame, Calendar, Settings, Sparkles, UserX, WifiOff } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 import ConnectGroupsTab from './ConnectGroupsTab';
@@ -228,10 +228,26 @@ export default function ConnectTab() {
     message: React.ReactNode;
     requireText?: string;
     isDestructive?: boolean;
+    confirmText?: string;
+    hideCancel?: boolean;
     onConfirm: () => void;
   }>({
     isOpen: false, title: '', message: '', onConfirm: () => { }
   });
+
+  const showAlertModal = (title: string, message: React.ReactNode, onConfirm?: () => void) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText: 'Done',
+      hideCancel: true,
+      onConfirm: () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('dashboard_sync_token');
@@ -527,14 +543,13 @@ export default function ConnectTab() {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {
-            alert('Your account has been deleted.');
-            handleLogout();
+            showAlertModal('Account Deleted', 'Your account has been deleted successfully.', handleLogout);
           } else {
-            alert('Failed to delete account.');
+            showAlertModal('Delete Failed', 'Failed to delete account.');
           }
         } catch (err) {
           console.error(err);
-          alert('Network error while deleting account.');
+          showAlertModal('Network Error', 'Network error while deleting account.');
         }
       }
     });
@@ -571,11 +586,11 @@ export default function ConnectTab() {
         body: JSON.stringify({ receiverId })
       });
       if (res.ok) {
-        alert('Friend request sent!');
+        showAlertModal('Friend Request Sent', 'Your friend request has been sent successfully!');
         fetchFriendsData();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to send request');
+        showAlertModal('Request Error', data.error || 'Failed to send request');
       }
     } catch (err) { }
   };
@@ -649,7 +664,7 @@ export default function ConnectTab() {
           useDashboardStore.getState().toggleStats();
         }
       } else {
-        alert('Failed to fetch stats: ' + data.error);
+        showAlertModal('Error', 'Failed to fetch stats: ' + data.error);
       }
     } catch (err) { }
   };
@@ -665,7 +680,7 @@ export default function ConnectTab() {
         useDashboardStore.getState().setViewingFriend({ username: friendUsername, stats: data.stats });
         setShowFriendTimetable(true);
       } else {
-        alert('Failed to fetch timetable: ' + data.error);
+        showAlertModal('Error', 'Failed to fetch timetable: ' + data.error);
       }
     } catch (err) { }
   };
@@ -681,7 +696,7 @@ export default function ConnectTab() {
         useDashboardStore.getState().setViewingFriend({ username: friendUsername, stats: data.stats });
         setShowFriendTasks(true);
       } else {
-        alert('Failed to fetch tasks: ' + data.error);
+        showAlertModal('Error', 'Failed to fetch tasks: ' + data.error);
       }
     } catch (err) { }
   };
@@ -704,10 +719,10 @@ export default function ConnectTab() {
         fetchFriendsData();
         setFriendSettingsModal((prev: any) => prev ? { ...prev, taskSharing: newTaskSharing } : null);
       } else {
-        alert('Failed to update sharing settings');
+        showAlertModal('Sharing Error', 'Failed to update sharing settings');
       }
     } catch (e) {
-      alert('Error updating sharing settings');
+      showAlertModal('Sharing Error', 'Error updating sharing settings');
     }
   };
 
@@ -1386,6 +1401,16 @@ export default function ConnectTab() {
             </button>
           </div>
 
+          {typeof navigator !== 'undefined' && !navigator.onLine && (
+            <div className="w-full px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] md:text-xs font-medium flex items-center justify-between gap-2 shadow-sm my-1 shrink-0 animate-in fade-in">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="truncate">Offline Mode: Live ranks won't update. Showing cached/local stats.</span>
+              </div>
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 text-[9px] font-mono shrink-0 uppercase font-bold">Offline</span>
+            </div>
+          )}
+
           <div className="flex flex-col gap-1.5 w-full shrink-0 items-center justify-center">
             <div className="w-full">
               <div className="relative flex w-full bg-black/40 p-0.5 md:p-1 rounded-full border border-white/10 isolate">
@@ -1639,6 +1664,8 @@ export default function ConnectTab() {
         message={confirmModal.message}
         requireText={confirmModal.requireText}
         isDestructive={confirmModal.isDestructive}
+        confirmText={confirmModal.confirmText}
+        hideCancel={confirmModal.hideCancel}
       />
 
       {/* Info Modal */}

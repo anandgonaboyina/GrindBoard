@@ -28,7 +28,7 @@ import { useWallpaperUrl } from '@/hooks/useWallpaperUrl';
 import { saveWallpaperToDB, deleteWallpaperFromDB, saveAudioToDB, deleteAudioFromDB } from '@/lib/indexedDB';
 import { getResolvedAudioUrl } from '@/hooks/useAudioUrl';
 
-const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, aspectClass = "aspect-video" }: any) => {
+const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, onShowAlert, aspectClass = "aspect-video" }: any) => {
   const { resolvedUrl, isVideo } = useWallpaperUrl(url);
   return (
     <div className={`relative group ${aspectClass} rounded-md border overflow-hidden transition-all ${isActive ? 'border-purple-500 ring-1 ring-purple-500/50' : 'border-white/10 hover:border-white/40'}`}>
@@ -57,7 +57,7 @@ const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, aspec
                 onClick={(e) => {
                   e.stopPropagation();
                   navigator.clipboard.writeText(url);
-                  alert('URL copied to clipboard!');
+                  if (onShowAlert) onShowAlert('Copied', 'URL copied to clipboard!');
                 }}
                 className="p-1 bg-black/70 border border-white/10 text-white/80 hover:text-blue-400 rounded transition-colors"
                 title="Copy URL"
@@ -140,17 +140,17 @@ export default function SettingsModal() {
     if (!file) return;
 
     if ((customAlarmSounds || []).length >= 3) {
-      alert("Maximum 3 custom ringtones allowed. Please delete an existing custom ringtone first.");
+      showAlertModal('Limit Reached', 'Maximum 3 custom ringtones allowed. Please delete an existing custom ringtone first.');
       return;
     }
 
     if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|ogg|m4a|aac)$/i)) {
-      alert("Please select a valid audio file (MP3, WAV, OGG, M4A).");
+      showAlertModal('Invalid File', 'Please select a valid audio file (MP3, WAV, OGG, M4A).');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      alert("File size too large. Please select an audio file under 10MB.");
+      showAlertModal('File Too Large', 'Please select an audio file under 10MB.');
       return;
     }
 
@@ -175,6 +175,7 @@ export default function SettingsModal() {
     promptPlaceholder?: string;
     confirmText?: string;
     cancelText?: string;
+    hideCancel?: boolean;
     onConfirm: (val?: string) => void;
     onCancel?: () => void;
   }>({
@@ -183,6 +184,20 @@ export default function SettingsModal() {
     message: '',
     onConfirm: () => { },
   });
+
+  const showAlertModal = (title: string, message: React.ReactNode, onConfirm?: () => void) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText: 'Done',
+      hideCancel: true,
+      onConfirm: () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
   const [isUserManualOpen, setIsUserManualOpen] = useState(false);
 
   const [infoModalKey, setInfoModalKey] = useState<string | null>(null);
@@ -380,7 +395,7 @@ export default function SettingsModal() {
   const handleAddQuote = () => {
     if (!newQuoteText.trim()) return;
     const author = newQuoteAuthor.trim() || 'Unknown';
-    if (customQuotes.length >= 50) return alert('Maximum 50 custom quotes allowed.');
+    if (customQuotes.length >= 50) return showAlertModal('Limit Reached', 'Maximum 50 custom quotes allowed.');
     setCustomQuotes([...customQuotes, { text: newQuoteText.trim(), author }]);
     setNewQuoteText('');
     setNewQuoteAuthor('');
@@ -394,14 +409,14 @@ export default function SettingsModal() {
         text: q.text.trim(),
         author: (q.author && typeof q.author === 'string' ? q.author.trim() : 'Unknown')
       }));
-      if (validQuotes.length === 0) return alert('No valid quotes found in JSON.');
+      if (validQuotes.length === 0) return showAlertModal('Import Failed', 'No valid quotes found in JSON.');
       const newQuotes = [...customQuotes, ...validQuotes].slice(0, 50);
       setCustomQuotes(newQuotes);
       setShowBulkAddModal(false);
       setBulkQuotesJson('');
-      alert(`Successfully added ${validQuotes.length} quotes! (Max 50)`);
+      showAlertModal('Quotes Imported', `Successfully added ${validQuotes.length} quotes! (Max 50)`);
     } catch (err) {
-      alert('Invalid JSON format. Please provide an array of objects like: [{"text": "Quote", "author": "Author"}]');
+      showAlertModal('Invalid Format', 'Invalid JSON format. Please provide an array of objects like: [{"text": "Quote", "author": "Author"}]');
     }
   };
 
@@ -458,7 +473,7 @@ export default function SettingsModal() {
         if (result.success && result.id) {
           window.open(window.location.origin + '/download.html?apiId=' + result.id + '&type=' + encodeURIComponent(typeName), '_blank');
         } else {
-          alert('Failed to prepare download.');
+          showAlertModal('Download Error', 'Failed to prepare download.');
         }
       }).catch(() => {
         const encoded = encodeURIComponent(JSON.stringify(data, null, 2));
@@ -541,9 +556,9 @@ export default function SettingsModal() {
           isTaskIntervalAlertEnabled: data.isTaskIntervalAlertEnabled || false,
           taskGroupNames: data.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3']
         });
-        alert('Plan Your Day restored successfully!');
+        showAlertModal('Data Restored', 'Plan Your Day data restored successfully!');
       } catch (err) {
-        alert('Failed to parse backup file.');
+        showAlertModal('Restore Failed', 'Failed to parse backup file.');
       }
     };
     reader.readAsText(file);
@@ -569,12 +584,12 @@ export default function SettingsModal() {
         const data = JSON.parse(event.target?.result as string);
         if (Array.isArray(data)) {
           useDashboardStore.setState({ notes: data });
-          alert('Notes restored successfully!');
+          showAlertModal('Data Restored', 'Notes restored successfully!');
         } else {
-          alert('Invalid format.');
+          showAlertModal('Restore Failed', 'Invalid format for notes backup.');
         }
       } catch (err) {
-        alert('Failed to parse backup file.');
+        showAlertModal('Restore Failed', 'Failed to parse backup file.');
       }
     };
     reader.readAsText(file);
@@ -616,9 +631,9 @@ export default function SettingsModal() {
           }
         });
         useDashboardStore.setState(restoreData);
-        alert('Settings restored successfully!');
+        showAlertModal('Data Restored', 'Settings restored successfully!');
       } catch (err) {
-        alert('Failed to parse backup file.');
+        showAlertModal('Restore Failed', 'Failed to parse backup file.');
       }
     };
     reader.readAsText(file);
@@ -661,12 +676,12 @@ export default function SettingsModal() {
             timetableStartTime: data.timetableStartTime || 540,
             timetableWeekendStartTime: data.timetableWeekendStartTime || 540,
           });
-          alert('Timetable restored successfully!');
+          showAlertModal('Data Restored', 'Timetable restored successfully!');
         } else {
-          alert('Invalid backup file format for Timetable.');
+          showAlertModal('Restore Failed', 'Invalid backup file format for Timetable.');
         }
       } catch (err) {
-        alert('Failed to parse backup file.');
+        showAlertModal('Restore Failed', 'Failed to parse backup file.');
       }
     };
     reader.readAsText(file);
@@ -695,7 +710,7 @@ export default function SettingsModal() {
     try {
       const token = localStorage.getItem('dashboard_sync_token');
       if (!token) {
-        alert('You must be logged in to import data. Please login via the Connect tab.');
+        showAlertModal('Login Required', 'You must be logged in to import data. Please login via the Connect tab.');
         e.target.value = '';
         return;
       }
@@ -704,7 +719,7 @@ export default function SettingsModal() {
       const parsed = JSON.parse(text);
 
       if (typeof parsed !== 'object' || parsed === null || !('state' in parsed)) {
-        alert('Invalid backup file. Missing required dashboard data structure.');
+        showAlertModal('Invalid Backup', 'Invalid backup file. Missing required dashboard data structure.');
         e.target.value = '';
         return;
       }
@@ -746,14 +761,13 @@ export default function SettingsModal() {
           });
 
           if (res.ok) {
-            alert('Import successful! Reloading...');
-            window.location.reload();
+            showAlertModal('Import Successful', 'Data backup imported successfully! Reloading application...', () => window.location.reload());
           } else {
-            alert('Import failed. Server rejected the data.');
+            showAlertModal('Import Failed', 'Import failed. Server rejected the data.');
           }
         } catch (err) {
           console.error(err);
-          alert('Invalid JSON file format.');
+          showAlertModal('Import Failed', 'Invalid JSON file format.');
         }
       };
 
@@ -769,7 +783,7 @@ export default function SettingsModal() {
 
     } catch (err) {
       console.error(err);
-      alert('Invalid JSON file format.');
+      showAlertModal('Import Failed', 'Invalid JSON file format.');
     }
     e.target.value = '';
   };
@@ -1253,7 +1267,7 @@ export default function SettingsModal() {
                         </div>
                         <div className="min-w-0 pr-2">
                           <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Deadline Alerts</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Show a popup as deadlines approach.</p>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Show deadlines modal as deadlines approach.</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto pl-7 sm:pl-0">
@@ -1930,6 +1944,7 @@ export default function SettingsModal() {
                             url={url}
                             isActive={activeDesktopCustomIndex === i}
                             onClick={() => setActiveDesktopCustomIndex(i)}
+                            onShowAlert={showAlertModal}
                             onDelete={async (e: React.MouseEvent) => {
                               e.stopPropagation();
                               setConfirmModal({
@@ -1965,7 +1980,7 @@ export default function SettingsModal() {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
                                 if (file.size > 25 * 1024 * 1024) {
-                                  alert("File is too large! Maximum allowed is 25MB.");
+                                  showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }
                                 const id = `custom-desktop-${Date.now()}`;
@@ -2011,6 +2026,7 @@ export default function SettingsModal() {
                             url={url}
                             isActive={activeMobileCustomIndex === i}
                             onClick={() => setActiveMobileCustomIndex(i)}
+                            onShowAlert={showAlertModal}
                             onDelete={async (e: React.MouseEvent) => {
                               e.stopPropagation();
                               setConfirmModal({
@@ -2045,8 +2061,8 @@ export default function SettingsModal() {
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
-                                if (file.size > 25 * 1024 * 1024) {
-                                  alert("File is too large! Maximum allowed is 25MB.");
+                                 if (file.size > 25 * 1024 * 1024) {
+                                  showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }
                                 const id = `custom-mobile-${Date.now()}`;
@@ -2426,7 +2442,7 @@ export default function SettingsModal() {
                             isDestructive: true,
                             onConfirm: () => {
                               resetTimetable();
-                              alert('Timetable reset successfully.');
+                              showAlertModal('Reset Complete', 'Timetable reset successfully.');
                             }
                           });
                         }}
@@ -2685,6 +2701,7 @@ export default function SettingsModal() {
         promptPlaceholder={confirmModal.promptPlaceholder}
         confirmText={(confirmModal as any).confirmText}
         cancelText={(confirmModal as any).cancelText}
+        hideCancel={confirmModal.hideCancel}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock, Sparkles, Flame } from 'lucide-react';
+import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock, Sparkles, Flame, WifiOff } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -175,8 +175,24 @@ export default function ConnectGroupsTab() {
     title: string;
     message: React.ReactNode;
     isDestructive?: boolean;
+    confirmText?: string;
+    hideCancel?: boolean;
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
+
+  const showAlertModal = (title: string, message: React.ReactNode, onConfirm?: () => void) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText: 'Done',
+      hideCancel: true,
+      onConfirm: () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
 
   const userId = localStorage.getItem('dashboard_username'); // Need user ID or just use username to identify
 
@@ -267,11 +283,11 @@ export default function ConnectGroupsTab() {
         fetchData();
         setIsCreateFormOpen(false);
       } else {
-        alert(data.error || 'Failed to create group');
+        showAlertModal('Group Error', data.error || 'Failed to create group');
       }
     } catch (e) {
       console.error(e);
-      alert('An error occurred while creating the group.');
+      showAlertModal('Group Error', 'An error occurred while creating the group.');
     }
     setIsCreating(false);
   };
@@ -286,10 +302,10 @@ export default function ConnectGroupsTab() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert('Join request sent!');
+        showAlertModal('Request Sent', 'Your group join request has been sent successfully!');
         fetchData();
       } else {
-        alert(data.error || 'Failed to send request');
+        showAlertModal('Request Error', data.error || 'Failed to send request');
       }
     } catch (e) {
       console.error(e);
@@ -538,6 +554,15 @@ export default function ConnectGroupsTab() {
 
     return (
       <div className="flex flex-col w-full animate-in fade-in slide-in-from-right-2">
+        {typeof navigator !== 'undefined' && !navigator.onLine && (
+          <div className="w-full px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] md:text-xs font-medium flex items-center justify-between gap-2 shadow-sm mb-2 shrink-0 animate-in fade-in">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">Offline Mode: Showing cached group data. Member ranks will sync live when online.</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 text-[9px] font-mono shrink-0 uppercase font-bold">Offline</span>
+          </div>
+        )}
         {/* Slim & Compact Group Header Card */}
         <div className="relative overflow-hidden bg-gradient-to-r from-blue-950/50 via-slate-900/70 to-purple-950/50 p-2 sm:p-2.5 rounded-xl border border-white/15 shadow-sm mb-2.5 backdrop-blur-md">
           {/* Ambient Decorative Glow */}
@@ -1260,6 +1285,8 @@ export default function ConnectGroupsTab() {
         title={confirmModal.title}
         message={confirmModal.message}
         isDestructive={confirmModal.isDestructive}
+        confirmText={confirmModal.confirmText}
+        hideCancel={confirmModal.hideCancel}
       />
 
       {isInfoOpen && (

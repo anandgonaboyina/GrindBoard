@@ -177,12 +177,27 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
     message: React.ReactNode;
     confirmText?: string;
     cancelText?: string;
+    hideCancel?: boolean;
     isDestructive?: boolean;
     onCancel?: () => void;
     onConfirm: () => void;
   }>({
     isOpen: false, title: '', message: '', onConfirm: () => { }
   });
+
+  const showAlertModal = (title: string, message: React.ReactNode, onConfirm?: () => void) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText: 'Done',
+      hideCancel: true,
+      onConfirm: () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
 
   useEffect(() => {
     draggedIndexRef.current = draggedIndex;
@@ -311,7 +326,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
             if (result.success && result.id) {
               window.open(window.location.origin + '/download.html?apiId=' + result.id + '&type=Note', '_blank');
             } else {
-              alert('Failed to prepare download.');
+              showAlertModal('Error', 'Failed to prepare download.');
             }
           } catch (e) {
             // Offline fallback
@@ -371,7 +386,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
             if (result.success && result.id) {
               window.open(window.location.origin + '/download.html?apiId=' + result.id + '&type=Notes+Backup', '_blank');
             } else {
-              alert('Failed to prepare download.');
+              showAlertModal('Error', 'Failed to prepare download.');
             }
           }).catch(() => {
             // Offline fallback
@@ -411,7 +426,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
         } else if (data && data.id && data.title) {
           importedNotes = [data]; // Single note restore
         } else {
-          alert('Invalid notes backup file.');
+          showAlertModal('Restore Failed', 'Invalid notes backup file.');
           return;
         }
 
@@ -446,9 +461,10 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
         if (setNotes) {
           setNotes(existingNotes);
         }
+        showAlertModal('Notes Restored', 'Notes backup imported and merged successfully!');
       } catch (err) {
         console.error(err);
-        alert('Failed to parse notes backup.');
+        showAlertModal('Restore Failed', 'Failed to parse notes backup.');
       }
     };
     reader.readAsText(file);
@@ -747,9 +763,13 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         onConfirm={confirmModal.onConfirm}
+        onCancel={confirmModal.onCancel}
         title={confirmModal.title}
         message={confirmModal.message}
         isDestructive={confirmModal.isDestructive}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        hideCancel={confirmModal.hideCancel}
       />
     </div>
   );

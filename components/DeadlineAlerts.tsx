@@ -55,7 +55,7 @@ export default function DeadlineAlerts() {
   if (isDeadlinesCollapsed) {
     return (
       <div
-        className={`hidden md:flex fixed top-3 left-3 z-[100000] flex-row gap-1.5 cursor-pointer pointer-events-auto hover:scale-105 active:scale-95 transition-transform p-1.5 rounded-full border backdrop-blur-md shadow-lg ${theme === 'light' ? 'bg-white/60 border-red-500/30 shadow-red-500/10' : 'bg-black/40 border-red-500/20'}`}
+        className={`hidden md:flex fixed top-3 left-3 z-[950] flex-row gap-1.5 cursor-pointer pointer-events-auto hover:scale-105 active:scale-95 transition-transform p-1.5 rounded-full border backdrop-blur-md shadow-lg ${theme === 'light' ? 'bg-white/60 border-red-500/30 shadow-red-500/10' : 'bg-black/40 border-red-500/20'}`}
         onClick={() => setIsDeadlinesCollapsed(false)}
         title="Show Deadline Alerts"
       >
@@ -94,7 +94,7 @@ export default function DeadlineAlerts() {
   return (
     <>
       <div
-        className="fixed left-1/2 -translate-x-1/2 top-16 md:top-16 z-[10000] flex flex-col gap-1.5 pointer-events-auto items-center cursor-grab active:cursor-grabbing touch-none"
+        className="fixed left-1/2 -translate-x-1/2 top-16 md:top-16 z-[950] flex flex-col gap-1.5 pointer-events-auto items-center cursor-grab active:cursor-grabbing touch-none"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={() => startY.current = null}

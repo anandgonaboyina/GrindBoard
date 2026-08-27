@@ -3,6 +3,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { Sunrise, Sparkles, Moon, Coffee, Check, X, AlertTriangle, Quote as QuoteIcon } from 'lucide-react';
 import { getLocalDateString } from '@/utils/date';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchQuote } from '@/utils/quoteEngine';
 
 const MORNING_HARDWORK_QUOTES = [
@@ -37,11 +38,16 @@ export default function DayStartModal() {
   const today = getLocalDateString();
   const todayTimes = dailyTimes[today] || {};
 
+  const [mounted, setMounted] = useState(false);
   const [confirming, setConfirming] = useState<'wakeupTime' | null>(null);
   const [pendingTime, setPendingTime] = useState<number | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [hasPrompted, setHasPrompted] = useState(false);
   const [quote, setQuote] = useState<{ text: string; author: string } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Post-wake-up log celebration state (Center-occupying new quote with 5s timer)
   const [isLoggedCelebration, setIsLoggedCelebration] = useState(false);
@@ -227,11 +233,12 @@ export default function DayStartModal() {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  if (!isDayStartModalOpen) return null;
+  if (!isDayStartModalOpen || !mounted || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
+      style={{ zIndex: 999999 }}
+      className="fixed inset-0 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-300 pointer-events-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) toggleDayStartModal();
       }}
@@ -431,6 +438,7 @@ export default function DayStartModal() {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

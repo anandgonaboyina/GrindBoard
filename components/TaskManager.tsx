@@ -413,7 +413,7 @@ export default function TaskManager() {
                                             </button>
                                         </div>
 
-                                        {isTaskIntervalAlertEnabled && (
+                                        {isTaskIntervalAlertEnabled ? (
                                             <div className="flex items-center gap-1 pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
                                                 <input
                                                     type="number"
@@ -427,6 +427,10 @@ export default function TaskManager() {
                                                     min="1"
                                                 />
                                                 <span className="text-[8px] font-medium text-white/40 uppercase">min</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
+                                                <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
                                             </div>
                                         )}
                                     </div>

@@ -2,6 +2,7 @@
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Newspaper, X, Check, Loader2, Plus, Clock, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import NewsCardStack from './NewsCardStack';
 import type { NewsPost } from './admin/AdminNewsManager';
@@ -9,7 +10,12 @@ import { syncNewsMediaCache } from '@/lib/newsMediaCache';
 
 export default function NewsModal() {
   const { isNewsOpen, toggleNews, hasUnreadNews, setHasUnreadNews } = useDashboardStore();
+  const [mounted, setMounted] = useState(false);
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [isAutoOpened, setIsAutoOpened] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
@@ -146,11 +152,12 @@ export default function NewsModal() {
     }
   };
 
-  if (!isNewsOpen) return null;
+  if (!isNewsOpen || !mounted || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[990] flex flex-col items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
+      style={{ zIndex: 999999 }}
+      className="fixed inset-0 flex flex-col items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-300 pointer-events-auto"
     >
       {/* Early Close Warning Banner (No visible timer digits) */}
       {showWarning && (
@@ -240,6 +247,7 @@ export default function NewsModal() {
           <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

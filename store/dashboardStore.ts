@@ -1682,7 +1682,7 @@ export const useDashboardStore = create<DashboardState>()(
         };
       }),
 
-      lockedWidgets: ['quote', 'countdowns', 'timer', 'toolbar'],
+      lockedWidgets: ['quote', 'countdowns', 'timer', 'stopwatch', 'toolbar'],
       toggleWidgetLock: (widgetId) => set((state) => ({
         lockedWidgets: state.lockedWidgets.includes(widgetId)
           ? state.lockedWidgets.filter(id => id !== widgetId)

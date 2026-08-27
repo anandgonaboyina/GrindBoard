@@ -93,6 +93,11 @@ export default function Timer() {
     if (diffInMins > 720) diffInMins = 720; // Cap at 12 hours
     setCustomMins(diffInMins);
 
+    const hMins = Math.floor(diffInMins / 60);
+    const mMins = diffInMins % 60;
+    setEditHours(hMins.toString().padStart(2, '0'));
+    setEditMins(mMins.toString().padStart(2, '0'));
+
     // Highlight the minutes field
     setHighlightedField('minutes');
     setTimeout(() => setHighlightedField(null), 1000);
@@ -106,6 +111,11 @@ export default function Timer() {
     setCustomMins(finalVal);
 
     if (!isNaN(m) && m > 0) {
+      const hMins = Math.floor(m / 60);
+      const mMins = m % 60;
+      setEditHours(hMins.toString().padStart(2, '0'));
+      setEditMins(mMins.toString().padStart(2, '0'));
+
       const targetDate = new Date();
       targetDate.setMinutes(targetDate.getMinutes() + m);
       let h = targetDate.getHours();
@@ -784,13 +794,63 @@ export default function Timer() {
   };
 
   const adjustEditTime = (type: 'h' | 'm', delta: number) => {
+    let h = parseInt(editHours) || 0;
+    let m = parseInt(editMins) || 0;
+
     if (type === 'h') {
-      const h = Math.max(0, Math.min(99, parseInt(editHours) + delta));
-      setEditHours(h.toString().padStart(2, '0'));
+      h = Math.max(0, Math.min(99, h + delta));
     } else {
-      const m = Math.max(0, Math.min(59, parseInt(editMins) + delta));
-      setEditMins(m.toString().padStart(2, '0'));
+      m += delta;
+      if (m >= 60) {
+        h += Math.floor(m / 60);
+        m = m % 60;
+      } else if (m < 0) {
+        if (h > 0) {
+          h -= 1;
+          m = 60 + (m % 60);
+        } else {
+          m = 0;
+        }
+      }
     }
+
+    const formattedH = h.toString().padStart(2, '0');
+    const formattedM = m.toString().padStart(2, '0');
+    setEditHours(formattedH);
+    setEditMins(formattedM);
+
+    const totalMins = h * 60 + m;
+    setCustomMins(totalMins > 0 ? totalMins.toString() : '');
+  };
+
+  const handleEditHoursChange = (val: string) => {
+    let num = parseInt(val);
+    if (isNaN(num)) {
+      setEditHours('');
+      return;
+    }
+    num = Math.max(0, Math.min(99, num));
+    setEditHours(num.toString().padStart(2, '0'));
+    const m = parseInt(editMins) || 0;
+    const totalMins = num * 60 + m;
+    setCustomMins(totalMins > 0 ? totalMins.toString() : '');
+  };
+
+  const handleEditMinsChange = (val: string) => {
+    let num = parseInt(val);
+    if (isNaN(num)) {
+      setEditMins('');
+      return;
+    }
+    let h = parseInt(editHours) || 0;
+    if (num >= 60) {
+      h += Math.floor(num / 60);
+      num = num % 60;
+      setEditHours(h.toString().padStart(2, '0'));
+    }
+    setEditMins(num.toString().padStart(2, '0'));
+    const totalMins = h * 60 + num;
+    setCustomMins(totalMins > 0 ? totalMins.toString() : '');
   };
 
   const elapsedSecs = timerInitialMins ? Math.max(0, (timerInitialMins * 60) - localTimeLeft) : 0;
@@ -837,37 +897,70 @@ export default function Timer() {
                   </div>
                 )}
                 {isEditingTime ? (
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center justify-center gap-1.5 my-1">
+                    {/* Hours Column */}
                     <div className="flex flex-col items-center">
-
-                      <button onClick={() => adjustEditTime('h', 1)} className="hover:text-white/60 p-1"><ChevronUp size={20} /></button>
+                      <button
+                        onClick={() => adjustEditTime('h', 1)}
+                        className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
+                        title="Increase hours"
+                      >
+                        <ChevronUp size={20} />
+                      </button>
                       <input
                         type="number"
                         value={editHours}
-                        onChange={(e) => setEditHours(e.target.value.padStart(2, '0'))}
+                        onChange={(e) => handleEditHoursChange(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && saveEditor()}
-                        className="w-16 bg-transparent text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
+                        className="w-14 bg-transparent text-4xl sm:text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
                         min="0"
                         max="99"
                       />
-                      <button onClick={() => adjustEditTime('h', -1)} className="hover:text-white/60 p-1"><ChevronDown size={20} /></button>
+                      <button
+                        onClick={() => adjustEditTime('h', -1)}
+                        className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
+                        title="Decrease hours"
+                      >
+                        <ChevronDown size={20} />
+                      </button>
+                      <span className="text-[10px] font-bold text-blue-300/70 uppercase tracking-widest mt-0.5">hr</span>
                     </div>
-                    <span className="text-5xl font-light opacity-50 mb-0">:</span>
+
+                    <span className="text-4xl sm:text-5xl font-light opacity-50 mb-4">:</span>
+
+                    {/* Minutes Column */}
                     <div className="flex flex-col items-center">
-                      <button onClick={() => adjustEditTime('m', 1)} className="hover:text-white/60 p-1"><ChevronUp size={20} /></button>
+                      <button
+                        onClick={() => adjustEditTime('m', 1)}
+                        className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
+                        title="Increase minutes"
+                      >
+                        <ChevronUp size={20} />
+                      </button>
                       <input
                         type="number"
                         value={editMins}
-                        onChange={(e) => setEditMins(e.target.value.padStart(2, '0'))}
+                        onChange={(e) => handleEditMinsChange(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && saveEditor()}
-                        className="w-16 bg-transparent text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
+                        className="w-14 bg-transparent text-4xl sm:text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
                         min="0"
-                        max="59"
                       />
-                      <button onClick={() => adjustEditTime('m', -1)} className="hover:text-white/60 p-1"><ChevronDown size={20} /></button>
+                      <button
+                        onClick={() => adjustEditTime('m', -1)}
+                        className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
+                        title="Decrease minutes"
+                      >
+                        <ChevronDown size={20} />
+                      </button>
+                      <span className="text-[10px] font-bold text-blue-300/70 uppercase tracking-widest mt-0.5">min</span>
                     </div>
-                    <button onClick={saveEditor} className="ml-1 p-2 bg-blue-500/80 hover:bg-blue-500 rounded-xl transition-colors">
-                      <Check size={20} />
+
+                    <button
+                      onClick={saveEditor}
+                      className="ml-2 p-2 bg-blue-500 hover:bg-blue-600 rounded-xl transition-all shadow-md active:scale-95 text-white flex items-center justify-center self-center"
+                      title="Save Time"
+                    >
+                      <Check size={18} />
                     </button>
                   </div>
                 ) : (
@@ -876,7 +969,6 @@ export default function Timer() {
                     className={`text-5xl font-light tracking-widest tabular-nums drop-shadow-md transition-opacity ${!timerEndAt && !isAlarmPlaying ? 'cursor-pointer hover:opacity-80' : ''}`}
                     title={!timerEndAt && !isAlarmPlaying ? "Click to set time" : ""}
                   >
-
                     {formatTime(localTimeLeft)}
                   </div>
                 )}
@@ -966,43 +1058,40 @@ export default function Timer() {
                   </div>
                 )}
 
-                {/* Custom Input */}
+                {/* Custom Input - Ultra Compact Height */}
                 {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
-                  <div className="flex flex-col gap-2 pt-2 border-t border-white/10">
-                    {/* Target Clock Button */}
-                    <button
-                      onClick={() => setIsClockModalOpen(true)}
-                      className="w-full bg-white/5 hover:bg-white/10 border border-white/15 hover:border-blue-400/50 rounded-xl px-2.5 py-1.5 text-xs font-bold text-blue-300 flex items-center justify-between transition-all group shadow-inner"
-                      title="Click to set target end clock time"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <Clock size={14} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                        <span>Target: {selectedHr}:{selectedMin} {selectedAmPm}</span>
-                      </span>
-                      <span className="text-[10px] font-medium text-white/50 group-hover:text-white">Set Clock &rarr;</span>
-                    </button>
+                  <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/10">
+                    <div className="flex items-center gap-1.5">
+                      {/* Target Clock Button */}
+                      <button
+                        onClick={() => setIsClockModalOpen(true)}
+                        className="flex-1 bg-white/5 hover:bg-white/15 border border-white/10 hover:border-blue-400/50 rounded-lg px-2 py-1 text-[11px] font-bold text-blue-300 flex items-center justify-center gap-1 transition-all shadow-inner shrink-0 truncate"
+                        title="Set target end clock time"
+                      >
+                        <Clock size={11} className="text-blue-400 shrink-0" />
+                        <span className="truncate">{selectedHr}:{selectedMin} {selectedAmPm}</span>
+                      </button>
 
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1 group">
-                        <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Minutes</span>
+                      {/* Minutes Input */}
+                      <div className="w-16 relative shrink-0">
                         <input
                           type="number"
-                          placeholder="0"
+                          placeholder="Mins"
                           value={customMins}
                           onChange={(e) => handleCustomMinsChange(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                          className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-2 py-1.5 text-sm text-center outline-none transition-all placeholder:text-white/20 text-white/90 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${highlightedField === 'minutes' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
+                          className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1.5 py-1 text-xs font-bold text-center outline-none transition-all placeholder:text-white/30 text-white/90 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${highlightedField === 'minutes' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
                           min="1"
                         />
                       </div>
 
+                      {/* Start Button */}
                       <button
                         onClick={handleCustomStart}
-                        className="px-3 py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent font-bold text-xs gap-1"
-                        title="Start timer with set minutes"
+                        className="p-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
+                        title="Start timer"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
-                        Start
                       </button>
                     </div>
 
@@ -1016,7 +1105,7 @@ export default function Timer() {
                           <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isTimerIntervalEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
                         </button>
                       </div>
-                      {isTimerIntervalEnabled && (
+                      {isTimerIntervalEnabled ? (
                         <div className="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-white/10">
                           <input
                             type="number"
@@ -1035,6 +1124,10 @@ export default function Timer() {
                             min="1"
                           />
                           <span className="text-[8px] font-bold text-white/40">min</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center pl-1.5 ml-0.5 border-l border-white/10">
+                          <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
                         </div>
                       )}
                     </div>
@@ -1105,13 +1198,36 @@ function TargetClockModal({
 
   useEffect(() => {
     if (isOpen) {
-      setHr(initialHr);
-      setMin(initialMin);
-      setAmPm(initialAmPm);
+      const now = new Date();
+      let h = now.getHours();
+      const currentAmPm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      if (h === 0) h = 12;
+      setHr(h.toString().padStart(2, '0'));
+      setMin(now.getMinutes().toString().padStart(2, '0'));
+      setAmPm(currentAmPm);
     }
-  }, [isOpen, initialHr, initialMin, initialAmPm]);
+  }, [isOpen]);
 
   if (!isOpen || typeof document === 'undefined') return null;
+
+  const adjustHr = (delta: number) => {
+    let h = parseInt(hr) + delta;
+    if (h > 12) h = 1;
+    if (h < 1) h = 12;
+    setHr(h.toString().padStart(2, '0'));
+  };
+
+  const adjustMin = (delta: number) => {
+    let m = parseInt(min) + delta;
+    if (m > 59) m = 0;
+    if (m < 0) m = 59;
+    setMin(m.toString().padStart(2, '0'));
+  };
+
+  const toggleAmPm = () => {
+    setAmPm((prev) => (prev === 'AM' ? 'PM' : 'AM'));
+  };
 
   let h = parseInt(hr);
   if (ampm === 'PM' && h < 12) h += 12;
@@ -1139,54 +1255,47 @@ function TargetClockModal({
           </button>
         </div>
 
-        {/* Picker Columns */}
-        <div className="grid grid-cols-3 gap-2 bg-black/40 p-2 rounded-xl border border-white/10">
+        {/* Up/Down Arrow Picker Columns */}
+        <div className="grid grid-cols-3 gap-2 bg-black/40 p-3 rounded-xl border border-white/10 items-center">
           {/* Hours Column */}
           <div className="flex flex-col items-center">
-            <span className="text-[9px] font-bold text-white/50 uppercase mb-1">Hour</span>
-            <div className="h-36 w-full overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-0.5">
-              {HR_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setHr(opt)}
-                  className={`w-full py-1.5 text-xs font-mono font-bold rounded-lg transition-all ${hr === opt ? 'bg-blue-500 text-white shadow-md' : 'bg-white/5 hover:bg-white/10 text-white/70'}`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
+            <button onClick={() => adjustHr(1)} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
+              <ChevronUp size={22} />
+            </button>
+            <span className="text-2xl font-mono font-bold text-white my-1 tabular-nums">{hr}</span>
+            <button onClick={() => adjustHr(-1)} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
+              <ChevronDown size={22} />
+            </button>
+            <span className="text-[9px] font-bold text-white/40 uppercase mt-0.5">Hour</span>
           </div>
 
           {/* Mins Column */}
           <div className="flex flex-col items-center">
-            <span className="text-[9px] font-bold text-white/50 uppercase mb-1">Min</span>
-            <div className="h-36 w-full overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-0.5">
-              {MIN_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setMin(opt)}
-                  className={`w-full py-1.5 text-xs font-mono font-bold rounded-lg transition-all ${min === opt ? 'bg-blue-500 text-white shadow-md' : 'bg-white/5 hover:bg-white/10 text-white/70'}`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
+            <button onClick={() => adjustMin(1)} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
+              <ChevronUp size={22} />
+            </button>
+            <span className="text-2xl font-mono font-bold text-white my-1 tabular-nums">{min}</span>
+            <button onClick={() => adjustMin(-1)} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
+              <ChevronDown size={22} />
+            </button>
+            <span className="text-[9px] font-bold text-white/40 uppercase mt-0.5">Min</span>
           </div>
 
           {/* AM/PM Column */}
           <div className="flex flex-col items-center">
-            <span className="text-[9px] font-bold text-white/50 uppercase mb-1">Period</span>
-            <div className="flex flex-col gap-2 w-full mt-2">
-              {AMPM_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setAmPm(opt)}
-                  className={`w-full py-2.5 text-xs font-bold rounded-lg transition-all ${ampm === opt ? 'bg-blue-500 text-white shadow-md' : 'bg-white/5 hover:bg-white/10 text-white/70'}`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
+            <button onClick={toggleAmPm} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
+              <ChevronUp size={22} />
+            </button>
+            <button
+              onClick={toggleAmPm}
+              className="px-2.5 py-1 my-1 text-xs font-bold rounded-lg bg-blue-500 text-white shadow-md transition-all active:scale-95"
+            >
+              {ampm}
+            </button>
+            <button onClick={toggleAmPm} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
+              <ChevronDown size={22} />
+            </button>
+            <span className="text-[9px] font-bold text-white/40 uppercase mt-0.5">Period</span>
           </div>
         </div>
 

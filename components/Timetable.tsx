@@ -109,6 +109,20 @@ export default function Timetable() {
     isOpen: false, title: '', message: '', onConfirm: () => { }
   });
 
+  const showAlertModal = (title: string, message: React.ReactNode, onConfirm?: () => void) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText: 'Done',
+      hideCancel: true,
+      onConfirm: () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
+
   // Scroll logic
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -434,7 +448,7 @@ export default function Timetable() {
   const handleAddTopRow = () => {
     const newStart = startTime - 60;
     if (newStart < 0) {
-      alert("Cannot start before midnight!");
+      showAlertModal("Invalid Time", "Cannot start before midnight!");
       return;
     }
     handleSetStartTime(newStart, true); // skip key renaming
@@ -897,9 +911,13 @@ export default function Timetable() {
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         onConfirm={confirmModal.onConfirm}
+        onCancel={confirmModal.onCancel}
         title={confirmModal.title}
         message={confirmModal.message}
         isDestructive={confirmModal.isDestructive}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        hideCancel={confirmModal.hideCancel}
       />
     </div>
   );

@@ -412,7 +412,7 @@ export default function Countdown({
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center pointer-events-auto p-4">
+        <div className="fixed inset-0 z-[900] flex items-center justify-center pointer-events-auto p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
           <div className="relative bg-slate-950 border border-red-500/40 rounded-3xl p-5 z-10 w-full max-w-[280px] shadow-2xl animate-in zoom-in-95 text-center">
             <div className="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto mb-3">
@@ -466,7 +466,7 @@ function CustomTimePicker({ value, onChange }: { value: string, onChange: (time:
       </div>
 
       {isOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center pointer-events-auto p-4">
+        <div className="fixed inset-0 z-[900] flex items-center justify-center pointer-events-auto p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
           <div className="relative bg-slate-950 border border-indigo-500/40 rounded-3xl p-5 z-10 w-full max-w-[280px] shadow-2xl animate-in zoom-in-95">
             <h3 className="text-white text-center font-bold mb-3 tracking-wide text-sm">

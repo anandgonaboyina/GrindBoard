@@ -435,7 +435,7 @@ export default function Stopwatch() {
                       <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isStopwatchIntervalEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
                     </button>
                   </div>
-                  {isStopwatchIntervalEnabled && (
+                  {isStopwatchIntervalEnabled ? (
                     <div className="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-white/10">
                       <input
                         type="number"
@@ -454,6 +454,10 @@ export default function Stopwatch() {
                         min="1"
                       />
                       <span className="text-[8px] font-bold text-white/40">min</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center pl-1.5 ml-0.5 border-l border-white/10">
+                      <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
                     </div>
                   )}
                 </div>

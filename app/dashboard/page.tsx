@@ -245,7 +245,7 @@ export default function Dashboard() {
   const stopwatchZ = widgetZIndices.stopwatch || 50;
   const timerZ = widgetZIndices.timer || 50;
   const toolbarZ = widgetZIndices.toolbar || 50;
-  const bottomRightZ = Math.max(9500, tasksZ, stopwatchZ, timerZ, toolbarZ);
+  const bottomRightZ = Math.max(50, tasksZ, stopwatchZ, timerZ, toolbarZ);
 
   return (
     <main className="relative overflow-hidden w-full flex-1" style={{ zoom: activeDashboardScale }}>
@@ -257,7 +257,7 @@ export default function Dashboard() {
       {!isPanicHidden && (!isHidden || !hideConfig.bgSwitcher) && showBgSwitcher && (
         <button
           onClick={cycleWallpaper}
-          className="fixed top-10 left-3 z-[90000] p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/20 shadow-xl transition-all glass-btn hidden md:block"
+          className="fixed top-10 left-3 z-[40] p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/20 shadow-xl transition-all glass-btn hidden md:block"
           title="Next Wallpaper"
         >
           <ImageIcon className="w-1 h-1 sm:w-4 sm:h-4" />
@@ -285,7 +285,7 @@ export default function Dashboard() {
           <div
             style={{
               bottom: isMobile ? `${148 + dockOffset}px` : `${80 + dockOffset}px`,
-              zIndex: 8900
+              zIndex: 50
             }}
             className="fixed left-1.5 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300"
           >
@@ -364,7 +364,7 @@ export default function Dashboard() {
               {/* Edge Peek Tab for Target Countdowns */}
               {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
                 <div
-                  className={`fixed left-0 top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[9990] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'}`}
+                  className={`fixed left-0 top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[50] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'}`}
                   onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(true)}
                   title="Open Target Countdowns"
                 >

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { ShieldCheck, Wifi, WifiOff, Sparkles, Zap } from 'lucide-react';
+import { ShieldCheck, Wifi, WifiOff, Sparkles, Zap, ExternalLink } from 'lucide-react';
 import { setBypassCloudSync, useDashboardStore } from '@/store/dashboardStore';
 
 export default function LoadingScreen() {
@@ -70,28 +70,33 @@ export default function LoadingScreen() {
   return (
     <div className="fixed inset-0 bg-[#050505] z-[99999] flex flex-col items-center justify-center text-white font-sans overflow-hidden opacity-100 pointer-events-auto">
       <style>{`
-        @keyframes profileFlip {
-          0% { transform: perspective(600px) rotateY(90deg) scale(0.8); opacity: 0; }
-          50% { transform: perspective(600px) rotateY(-10deg) scale(1.05); opacity: 1; }
-          100% { transform: perspective(600px) rotateY(0deg) scale(1); opacity: 1; }
+        @keyframes flip3D {
+          0% { transform: perspective(400px) rotateY(0deg); }
+          50% { transform: perspective(400px) rotateY(180deg); }
+          100% { transform: perspective(400px) rotateY(360deg); }
         }
-        .profile-flip {
-          animation: profileFlip 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        .animate-flip-3d {
+          display: inline-block;
+          animation: flip3D 2.5s infinite ease-in-out;
+          transform-style: preserve-3d;
         }
       `}</style>
 
-      {/* Ambient background glow */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-blue-500/15 rounded-full blur-[80px] md:blur-[120px]" />
-      </div>
+      {/* BACKGROUND GRAPHICS */}
+      <div className="absolute inset-0 bg-gradient-to-b from-blue-950/20 via-transparent to-purple-950/20 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col items-center justify-between p-6 sm:p-8 text-center max-w-lg w-full h-full my-auto">
-        <div className="flex flex-col items-center w-full min-h-[250px] justify-center my-auto">
-          <div className="flex flex-col items-center animate-in fade-in duration-700 w-full">
-            <div className="relative w-24 h-24 md:w-32 md:h-32 mb-5 rounded-full overflow-hidden ring-4 ring-white/10 shadow-2xl shadow-blue-500/30 profile-flip opacity-0">
+      {/* CONTENT CONTAINER */}
+      <div className="relative z-10 w-full max-w-lg px-6 flex flex-col items-center justify-between h-[85vh] py-8">
+        
+        {/* TOP BRANDING & TEXT */}
+        <div className="flex-1 flex flex-col items-center justify-center text-center w-full">
+          <div className="relative mb-6 flex flex-col items-center">
+            {/* Logo Wrapper */}
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-0.5 shadow-[0_0_40px_rgba(59,130,246,0.3)] animate-in zoom-in duration-700 mb-4 overflow-hidden">
               <img
-                src="/icon-512x512.png"
-                alt="Creator Profile"
+                src="/icon.png"
+                alt="Grind Board Logo"
                 className="w-full h-full object-cover"
                 onError={(e) => { e.currentTarget.src = '/icon-192x192.png' }}
               />
@@ -103,21 +108,46 @@ export default function LoadingScreen() {
               </h1>
 
               {isOnline ? (
-                <div className="text-[10px] md:text-xs font-mono font-bold text-blue-400 mb-6 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 inline-flex items-center gap-1.5 shadow-inner">
-                  <Sparkles className="w-3 h-3 text-blue-400" />
+                <div className="text-[10px] md:text-xs font-mono font-bold text-blue-400 mb-6 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 inline-flex items-center gap-2 shadow-sm">
+                  <div className="animate-flip-3d flex items-center justify-center">
+                    <Wifi className="w-3.5 h-3.5 text-blue-400" />
+                  </div>
                   <span>Cloud Sync Enabled</span>
                 </div>
               ) : (
-                <div className="text-[10px] md:text-xs font-mono font-bold text-amber-400 mb-6 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 inline-flex items-center gap-1.5 shadow-inner">
-                  <WifiOff className="w-3 h-3 text-amber-400" />
+                <div className="text-[10px] md:text-xs font-mono font-bold text-amber-400 mb-6 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 inline-flex items-center gap-2 shadow-sm">
+                  <div className="animate-flip-3d flex items-center justify-center">
+                    <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+                  </div>
                   <span>Offline Mode</span>
                 </div>
               )}
 
-              <p className="text-xs md:text-sm text-white/60 leading-relaxed max-w-md mx-auto">
-                "Built to eliminate distractions and create a single, unified workspace.
-                Everything you need to stay deeply focused, plan your day, and track your goals."
+              <p className="text-xs md:text-sm text-white/80 leading-relaxed max-w-lg mx-auto font-sans">
+                "Built to eliminate distractions and create a single, unified workspace. Everything you need to stay deeply focused, plan your day, and track your goals — created with a vision to clear all mental clutter, reclaim deep focus, and empower every single day with structure, clarity, and relentless drive."
               </p>
+
+              <div className="mt-5 flex flex-col items-center justify-center gap-2 w-fit mx-auto animate-in zoom-in-95 duration-500">
+                <div className="flex items-center justify-center gap-1.5 text-xs md:text-sm font-bold text-rose-200 bg-rose-500/10 border border-rose-500/25 px-4 py-1.5 rounded-full shadow-sm backdrop-blur-md">
+                  <span>Made with</span>
+                  <span className="text-rose-500 animate-pulse text-sm sm:text-base">❤️</span>
+                  <span>by <strong className="text-white font-extrabold tracking-wide">Anand</strong></span>
+                </div>
+
+                <a
+                  href="https://github.com/anandgonaboyina"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-[11px] md:text-xs font-mono font-bold text-sky-300/90 hover:text-sky-100 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 px-3 py-1 rounded-full transition-all hover:scale-105 shadow-sm group"
+                  title="Visit Anand's GitHub Profile"
+                >
+                  <svg className="w-3.5 h-3.5 fill-sky-400 group-hover:rotate-12 transition-transform" viewBox="0 0 24 24">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                  </svg>
+                  <span>github.com/anandgonaboyina</span>
+                  <ExternalLink className="w-3 h-3 text-sky-400 opacity-70 group-hover:opacity-100" />
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -173,11 +203,17 @@ export default function LoadingScreen() {
             <span className="flex items-center gap-1">
               {isOnline ? (
                 <>
-                  <Wifi className="w-3 h-3 text-blue-400" /> Cloud Syncing
+                  <div className="animate-flip-3d flex items-center justify-center">
+                    <Wifi className="w-3 h-3 text-blue-400" />
+                  </div>
+                  <span>Cloud Syncing</span>
                 </>
               ) : (
                 <>
-                  <WifiOff className="w-3 h-3 text-amber-400" /> Offline Local Cache
+                  <div className="animate-flip-3d flex items-center justify-center">
+                    <WifiOff className="w-3 h-3 text-amber-400" />
+                  </div>
+                  <span>Offline Local Cache</span>
                 </>
               )}
             </span>
