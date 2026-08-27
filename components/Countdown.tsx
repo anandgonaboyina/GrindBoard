@@ -273,12 +273,57 @@ export default function Countdown({
               {/* Ambient Background Radial Glow */}
               <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 via-indigo-500/10 to-pink-500/10 blur-md pointer-events-none" />
 
-              <div className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
-                {String(timeLeft.days).padStart(2, '0')}
-              </div>
-              <div className="text-[8px] font-mono uppercase tracking-widest text-cyan-300/80 font-bold mt-0.5">
-                Days Remaining
-              </div>
+              {!hasTime ? (
+                <>
+                  {/* Tomorrow & under 12 hrs left */}
+                  {timeLeft.days === 1 && timeLeft.hours < 12 ? (
+                    <>
+                      <div className="text-xl sm:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-indigo-200 to-pink-300 drop-shadow-md font-mono">
+                        {timeLeft.hours}h {String(timeLeft.mins).padStart(2, '0')}m
+                      </div>
+                      <div className="text-[8px] font-mono uppercase tracking-widest text-amber-300/90 font-black mt-0.5">
+                        Tomorrow
+                      </div>
+                    </>
+                  ) : timeLeft.days === 1 ? (
+                    <>
+                      <div className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
+                        01
+                      </div>
+                      <div className="text-[8px] font-mono uppercase tracking-widest text-cyan-300/80 font-bold mt-0.5">
+                        Tomorrow
+                      </div>
+                    </>
+                  ) : timeLeft.days === 0 ? (
+                    <>
+                      <div className="text-xl sm:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 drop-shadow-md font-mono">
+                        {timeLeft.hours}h {String(timeLeft.mins).padStart(2, '0')}m
+                      </div>
+                      <div className="text-[8px] font-mono uppercase tracking-widest text-emerald-400 font-extrabold mt-0.5">
+                        Target Today!
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
+                        {String(timeLeft.days).padStart(2, '0')}
+                      </div>
+                      <div className="text-[8px] font-mono uppercase tracking-widest text-cyan-300/80 font-bold mt-0.5">
+                        Days Remaining
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
+                    {String(timeLeft.days).padStart(2, '0')}
+                  </div>
+                  <div className="text-[8px] font-mono uppercase tracking-widest text-cyan-300/80 font-bold mt-0.5">
+                    Days Remaining
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Right Edge Arrow */}
