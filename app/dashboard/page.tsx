@@ -223,10 +223,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Auto-open Countdowns widget on every refresh / app load if enabled in preferences
+    if (!_hasHydrated) return;
     const autoOpen = useDashboardStore.getState().autoOpenCountdowns;
-    if (autoOpen) {
+    if (autoOpen !== false) {
       useDashboardStore.getState().setIsMobileCountdownsVisible(true);
     }
+  }, [_hasHydrated]);
+
+  useEffect(() => {
     const token = localStorage.getItem('dashboard_sync_token');
     if (!token || token === 'null') {
       window.location.href = '/';
@@ -280,7 +284,7 @@ export default function Dashboard() {
           {/* Bottom Left Stacked Column Container: Target Countdowns (Top) & Deadlines Modal (Bottom) */}
           <div
             style={{
-              bottom: `${16 + dockOffset}px`,
+              bottom: isMobile ? `${76 + dockOffset}px` : `${80 + dockOffset}px`,
               zIndex: 8900
             }}
             className="fixed left-3 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300"
