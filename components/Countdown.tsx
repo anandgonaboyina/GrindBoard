@@ -91,6 +91,8 @@ export default function Countdown({
     return () => clearInterval(interval);
   }, [examCountdown.endDate]);
 
+  const [showMaxError, setShowMaxError] = useState(false);
+
   const handleSave = () => {
     if (!id) return;
     const finalDateTime = editDateOnly ? (editTimeOnly ? `${editDateOnly}T${editTimeOnly}` : editDateOnly) : null;
@@ -99,8 +101,13 @@ export default function Countdown({
   };
 
   const handleAddNew = () => {
+    if (countdowns.length >= 5) {
+      setShowMaxError(true);
+      setTimeout(() => setShowMaxError(false), 3000);
+      return;
+    }
     const newId = addCountdown('New Target', null);
-    setIsEditing(true);
+    if (newId) setIsEditing(true);
   };
 
   // EMPTY STATE CARD
@@ -185,8 +192,13 @@ export default function Countdown({
           {/* Add New Target Button */}
           <button
             onClick={handleAddNew}
-            className="p-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 border border-indigo-500/30 text-indigo-300 hover:text-white transition-all"
-            title="Add New Target Countdown"
+            disabled={countdowns.length >= 5}
+            className={`p-1 rounded-lg border transition-all ${
+              countdowns.length >= 5
+                ? 'opacity-40 cursor-not-allowed bg-white/5 border-white/10 text-white/40'
+                : 'bg-indigo-500/20 hover:bg-indigo-500/40 border-indigo-500/30 text-indigo-300 hover:text-white'
+            }`}
+            title={countdowns.length >= 5 ? "Maximum 5 target countdowns allowed" : "Add New Target Countdown"}
           >
             <Plus size={14} />
           </button>
@@ -216,6 +228,12 @@ export default function Countdown({
           )}
         </div>
       </div>
+
+      {showMaxError && (
+        <div className="mb-2 p-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold text-center animate-in fade-in zoom-in-95">
+          Maximum 5 target countdowns allowed!
+        </div>
+      )}
 
       {/* Editing State Form */}
       {isEditing ? (

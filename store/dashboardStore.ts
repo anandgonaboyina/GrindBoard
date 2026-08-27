@@ -1410,14 +1410,16 @@ export const useDashboardStore = create<DashboardState>()(
       // Countdowns
       countdowns: [
         { id: '1', title: 'Target 1', endDate: null },
-        { id: '2', title: 'Target 2', endDate: null },
-        { id: '3', title: 'Target 3', endDate: null },
       ],
       addCountdown: (title = 'New Target', endDate = null) => {
-        const newId = Date.now().toString();
-        set((state) => ({
-          countdowns: [...state.countdowns, { id: newId, title, endDate }]
-        }));
+        let newId = '';
+        set((state) => {
+          if (state.countdowns.length >= 5) return state;
+          newId = Date.now().toString();
+          return {
+            countdowns: [...state.countdowns, { id: newId, title, endDate }]
+          };
+        });
         return newId;
       },
       updateCountdown: (id, title, endDate) => set((state) => ({

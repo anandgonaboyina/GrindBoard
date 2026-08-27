@@ -800,7 +800,7 @@ export default function Timer() {
         onPointerDown={updateInteraction}
         className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying || isIntervalRinging ? '' : 'hidden'}`}
       >
-        <div className="w-64 rounded-3xl glass-panel border border-white/20 text-white flex flex-col shadow-2xl overflow-hidden">
+        <div className="w-64 rounded-3xl glass-panel border border-white/20 text-white flex flex-col shadow-2xl overflow-visible">
 
           {/* Top Title Bar */}
 
@@ -980,8 +980,8 @@ export default function Timer() {
                               <ChevronDown size={10} className="text-white/50 shrink-0" />
                             </button>
                             {openDropdown === 'hr' && (
-                              <div className="absolute left-0 right-0 bottom-full mb-1 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl overflow-hidden z-[100] max-h-48 flex flex-col">
-                                <div className="overflow-y-auto max-h-48 custom-scrollbar">
+                              <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-[#121216] border border-blue-500/40 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.9)] overflow-hidden z-[99999] max-h-44 flex flex-col">
+                                <div className="overflow-y-auto max-h-44 custom-scrollbar py-1">
                                   {HR_OPTIONS.map((opt) => (
                                     <button
                                       key={opt}
@@ -990,7 +990,7 @@ export default function Timer() {
                                         setOpenDropdown(null);
                                         updateTargetTime(opt, selectedMin, selectedAmPm);
                                       }}
-                                      className={`w-full text-center px-1 py-1.5 text-[10px] sm:text-xs transition-colors ${selectedHr === opt ? 'bg-blue-500/30 text-blue-300' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
+                                      className={`w-full text-center px-1 py-1.5 text-[11px] font-mono transition-colors ${selectedHr === opt ? 'bg-blue-500/40 text-blue-300 font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
                                     >
                                       {opt}
                                     </button>
@@ -1006,12 +1006,12 @@ export default function Timer() {
                               onClick={() => setOpenDropdown(openDropdown === 'min' ? null : 'min')}
                               className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1 sm:px-1.5 py-1.5 text-[11px] outline-none transition-all text-white/90 shadow-inner flex items-center justify-between ${highlightedField === 'clock' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
                             >
-                              <span className="truncate">{selectedMin}</span>
+                              <span className="truncate font-semibold">{selectedMin}</span>
                               <ChevronDown size={10} className="text-white/50 shrink-0" />
                             </button>
                             {openDropdown === 'min' && (
-                              <div className="absolute left-0 right-0 bottom-full mb-1 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl overflow-hidden z-[100] max-h-48 flex flex-col">
-                                <div className="overflow-y-auto max-h-48 custom-scrollbar">
+                              <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-[#121216] border border-blue-500/40 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.9)] overflow-hidden z-[99999] max-h-44 flex flex-col">
+                                <div className="overflow-y-auto max-h-44 custom-scrollbar py-1">
                                   {MIN_OPTIONS.map((opt) => (
                                     <button
                                       key={opt}
@@ -1020,7 +1020,7 @@ export default function Timer() {
                                         setOpenDropdown(null);
                                         updateTargetTime(selectedHr, opt, selectedAmPm);
                                       }}
-                                      className={`w-full text-center px-1 py-1.5 text-[10px] sm:text-xs transition-colors ${selectedMin === opt ? 'bg-blue-500/30 text-blue-300' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
+                                      className={`w-full text-center px-1 py-1.5 text-[11px] font-mono transition-colors ${selectedMin === opt ? 'bg-blue-500/40 text-blue-300 font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
                                     >
                                       {opt}
                                     </button>
@@ -1036,12 +1036,12 @@ export default function Timer() {
                               onClick={() => setOpenDropdown(openDropdown === 'ampm' ? null : 'ampm')}
                               className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1 sm:px-1.5 py-1.5 text-[11px] outline-none transition-all text-white/90 shadow-inner flex items-center justify-between ${highlightedField === 'clock' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
                             >
-                              <span className="truncate"><pre>{selectedAmPm}</pre></span>
+                              <span className="truncate font-semibold">{selectedAmPm}</span>
                               <ChevronDown size={10} className="text-white/50 shrink-0" />
                             </button>
                             {openDropdown === 'ampm' && (
-                              <div className="absolute left-0 right-0 bottom-full mb-1 bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl overflow-hidden z-[100] max-h-48 flex flex-col">
-                                <div className="overflow-y-auto max-h-48 custom-scrollbar">
+                              <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-[#121216] border border-blue-500/40 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.9)] overflow-hidden z-[99999] max-h-44 flex flex-col">
+                                <div className="overflow-y-auto max-h-44 custom-scrollbar py-1">
                                   {AMPM_OPTIONS.map((opt) => (
                                     <button
                                       key={opt}
@@ -1050,7 +1050,7 @@ export default function Timer() {
                                         setOpenDropdown(null);
                                         updateTargetTime(selectedHr, selectedMin, opt);
                                       }}
-                                      className={`w-full text-center px-1 py-1.5 text-[10px] sm:text-xs transition-colors ${selectedAmPm === opt ? 'bg-blue-500/30 text-blue-300' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
+                                      className={`w-full text-center px-1 py-1.5 text-[11px] font-mono transition-colors ${selectedAmPm === opt ? 'bg-blue-500/40 text-blue-300 font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
                                     >
                                       {opt}
                                     </button>
