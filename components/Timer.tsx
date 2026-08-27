@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Square, VolumeX, Check, ListTodo, ChevronUp, ChevronDown, BarChart2, StickyNote, Map, Settings, BellRing } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Play, Pause, Square, VolumeX, Check, ListTodo, ChevronUp, ChevronDown, BarChart2, StickyNote, Map, Settings, BellRing, Clock, X } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
@@ -62,6 +63,7 @@ export default function Timer() {
   const [selectedAmPm, setSelectedAmPm] = useState('AM');
   const [openDropdown, setOpenDropdown] = useState<'hr' | 'min' | 'ampm' | null>(null);
   const [highlightedField, setHighlightedField] = useState<'clock' | 'minutes' | null>(null);
+  const [isClockModalOpen, setIsClockModalOpen] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -800,12 +802,14 @@ export default function Timer() {
         onPointerDown={updateInteraction}
         className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying || isIntervalRinging ? '' : 'hidden'}`}
       >
-        <div className="w-64 rounded-3xl glass-panel border border-white/20 text-white flex flex-col shadow-2xl overflow-visible">
+        <div className="w-64 rounded-3xl glass-panel border border-white/20 text-white flex flex-col shadow-2xl overflow-visible relative">
 
           {/* Top Title Bar */}
-
-          {activeTaskTitle ? "" : <span className="absolute left-2 top-1 text-[10px] -full md:text-[15px] font-black tracking-widest text-blue-400 uppercase pointer-events-none">Timer</span>}
-
+          {!activeTaskTitle && (
+            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 bg-black/80 rounded-md text-[10px] sm:text-xs font-black tracking-widest text-blue-400 uppercase z-20 shadow-sm border border-white/5 backdrop-blur-md whitespace-nowrap">
+              Timer
+            </span>
+          )}
 
           {/* Body */}
           <div className="p-3 flex flex-col gap-2 cursor-default">
@@ -965,107 +969,22 @@ export default function Timer() {
                 {/* Custom Input */}
                 {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
                   <div className="flex flex-col gap-2 pt-2 border-t border-white/10">
+                    {/* Target Clock Button */}
+                    <button
+                      onClick={() => setIsClockModalOpen(true)}
+                      className="w-full bg-white/5 hover:bg-white/10 border border-white/15 hover:border-blue-400/50 rounded-xl px-2.5 py-1.5 text-xs font-bold text-blue-300 flex items-center justify-between transition-all group shadow-inner"
+                      title="Click to set target end clock time"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Clock size={14} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                        <span>Target: {selectedHr}:{selectedMin} {selectedAmPm}</span>
+                      </span>
+                      <span className="text-[10px] font-medium text-white/50 group-hover:text-white">Set Clock &rarr;</span>
+                    </button>
+
                     <div className="flex items-center gap-2">
-                      <div className="relative flex-1 group/time">
-                        <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover/time:text-blue-300">Set Time</span>
-
-                        <div className="flex gap-1">
-                          {/* HR Dropdown */}
-                          <div className="relative w-1/3">
-                            <button
-                              onClick={() => setOpenDropdown(openDropdown === 'hr' ? null : 'hr')}
-                              className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1 sm:px-1.5 py-1.5 text-[11px] outline-none transition-all text-white/90 shadow-inner flex items-center justify-between ${highlightedField === 'clock' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
-                            >
-                              <span className="truncate">{selectedHr}</span>
-                              <ChevronDown size={10} className="text-white/50 shrink-0" />
-                            </button>
-                            {openDropdown === 'hr' && (
-                              <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-[#121216] border border-blue-500/40 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.9)] overflow-hidden z-[99999] max-h-44 flex flex-col">
-                                <div className="overflow-y-auto max-h-44 custom-scrollbar py-1">
-                                  {HR_OPTIONS.map((opt) => (
-                                    <button
-                                      key={opt}
-                                      onClick={() => {
-                                        setSelectedHr(opt);
-                                        setOpenDropdown(null);
-                                        updateTargetTime(opt, selectedMin, selectedAmPm);
-                                      }}
-                                      className={`w-full text-center px-1 py-1.5 text-[11px] font-mono transition-colors ${selectedHr === opt ? 'bg-blue-500/40 text-blue-300 font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
-                                    >
-                                      {opt}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* MIN Dropdown */}
-                          <div className="relative w-1/3">
-                            <button
-                              onClick={() => setOpenDropdown(openDropdown === 'min' ? null : 'min')}
-                              className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1 sm:px-1.5 py-1.5 text-[11px] outline-none transition-all text-white/90 shadow-inner flex items-center justify-between ${highlightedField === 'clock' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
-                            >
-                              <span className="truncate font-semibold">{selectedMin}</span>
-                              <ChevronDown size={10} className="text-white/50 shrink-0" />
-                            </button>
-                            {openDropdown === 'min' && (
-                              <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-[#121216] border border-blue-500/40 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.9)] overflow-hidden z-[99999] max-h-44 flex flex-col">
-                                <div className="overflow-y-auto max-h-44 custom-scrollbar py-1">
-                                  {MIN_OPTIONS.map((opt) => (
-                                    <button
-                                      key={opt}
-                                      onClick={() => {
-                                        setSelectedMin(opt);
-                                        setOpenDropdown(null);
-                                        updateTargetTime(selectedHr, opt, selectedAmPm);
-                                      }}
-                                      className={`w-full text-center px-1 py-1.5 text-[11px] font-mono transition-colors ${selectedMin === opt ? 'bg-blue-500/40 text-blue-300 font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
-                                    >
-                                      {opt}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* AM/PM Dropdown */}
-                          <div className="relative w-1/3">
-                            <button
-                              onClick={() => setOpenDropdown(openDropdown === 'ampm' ? null : 'ampm')}
-                              className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1 sm:px-1.5 py-1.5 text-[11px] outline-none transition-all text-white/90 shadow-inner flex items-center justify-between ${highlightedField === 'clock' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
-                            >
-                              <span className="truncate font-semibold">{selectedAmPm}</span>
-                              <ChevronDown size={10} className="text-white/50 shrink-0" />
-                            </button>
-                            {openDropdown === 'ampm' && (
-                              <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-[#121216] border border-blue-500/40 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.9)] overflow-hidden z-[99999] max-h-44 flex flex-col">
-                                <div className="overflow-y-auto max-h-44 custom-scrollbar py-1">
-                                  {AMPM_OPTIONS.map((opt) => (
-                                    <button
-                                      key={opt}
-                                      onClick={() => {
-                                        setSelectedAmPm(opt);
-                                        setOpenDropdown(null);
-                                        updateTargetTime(selectedHr, selectedMin, opt);
-                                      }}
-                                      className={`w-full text-center px-1 py-1.5 text-[11px] font-mono transition-colors ${selectedAmPm === opt ? 'bg-blue-500/40 text-blue-300 font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
-                                    >
-                                      {opt}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <span className="text-[9px] font-bold text-white/30 uppercase">or</span>
-
                       <div className="relative flex-1 group">
-                        <span className="absolute -top-2  px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Minutes</span>
+                        <span className="absolute -top-2 left-2 px-1 bg-black/60 backdrop-blur-md rounded-md text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300">Minutes</span>
                         <input
                           type="number"
                           placeholder="0"
@@ -1079,10 +998,11 @@ export default function Timer() {
 
                       <button
                         onClick={handleCustomStart}
-                        className="px-2.5 py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
-                        title="Start custom timer"
+                        className="px-3 py-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent font-bold text-xs gap-1"
+                        title="Start timer with set minutes"
                       >
-                        <Play className="w-4 h-4 fill-current" />
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        Start
                       </button>
                     </div>
 
@@ -1145,6 +1065,155 @@ export default function Timer() {
           />
         </div>
       </div>
+
+      {/* Target Clock Time Portal Modal */}
+      <TargetClockModal
+        isOpen={isClockModalOpen}
+        onClose={() => setIsClockModalOpen(false)}
+        initialHr={selectedHr}
+        initialMin={selectedMin}
+        initialAmPm={selectedAmPm}
+        onConfirm={(h, m, ampm) => {
+          setSelectedHr(h);
+          setSelectedMin(m);
+          setSelectedAmPm(ampm);
+          updateTargetTime(h, m, ampm);
+        }}
+      />
     </DraggableWidget>
+  );
+}
+
+function TargetClockModal({
+  isOpen,
+  onClose,
+  initialHr,
+  initialMin,
+  initialAmPm,
+  onConfirm
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  initialHr: string;
+  initialMin: string;
+  initialAmPm: string;
+  onConfirm: (h: string, m: string, ampm: string) => void;
+}) {
+  const [hr, setHr] = useState(initialHr);
+  const [min, setMin] = useState(initialMin);
+  const [ampm, setAmPm] = useState(initialAmPm);
+
+  useEffect(() => {
+    if (isOpen) {
+      setHr(initialHr);
+      setMin(initialMin);
+      setAmPm(initialAmPm);
+    }
+  }, [isOpen, initialHr, initialMin, initialAmPm]);
+
+  if (!isOpen || typeof document === 'undefined') return null;
+
+  let h = parseInt(hr);
+  if (ampm === 'PM' && h < 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  const m = parseInt(min);
+  const now = new Date();
+  const targetDate = new Date();
+  targetDate.setHours(h, m, 0, 0);
+  if (targetDate < now) targetDate.setDate(targetDate.getDate() + 1);
+  const diffInMs = targetDate.getTime() - now.getTime();
+  let diffInMins = Math.floor(diffInMs / 1000 / 60);
+  if (diffInMins > 720) diffInMins = 720;
+  const durationText = diffInMins >= 60 ? `${Math.floor(diffInMins / 60)}h ${diffInMins % 60}m` : `${diffInMins}m`;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn select-none">
+      <div className="bg-[#121218] border border-blue-500/30 w-full max-w-xs rounded-2xl p-4 shadow-2xl text-white flex flex-col gap-3">
+        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-blue-400" />
+            <h3 className="text-sm font-black uppercase tracking-wider text-white">Set Target End Time</h3>
+          </div>
+          <button onClick={onClose} className="p-1 text-white/50 hover:text-white rounded-lg transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Picker Columns */}
+        <div className="grid grid-cols-3 gap-2 bg-black/40 p-2 rounded-xl border border-white/10">
+          {/* Hours Column */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-bold text-white/50 uppercase mb-1">Hour</span>
+            <div className="h-36 w-full overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-0.5">
+              {HR_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setHr(opt)}
+                  className={`w-full py-1.5 text-xs font-mono font-bold rounded-lg transition-all ${hr === opt ? 'bg-blue-500 text-white shadow-md' : 'bg-white/5 hover:bg-white/10 text-white/70'}`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mins Column */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-bold text-white/50 uppercase mb-1">Min</span>
+            <div className="h-36 w-full overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-0.5">
+              {MIN_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setMin(opt)}
+                  className={`w-full py-1.5 text-xs font-mono font-bold rounded-lg transition-all ${min === opt ? 'bg-blue-500 text-white shadow-md' : 'bg-white/5 hover:bg-white/10 text-white/70'}`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* AM/PM Column */}
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] font-bold text-white/50 uppercase mb-1">Period</span>
+            <div className="flex flex-col gap-2 w-full mt-2">
+              {AMPM_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setAmPm(opt)}
+                  className={`w-full py-2.5 text-xs font-bold rounded-lg transition-all ${ampm === opt ? 'bg-blue-500 text-white shadow-md' : 'bg-white/5 hover:bg-white/10 text-white/70'}`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Calculated duration preview */}
+        <div className="text-center bg-blue-500/10 border border-blue-500/20 py-2 px-3 rounded-xl text-xs font-bold text-blue-300">
+          Duration: {durationText} (Target: {hr}:{min} {ampm})
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onConfirm(hr, min, ampm);
+              onClose();
+            }}
+            className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 rounded-xl text-xs font-bold text-white transition-colors shadow-lg"
+          >
+            Set Target
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
