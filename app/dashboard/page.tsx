@@ -245,7 +245,7 @@ export default function Dashboard() {
   const stopwatchZ = widgetZIndices.stopwatch || 50;
   const timerZ = widgetZIndices.timer || 50;
   const toolbarZ = widgetZIndices.toolbar || 50;
-  const bottomRightZ = Math.max(tasksZ, stopwatchZ, timerZ, toolbarZ);
+  const bottomRightZ = Math.max(9500, tasksZ, stopwatchZ, timerZ, toolbarZ);
 
   return (
     <main className="relative overflow-hidden w-full flex-1" style={{ zoom: activeDashboardScale }}>
@@ -284,7 +284,7 @@ export default function Dashboard() {
           {/* Bottom Left Stacked Column Container: Target Countdowns (Top) & Deadlines Modal (Bottom) */}
           <div
             style={{
-              bottom: isMobile ? `${76 + dockOffset}px` : `${80 + dockOffset}px`,
+              bottom: isMobile ? `${148 + dockOffset}px` : `${80 + dockOffset}px`,
               zIndex: 8900
             }}
             className="fixed left-3 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300"
