@@ -11,6 +11,7 @@ export default function Countdown({
   id,
   onPrev,
   onNext,
+  onAddNew,
   hasPrev,
   hasNext,
   currentIndex = 0,
@@ -19,13 +20,14 @@ export default function Countdown({
   id?: string;
   onPrev?: () => void;
   onNext?: () => void;
+  onAddNew?: () => void;
   hasPrev?: boolean;
   hasNext?: boolean;
   currentIndex?: number;
   totalCount?: number;
 }) {
   const { countdowns, updateCountdown, addCountdown, deleteCountdown } = useDashboardStore();
-  const examCountdown = countdowns.find(c => c.id === id) || { title: 'Target', endDate: null };
+  const examCountdown = countdowns.find(c => c.id === id) || { title: '', endDate: null };
 
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
   const [isEditing, setIsEditing] = useState(false);
@@ -95,8 +97,9 @@ export default function Countdown({
 
   const handleSave = () => {
     if (!id) return;
+    const finalTitle = editTitle.trim() || 'Target Goal';
     const finalDateTime = editDateOnly ? (editTimeOnly ? `${editDateOnly}T${editTimeOnly}` : editDateOnly) : null;
-    updateCountdown(id, editTitle, finalDateTime);
+    updateCountdown(id, finalTitle, finalDateTime);
     setIsEditing(false);
   };
 
@@ -106,9 +109,14 @@ export default function Countdown({
       setTimeout(() => setShowMaxError(false), 3000);
       return;
     }
-    const todayStr = new Date().toISOString().split('T')[0];
-    const newId = addCountdown('New Target', todayStr);
-    if (newId) setIsEditing(true);
+    const newId = addCountdown('', null);
+    if (newId) {
+      if (onAddNew) onAddNew();
+      setIsEditing(true);
+      setEditTitle('');
+      setEditDateOnly('');
+      setEditTimeOnly('');
+    }
   };
 
   // EMPTY STATE CARD
@@ -117,6 +125,14 @@ export default function Countdown({
       <div className="w-[260px] sm:w-[280px] bg-gradient-to-br from-indigo-950/90 via-slate-900/90 to-purple-950/95 border border-indigo-500/30 shadow-[0_15px_40px_rgba(0,0,0,0.85)] backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3.5 text-white pointer-events-auto select-none relative overflow-hidden">
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
           <div className="flex items-center gap-1.5 min-w-0">
+            {/* Collapse Arrow on FAR LEFT */}
+            <button
+              onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
+              className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+              title="Collapse to left edge"
+            >
+              <ChevronLeft size={16} />
+            </button>
             <div className="p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 shrink-0">
               <Hourglass className="w-3.5 h-3.5 animate-pulse" />
             </div>
@@ -124,13 +140,6 @@ export default function Countdown({
               Target Countdowns
             </span>
           </div>
-          <button
-            onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
-            className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-            title="Collapse to left edge"
-          >
-            <ChevronLeft size={16} />
-          </button>
         </div>
 
         <div className="flex flex-col items-center justify-center p-3 text-center gap-2 bg-white/5 border border-white/10 rounded-xl my-1">
@@ -162,11 +171,20 @@ export default function Countdown({
       {/* Header Bar */}
       <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-white/10 gap-1.5">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          {/* Collapse Arrow on FAR LEFT */}
+          <button
+            onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
+            className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            title="Collapse to left edge"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
           <div className="p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 shrink-0">
             <Hourglass className="w-3.5 h-3.5 animate-pulse" />
           </div>
           <span className="font-black tracking-wide text-xs sm:text-[13px] bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent truncate flex-1">
-            {isEditing ? "Edit Target" : examCountdown.title}
+            {isEditing ? "Edit Target" : (examCountdown.title || "Set Target Title")}
           </span>
         </div>
 
@@ -209,15 +227,6 @@ export default function Countdown({
               <Trash2 size={13} />
             </button>
           )}
-
-          {/* Collapse to Left Edge Button */}
-          <button
-            onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
-            className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
-            title="Collapse to left edge"
-          >
-            <ChevronLeft size={16} />
-          </button>
         </div>
       </div>
 
@@ -234,12 +243,13 @@ export default function Countdown({
             type="text"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            className="w-full bg-slate-950/80 border border-indigo-500/40 rounded-xl px-2.5 py-1.5 text-white outline-none focus:border-indigo-400 text-xs font-semibold"
-            placeholder="Target Title (e.g. Final Exam)"
+            className="w-full bg-slate-950/80 border border-indigo-500/40 rounded-xl px-2.5 py-1.5 text-white outline-none focus:border-indigo-400 text-xs font-semibold placeholder:text-white/30"
+            placeholder="Set Target Title (e.g. Final Exam)"
+            autoFocus
           />
           <div className="flex flex-col gap-1.5 relative">
             <div className="w-full">
-              <CustomDatePicker value={editDateOnly} onChange={setEditDateOnly} />
+              <CustomDatePicker value={editDateOnly} onChange={setEditDateOnly} placeholder="Select Target Date" />
             </div>
             <div className="w-full">
               <CustomTimePicker value={editTimeOnly} onChange={setEditTimeOnly} />

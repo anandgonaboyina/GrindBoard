@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { createPortal } from "react-dom";
 
-export default function CustomDatePicker({ value, onChange }: { value: string, onChange: (date: string) => void }) {
+export default function CustomDatePicker({ value, onChange, placeholder = "Select Target Date" }: { value: string, onChange: (date: string) => void, placeholder?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => value ? new Date(value) : new Date());
   const popupRef = useRef<HTMLDivElement>(null);
@@ -19,12 +19,7 @@ export default function CustomDatePicker({ value, onChange }: { value: string, o
           setCurrentDate(new Date());
         }
       } else {
-        const today = new Date();
-        setCurrentDate(today);
-        const y = today.getFullYear();
-        const m = String(today.getMonth() + 1).padStart(2, '0');
-        const d = String(today.getDate()).padStart(2, '0');
-        onChange(`${y}-${m}-${d}`);
+        setCurrentDate(new Date());
       }
     }
   }, [isOpen, value]);
@@ -69,8 +64,8 @@ export default function CustomDatePicker({ value, onChange }: { value: string, o
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white cursor-pointer hover:border-blue-500 transition-colors flex items-center justify-between"
       >
-        <span className={value ? "text-white text-sm" : "text-white/40 text-sm"}>
-          {value || "Select a date..."}
+        <span className={value ? "text-white text-sm font-medium" : "text-white/30 text-sm font-normal"}>
+          {value || placeholder}
         </span>
         <Calendar size={16} className="text-white/40" />
       </div>

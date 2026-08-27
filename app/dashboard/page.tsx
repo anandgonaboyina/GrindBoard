@@ -300,12 +300,13 @@ export default function Dashboard() {
                       hasNext={safeIndex < countdowns.length - 1}
                       onPrev={() => setActiveCountdownIndex(p => p - 1)}
                       onNext={() => setActiveCountdownIndex(p => p + 1)}
+                      onAddNew={() => setActiveCountdownIndex(countdowns.length)}
                       currentIndex={safeIndex}
                       totalCount={countdowns.length}
                     />
                   );
                 })() : (
-                  <Countdown totalCount={0} />
+                  <Countdown totalCount={0} onAddNew={() => setActiveCountdownIndex(0)} />
                 )}
               </div>
             )}
