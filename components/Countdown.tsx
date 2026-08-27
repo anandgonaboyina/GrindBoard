@@ -106,7 +106,8 @@ export default function Countdown({
       setTimeout(() => setShowMaxError(false), 3000);
       return;
     }
-    const newId = addCountdown('New Target', null);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const newId = addCountdown('New Target', todayStr);
     if (newId) setIsEditing(true);
   };
 
@@ -115,20 +116,20 @@ export default function Countdown({
     return (
       <div className="w-[260px] sm:w-[280px] bg-gradient-to-br from-indigo-950/90 via-slate-900/90 to-purple-950/95 border border-indigo-500/30 shadow-[0_15px_40px_rgba(0,0,0,0.85)] backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3.5 text-white pointer-events-auto select-none relative overflow-hidden">
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
-          <div className="flex items-center gap-1.5">
-            <div className="p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 shrink-0">
               <Hourglass className="w-3.5 h-3.5 animate-pulse" />
             </div>
-            <span className="text-xs font-black tracking-wide bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent uppercase">
+            <span className="text-xs font-black tracking-wide bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent uppercase truncate">
               Target Countdowns
             </span>
           </div>
           <button
             onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
-            className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
-            title="Hide Countdowns"
+            className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            title="Collapse to left edge"
           >
-            <X size={13} />
+            <ChevronLeft size={16} />
           </button>
         </div>
 
@@ -159,43 +160,18 @@ export default function Countdown({
   return (
     <div className="group w-[260px] sm:w-[280px] bg-gradient-to-br from-indigo-950/95 via-slate-900/95 to-purple-950/95 border border-indigo-500/35 shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300 hover:border-indigo-500/60">
       {/* Header Bar */}
-      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-white/10">
-        <div className="flex items-center gap-1.5 min-w-0">
+      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-white/10 gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <div className="p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 shrink-0">
             <Hourglass className="w-3.5 h-3.5 animate-pulse" />
           </div>
-          <span className="font-black tracking-wide text-xs sm:text-[13px] bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent truncate max-w-[110px] sm:max-w-[130px]">
+          <span className="font-black tracking-wide text-xs sm:text-[13px] bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent truncate flex-1">
             {isEditing ? "Edit Target" : examCountdown.title}
           </span>
         </div>
 
-        {/* Action Controls & Navigation */}
+        {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Index Counter & Navigation */}
-          {totalCount > 1 && (
-            <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5 mr-0.5">
-              <button
-                disabled={!hasPrev}
-                onClick={onPrev}
-                className="p-0.5 text-white/50 hover:text-white disabled:opacity-30 disabled:hover:text-white/50 transition-colors"
-                title="Previous Target"
-              >
-                <ChevronLeft size={13} />
-              </button>
-              <span className="text-[9px] font-mono text-cyan-300 px-1 font-bold">
-                {currentIndex + 1}/{totalCount}
-              </span>
-              <button
-                disabled={!hasNext}
-                onClick={onNext}
-                className="p-0.5 text-white/50 hover:text-white disabled:opacity-30 disabled:hover:text-white/50 transition-colors"
-                title="Next Target"
-              >
-                <ChevronRight size={13} />
-              </button>
-            </div>
-          )}
-
           {/* Add New Target Button */}
           <button
             onClick={handleAddNew}
@@ -234,13 +210,13 @@ export default function Countdown({
             </button>
           )}
 
-          {/* Hide/Close Button */}
+          {/* Collapse to Left Edge Button */}
           <button
             onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
             className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
-            title="Hide Countdowns"
+            title="Collapse to left edge"
           >
-            <X size={13} />
+            <ChevronLeft size={16} />
           </button>
         </div>
       </div>
@@ -279,17 +255,50 @@ export default function Countdown({
       ) : (
         /* Countdown Days Display */
         <div className="flex flex-col items-center justify-center py-1">
-          {/* Big Days Counter Block */}
-          <div className="relative w-full bg-slate-950/60 border border-indigo-500/20 rounded-2xl p-2.5 text-center flex flex-col items-center justify-center shadow-inner overflow-hidden">
-            {/* Ambient Background Radial Glow */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 via-indigo-500/10 to-pink-500/10 blur-md pointer-events-none" />
+          {/* Main Counter Row with Edge Navigation Arrows */}
+          <div className="flex items-center justify-between gap-1.5 w-full">
+            {/* Left Edge Arrow */}
+            {totalCount > 1 && (
+              <button
+                disabled={!hasPrev}
+                onClick={onPrev}
+                className="p-1 sm:p-1.5 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white disabled:opacity-25 disabled:hover:bg-white/5 disabled:hover:text-white/70 transition-all shrink-0 active:scale-95"
+                title="Previous Target"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            )}
 
-            <div className="text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
-              {String(timeLeft.days).padStart(2, '0')}
+            {/* Big Days Counter Block */}
+            <div className="relative flex-1 bg-slate-950/60 border border-indigo-500/20 rounded-2xl p-2 sm:p-2.5 text-center flex flex-col items-center justify-center shadow-inner overflow-hidden">
+              {/* Ambient Background Radial Glow */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 via-indigo-500/10 to-pink-500/10 blur-md pointer-events-none" />
+
+              {totalCount > 1 && (
+                <span className="absolute top-1 right-2 text-[9px] font-mono text-cyan-300/70 font-bold">
+                  {currentIndex + 1}/{totalCount}
+                </span>
+              )}
+
+              <div className="text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
+                {String(timeLeft.days).padStart(2, '0')}
+              </div>
+              <div className="text-[9px] font-mono uppercase tracking-widest text-cyan-300/80 font-extrabold mt-0.5">
+                Days Remaining
+              </div>
             </div>
-            <div className="text-[9px] font-mono uppercase tracking-widest text-cyan-300/80 font-extrabold mt-0.5">
-              Days Remaining
-            </div>
+
+            {/* Right Edge Arrow */}
+            {totalCount > 1 && (
+              <button
+                disabled={!hasNext}
+                onClick={onNext}
+                className="p-1 sm:p-1.5 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white disabled:opacity-25 disabled:hover:bg-white/5 disabled:hover:text-white/70 transition-all shrink-0 active:scale-95"
+                title="Next Target"
+              >
+                <ChevronRight size={16} />
+              </button>
+            )}
           </div>
 
           {/* Sub-Time Row (HH:MM:SS) if time specified or available */}

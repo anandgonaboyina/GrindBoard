@@ -10,6 +10,26 @@ export default function CustomDatePicker({ value, onChange }: { value: string, o
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (isOpen) {
+      if (value) {
+        const parts = value.split('-').map(Number);
+        if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+          setCurrentDate(new Date(parts[0], parts[1] - 1, parts[2]));
+        } else {
+          setCurrentDate(new Date());
+        }
+      } else {
+        const today = new Date();
+        setCurrentDate(today);
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        onChange(`${y}-${m}-${d}`);
+      }
+    }
+  }, [isOpen, value]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
         setIsOpen(false);
@@ -41,6 +61,7 @@ export default function CustomDatePicker({ value, onChange }: { value: string, o
   };
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const realToday = new Date();
 
   return (
     <div className="relative w-full z-50">
@@ -48,7 +69,7 @@ export default function CustomDatePicker({ value, onChange }: { value: string, o
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white cursor-pointer hover:border-blue-500 transition-colors flex items-center justify-between"
       >
-        <span className={value ? "text-white text-sm" : "text-white/20 text-sm"}>
+        <span className={value ? "text-white text-sm" : "text-white/40 text-sm"}>
           {value || "Select a date..."}
         </span>
         <Calendar size={16} className="text-white/40" />
@@ -84,13 +105,18 @@ export default function CustomDatePicker({ value, onChange }: { value: string, o
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1;
                 const isSelected = value === `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = realToday.getFullYear() === currentDate.getFullYear() && realToday.getMonth() === currentDate.getMonth() && realToday.getDate() === day;
                 
                 return (
                   <button
                     key={day}
                     onClick={(e) => { e.preventDefault(); handleSelect(day); }}
                     className={`h-8 w-8 rounded-full text-xs font-medium transition-all mx-auto flex items-center justify-center
-                      ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
+                      ${isSelected
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 font-bold'
+                        : isToday
+                          ? 'border border-blue-400 text-blue-300 font-bold hover:bg-blue-500/20'
+                          : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
                   >
                     {day}
                   </button>
