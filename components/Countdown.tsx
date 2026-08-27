@@ -55,36 +55,66 @@ export default function Countdown({
     setEditTimeOnly(initialTime);
   }, [initialDate, initialTime, id]);
 
+  const [showMaxError, setShowMaxError] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   useEffect(() => {
     if (!examCountdown.endDate) return;
 
     const calculateTimeLeft = () => {
-      const now = new Date().getTime();
-      let targetTime;
+      if (!examCountdown.endDate) return false;
 
-      const hasTime = examCountdown.endDate && examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
+      const now = new Date();
+      const hasTime = examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
 
-      if (examCountdown.endDate && !hasTime) {
-        const [y, m, d] = examCountdown.endDate.split('T')[0].split('-');
-        targetTime = new Date(Number(y), Number(m) - 1, Number(d), 0, 0, 0).getTime();
+      if (!hasTime) {
+        // Pure date without time: Calculate calendar days difference relative to today (00:00)
+        const [y, m, d] = examCountdown.endDate.split('T')[0].split('-').map(Number);
+        const targetDateObj = new Date(y, m - 1, d);
+        const todayDateObj = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        const diffTime = targetDateObj.getTime() - todayDateObj.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+          // Past date
+          setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
+          return false;
+        }
+
+        // Calculate hours, mins, secs remaining to reach midnight tonight
+        const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        const timeUntilMidnight = midnight.getTime() - now.getTime();
+
+        const hours = Math.max(0, Math.floor((timeUntilMidnight % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
+        const mins = Math.max(0, Math.floor((timeUntilMidnight % (1000 * 60 * 60)) / (1000 * 60)));
+        const secs = Math.max(0, Math.floor((timeUntilMidnight % (1000 * 60)) / 1000));
+
+        setTimeLeft({
+          days: Math.max(0, diffDays),
+          hours,
+          mins,
+          secs
+        });
+        return true;
       } else {
-        targetTime = new Date(examCountdown.endDate!).getTime();
+        // Specific target date and time specified
+        const targetTime = new Date(examCountdown.endDate).getTime();
+        const distance = targetTime - now.getTime();
+
+        if (distance < 0 || isNaN(distance)) {
+          setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
+          return false;
+        }
+
+        setTimeLeft({
+          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          mins: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+          secs: Math.floor((distance % (1000 * 60)) / 1000)
+        });
+        return true;
       }
-
-      const distance = targetTime - now;
-
-      if (distance < 0 || isNaN(distance)) {
-        setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
-        return false;
-      }
-
-      setTimeLeft({
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        mins: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        secs: Math.floor((distance % (1000 * 60)) / 1000)
-      });
-      return true;
     };
 
     const shouldContinue = calculateTimeLeft();
@@ -97,8 +127,6 @@ export default function Countdown({
 
     return () => clearInterval(interval);
   }, [examCountdown.endDate]);
-
-  const [showMaxError, setShowMaxError] = useState(false);
 
   const handleSave = () => {
     if (!id) return;
@@ -327,7 +355,7 @@ export default function Countdown({
           {/* Delete Button */}
           {!isEditing && id && (
             <button
-              onClick={() => deleteCountdown(id)}
+              onClick={() => setShowDeleteConfirm(true)}
               className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/30 border border-red-500/20 text-red-400 transition-all"
               title="Delete Target"
             >
@@ -336,6 +364,41 @@ export default function Countdown({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center pointer-events-auto p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="relative bg-slate-950 border border-red-500/40 rounded-3xl p-5 z-10 w-full max-w-[280px] shadow-2xl animate-in zoom-in-95 text-center">
+            <div className="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto mb-3">
+              <Trash2 size={20} />
+            </div>
+            <h3 className="text-white font-bold text-sm mb-1">Delete Countdown?</h3>
+            <p className="text-white/60 text-xs mb-4 leading-tight">
+              Are you sure you want to delete <span className="text-white font-semibold">{examCountdown.title ? `"${examCountdown.title}"` : 'this target'}</span>?
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  if (id) deleteCountdown(id);
+                }}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-colors shadow-lg shadow-red-500/30"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
