@@ -270,7 +270,9 @@ interface DashboardState {
 
   // Countdowns
   countdowns: { id: string; title: string; endDate: string | null }[];
+  addCountdown: (title?: string, endDate?: string | null) => string;
   updateCountdown: (id: string, title: string, endDate: string | null) => void;
+  deleteCountdown: (id: string) => void;
 
   // Deadlines
   deadlines: any[];
@@ -1411,8 +1413,18 @@ export const useDashboardStore = create<DashboardState>()(
         { id: '2', title: 'Target 2', endDate: null },
         { id: '3', title: 'Target 3', endDate: null },
       ],
+      addCountdown: (title = 'New Target', endDate = null) => {
+        const newId = Date.now().toString();
+        set((state) => ({
+          countdowns: [...state.countdowns, { id: newId, title, endDate }]
+        }));
+        return newId;
+      },
       updateCountdown: (id, title, endDate) => set((state) => ({
         countdowns: state.countdowns.map(c => c.id === id ? { ...c, title, endDate } : c)
+      })),
+      deleteCountdown: (id) => set((state) => ({
+        countdowns: state.countdowns.filter(c => c.id !== id)
       })),
 
       // Deadlines
@@ -1709,7 +1721,7 @@ export const useDashboardStore = create<DashboardState>()(
 
       isSlideshowEnabled: false,
       setIsSlideshowEnabled: (enabled) => set({ isSlideshowEnabled: enabled }),
-      isMobileCountdownsVisible: false,
+      isMobileCountdownsVisible: true,
       setIsMobileCountdownsVisible: (visible) => set({ isMobileCountdownsVisible: visible }),
       slideshowIntervalMins: 10,
       setSlideshowIntervalMins: (mins) => set({ slideshowIntervalMins: mins }),

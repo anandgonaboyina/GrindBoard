@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useDashboardStore } from "@/store/dashboardStore";
-import { Clock, Edit2, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Edit2, Check, ChevronLeft, ChevronRight, Plus, Trash2, Hourglass, Calendar, Info, X } from "lucide-react";
 import { createPortal } from "react-dom";
 
 import CustomDatePicker from "@/components/CustomDatePicker";
@@ -12,28 +12,41 @@ export default function Countdown({
   onPrev,
   onNext,
   hasPrev,
-  hasNext
+  hasNext,
+  currentIndex = 0,
+  totalCount = 0
 }: {
-  id: string;
+  id?: string;
   onPrev?: () => void;
   onNext?: () => void;
   hasPrev?: boolean;
   hasNext?: boolean;
+  currentIndex?: number;
+  totalCount?: number;
 }) {
-  const { countdowns, updateCountdown } = useDashboardStore();
+  const { countdowns, updateCountdown, addCountdown, deleteCountdown } = useDashboardStore();
   const examCountdown = countdowns.find(c => c.id === id) || { title: 'Target', endDate: null };
 
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
   const [isEditing, setIsEditing] = useState(false);
-
   const [editTitle, setEditTitle] = useState(examCountdown.title);
 
-  // Split into date and time for better browser compatibility
+  // Sync title when id changes
+  useEffect(() => {
+    setEditTitle(examCountdown.title);
+  }, [examCountdown.title, id]);
+
+  // Split into date and time
   const initialDate = examCountdown.endDate ? examCountdown.endDate.split('T')[0] : '';
   const initialTime = examCountdown.endDate && examCountdown.endDate.includes('T') ? examCountdown.endDate.split('T')[1] : '';
 
   const [editDateOnly, setEditDateOnly] = useState(initialDate);
   const [editTimeOnly, setEditTimeOnly] = useState(initialTime);
+
+  useEffect(() => {
+    setEditDateOnly(initialDate);
+    setEditTimeOnly(initialTime);
+  }, [initialDate, initialTime, id]);
 
   useEffect(() => {
     if (!examCountdown.endDate) return;
@@ -45,7 +58,6 @@ export default function Countdown({
       const hasTime = examCountdown.endDate && examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
 
       if (examCountdown.endDate && !hasTime) {
-        // Parse 'YYYY-MM-DD' exactly as Local Midnight to prevent UTC timezone skew bugs
         const [y, m, d] = examCountdown.endDate.split('T')[0].split('-');
         targetTime = new Date(Number(y), Number(m) - 1, Number(d), 0, 0, 0).getTime();
       } else {
@@ -56,7 +68,7 @@ export default function Countdown({
 
       if (distance < 0 || isNaN(distance)) {
         setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
-        return false; // stop interval
+        return false;
       }
 
       setTimeLeft({
@@ -68,7 +80,6 @@ export default function Countdown({
       return true;
     };
 
-    // Run immediately once
     const shouldContinue = calculateTimeLeft();
     if (!shouldContinue) return;
 
@@ -81,81 +92,189 @@ export default function Countdown({
   }, [examCountdown.endDate]);
 
   const handleSave = () => {
-    // Combine date and time (omit time if not provided)
+    if (!id) return;
     const finalDateTime = editDateOnly ? (editTimeOnly ? `${editDateOnly}T${editTimeOnly}` : editDateOnly) : null;
     updateCountdown(id, editTitle, finalDateTime);
     setIsEditing(false);
   };
 
-  const hasTime = examCountdown.endDate && examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
+  const handleAddNew = () => {
+    const newId = addCountdown('New Target', null);
+    setIsEditing(true);
+  };
 
-  return (
-    <div className="group bg-black/20 backdrop-blur-2xl border border-white/10 rounded-2xl sm:rounded-3xl p-2 sm:p-3 shadow-2xl w-[calc(100vw-32px)] max-w-[290px] sm:w-[300px] pointer-events-auto select-none">
-      <div className="flex items-center justify-between mb-2 sm:mb-3">
-        <div className="flex items-center gap-1 sm:gap-1.5 text-white/80 cursor-grab active:cursor-grabbing">
-          {hasPrev && (
-            <button onClick={onPrev} className="p-1 bg-white/10 hover:bg-white/50 rounded-full text-white/40 hover:text-white transition-colors cursor-pointer">
-              <ChevronLeft size={16} />
-            </button>
-          )}
-          <Clock size={14} className="text-blue-400 sm:w-[16px] sm:h-[16px] shrink-0" />
-          <span className="font-semibold tracking-wide uppercase text-xs sm:text-[13px]  max-w-[120px] sm:max-w-[160px]">
-            {isEditing ? "Edit Target" : examCountdown.title}
-          </span>
+  // EMPTY STATE CARD
+  if (!id || totalCount === 0 || countdowns.length === 0) {
+    return (
+      <div className="w-[260px] sm:w-[280px] bg-gradient-to-br from-indigo-950/90 via-slate-900/90 to-purple-950/95 border border-indigo-500/30 shadow-[0_15px_40px_rgba(0,0,0,0.85)] backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3.5 text-white pointer-events-auto select-none relative overflow-hidden">
+        <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+          <div className="flex items-center gap-1.5">
+            <div className="p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400">
+              <Hourglass className="w-3.5 h-3.5 animate-pulse" />
+            </div>
+            <span className="text-xs font-black tracking-wide bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent uppercase">
+              Target Countdowns
+            </span>
+          </div>
         </div>
-        <div>
-          {hasNext && (
-            <button onClick={onNext} className="p-1 bg-white/10 hover:bg-white/50 rounded-full text-white/40 hover:text-white transition-colors cursor-pointer">
-              <ChevronRight size={16} />
-            </button>
-          )}
+
+        <div className="flex flex-col items-center justify-center p-3 text-center gap-2 bg-white/5 border border-white/10 rounded-xl my-1">
+          <div className="p-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <h4 className="text-xs font-bold text-white">No Target Days Set</h4>
+            <p className="text-[10px] text-white/60 leading-tight">
+              Set exam dates, birthdays, or target goals to see days remaining!
+            </p>
+          </div>
           <button
-            onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-            className={`p-1.5 sm:p-1.5 ml-1 rounded-lg sm:rounded-xl transition-all border ${isEditing ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/50' : 'bg-white/5 border-white/10 hover:bg-white/15 hover:border-white/20'}`}
-            title={isEditing ? "Save Target" : "Edit Target"}
+            onClick={handleAddNew}
+            className="mt-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[11px] font-bold shadow-lg shadow-indigo-500/25 active:scale-95 transition-all flex items-center gap-1.5"
           >
-            {isEditing ? <Check size={18} className="text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.5)] sm:w-5 sm:h-5" /> : <Edit2 size={16} className="text-white/80 sm:w-[18px] sm:h-[18px]" />}
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Target Countdown</span>
           </button>
         </div>
       </div>
+    );
+  }
 
+  const hasTime = examCountdown.endDate && examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
+
+  return (
+    <div className="group w-[260px] sm:w-[280px] bg-gradient-to-br from-indigo-950/95 via-slate-900/95 to-purple-950/95 border border-indigo-500/35 shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300 hover:border-indigo-500/60">
+      {/* Header Bar */}
+      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-white/10">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 shrink-0">
+            <Hourglass className="w-3.5 h-3.5 animate-pulse" />
+          </div>
+          <span className="font-black tracking-wide text-xs sm:text-[13px] bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent truncate max-w-[110px] sm:max-w-[130px]">
+            {isEditing ? "Edit Target" : examCountdown.title}
+          </span>
+        </div>
+
+        {/* Action Controls & Navigation */}
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Index Counter & Navigation */}
+          {totalCount > 1 && (
+            <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5 mr-0.5">
+              <button
+                disabled={!hasPrev}
+                onClick={onPrev}
+                className="p-0.5 text-white/50 hover:text-white disabled:opacity-30 disabled:hover:text-white/50 transition-colors"
+                title="Previous Target"
+              >
+                <ChevronLeft size={13} />
+              </button>
+              <span className="text-[9px] font-mono text-cyan-300 px-1 font-bold">
+                {currentIndex + 1}/{totalCount}
+              </span>
+              <button
+                disabled={!hasNext}
+                onClick={onNext}
+                className="p-0.5 text-white/50 hover:text-white disabled:opacity-30 disabled:hover:text-white/50 transition-colors"
+                title="Next Target"
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          )}
+
+          {/* Add New Target Button */}
+          <button
+            onClick={handleAddNew}
+            className="p-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 border border-indigo-500/30 text-indigo-300 hover:text-white transition-all"
+            title="Add New Target Countdown"
+          >
+            <Plus size={14} />
+          </button>
+
+          {/* Edit / Save Button */}
+          <button
+            onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+            className={`p-1 rounded-lg transition-all border ${
+              isEditing
+                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
+                : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/15'
+            }`}
+            title={isEditing ? "Save Target" : "Edit Target"}
+          >
+            {isEditing ? <Check size={14} className="text-emerald-400" /> : <Edit2 size={13} />}
+          </button>
+
+          {/* Delete Button */}
+          {!isEditing && (
+            <button
+              onClick={() => deleteCountdown(id)}
+              className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/30 border border-red-500/20 text-red-400 transition-all"
+              title="Delete Target"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Editing State Form */}
       {isEditing ? (
-        <div className="space-y-2">
+        <div className="space-y-2 py-0.5">
           <input
             type="text"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl px-2.5 py-1.5 text-white outline-none focus:border-white/30 text-sm"
-            placeholder="Target Title"
+            className="w-full bg-slate-950/80 border border-indigo-500/40 rounded-xl px-2.5 py-1.5 text-white outline-none focus:border-indigo-400 text-xs font-semibold"
+            placeholder="Target Title (e.g. Final Exam)"
           />
-          <div className="flex flex-col sm:flex-row gap-1.5 relative items-stretch">
-            <div className="flex-1 min-h-[36px] sm:min-h-0">
+          <div className="flex flex-col gap-1.5 relative">
+            <div className="w-full">
               <CustomDatePicker value={editDateOnly} onChange={setEditDateOnly} />
             </div>
-            <div className="w-full sm:w-28 shrink-0 min-h-[40px] sm:min-h-0">
+            <div className="w-full">
               <CustomTimePicker value={editTimeOnly} onChange={setEditTimeOnly} />
             </div>
           </div>
-        </div>
-      ) : hasTime ? (
-        <div className="grid grid-cols-3 gap-1 text-center">
-          <div className="bg-white/5 rounded-lg sm:rounded-xl py-1.5 sm:py-2 border border-white/5">
-            <div className="text-xl sm:text-2xl font-bold text-white">{String(timeLeft.days).padStart(2, '0')}</div>
-            <div className="text-[9px] text-white/50 uppercase tracking-widest mt-0.5">Days</div>
-          </div>
-          <div className="bg-white/5 rounded-lg sm:rounded-xl py-1.5 sm:py-2 border border-white/5">
-            <div className="text-xl sm:text-2xl font-bold text-white">{String(timeLeft.hours).padStart(2, '0')}</div>
-            <div className="text-[9px] text-white/50 uppercase tracking-widest mt-0.5">Hrs</div>
-          </div>
-          <div className="bg-white/5 rounded-lg sm:rounded-xl py-1.5 sm:py-2 border border-white/5">
-            <div className="text-xl sm:text-2xl font-bold text-white">{String(timeLeft.mins).padStart(2, '0')}</div>
-            <div className="text-[9px] text-white/50 uppercase tracking-widest mt-0.5">Min</div>
-          </div>
+          <button
+            onClick={handleSave}
+            className="w-full py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all active:scale-95"
+          >
+            Save Target
+          </button>
         </div>
       ) : (
-        <div className="bg-white/5 rounded-lg sm:rounded-xl py-2 sm:py-3 border border-white/5 text-center flex flex-col items-center justify-center">
-          <div className="text-3xl sm:text-4xl font-bold text-white">{String(timeLeft.days).padStart(2, '0')}</div>
-          <div className="text-[9px] sm:text-[10px] text-white/50 uppercase tracking-widest mt-1 sm:mt-1.5">Days Remaining</div>
+        /* Countdown Days Display */
+        <div className="flex flex-col items-center justify-center py-1">
+          {/* Big Days Counter Block */}
+          <div className="relative w-full bg-slate-950/60 border border-indigo-500/20 rounded-2xl p-2.5 text-center flex flex-col items-center justify-center shadow-inner overflow-hidden">
+            {/* Ambient Background Radial Glow */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 via-indigo-500/10 to-pink-500/10 blur-md pointer-events-none" />
+
+            <div className="text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
+              {String(timeLeft.days).padStart(2, '0')}
+            </div>
+            <div className="text-[9px] font-mono uppercase tracking-widest text-cyan-300/80 font-extrabold mt-0.5">
+              Days Remaining
+            </div>
+          </div>
+
+          {/* Sub-Time Row (HH:MM:SS) if time specified or available */}
+          {hasTime && (
+            <div className="grid grid-cols-3 gap-1.5 w-full mt-2 text-center">
+              <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-xl py-1 px-1">
+                <div className="text-sm font-black text-white">{String(timeLeft.hours).padStart(2, '0')}</div>
+                <div className="text-[8px] text-white/50 uppercase tracking-wider font-bold">Hours</div>
+              </div>
+              <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-xl py-1 px-1">
+                <div className="text-sm font-black text-white">{String(timeLeft.mins).padStart(2, '0')}</div>
+                <div className="text-[8px] text-white/50 uppercase tracking-wider font-bold">Mins</div>
+              </div>
+              <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-xl py-1 px-1">
+                <div className="text-sm font-black text-cyan-400">{String(timeLeft.secs).padStart(2, '0')}</div>
+                <div className="text-[8px] text-white/50 uppercase tracking-wider font-bold">Secs</div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -166,7 +285,6 @@ function CustomTimePicker({ value, onChange }: { value: string, onChange: (time:
   const [isOpen, setIsOpen] = useState(false);
   const [tempTime, setTempTime] = useState(value);
 
-  // Sync tempTime when opened
   useEffect(() => {
     if (isOpen) setTempTime(value);
   }, [isOpen, value]);
@@ -175,36 +293,38 @@ function CustomTimePicker({ value, onChange }: { value: string, onChange: (time:
     <>
       <div
         onClick={() => setIsOpen(true)}
-        className="w-full h-full bg-black/40 border border-white/10 rounded-lg sm:rounded-xl px-3 text-white cursor-pointer hover:border-blue-500 transition-colors text-sm text-center flex items-center justify-center min-h-[40px] sm:min-h-[42px]"
+        className="w-full bg-slate-950/80 border border-indigo-500/30 hover:border-indigo-400 rounded-xl px-3 py-1.5 text-white cursor-pointer transition-colors text-xs text-center flex items-center justify-center min-h-[36px]"
       >
-        <span className={value ? "text-white" : "text-white/40"}>{value || "Time"}</span>
+        <span className={value ? "text-white font-semibold" : "text-white/40"}>{value || "Select Time (Optional)"}</span>
       </div>
 
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center pointer-events-auto p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
-          <div className="relative bg-gray-900 border border-white/20 rounded-2xl sm:rounded-3xl p-5 sm:p-6 z-10 w-full max-w-[280px] sm:w-72 animate-in zoom-in-95 shadow-2xl">
-            <h3 className="text-white text-center font-medium mb-3 sm:mb-4 tracking-wide text-sm sm:text-base">Target Time <span className="text-white/30 text-[10px] sm:text-xs font-normal">(Optional)</span></h3>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
+          <div className="relative bg-slate-950 border border-indigo-500/40 rounded-3xl p-5 z-10 w-full max-w-[280px] shadow-2xl animate-in zoom-in-95">
+            <h3 className="text-white text-center font-bold mb-3 tracking-wide text-sm">
+              Target Time <span className="text-white/40 text-[10px] font-normal">(Optional)</span>
+            </h3>
 
             <input
               type="time"
               value={tempTime}
               onChange={e => setTempTime(e.target.value)}
-              className="w-full bg-black/40 text-white rounded-lg sm:rounded-xl px-3 sm:px-4 py-3 sm:py-4 border border-white/10 outline-none focus:border-blue-500 mb-5 sm:mb-6 [color-scheme:dark] text-xl sm:text-2xl text-center shadow-inner"
+              className="w-full bg-slate-900 text-white rounded-xl px-3 py-3 border border-indigo-500/30 outline-none focus:border-indigo-400 mb-4 [color-scheme:dark] text-xl text-center shadow-inner font-mono font-bold"
             />
 
-            <div className="flex gap-2 sm:gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={() => { onChange(''); setIsOpen(false); }}
-                className="flex-1 py-2.5 sm:py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-colors"
+                className="flex-1 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-xl text-xs font-bold transition-colors"
               >
                 Clear
               </button>
               <button
                 onClick={() => { onChange(tempTime); setIsOpen(false); }}
-                className="flex-[2] py-2.5 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-colors shadow-lg shadow-blue-500/20"
+                className="flex-[2] py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-colors shadow-lg shadow-indigo-500/30"
               >
-                Save
+                Save Time
               </button>
             </div>
           </div>

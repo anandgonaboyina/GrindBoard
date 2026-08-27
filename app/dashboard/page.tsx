@@ -222,6 +222,8 @@ export default function Dashboard() {
   }, [_hasHydrated, showQuotePopup]);
 
   useEffect(() => {
+    // Auto-open Countdowns widget on every refresh / app load
+    useDashboardStore.getState().setIsMobileCountdownsVisible(true);
     const token = localStorage.getItem('dashboard_sync_token');
     if (!token || token === 'null') {
       window.location.href = '/';
@@ -308,7 +310,7 @@ export default function Dashboard() {
                   setTouchStartY(null);
                 }}
               >
-                {countdowns.length > 0 && (() => {
+                {countdowns.length > 0 ? (() => {
                   const safeIndex = Math.min(activeCountdownIndex, Math.max(0, countdowns.length - 1));
                   return (
                     <Countdown
@@ -318,9 +320,13 @@ export default function Dashboard() {
                       hasNext={safeIndex < countdowns.length - 1}
                       onPrev={() => setActiveCountdownIndex(p => p - 1)}
                       onNext={() => setActiveCountdownIndex(p => p + 1)}
+                      currentIndex={safeIndex}
+                      totalCount={countdowns.length}
                     />
                   );
-                })()}
+                })() : (
+                  <Countdown totalCount={0} />
+                )}
               </div>
             </div>
           )}
