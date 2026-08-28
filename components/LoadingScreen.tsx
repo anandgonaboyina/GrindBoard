@@ -140,7 +140,7 @@ export default function LoadingScreen() {
           Grind Board
         </h1>
 
-        {/* Vision Statement (Clean Full-Screen Paragraph) */}
+        {/* Vision Statement */}
         <div className="relative max-w-xl mx-auto mb-6 px-4">
           <Quote className="w-4 h-4 text-blue-400/40 absolute -top-2 -left-1 rotate-180 hidden sm:block" />
           <p className="text-xs sm:text-sm md:text-base text-white/80 leading-relaxed font-sans italic drop-shadow-sm">
@@ -148,8 +148,8 @@ export default function LoadingScreen() {
           </p>
         </div>
 
-        {/* Creator Attribution & GitHub Pill Row */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5">
+        {/* Creator Attribution & GitHub Pill Row (Visible on Mobile here) */}
+        <div className="flex md:hidden flex-wrap items-center justify-center gap-2.5">
           <div className="flex items-center gap-1.5 text-xs font-bold text-rose-200 bg-rose-500/10 border border-rose-500/25 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-md">
             <span>Made with</span>
             <span className="text-rose-500 animate-pulse text-sm">❤️</span>
@@ -174,8 +174,31 @@ export default function LoadingScreen() {
 
       {/* 3. FULL-WIDTH BOTTOM PROGRESS & OFFLINE CONTROLS */}
       <footer className="relative z-10 w-full max-w-2xl mx-auto flex flex-col items-center">
+        {/* Creator Attribution & GitHub Pill Row (Visible on Desktop here above the loading status text) */}
+        <div className="hidden md:flex items-center justify-center gap-3 mb-3">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-rose-200 bg-rose-500/10 border border-rose-500/25 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-md">
+            <span>Made with</span>
+            <span className="text-rose-500 animate-pulse text-sm">❤️</span>
+            <span>by <strong className="text-white font-extrabold tracking-wide">Anand</strong></span>
+          </div>
+
+          <a
+            href="https://github.com/anandgonaboyina"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs font-mono font-bold text-sky-300 hover:text-white bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 px-3.5 py-1.5 rounded-full transition-all hover:scale-105 shadow-sm group"
+            title="Visit Anand's GitHub Profile"
+          >
+            <svg className="w-3.5 h-3.5 fill-sky-400 group-hover:rotate-12 transition-transform" viewBox="0 0 24 24">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            <span>github.com/anandgonaboyina</span>
+            <ExternalLink className="w-3 h-3 text-sky-400 opacity-70 group-hover:opacity-100" />
+          </a>
+        </div>
+
         {/* Status Text & Percentage */}
-        <div className="w-full flex items-center justify-between text-xs font-mono font-semibold text-white/80 mb-2.5 px-1">
+        <div className="w-full flex items-center justify-between text-xs font-mono font-semibold text-white/80 mb-2 px-1">
           <div className="flex items-center gap-2 overflow-hidden">
             <div className={`w-2.5 h-2.5 rounded-full shrink-0 animate-pulse shadow-md ${isOnline ? 'bg-blue-400 shadow-blue-500/80' : 'bg-amber-400 shadow-amber-400/80'}`} />
             <span className="text-xs sm:text-sm text-blue-200/90 font-medium tracking-wide truncate">
@@ -186,7 +209,7 @@ export default function LoadingScreen() {
         </div>
 
         {/* Full-width Glass Progress Bar */}
-        <div className="w-full h-3.5 bg-black/60 border border-white/15 rounded-full p-0.5 shadow-2xl backdrop-blur-md relative overflow-hidden mb-4">
+        <div className="w-full h-3.5 bg-black/60 border border-white/15 rounded-full p-0.5 shadow-2xl backdrop-blur-md relative overflow-hidden mb-3">
           <div
             className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
               isOnline
@@ -199,14 +222,14 @@ export default function LoadingScreen() {
           </div>
         </div>
 
-        {/* Instant Offline Button */}
-        <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-2 text-center sm:text-left">
-          <span className="text-[11px] text-amber-200/80 font-medium">
-            Slow connection? Skip waiting and load instantly:
+        {/* Instant Offline Button Bar */}
+        <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-2xl p-2 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-center justify-between gap-2 backdrop-blur-md shadow-sm">
+          <span className="text-[11px] sm:text-xs text-amber-200/90 font-medium text-center sm:text-left">
+            Slow network or taking time? Skip waiting and load instantly:
           </span>
           <button
             onClick={handleLoadOffline}
-            className="px-4 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 backdrop-blur-md cursor-pointer group"
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 border border-amber-500/50 text-amber-200 hover:text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0 group"
             title="Skip waiting for online cloud sync and load instantly from local cache"
           >
             <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 group-hover:scale-110 transition-transform animate-pulse" />
