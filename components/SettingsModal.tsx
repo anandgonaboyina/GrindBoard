@@ -1012,468 +1012,494 @@ export default function SettingsModal() {
               )}
 
               {settingsActiveTab === 'preferences' && (
-                <div className="flex flex-col gap-3 md:gap-4">
+                <div className="flex flex-col gap-4 md:gap-5">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm md:text-base font-semibold">General Preferences</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Customize how your dashboard looks and feels.</p>
+                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Customize your dashboard's theme, scaling, layout positions, and widget visibility.</p>
                     </div>
                     <button onClick={() => setInfoModalKey('preferences')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors mr-1">
                       <Info className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <div className="flex flex-col gap-1.5 md:gap-2">
-                    {/* Theme Toggle */}
-                    <div className="flex flex-col p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3">
-                        <div className="flex items-center gap-2 md:gap-3">
-                          <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                            <Layout className="text-purple-400 w-4 h-4" />
+                  <div className="flex flex-col gap-4">
+                    {/* SECTION 1: THEME & DISPLAY OPTIONS */}
+                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
+                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5 px-0.5">
+                        <Layout className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Theme & Time Format</span>
+                      </h4>
+
+                      <div className="flex flex-col gap-2">
+                        {/* Theme Toggle */}
+                        <div className="flex flex-col p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-2">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3">
+                            <div className="flex items-center gap-2 md:gap-3">
+                              <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                                <Layout className="text-purple-400 w-4 h-4" />
+                              </div>
+                              <div className="min-w-0 pr-2">
+                                <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Dashboard Theme</h5>
+                                <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Dark Mode active. Light & Auto themes coming in a future update.</p>
+                              </div>
+                            </div>
+
+                            <div className="flex bg-black/40 border border-white/10 rounded-lg p-0.5 self-end sm:self-auto shrink-0">
+                              <button
+                                onClick={() => setTheme('dark')}
+                                className="px-3 py-1 text-[10px] md:text-xs font-bold rounded-md capitalize transition-all bg-purple-500 text-white shadow-md"
+                              >
+                                Dark
+                              </button>
+                              <button
+                                onClick={() => setShowThemeNotice(true)}
+                                className="px-2.5 py-1 text-[10px] md:text-xs font-medium rounded-md capitalize text-white/40 hover:text-amber-300 hover:bg-amber-500/10 transition-all flex items-center gap-1 cursor-pointer"
+                                title="Light & Auto themes coming soon"
+                              >
+                                <span>Auto</span>
+                                <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">Soon</span>
+                              </button>
+                              <button
+                                onClick={() => setShowThemeNotice(true)}
+                                className="px-2.5 py-1 text-[10px] md:text-xs font-medium rounded-md capitalize text-white/40 hover:text-amber-300 hover:bg-amber-500/10 transition-all flex items-center gap-1 cursor-pointer"
+                                title="Light & Auto themes coming soon"
+                              >
+                                <span>Light</span>
+                                <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">Soon</span>
+                              </button>
+                            </div>
                           </div>
-                          <div className="min-w-0 pr-2">
-                            <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Dashboard Theme</h4>
-                            <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Dark Mode active. Light & Auto themes coming in a future update.</p>
+
+                          {showThemeNotice && (
+                            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[10px] md:text-xs text-amber-200 flex items-center justify-between gap-2 animate-in fade-in">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <span className="truncate">Light & Auto themes will be available in a future update! Dark Mode is optimized.</span>
+                              </div>
+                              <button onClick={() => setShowThemeNotice(false)} className="p-0.5 text-amber-300 hover:text-white rounded shrink-0">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Toggle 24-hour clock */}
+                        <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                              <Clock className="text-blue-300 w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 pr-2">
+                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">24-Hour Clock Format</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Military time (14:00 instead of 2:00 PM)</p>
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="flex bg-black/40 border border-white/10 rounded-lg p-0.5 self-end sm:self-auto shrink-0">
                           <button
-                            onClick={() => setTheme('dark')}
-                            className="px-3 py-1 text-[10px] md:text-xs font-bold rounded-md capitalize transition-all bg-purple-500 text-white shadow-md"
+                            onClick={toggle24HourClock}
+                            className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${is24HourClock ? 'bg-blue-500' : 'bg-white/20'}`}
                           >
-                            Dark
-                          </button>
-                          <button
-                            onClick={() => setShowThemeNotice(true)}
-                            className="px-2.5 py-1 text-[10px] md:text-xs font-medium rounded-md capitalize text-white/40 hover:text-amber-300 hover:bg-amber-500/10 transition-all flex items-center gap-1 cursor-pointer"
-                            title="Light & Auto themes coming soon"
-                          >
-                            <span>Auto</span>
-                            <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">Soon</span>
-                          </button>
-                          <button
-                            onClick={() => setShowThemeNotice(true)}
-                            className="px-2.5 py-1 text-[10px] md:text-xs font-medium rounded-md capitalize text-white/40 hover:text-amber-300 hover:bg-amber-500/10 transition-all flex items-center gap-1 cursor-pointer"
-                            title="Light & Auto themes coming soon"
-                          >
-                            <span>Light</span>
-                            <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">Soon</span>
+                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${is24HourClock ? 'translate-x-4' : 'translate-x-0.5'}`} />
                           </button>
                         </div>
-                      </div>
 
-                      {showThemeNotice && (
-                        <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[10px] md:text-xs text-amber-200 flex items-center justify-between gap-2 animate-in fade-in">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                            <span className="truncate">Light & Auto themes will be available in a future update! Dark Mode is optimized.</span>
+                        {/* Auto-Open Target Countdowns */}
+                        <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="p-1 md:p-1.5 bg-indigo-500/20 text-indigo-400 rounded-md shrink-0">
+                              <Hourglass className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 pr-2">
+                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Auto-Open Countdowns on Launch</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">
+                                Automatically opens & displays your target countdowns on dashboard launch unless disabled.
+                              </p>
+                            </div>
                           </div>
-                          <button onClick={() => setShowThemeNotice(false)} className="p-0.5 text-amber-300 hover:text-white rounded shrink-0">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Toggle 24-hour clock */}
-                    <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                          <Clock className="text-blue-300 w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">24-Hour Clock Format</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Military time (14:00 instead of 2:00 PM)</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={toggle24HourClock}
-                        className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${is24HourClock ? 'bg-blue-500' : 'bg-white/20'}`}
-                      >
-                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${is24HourClock ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-
-                    {/* Auto-Open Target Countdowns */}
-                    <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="p-1 md:p-1.5 bg-indigo-500/20 text-indigo-400 rounded-md shrink-0">
-                          <Hourglass className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Auto-Open Countdowns on Launch</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">
-                            Automatically opens & displays your target countdowns on dashboard launch unless disabled.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setAutoOpenCountdowns(!autoOpenCountdowns)}
-                        className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${autoOpenCountdowns ? 'bg-indigo-500' : 'bg-white/20'}`}
-                      >
-                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${autoOpenCountdowns ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-
-                    {/* Clock Size Settings */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                          <Clock className="text-blue-400 w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Big Clock Size</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Scale the clock for your screen.</p>
-                        </div>
-                      </div>
-                      <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">current size : {Math.round((clockScale) * 100)}%</p>
-                      <div className="flex items-center gap-2 w-full sm:w-40 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
-                        <span className="text-[9px] md:text-[10px] text-white/40">50%</span>
-                        <input
-                          type="range"
-                          min="0.5"
-                          max="1.5"
-                          step="0.05"
-                          value={clockScale}
-                          onChange={(e) => setClockScale(parseFloat(e.target.value))}
-                          className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
-                        />
-                        <span className="text-[9px] md:text-[10px] text-white/40">150%</span>
-                      </div>
-                    </div>
-
-                    {/* Desktop UI Scale */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                          <Monitor className="text-emerald-400 w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Desktop UI Scale</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Scale layout for desktop & large displays.</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
-                        {/* Preset Quick Scale Pills */}
-                        <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
-                          {[0.75, 1.0, 1.25].map(s => (
-                            <button
-                              key={s}
-                              onClick={() => setDashboardScale(s)}
-                              className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((dashboardScale || 1) - s) < 0.01 ? 'bg-emerald-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
-                            >
-                              {Math.round(s * 100)}%
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Precise Stepper (- / + step controls & percentage input) */}
-                        <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
                           <button
-                            onClick={() => setDashboardScale(Math.max(0.5, Math.round(((dashboardScale || 1) - 0.05) * 100) / 100))}
-                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                            title="Decrease (-5%)"
+                            onClick={() => setAutoOpenCountdowns(!autoOpenCountdowns)}
+                            className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${autoOpenCountdowns ? 'bg-indigo-500' : 'bg-white/20'}`}
                           >
-                            <Minus className="w-3 h-3" />
+                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${autoOpenCountdowns ? 'translate-x-4' : 'translate-x-0.5'}`} />
                           </button>
+                        </div>
 
-                          <div className="flex items-center font-mono text-[10px] md:text-xs text-emerald-300 font-bold px-0.5">
+                        {/* Deadline Alerts */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                              <Bell className="text-yellow-400 w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 pr-2">
+                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Deadline Alerts</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Show deadlines modal as deadlines approach.</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto pl-7 sm:pl-0">
+                            <span className="text-white/60 text-[9px] md:text-[11px] whitespace-nowrap">Alert me</span>
                             <input
                               type="number"
-                              min="50"
-                              max="150"
-                              step="1"
-                              value={Math.round((dashboardScale || 1) * 100)}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value);
-                                if (!isNaN(val)) {
-                                  setDashboardScale(Math.min(1.5, Math.max(0.5, val / 100)));
-                                }
-                              }}
-                              className="w-7 bg-transparent text-center text-emerald-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              min="0"
+                              max="30"
+                              value={deadlineAlertDays}
+                              onChange={(e) => setDeadlineAlertDays(parseInt(e.target.value) || 0)}
+                              className="w-10 md:w-12 bg-black/40 border border-white/10 rounded-md px-1 py-0.5 text-center text-white outline-none focus:border-yellow-400 font-medium text-[10px] md:text-xs"
                             />
-                            <span className="text-[9px] text-emerald-400/80">%</span>
+                            <span className="text-white/60 text-[9px] md:text-[11px] whitespace-nowrap">days before</span>
                           </div>
-
-                          <button
-                            onClick={() => setDashboardScale(Math.min(1.5, Math.round(((dashboardScale || 1) + 0.05) * 100) / 100))}
-                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                            title="Increase (+5%)"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
                         </div>
-
-                        {/* Reset button if scale is not 100% */}
-                        {Math.abs((dashboardScale || 1) - 1.0) >= 0.01 && (
-                          <button
-                            onClick={() => setDashboardScale(1.0)}
-                            className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
-                            title="Reset to 100%"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          </button>
-                        )}
                       </div>
                     </div>
 
-                    {/* Mobile UI Scale */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                          <Smartphone className="text-sky-400 w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Mobile UI Scale</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Independent scale layout for mobile screens.</p>
-                        </div>
-                      </div>
+                    {/* SECTION 2: SIZING & UI SCALE CONTROL */}
+                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
+                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5 px-0.5">
+                        <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Sizing & UI Scaling</span>
+                      </h4>
 
-                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
-                        {/* Preset Quick Scale Pills */}
-                        <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
-                          {[0.75, 1.0, 1.25].map(s => (
-                            <button
-                              key={s}
-                              onClick={() => setMobileDashboardScale(s)}
-                              className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((mobileDashboardScale || 1) - s) < 0.01 ? 'bg-sky-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
-                            >
-                              {Math.round(s * 100)}%
-                            </button>
-                          ))}
+                      <div className="flex flex-col gap-2">
+                        {/* Desktop UI Scale */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
+                          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                              <Monitor className="text-emerald-400 w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 pr-2">
+                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Desktop UI Scale</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Scale layout for desktop & large displays.</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
+                            <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
+                              {[0.75, 1.0, 1.25].map(s => (
+                                <button
+                                  key={s}
+                                  onClick={() => setDashboardScale(s)}
+                                  className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((dashboardScale || 1) - s) < 0.01 ? 'bg-emerald-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
+                                >
+                                  {Math.round(s * 100)}%
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
+                              <button
+                                onClick={() => setDashboardScale(Math.max(0.5, Math.round(((dashboardScale || 1) - 0.05) * 100) / 100))}
+                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                                title="Decrease (-5%)"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+
+                              <div className="flex items-center font-mono text-[10px] md:text-xs text-emerald-300 font-bold px-0.5">
+                                <input
+                                  type="number"
+                                  min="50"
+                                  max="150"
+                                  step="1"
+                                  value={Math.round((dashboardScale || 1) * 100)}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    if (!isNaN(val)) {
+                                      setDashboardScale(Math.min(1.5, Math.max(0.5, val / 100)));
+                                    }
+                                  }}
+                                  className="w-7 bg-transparent text-center text-emerald-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <span className="text-[9px] text-emerald-400/80">%</span>
+                              </div>
+
+                              <button
+                                onClick={() => setDashboardScale(Math.min(1.5, Math.round(((dashboardScale || 1) + 0.05) * 100) / 100))}
+                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                                title="Increase (+5%)"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            {Math.abs((dashboardScale || 1) - 1.0) >= 0.01 && (
+                              <button
+                                onClick={() => setDashboardScale(1.0)}
+                                className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
+                                title="Reset to 100%"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Precise Stepper (- / + step controls & percentage input) */}
-                        <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
-                          <button
-                            onClick={() => setMobileDashboardScale(Math.max(0.5, Math.round(((mobileDashboardScale || 1) - 0.05) * 100) / 100))}
-                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                            title="Decrease (-5%)"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
+                        {/* Mobile UI Scale */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
+                          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                              <Smartphone className="text-sky-400 w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 pr-2">
+                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Mobile UI Scale</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Independent scale layout for mobile screens.</p>
+                            </div>
+                          </div>
 
-                          <div className="flex items-center font-mono text-[10px] md:text-xs text-sky-300 font-bold px-0.5">
+                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
+                            <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
+                              {[0.75, 1.0, 1.25].map(s => (
+                                <button
+                                  key={s}
+                                  onClick={() => setMobileDashboardScale(s)}
+                                  className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((mobileDashboardScale || 1) - s) < 0.01 ? 'bg-sky-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
+                                >
+                                  {Math.round(s * 100)}%
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
+                              <button
+                                onClick={() => setMobileDashboardScale(Math.max(0.5, Math.round(((mobileDashboardScale || 1) - 0.05) * 100) / 100))}
+                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                                title="Decrease (-5%)"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+
+                              <div className="flex items-center font-mono text-[10px] md:text-xs text-sky-300 font-bold px-0.5">
+                                <input
+                                  type="number"
+                                  min="50"
+                                  max="150"
+                                  step="1"
+                                  value={Math.round((mobileDashboardScale || 1) * 100)}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    if (!isNaN(val)) {
+                                      setMobileDashboardScale(Math.min(1.5, Math.max(0.5, val / 100)));
+                                    }
+                                  }}
+                                  className="w-7 bg-transparent text-center text-sky-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <span className="text-[9px] text-sky-400/80">%</span>
+                              </div>
+
+                              <button
+                                onClick={() => setMobileDashboardScale(Math.min(1.5, Math.round(((mobileDashboardScale || 1) + 0.05) * 100) / 100))}
+                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                                title="Increase (+5%)"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            {Math.abs((mobileDashboardScale || 1) - 1.0) >= 0.01 && (
+                              <button
+                                onClick={() => setMobileDashboardScale(1.0)}
+                                className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
+                                title="Reset to 100%"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Big Clock Size */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
+                          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                              <Clock className="text-blue-400 w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 pr-2">
+                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Big Clock Size</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Scale the clock for your screen.</p>
+                            </div>
+                          </div>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">current size : {Math.round((clockScale) * 100)}%</p>
+                          <div className="flex items-center gap-2 w-full sm:w-40 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
+                            <span className="text-[9px] md:text-[10px] text-white/40">50%</span>
                             <input
-                              type="number"
-                              min="50"
-                              max="150"
-                              step="1"
-                              value={Math.round((mobileDashboardScale || 1) * 100)}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value);
-                                if (!isNaN(val)) {
-                                  setMobileDashboardScale(Math.min(1.5, Math.max(0.5, val / 100)));
-                                }
-                              }}
-                              className="w-7 bg-transparent text-center text-sky-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              type="range"
+                              min="0.5"
+                              max="1.5"
+                              step="0.05"
+                              value={clockScale}
+                              onChange={(e) => setClockScale(parseFloat(e.target.value))}
+                              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
                             />
-                            <span className="text-[9px] text-sky-400/80">%</span>
+                            <span className="text-[9px] md:text-[10px] text-white/40">150%</span>
+                          </div>
+                        </div>
+
+                        {/* Bottom Dock Size (Scale) */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
+                          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                              <Sliders className="text-purple-400 w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 pr-2">
+                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Bottom Dock Size</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Resize bottom dock icons for your display.</p>
+                            </div>
                           </div>
 
-                          <button
-                            onClick={() => setMobileDashboardScale(Math.min(1.5, Math.round(((mobileDashboardScale || 1) + 0.05) * 100) / 100))}
-                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                            title="Increase (+5%)"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                        </div>
+                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
+                            <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
+                              {[0.75, 1.0, 1.25].map(s => (
+                                <button
+                                  key={s}
+                                  onClick={() => setDockScale(s)}
+                                  className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((dockScale || 1) - s) < 0.01 ? 'bg-purple-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
+                                >
+                                  {Math.round(s * 100)}%
+                                </button>
+                              ))}
+                            </div>
 
-                        {/* Reset button if scale is not 100% */}
-                        {Math.abs((mobileDashboardScale || 1) - 1.0) >= 0.01 && (
-                          <button
-                            onClick={() => setMobileDashboardScale(1.0)}
-                            className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
-                            title="Reset to 100%"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                            <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
+                              <button
+                                onClick={() => setDockScale(Math.max(0.5, Math.round(((dockScale || 1) - 0.05) * 100) / 100))}
+                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                                title="Decrease (-5%)"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+
+                              <div className="flex items-center font-mono text-[10px] md:text-xs text-purple-300 font-bold px-0.5">
+                                <input
+                                  type="number"
+                                  min="50"
+                                  max="150"
+                                  step="1"
+                                  value={Math.round((dockScale || 1) * 100)}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    if (!isNaN(val)) {
+                                      setDockScale(Math.min(1.5, Math.max(0.5, val / 100)));
+                                    }
+                                  }}
+                                  className="w-7 bg-transparent text-center text-purple-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <span className="text-[9px] text-purple-400/80">%</span>
+                              </div>
+
+                              <button
+                                onClick={() => setDockScale(Math.min(1.5, Math.round(((dockScale || 1) + 0.05) * 100) / 100))}
+                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                                title="Increase (+5%)"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            {Math.abs((dockScale || 1) - 1.0) >= 0.01 && (
+                              <button
+                                onClick={() => setDockScale(1.0)}
+                                className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
+                                title="Reset to 100%"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Deadline Alerts */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                          <Bell className="text-yellow-400 w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Deadline Alerts</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Show deadlines modal as deadlines approach.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto pl-7 sm:pl-0">
-                        <span className="text-white/60 text-[9px] md:text-[11px] whitespace-nowrap">Alert me</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max="30"
-                          value={deadlineAlertDays}
-                          onChange={(e) => setDeadlineAlertDays(parseInt(e.target.value) || 0)}
-                          className="w-10 md:w-12 bg-black/40 border border-white/10 rounded-md px-1 py-0.5 text-center text-white outline-none focus:border-yellow-400 font-medium text-[10px] md:text-xs"
-                        />
-                        <span className="text-white/60 text-[9px] md:text-[11px] whitespace-nowrap">days before</span>
-                      </div>
-                    </div>
+                    {/* SECTION 3: TOOLBAR & DOCK POSITIONS */}
+                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
+                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5 px-0.5">
+                        <ChevronUp className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Toolbar & Dock Offsets (Move Up / Down)</span>
+                      </h4>
 
-                    {/* Right Toolbar Position */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                          <Layout className="text-cyan-400 w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Right Toolbar Position</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Adjust the height of right-side widgets.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0 bg-black/40 border border-white/10 rounded-md p-1 self-end sm:self-auto">
-                        <button
-                          onClick={() => setRightWidgetsOffset(Math.max(0, rightWidgetsOffset - 10))}
-                          className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="font-bold text-[10px] md:text-xs w-6 md:w-8 text-center text-cyan-300">{rightWidgetsOffset}</span>
-                        <button
-                          onClick={() => setRightWidgetsOffset(rightWidgetsOffset + 10)}
-                          className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                        >
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Bottom Dock Position */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                          <Layout className="text-purple-400 w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Bottom Dock Position</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Move bottom dock & timetable toggle up or down.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0 bg-black/40 border border-white/10 rounded-md p-1 self-end sm:self-auto">
-                        <button
-                          onClick={() => setDockOffset(dockOffset - 10)}
-                          className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                          title="Move Down"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="font-bold text-[10px] md:text-xs w-6 md:w-8 text-center text-purple-300">{dockOffset}</span>
-                        <button
-                          onClick={() => setDockOffset(dockOffset + 10)}
-                          className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                          title="Move Up"
-                        >
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Bottom Dock Size (Scale) */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-1.5 sm:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                          <Sliders className="text-purple-400 w-4 h-4" />
-                        </div>
-                        <div className="min-w-0 pr-2">
-                          <h4 className="font-medium text-xs md:text-sm whitespace-nowrap">Bottom Dock Size</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Resize bottom dock icons for your display.</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
-                        {/* Preset Quick Scale Pills */}
-                        <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
-                          {[0.75, 1.0, 1.25].map(s => (
+                      <div className="flex flex-col gap-2">
+                        {/* Right Toolbar Position */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                              <Layout className="text-cyan-400 w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 pr-2">
+                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Right Toolbar Position</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Adjust the vertical offset of right-side toolbar widgets.</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0 bg-black/40 border border-white/10 rounded-md p-1 self-end sm:self-auto">
                             <button
-                              key={s}
-                              onClick={() => setDockScale(s)}
-                              className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((dockScale || 1) - s) < 0.01 ? 'bg-purple-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
+                              onClick={() => setRightWidgetsOffset(Math.max(0, rightWidgetsOffset - 10))}
+                              className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                              title="Move Down"
                             >
-                              {Math.round(s * 100)}%
+                              <ChevronDown className="w-3.5 h-3.5" />
                             </button>
-                          ))}
-                        </div>
-
-                        {/* Precise Stepper (- / + step controls & percentage input) */}
-                        <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
-                          <button
-                            onClick={() => setDockScale(Math.max(0.5, Math.round(((dockScale || 1) - 0.05) * 100) / 100))}
-                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                            title="Decrease (-5%)"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
-
-                          <div className="flex items-center font-mono text-[10px] md:text-xs text-purple-300 font-bold px-0.5">
-                            <input
-                              type="number"
-                              min="50"
-                              max="150"
-                              step="1"
-                              value={Math.round((dockScale || 1) * 100)}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value);
-                                if (!isNaN(val)) {
-                                  setDockScale(Math.min(1.5, Math.max(0.5, val / 100)));
-                                }
-                              }}
-                              className="w-7 bg-transparent text-center text-purple-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                            <span className="text-[9px] text-purple-400/80">%</span>
+                            <span className="font-bold text-[10px] md:text-xs w-6 md:w-8 text-center text-cyan-300">{rightWidgetsOffset}</span>
+                            <button
+                              onClick={() => setRightWidgetsOffset(rightWidgetsOffset + 10)}
+                              className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                              title="Move Up"
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-
-                          <button
-                            onClick={() => setDockScale(Math.min(1.5, Math.round(((dockScale || 1) + 0.05) * 100) / 100))}
-                            className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                            title="Increase (+5%)"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
                         </div>
 
-                        {/* Reset button if scale is not 100% */}
-                        {Math.abs((dockScale || 1) - 1.0) >= 0.01 && (
-                          <button
-                            onClick={() => setDockScale(1.0)}
-                            className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
-                            title="Reset to 100%"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        {/* Bottom Dock Position */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
+                              <Layout className="text-purple-400 w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 pr-2">
+                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Bottom Dock Position</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Move bottom dock & timetable toggle up or down.</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0 bg-black/40 border border-white/10 rounded-md p-1 self-end sm:self-auto">
+                            <button
+                              onClick={() => setDockOffset(dockOffset - 10)}
+                              className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                              title="Move Down"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="font-bold text-[10px] md:text-xs w-6 md:w-8 text-center text-purple-300">{dockOffset}</span>
+                            <button
+                              onClick={() => setDockOffset(dockOffset + 10)}
+                              className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
+                              title="Move Up"
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Widget Layout & Positioning */}
-                    <div className="flex flex-col p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 mt-1">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 md:mb-3 gap-2">
-                        <h4 className="font-medium text-xs md:text-sm">Widget Drag Locking</h4>
+                    {/* SECTION 4: WIDGET DRAG LOCKING & POSITION RESETS */}
+                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
+                      <div className="flex items-center justify-between gap-2 px-0.5">
+                        <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-rose-400" />
+                          <span>Widget Drag Locking</span>
+                        </h4>
                         <button
                           onClick={() => {
                             if (currentBgSrc) resetAllOffsets(currentBgSrc);
                           }}
-                          className="px-2 py-1 md:px-3 md:py-1 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-md transition-colors border border-red-500/30 font-medium text-[9px] md:text-[11px] whitespace-nowrap"
+                          className="px-2 py-1 md:px-2.5 md:py-1 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-md transition-colors border border-red-500/30 font-medium text-[9px] md:text-[10px] whitespace-nowrap cursor-pointer"
                         >
                           Reset Default Positions
                         </button>
                       </div>
-                      <p className="text-[9px] md:text-[10px] text-white/50 mb-2 md:mb-3">Lock elements so they cannot be dragged.</p>
+                      <p className="text-[9px] md:text-[10px] text-white/50 px-0.5">Lock elements so they cannot be dragged accidentally on screen.</p>
 
-                      <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+                      <div className="grid grid-cols-2 gap-1.5 md:gap-2 mt-1">
                         {[
                           { key: 'clock', icon: Clock, label: 'Clock', color: 'text-blue-300' },
                         ].map(({ key, icon: Icon, label, color }) => (
-                          <div key={key} className="flex items-center justify-between p-2 md:p-2 rounded-md bg-white/5">
+                          <div key={key} className="flex items-center justify-between p-2 md:p-2 rounded-lg bg-black/30 border border-white/5">
                             <div className="flex items-center gap-1.5 md:gap-2 min-w-0 pr-1">
                               <Icon className={`${color} w-3.5 h-3.5 shrink-0`} />
                               <span className="text-[9px] md:text-[11px] font-medium truncate">{label}</span>
@@ -1486,13 +1512,16 @@ export default function SettingsModal() {
                       </div>
                     </div>
 
-                    {/* Widget Visibility */}
-                    <div className="flex flex-col p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 mt-1">
-                      <h4 className="font-medium text-xs md:text-sm mb-2 md:mb-3">Widget Visibility</h4>
+                    {/* SECTION 5: WIDGET VISIBILITY */}
+                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
+                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5 px-0.5">
+                        <Eye className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Widget Visibility</span>
+                      </h4>
+                      <p className="text-[9px] md:text-[10px] text-white/50 px-0.5">Toggle individual widgets on or off across your dashboard layout.</p>
 
-                      <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+                      <div className="grid grid-cols-2 gap-1.5 md:gap-2 mt-1">
                         {[
-
                           { key: 'showQuote', icon: MessageSquare, label: 'Quote', color: 'text-purple-400', state: showQuote },
                           { key: 'showTimer', icon: TimerIcon, label: 'Timer', color: 'text-yellow-400', state: showTimer },
                           { key: 'showStopwatch', icon: Clock, label: 'Stopwatch', color: 'text-blue-400', state: showStopwatch },
@@ -1509,7 +1538,7 @@ export default function SettingsModal() {
                           { key: 'showDeadlineAlerts', icon: Bell, label: 'Alerts', color: 'text-red-400', state: showDeadlineAlerts },
                           { key: 'showBgSwitcher', icon: ImageIcon, label: 'Bg Switcher', color: 'text-green-300', state: showBgSwitcher },
                         ].map(({ key, icon: Icon, label, color, state }) => (
-                          <div key={key} className="flex items-center justify-between p-2 md:p-2 rounded-md bg-white/5">
+                          <div key={key} className="flex items-center justify-between p-2 md:p-2 rounded-lg bg-black/30 border border-white/5">
                             <div className="flex items-center gap-1.5 md:gap-2 min-w-0 pr-1">
                               <Icon className={`${color} w-3.5 h-3.5 shrink-0`} />
                               <span className="text-[9px] md:text-[11px] font-medium truncate">{label}</span>
@@ -1520,7 +1549,7 @@ export default function SettingsModal() {
                           </div>
                         ))}
 
-                        <div className="flex flex-col justify-center p-2 md:p-2 rounded-md bg-white/5 col-span-2 sm:col-span-1">
+                        <div className="flex flex-col justify-center p-2 md:p-2 rounded-lg bg-black/30 border border-white/5 col-span-2 sm:col-span-1">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5 md:gap-2">
                               <Clock className="text-cyan-400 w-3.5 h-3.5 shrink-0" />
@@ -1536,139 +1565,91 @@ export default function SettingsModal() {
                         </div>
                       </div>
                     </div>
+
                   </div>
                 </div>
               )}
 
               {settingsActiveTab === 'sound' && (
-                <div className="flex flex-col gap-3 md:gap-4">
+                <div className="flex flex-col gap-4 md:gap-5">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm md:text-base font-semibold">Sound Settings</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Configure audio for alarms and timers.</p>
+                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Configure audio ringtones, alarm durations, and interval focus beeps.</p>
                     </div>
                     <button onClick={() => setInfoModalKey('sound')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors mr-1">
                       <Info className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <div className="bg-white/5 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 flex flex-col gap-4 md:gap-6">
-
-                    {/* Choose Default Alarm Sound (Dropdown Style) */}
-                    <div className="flex flex-col gap-2">
-                      <div>
-                        <label className="text-xs md:text-sm font-semibold text-white/90 flex items-center gap-1.5">
+                  <div className="flex flex-col gap-4">
+                    {/* SECTION 1: DEFAULT ALARM RINGTONES (DRAG TO SCROLL LIBRARY) */}
+                    <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-black/20 border border-white/10">
+                      <div className="flex items-center justify-between gap-2 px-0.5">
+                        <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-blue-300 flex items-center gap-1.5">
                           <Music className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Choose Default Alarm Sound</span>
-                        </label>
-                        <p className="text-[9px] md:text-[10px] text-white/50 mt-0.5">Select a ringtone from our built-in default library.</p>
+                          <span>Default Alarm Ringtones</span>
+                        </h4>
+                        <span className="text-[9px] md:text-[10px] text-white/40 italic">Drag or use scroll arrows</span>
                       </div>
+                      <p className="text-[9px] md:text-[10px] text-white/50 px-0.5">Select a ringtone from our default library.</p>
 
-                      {/* Dropdown Header & Trigger */}
-                      {(() => {
-                        const activeDefault = DEFAULT_ALARM_SOUNDS.find(s => s.url === alarmSound || (s.url === '/ringtones/narutoBGM.mp3' && alarmSound === '/ringtones/alarm.mp3'));
-                        const isCustomActive = !activeDefault && (customAlarmSounds || []).some(s => s.url === alarmSound);
-                        const isPreviewingActive = activeDefault && previewingAudioUrl === activeDefault.url;
+                      {/* ScrollableWithArrows Container for Ringtones */}
+                      <div className="h-52 rounded-xl bg-black/40 border border-white/10 overflow-hidden relative">
+                        <ScrollableWithArrows className="p-1.5 flex flex-col gap-1.5" downArrowOffset="bottom-2">
+                          {DEFAULT_ALARM_SOUNDS.map((sound) => {
+                            const isActive = alarmSound === sound.url || (sound.url === '/ringtones/narutoBGM.mp3' && alarmSound === '/ringtones/alarm.mp3');
+                            const isPreviewing = previewingAudioUrl === sound.url;
 
-                        return (
-                          <div className="flex flex-col gap-1.5">
-                            <div
-                              onClick={() => setIsDefaultDropdownOpen(!isDefaultDropdownOpen)}
-                              className={`flex items-center justify-between p-2.5 md:p-3 rounded-lg border transition-all cursor-pointer select-none ${
-                                isDefaultDropdownOpen
-                                  ? 'bg-blue-500/20 border-blue-500/60 shadow-lg shadow-blue-500/10'
-                                  : 'bg-black/30 border-white/15 hover:border-white/30 hover:bg-black/40'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${activeDefault ? 'border-blue-400 bg-blue-500/20' : 'border-white/30'}`}>
-                                  {activeDefault && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                            return (
+                              <div
+                                key={sound.id}
+                                onClick={() => {
+                                  stopPreviewAudio();
+                                  setAlarmSound(sound.url);
+                                }}
+                                className={`flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all select-none cursor-pointer ${
+                                  isActive
+                                    ? 'bg-blue-600/30 border-blue-500/70 text-white shadow-md shadow-blue-500/10'
+                                    : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10 text-white/80 hover:text-white'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0 pr-2 flex-1">
+                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-blue-400 bg-blue-500/30' : 'border-white/30'}`}>
+                                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                                  </div>
+                                  <Music className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-blue-300' : 'text-white/40'}`} />
+                                  <span className="text-[11px] md:text-xs font-medium truncate" title={sound.name}>{sound.name}</span>
+                                  {isActive && (
+                                    <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-semibold shrink-0">Active Default</span>
+                                  )}
                                 </div>
-                                <span className="text-xs md:text-sm font-medium text-white truncate">
-                                  {activeDefault ? activeDefault.name : isCustomActive ? 'Custom Ringtone Active' : 'Select Default Alarm...'}
-                                </span>
-                                {activeDefault && (
-                                  <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-semibold shrink-0">Default Active</span>
-                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleTogglePreviewAudio(sound.url);
+                                  }}
+                                  className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-[9px] cursor-pointer"
+                                  title="Preview sound"
+                                >
+                                  {isPreviewing ? <Pause className="w-3 h-3 text-yellow-300 animate-pulse" /> : <Play className="w-3 h-3" />}
+                                </button>
                               </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
-                                {activeDefault && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleTogglePreviewAudio(activeDefault.url);
-                                    }}
-                                    className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors text-[9px]"
-                                    title="Preview sound"
-                                  >
-                                    {isPreviewingActive ? <Pause className="w-3.5 h-3.5 text-yellow-300 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
-                                  </button>
-                                )}
-                                <ChevronDown className={`w-4 h-4 text-white/60 transition-transform duration-200 ${isDefaultDropdownOpen ? 'rotate-180 text-blue-400' : ''}`} />
-                              </div>
-                            </div>
-
-                            {/* Dropdown Options List */}
-                            {isDefaultDropdownOpen && (
-                              <div className="mt-1 bg-[#161619] border border-white/15 rounded-xl p-1.5 shadow-2xl space-y-1 animate-in fade-in-50 zoom-in-95 duration-150 max-h-60 overflow-y-auto arrow-scrollbar">
-                                {DEFAULT_ALARM_SOUNDS.map((sound) => {
-                                  const isActive = alarmSound === sound.url || (sound.url === '/ringtones/narutoBGM.mp3' && alarmSound === '/ringtones/alarm.mp3');
-                                  const isPreviewing = previewingAudioUrl === sound.url;
-
-                                  return (
-                                    <div
-                                      key={sound.id}
-                                      onClick={() => {
-                                        stopPreviewAudio();
-                                        setAlarmSound(sound.url);
-                                        setIsDefaultDropdownOpen(false);
-                                      }}
-                                      className={`flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all cursor-pointer ${
-                                        isActive
-                                          ? 'bg-blue-600/25 border-blue-500/60 text-white'
-                                          : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10 text-white/80 hover:text-white'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2.5 min-w-0 pr-2 flex-1">
-                                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-blue-400' : 'border-white/30'}`}>
-                                          {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
-                                        </div>
-                                        <span className="text-[11px] md:text-xs font-medium truncate" title={sound.name}>{sound.name}</span>
-                                        {isActive && (
-                                          <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-semibold shrink-0">Selected</span>
-                                        )}
-                                      </div>
-
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleTogglePreviewAudio(sound.url);
-                                        }}
-                                        className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-[9px]"
-                                        title="Preview sound"
-                                      >
-                                        {isPreviewing ? <Pause className="w-3 h-3 text-yellow-300 animate-pulse" /> : <Play className="w-3 h-3" />}
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
+                            );
+                          })}
+                        </ScrollableWithArrows>
+                      </div>
                     </div>
 
-                    {/* Custom Ringtones (Separately below) */}
-                    <div className="flex flex-col gap-2 pt-3 border-t border-white/10">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <label className="text-xs md:text-sm font-semibold text-white/80">Custom Ringtones</label>
-                          <p className="text-[9px] md:text-[10px] text-white/50">Upload max 3 custom ringtones saved in your local settings.</p>
-                        </div>
+                    {/* SECTION 2: CUSTOM RINGTONES */}
+                    <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-black/20 border border-white/10">
+                      <div className="flex items-center justify-between gap-2 px-0.5">
+                        <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                          <Upload className="w-3.5 h-3.5 text-purple-400" />
+                          <span>Custom Ringtones</span>
+                        </h4>
 
                         <input
                           type="file"
@@ -1682,7 +1663,7 @@ export default function SettingsModal() {
                           type="button"
                           onClick={() => audioFileInputRef.current?.click()}
                           disabled={(customAlarmSounds || []).length >= 3}
-                          className={`flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-md text-[9px] md:text-[10px] font-medium transition-all border shrink-0 ${(customAlarmSounds || []).length >= 3
+                          className={`flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1 rounded-md text-[9px] md:text-[10px] font-medium transition-all border shrink-0 cursor-pointer ${(customAlarmSounds || []).length >= 3
                             ? 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
                             : 'bg-purple-600/30 hover:bg-purple-600/50 border-purple-500/40 text-purple-200 hover:text-white'
                             }`}
@@ -1691,10 +1672,11 @@ export default function SettingsModal() {
                           <span>Upload ({(customAlarmSounds || []).length}/3)</span>
                         </button>
                       </div>
+                      <p className="text-[9px] md:text-[10px] text-white/50 px-0.5">Upload max 3 custom ringtone files stored in browser database.</p>
 
-                      <div className="grid gap-1.5 md:gap-2">
+                      <div className="grid gap-1.5 md:gap-2 mt-0.5">
                         {(customAlarmSounds || []).length === 0 ? (
-                          <div className="p-3 text-center border border-dashed border-white/10 rounded-md text-white/40 text-[10px] md:text-[11px]">
+                          <div className="p-3 text-center border border-dashed border-white/10 rounded-lg text-white/40 text-[10px] md:text-[11px]">
                             No custom ringtones uploaded yet.
                           </div>
                         ) : (
@@ -1704,9 +1686,9 @@ export default function SettingsModal() {
                             return (
                               <div
                                 key={sound.id}
-                                className={`flex items-center justify-between p-2 md:p-2.5 rounded-md border transition-all ${isActive
+                                className={`flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all ${isActive
                                   ? 'bg-purple-500/20 border-purple-500/50'
-                                  : 'bg-black/20 border-white/10 hover:border-white/30'
+                                  : 'bg-black/30 border-white/5 hover:border-white/20'
                                   }`}
                               >
                                 <div
@@ -1716,10 +1698,10 @@ export default function SettingsModal() {
                                     setAlarmSound(sound.url);
                                   }}
                                 >
-                                  <div className={`w-3 h-3 md:w-3.5 md:h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-purple-400' : 'border-white/30'}`}>
+                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-purple-400 bg-purple-500/30' : 'border-white/30'}`}>
                                     {isActive && <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
                                   </div>
-                                  <span className="text-[10px] md:text-[11px] font-medium truncate" title={sound.name}>{sound.name}</span>
+                                  <span className="text-[10px] md:text-[11px] font-medium truncate text-white" title={sound.name}>{sound.name}</span>
                                   <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold shrink-0">Custom</span>
                                   {isActive && (
                                     <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-300 font-semibold shrink-0">Active</span>
@@ -1730,7 +1712,7 @@ export default function SettingsModal() {
                                   <button
                                     type="button"
                                     onClick={() => handleTogglePreviewAudio(sound.url)}
-                                    className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors flex items-center gap-1 text-[9px]"
+                                    className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors flex items-center gap-1 text-[9px] cursor-pointer"
                                     title="Preview sound"
                                   >
                                     {isPreviewing ? <Pause className="w-3 h-3 text-yellow-300 animate-pulse" /> : <Play className="w-3 h-3" />}
@@ -1744,7 +1726,7 @@ export default function SettingsModal() {
                                       }
                                       deleteCustomAlarmSound(sound.id);
                                     }}
-                                    className="p-1 md:p-1.5 rounded bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white transition-colors"
+                                    className="p-1 md:p-1.5 rounded bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white transition-colors cursor-pointer"
                                     title="Delete custom ringtone"
                                   >
                                     <Trash2 className="w-3 h-3" />
@@ -1757,95 +1739,117 @@ export default function SettingsModal() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 md:gap-3">
-                      <div className="flex justify-between items-center">
-                        <label className="text-xs md:text-sm font-semibold text-white/80">Auto Stop Timer</label>
-                        <span className="text-[9px] md:text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/60">{alarmDurationSecs} Secs</span>
-                      </div>
-                      <p className="text-[8px] md:text-[10px] text-white/40 leading-tight">How long should the sound ring?</p>
-                      <input
-                        type="range"
-                        min="5"
-                        max="120"
-                        step="5"
-                        value={alarmDurationSecs || 60}
-                        onChange={(e) => setAlarmDurationSecs(parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 mt-1"
-                      />
-                      <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
-                        <span>5s</span>
-                        <span>1m</span>
-                        <span>2m</span>
+                    {/* SECTION 3: ALARM DURATION & SOUND TOGGLES */}
+                    <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-black/20 border border-white/10">
+                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5 px-0.5">
+                        <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Alarm Duration & Toggles</span>
+                      </h4>
+
+                      <div className="flex flex-col gap-2">
+                        {/* Auto Stop Timer Slider */}
+                        <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-black/30 border border-white/5">
+                          <div className="flex justify-between items-center">
+                            <label className="text-xs md:text-sm font-medium text-white/90">Auto Stop Timer</label>
+                            <span className="text-[9px] md:text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono font-bold">{alarmDurationSecs} Secs</span>
+                          </div>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">How long should the alarm ring before automatically stopping.</p>
+                          <input
+                            type="range"
+                            min="5"
+                            max="120"
+                            step="5"
+                            value={alarmDurationSecs || 60}
+                            onChange={(e) => setAlarmDurationSecs(parseInt(e.target.value))}
+                            className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-amber-400 hover:accent-amber-300 mt-1"
+                          />
+                          <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
+                            <span>5s</span>
+                            <span>60s</span>
+                            <span>120s</span>
+                          </div>
+                        </div>
+
+                        {/* Enable Alarm Sound */}
+                        <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5">
+                          <div className="flex flex-col pr-2 min-w-0">
+                            <span className="text-xs md:text-sm font-medium text-white/90">Enable Alarm Sound</span>
+                            <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Play alarm ringtone when timer completes.</p>
+                          </div>
+                          <button
+                            onClick={() => setEnableAlarmSound(!enableAlarmSound)}
+                            className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${enableAlarmSound ? 'bg-blue-500' : 'bg-white/20'}`}
+                          >
+                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${enableAlarmSound ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          </button>
+                        </div>
+
+                        {/* Enable Device Vibrate */}
+                        <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5">
+                          <div className="flex flex-col pr-2 min-w-0">
+                            <span className="text-xs md:text-sm font-medium text-white/90">Enable Device Vibration</span>
+                            <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Vibrate mobile or supported devices on timer end.</p>
+                          </div>
+                          <button
+                            onClick={() => setEnableAlarmVibration(!enableAlarmVibration)}
+                            className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${enableAlarmVibration ? 'bg-blue-500' : 'bg-white/20'}`}
+                          >
+                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${enableAlarmVibration ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-2 md:p-2.5 rounded-md bg-white/5">
-                      <div className="flex flex-col pr-2 min-w-0">
-                        <span className="text-[10px] md:text-[11px] font-medium text-white/80 whitespace-nowrap">Enable Alarm Sound</span>
-                        <p className="text-[8px] md:text-[9px] text-white/40 leading-tight truncate">Play alarm sound when finished</p>
+                    {/* SECTION 4: TASK TIMER INTERVAL ALERTS */}
+                    <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-black/20 border border-white/10">
+                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5 px-0.5">
+                        <Bell className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Task Timer Interval Focus Beeps</span>
+                      </h4>
+
+                      <div className="flex flex-col gap-3 p-2.5 rounded-lg bg-black/30 border border-white/5">
+                        <div className="flex justify-between items-center">
+                          <label className="text-xs md:text-sm font-medium text-white/90">Task Interval Alert Frequency</label>
+                          <span className="text-[9px] md:text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 rounded font-mono font-bold">{taskIntervalAlertMins} Mins</span>
+                        </div>
+                        <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Plays a short focus beep every X minutes while a task timer is actively running.</p>
+                        <input
+                          type="range"
+                          min="1"
+                          max="60"
+                          step="1"
+                          value={taskIntervalAlertMins || 10}
+                          onChange={(e) => setTaskIntervalAlertMins(parseInt(e.target.value))}
+                          className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400 hover:accent-cyan-300 mt-1"
+                        />
+                        <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
+                          <span>1m</span>
+                          <span>30m</span>
+                          <span>60m</span>
+                        </div>
+
+                        <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2">
+                          <label className="text-xs md:text-sm font-medium text-white/90">Interval Beep Duration</label>
+                          <span className="text-[9px] md:text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 rounded font-mono font-bold">{taskIntervalRingSecs} Secs</span>
+                        </div>
+                        <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">How long the interval alert should ring before automatically stopping.</p>
+                        <input
+                          type="range"
+                          min="1"
+                          max="30"
+                          step="1"
+                          value={taskIntervalRingSecs || 10}
+                          onChange={(e) => setTaskIntervalRingSecs(parseInt(e.target.value))}
+                          className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400 hover:accent-cyan-300 mt-1"
+                        />
+                        <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
+                          <span>1s</span>
+                          <span>15s</span>
+                          <span>30s</span>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => setEnableAlarmSound(!enableAlarmSound)}
-                        className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0 ${enableAlarmSound ? 'bg-blue-500' : 'bg-white/20'}`}
-                      >
-                        <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${enableAlarmSound ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                      </button>
                     </div>
 
-                    <div className="flex items-center justify-between p-2 md:p-2.5 rounded-md bg-white/5">
-                      <div className="flex flex-col pr-2 min-w-0">
-                        <span className="text-[10px] md:text-[11px] font-medium text-white/80 whitespace-nowrap">Enable Device Vibrate</span>
-                        <p className="text-[8px] md:text-[9px] text-white/40 leading-tight truncate">Vibrate device when finished</p>
-                      </div>
-                      <button
-                        onClick={() => setEnableAlarmVibration(!enableAlarmVibration)}
-                        className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0 ${enableAlarmVibration ? 'bg-blue-500' : 'bg-white/20'}`}
-                      >
-                        <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${enableAlarmVibration ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-
-                    <div className="flex flex-col gap-2 md:gap-3 bg-white/5 border border-white/10 rounded-md p-3 md:p-4">
-                      <div className="flex justify-between items-center">
-                        <label className="text-xs md:text-sm font-semibold text-white/80">Task Timer Interval Alert</label>
-                        <span className="text-[9px] md:text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/60">{taskIntervalAlertMins} Mins</span>
-                      </div>
-                      <p className="text-[8px] md:text-[10px] text-white/40 leading-tight">Plays a short beep every X minutes while a task timer is actively running to keep you focused.</p>
-                      <input
-                        type="range"
-                        min="1"
-                        max="60"
-                        step="1"
-                        value={taskIntervalAlertMins || 10}
-                        onChange={(e) => setTaskIntervalAlertMins(parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 mt-1"
-                      />
-                      <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
-                        <span>1m</span>
-                        <span>30m</span>
-                        <span>60m</span>
-                      </div>
-
-                      <div className="flex justify-between items-center mt-3">
-                        <label className="text-xs md:text-sm font-semibold text-white/80">Interval Beep Duration</label>
-                        <span className="text-[9px] md:text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/60">{taskIntervalRingSecs} Secs</span>
-                      </div>
-                      <p className="text-[8px] md:text-[10px] text-white/40 leading-tight">How long the interval alert should ring before automatically stopping.</p>
-                      <input
-                        type="range"
-                        min="1"
-                        max="30"
-                        step="1"
-                        value={taskIntervalRingSecs || 10}
-                        onChange={(e) => setTaskIntervalRingSecs(parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 mt-1"
-                      />
-                      <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
-                        <span>1s</span>
-                        <span>15s</span>
-                        <span>30s</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}

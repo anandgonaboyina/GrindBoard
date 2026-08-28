@@ -224,9 +224,9 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
           onPointerUp={handleArrowPointerUpOrLeave}
           onPointerLeave={handleArrowPointerUpOrLeave}
           onPointerCancel={handleArrowPointerUpOrLeave}
-          className="absolute top-2 right-0 z-10 hidden md:flex items-center justify-center w-8 h-8 bg-black/40 hover:bg-black/60 text-white rounded-l-xl opacity-0 group-hover/scrollable:opacity-100 transition-opacity backdrop-blur-md border border-r-0 border-white/10 shadow-lg select-none"
+          className="absolute top-2 right-0 z-10 flex items-center justify-center w-7 h-7 md:w-8 md:h-8 bg-black/50 hover:bg-black/80 text-white rounded-l-xl opacity-80 hover:opacity-100 md:opacity-0 md:group-hover/scrollable:opacity-100 transition-all backdrop-blur-md border border-r-0 border-white/15 shadow-lg select-none"
         >
-          <ChevronUp className="w-5 h-5" />
+          <ChevronUp className="w-4 h-4 md:w-5 md:h-5" />
         </button>
       )}
 
@@ -236,9 +236,9 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
           onPointerUp={handleArrowPointerUpOrLeave}
           onPointerLeave={handleArrowPointerUpOrLeave}
           onPointerCancel={handleArrowPointerUpOrLeave}
-          className={`absolute ${downArrowOffset} right-0 z-10 hidden md:flex items-center justify-center w-8 h-8 bg-black/40 hover:bg-black/60 text-white rounded-l-xl opacity-0 group-hover/scrollable:opacity-100 transition-opacity backdrop-blur-md border border-r-0 border-white/10 shadow-lg select-none`}
+          className={`absolute ${downArrowOffset} right-0 z-10 flex items-center justify-center w-7 h-7 md:w-8 md:h-8 bg-black/50 hover:bg-black/80 text-white rounded-l-xl opacity-80 hover:opacity-100 md:opacity-0 md:group-hover/scrollable:opacity-100 transition-all backdrop-blur-md border border-r-0 border-white/15 shadow-lg select-none`}
         >
-          <ChevronDown className="w-5 h-5" />
+          <ChevronDown className="w-4 h-4 md:w-5 md:h-5" />
         </button>
       )}
     </div>

@@ -367,26 +367,39 @@ export default function TaskManager() {
                         <>
                             <div className="flex items-center gap-1 md:gap-2 flex-wrap">
                                 <div className="flex items-center gap-1 md:gap-2">
-                                    <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shrink-0">
+                                    {selectedGroupId ? (
                                         <button
                                             onClick={() => {
-                                                setActiveTab('today');
                                                 setSelectedGroupId(null);
                                             }}
-                                            className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${!selectedGroupId && activeTab === 'today' ? 'bg-sky-500/20 text-sky-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                                            className="flex items-center gap-1.5 px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 hover:border-blue-400 rounded-md text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0"
+                                            title="Go back to Personal Tasks"
                                         >
-                                            Today
+                                            <ArrowLeft size={12} className="shrink-0 text-blue-400" />
+                                            <span>Go Personal Tasks</span>
                                         </button>
-                                        <button
-                                            onClick={() => {
-                                                setActiveTab('tomorrow');
-                                                setSelectedGroupId(null);
-                                            }}
-                                            className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${!selectedGroupId && activeTab === 'tomorrow' ? 'bg-purple-500/20 text-purple-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
-                                        >
-                                            Tomorrow
-                                        </button>
-                                    </div>
+                                    ) : (
+                                        <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shrink-0">
+                                            <button
+                                                onClick={() => {
+                                                    setActiveTab('today');
+                                                    setSelectedGroupId(null);
+                                                }}
+                                                className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${!selectedGroupId && activeTab === 'today' ? 'bg-sky-500/20 text-sky-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                                            >
+                                                Today
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setActiveTab('tomorrow');
+                                                    setSelectedGroupId(null);
+                                                }}
+                                                className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${!selectedGroupId && activeTab === 'tomorrow' ? 'bg-purple-500/20 text-purple-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                                            >
+                                                Tomorrow
+                                            </button>
+                                        </div>
+                                    )}
                                     <div
                                         className="relative flex items-center gap-1 md:gap-1.5 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0"
                                         title="Plays a short beep every X minutes while a task timer is running"

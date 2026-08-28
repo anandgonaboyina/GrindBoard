@@ -100,7 +100,7 @@ export default function Timer() {
 
     // Highlight the minutes field
     setHighlightedField('minutes');
-    setTimeout(() => setHighlightedField(null), 1000);
+    setTimeout(() => setHighlightedField(null), 1800);
   };
 
   const handleCustomMinsChange = (val: string) => {
@@ -128,7 +128,7 @@ export default function Timer() {
 
       // Highlight the clock fields
       setHighlightedField('clock');
-      setTimeout(() => setHighlightedField(null), 1000);
+      setTimeout(() => setHighlightedField(null), 1800);
     }
   };
 
@@ -964,11 +964,7 @@ export default function Timer() {
                     </button>
                   </div>
                 ) : (
-                  <div
-                    onClick={openEditor}
-                    className={`text-5xl font-light tracking-widest tabular-nums drop-shadow-md transition-opacity ${!timerEndAt && !isAlarmPlaying ? 'cursor-pointer hover:opacity-80' : ''}`}
-                    title={!timerEndAt && !isAlarmPlaying ? "Click to set time" : ""}
-                  >
+                  <div className="text-5xl font-light tracking-widest tabular-nums drop-shadow-md">
                     {formatTime(localTimeLeft)}
                   </div>
                 )}
@@ -1065,12 +1061,21 @@ export default function Timer() {
                       {/* Target Clock Button */}
                       <button
                         onClick={() => setIsClockModalOpen(true)}
-                        className="flex-1 bg-white/5 hover:bg-white/15 border border-white/10 hover:border-blue-400/50 rounded-lg px-2 py-1 text-[11px] font-bold text-blue-300 flex items-center justify-center gap-1 transition-all shadow-inner shrink-0 truncate"
+                        className={`flex-1 border rounded-lg px-2 py-1 text-[11px] font-bold flex items-center justify-center gap-1 transition-all shadow-inner shrink-0 truncate ${
+                          highlightedField === 'clock'
+                            ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/30 text-white shadow-[0_0_15px_rgba(59,130,246,0.7)] animate-pulse'
+                            : 'bg-white/5 hover:bg-white/15 border-white/10 hover:border-blue-400/50 text-blue-300'
+                        }`}
                         title="Set target end clock time"
                       >
-                        <Clock size={11} className="text-blue-400 shrink-0" />
+                        <Clock size={11} className={highlightedField === 'clock' ? 'text-white shrink-0' : 'text-blue-400 shrink-0'} />
                         <span className="truncate">{selectedHr}:{selectedMin} {selectedAmPm}</span>
                       </button>
+
+                      {/* OR Text Separator */}
+                      <span className="text-[10px] font-extrabold text-white/50 uppercase px-0.5 shrink-0 select-none">
+                        OR
+                      </span>
 
                       {/* Minutes Input */}
                       <div className="w-16 relative shrink-0">
@@ -1080,7 +1085,11 @@ export default function Timer() {
                           value={customMins}
                           onChange={(e) => handleCustomMinsChange(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                          className={`w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-blue-500/50 rounded-lg px-1.5 py-1 text-xs font-bold text-center outline-none transition-all placeholder:text-white/30 text-white/90 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${highlightedField === 'minutes' ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
+                          className={`w-full border rounded-lg px-1.5 py-1 text-xs font-bold text-center outline-none transition-all placeholder:text-white/30 text-white/90 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                            highlightedField === 'minutes'
+                              ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/30 text-white shadow-[0_0_15px_rgba(59,130,246,0.7)] animate-pulse'
+                              : 'bg-white/5 border-white/10 hover:border-white/20 focus:border-blue-500/50'
+                          }`}
                           min="1"
                         />
                       </div>
