@@ -94,7 +94,7 @@ export default function DeadlineAlerts() {
   return (
     <>
       <div
-        className="fixed left-1/2 -translate-x-1/2 top-16 md:top-16 z-[950] flex flex-col gap-1.5 pointer-events-auto items-center cursor-grab active:cursor-grabbing touch-none"
+        className="fixed left-1/2 -translate-x-1/2 top-12 md:top-16 z-[950] flex flex-col gap-0.5 pointer-events-auto items-center cursor-grab active:cursor-grabbing touch-none scale-80 sm:scale-100 origin-top"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={() => startY.current = null}
@@ -102,7 +102,7 @@ export default function DeadlineAlerts() {
         onTouchEnd={(e) => handleDragEnd(e.changedTouches[0].clientY)}
         onTouchCancel={() => startY.current = null}
       >
-        <div className="relative flex flex-col items-center w-[290px]" style={{ height: isStackExpanded || activeAlerts.length === 1 ? 'auto' : '65px' }}>
+        <div className="relative flex flex-col items-center w-[210px] sm:w-[290px]" style={{ height: isStackExpanded || activeAlerts.length === 1 ? 'auto' : '48px' }}>
           {activeAlerts.map((alert, index) => {
             const deadlineDate = new Date(alert.date);
             deadlineDate.setHours(0, 0, 0, 0);
@@ -120,10 +120,10 @@ export default function DeadlineAlerts() {
 
             if (isStacked) {
               if (index === 1) {
-                transform = 'translateY(8px) scale(0.96)';
+                transform = 'translateY(5px) scale(0.96)';
                 opacity = '0.8';
               } else if (index === 2) {
-                transform = 'translateY(16px) scale(0.92)';
+                transform = 'translateY(10px) scale(0.92)';
                 opacity = '0.5';
               }
             }
@@ -134,20 +134,20 @@ export default function DeadlineAlerts() {
                 onClick={() => {
                   if (isStacked) setIsStackExpanded(true);
                 }}
-                className={`w-full ${isStacked ? 'absolute top-0' : 'relative mb-2'} ${isStacked && !isTop ? 'cursor-pointer' : ''} pointer-events-auto ${theme === 'light' ? 'bg-white/80 border-slate-200 text-slate-800' : 'bg-[#0f0f13]/95 border-white/10 text-white'} backdrop-blur-xl border rounded-lg shadow-[0_10px_35px_rgba(0,0,0,0.6)] overflow-hidden flex transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]`}
+                className={`w-full ${isStacked ? 'absolute top-0' : 'relative mb-1'} ${isStacked && !isTop ? 'cursor-pointer' : ''} pointer-events-auto ${theme === 'light' ? 'bg-white/80 border-slate-200 text-slate-800' : 'bg-[#0f0f13]/95 border-white/10 text-white'} backdrop-blur-xl border rounded-lg shadow-[0_10px_35px_rgba(0,0,0,0.6)] overflow-hidden flex transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]`}
                 style={{
                   transform,
                   opacity,
                   zIndex
                 }}
               >
-                <div className="w-[3px] bg-gradient-to-b from-yellow-400 to-orange-500 shrink-0 shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
+                <div className="w-[2.5px] bg-gradient-to-b from-yellow-400 to-orange-500 shrink-0 shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
 
-                <div className="py-1.5 px-2 flex-1 flex flex-col gap-1 min-w-0">
-                  <div className="flex justify-between items-center gap-1.5">
-                    <div className={`flex items-center gap-1 bg-yellow-500/10 border border-yellow-500/20 px-1 py-[2px] rounded text-yellow-400 shadow-inner`}>
-                      <CalendarClock className="w-2.5 h-2.5 drop-shadow-md" />
-                      <span className="text-[8px] font-bold uppercase tracking-wider leading-none">{daysText}</span>
+                <div className="py-1 px-1.5 sm:py-1.5 sm:px-2 flex-1 flex flex-col gap-0.5 min-w-0">
+                  <div className="flex justify-between items-center gap-1">
+                    <div className={`flex items-center gap-0.5 bg-yellow-500/10 border border-yellow-500/20 px-1 py-[1px] rounded text-yellow-400 shadow-inner`}>
+                      <CalendarClock className="w-2 h-2 sm:w-2.5 sm:h-2.5 drop-shadow-md" />
+                      <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-wider leading-none">{daysText}</span>
                     </div>
 
                     {/* Delete Button with Confirmation */}
@@ -161,20 +161,20 @@ export default function DeadlineAlerts() {
                             deadlineText: alert.text,
                           });
                         }}
-                        className={`p-1 hover:bg-red-500/20 text-white/40 hover:text-red-400 rounded shrink-0 transition-colors active:scale-90 flex items-center justify-center`}
+                        className={`p-0.5 hover:bg-red-500/20 text-white/40 hover:text-red-400 rounded shrink-0 transition-colors active:scale-90 flex items-center justify-center`}
                         title="Delete deadline from calendar"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                       </button>
                     </div>
                   </div>
 
-                  <p className={`${theme === 'light' ? 'text-slate-800' : 'text-white/90'} text-[10px] leading-tight font-medium line-clamp-2 break-words`}>
+                  <p className={`${theme === 'light' ? 'text-slate-800' : 'text-white/90'} text-[9px] sm:text-[10px] leading-tight font-medium line-clamp-2 break-words`}>
                     {alert.text}
                   </p>
 
                   <div className="mt-px flex items-center justify-between">
-                    <span className={`${theme === 'light' ? 'text-slate-500' : 'text-white/40'} text-[8px] font-semibold tracking-wide uppercase leading-none`}>
+                    <span className={`${theme === 'light' ? 'text-slate-500' : 'text-white/40'} text-[7px] sm:text-[8px] font-semibold tracking-wide uppercase leading-none`}>
                       Due: {deadlineDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                   </div>

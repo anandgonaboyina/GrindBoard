@@ -68,46 +68,46 @@ export default function DeadlineTickerWidget() {
         className="pointer-events-auto transition-all duration-300"
       >
         {showEmptyInfo ? (
-          <div className="w-[280px] sm:w-[310px] p-3 rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
-              <div className="flex items-center gap-2">
-                <div className="p-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="w-[200px] xs:w-[230px] sm:w-[310px] p-2 sm:p-3 rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="p-0.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30">
+                  <Calendar className="w-3 h-3 text-emerald-400" />
                 </div>
-                <span className="text-xs font-bold text-white tracking-wide">No Deadlines Today 🎉</span>
+                <span className="text-[10px] sm:text-xs font-bold text-white tracking-wide">No Deadlines Today 🎉</span>
               </div>
               <button
                 onClick={() => setShowEmptyInfo(false)}
-                className="p-1 text-white/40 hover:text-white rounded hover:bg-white/10 transition-colors"
+                className="p-0.5 text-white/40 hover:text-white rounded hover:bg-white/10 transition-colors"
                 title="Close"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3" />
               </button>
             </div>
-            <p className="text-[11px] text-white/70 leading-relaxed">
+            <p className="text-[10px] sm:text-[11px] text-white/70 leading-relaxed">
               You currently have no active deadline alerts. You can add deadlines in the <strong className="text-sky-300">Calendar Widget</strong> to track important target dates!
             </p>
-            <div className="mt-2.5 p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-200/90 flex items-center gap-2">
-              <Info className="w-3.5 h-3.5 shrink-0 text-blue-400" />
+            <div className="mt-2 p-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[9px] sm:text-[10px] text-blue-200/90 flex items-center gap-1.5">
+              <Info className="w-3 h-3 shrink-0 text-blue-400" />
               <span>Upcoming calendar deadlines will automatically alert you here!</span>
             </div>
             {/* EMPTY STATE INFO (When no active deadlines exist) */}
             {activeAlerts.length === 0 && (
-              <div className="flex flex-col items-center justify-center p-3 text-center gap-2 bg-white/5 border border-white/10 rounded-xl my-1">
-                <div className="p-2 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                  <Calendar className="w-4 h-4 animate-pulse" />
+              <div className="flex flex-col items-center justify-center p-2 text-center gap-1 bg-white/5 border border-white/10 rounded-xl my-1">
+                <div className="p-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                  <Calendar className="w-3.5 h-3.5 animate-pulse" />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <h4 className="text-xs font-bold text-white">No Active Deadlines</h4>
-                  <p className="text-[10px] text-white/60 leading-tight">
+                  <h4 className="text-[10px] sm:text-xs font-bold text-white">No Active Deadlines</h4>
+                  <p className="text-[9px] sm:text-[10px] text-white/60 leading-tight">
                     You have no pending deadlines set.
                   </p>
                 </div>
-                <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-200 text-left flex flex-col gap-1 w-full mt-1">
+                <div className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[9px] text-blue-200 text-left flex flex-col gap-0.5 w-full mt-0.5">
                   <span className="font-bold text-blue-300 flex items-center gap-1">
-                    <Info className="w-3 h-3 text-blue-400 shrink-0" /> How to set a deadline:
+                    <Info className="w-2.5 h-2.5 text-blue-400 shrink-0" /> How to set a deadline:
                   </span>
-                  <ol className="list-decimal list-inside space-y-0.5 text-white/80 text-[9.5px]">
+                  <ol className="list-decimal list-inside space-y-0.5 text-white/80 text-[8.5px] sm:text-[9.5px]">
                     <li>Click <strong>Calendar</strong> on the bottom dock.</li>
                     <li>Click any target date on the calendar.</li>
                     <li>Add your deadline event title & time.</li>
@@ -119,12 +119,12 @@ export default function DeadlineTickerWidget() {
         ) : (
           <button
             onClick={() => setShowEmptyInfo(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-white/15 text-white/70 hover:text-white shadow-xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group text-xs font-medium"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-white/15 text-white/70 hover:text-white shadow-xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group text-xs font-medium"
             title="Click for Deadline Alert Info"
           >
-            <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-[11px]">No Deadlines</span>
-            <Info className="w-3 h-3 text-white/40 group-hover:text-white/80" />
+            <Calendar className="w-3 h-3 text-emerald-400" />
+            <span className="text-[10px] sm:text-[11px]">No Deadlines</span>
+            <Info className="w-2.5 h-2.5 text-white/40 group-hover:text-white/80" />
           </button>
         )}
       </div>
@@ -175,106 +175,106 @@ export default function DeadlineTickerWidget() {
         <div className="pointer-events-auto transition-all duration-300">
           <button
             onClick={() => setIsMinimized(false)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900/90 border border-red-500/40 text-white shadow-2xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-red-500/40 text-white shadow-2xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group"
           >
             <div className="relative">
-              <Flame className="w-4 h-4 text-red-400 animate-pulse" />
+              <Flame className="w-3.5 h-3.5 text-red-400 animate-pulse" />
               <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 animate-ping" />
             </div>
-            <span className="text-xs font-bold text-red-300">
+            <span className="text-[10px] sm:text-xs font-bold text-red-300">
               {activeAlerts.length} Deadline Alert{activeAlerts.length > 1 ? 's' : ''}
             </span>
-            <ChevronUp className="w-3.5 h-3.5 text-white/50 group-hover:text-white" />
+            <ChevronUp className="w-3 h-3 text-white/50 group-hover:text-white" />
           </button>
         </div>
       ) : (
         <div
-          className="pointer-events-auto w-[280px] sm:w-[320px] max-h-[380px] flex flex-col rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
+          className="pointer-events-auto w-[200px] xs:w-[220px] sm:w-[320px] max-h-[170px] xs:max-h-[200px] sm:max-h-[380px] flex flex-col rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
         >
           {/* Header Bar with Today's Date */}
-          <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-red-500/20 via-slate-900 to-amber-500/10 border-b border-white/10 shrink-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="p-1 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center">
-                <Flame className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+          <div className="flex items-center justify-between px-2 py-1 sm:px-3 sm:py-2 bg-gradient-to-r from-red-500/20 via-slate-900 to-amber-500/10 border-b border-white/10 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+              <div className="p-0.5 sm:p-1 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center">
+                <Flame className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-red-400 animate-pulse" />
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold tracking-wide text-white uppercase">
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <span className="text-[10px] sm:text-xs font-bold tracking-wide text-white uppercase">
                   Deadlines
                 </span>
-                <span className="text-[10px] text-red-300/80 font-mono font-semibold">
+                <span className="text-[8px] sm:text-[10px] text-red-300/80 font-mono font-semibold">
                   ({todayFormatted})
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] bg-red-500/30 text-red-300 px-1.5 py-0.2 rounded-full border border-red-500/30 font-mono font-bold">
+            <div className="flex items-center gap-1">
+              <span className="text-[7.5px] sm:text-[9px] bg-red-500/30 text-red-300 px-1 py-0.2 rounded-full border border-red-500/30 font-mono font-bold">
                 {activeAlerts.length}
               </span>
 
               {/* Minimize Toggle: Disabled if any pending deadlines exist for Today */}
               {hasPendingToday ? (
                 <div
-                  className="p-1 rounded-md text-white/30 cursor-not-allowed flex items-center gap-0.5"
+                  className="p-0.5 rounded-md text-white/30 cursor-not-allowed flex items-center gap-0.5"
                   title="Cannot contract widget while today deadlines are pending!"
                 >
-                  <Lock className="w-3 h-3 text-red-400/80" />
+                  <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-red-400/80" />
                 </div>
               ) : (
                 <button
                   onClick={() => setIsMinimized(true)}
-                  className="p-1 hover:bg-white/10 rounded-md text-white/50 hover:text-white transition-colors"
+                  className="p-0.5 hover:bg-white/10 rounded-md text-white/50 hover:text-white transition-colors"
                   title="Minimize alerts"
                 >
-                  <ChevronDown className="w-3.5 h-3.5" />
+                  <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </button>
               )}
             </div>
           </div>
 
           {/* Content Scroll Box */}
-          <div className="p-2.5 overflow-y-auto flex flex-col gap-2 custom-scrollbar max-h-[320px]">
+          <div className="p-1.5 sm:p-2.5 overflow-y-auto flex flex-col gap-1 sm:gap-2 custom-scrollbar max-h-[120px] xs:max-h-[150px] sm:max-h-[320px]">
 
             {/* TODAY'S DEADLINES SECTION */}
             {todayAlerts.length > 0 && (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1 sm:gap-1.5">
                 {/* Glowing Today Header Banner */}
-                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-red-600/30 via-amber-600/20 to-red-950/30 border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.25)]">
-                  <div className="flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-400 animate-bounce" />
-                    <span className="text-[10.5px] font-black tracking-wider uppercase text-red-200">
-                      Today's Deadlines ({todayAlerts.length})
+                <div className="flex items-center justify-between px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-gradient-to-r from-red-600/30 via-amber-600/20 to-red-950/30 border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.25)]">
+                  <div className="flex items-center gap-1 sm:gap-1.5">
+                    <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-400 animate-bounce" />
+                    <span className="text-[9px] sm:text-[10.5px] font-black tracking-wider uppercase text-red-200">
+                      Today's ({todayAlerts.length})
                     </span>
                   </div>
-                  <span className="text-[8.5px] font-mono uppercase bg-red-500 text-white px-1.5 py-0.5 rounded font-bold shadow-sm">
+                  <span className="text-[7.5px] sm:text-[8.5px] font-mono uppercase bg-red-500 text-white px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded font-bold shadow-sm">
                     URGENT
                   </span>
                 </div>
 
                 {/* List of Today's Items */}
-                <div className="flex flex-col gap-1.5 pl-1">
+                <div className="flex flex-col gap-1 sm:gap-1.5 pl-0.5 sm:pl-1">
                   {todayAlerts.map((alert) => (
                     <div
                       key={alert.id}
-                      className={`group relative flex items-start justify-between p-2 rounded-xl transition-all shadow-sm ${alert.isDone
+                      className={`group relative flex items-start justify-between p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all shadow-sm ${alert.isDone
                         ? 'bg-emerald-500/15 border border-emerald-500/30 opacity-80 hover:opacity-100'
                         : 'bg-red-500/10 border border-red-500/25 hover:border-red-500/50'
                         }`}
                     >
-                      <div className="flex items-start gap-2 flex-1 min-w-0 pr-1">
-                        <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${alert.isDone ? 'bg-emerald-400' : 'bg-red-400 animate-ping'}`} />
+                      <div className="flex items-start gap-1.5 sm:gap-2 flex-1 min-w-0 pr-1">
+                        <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full mt-1 shrink-0 ${alert.isDone ? 'bg-emerald-400' : 'bg-red-400 animate-ping'}`} />
                         <div className="flex flex-col min-w-0 flex-1">
-                          <p className={`text-xs font-semibold leading-tight break-words ${alert.isDone ? 'text-emerald-200 line-through opacity-85' : 'text-white/90'}`}>
+                          <p className={`text-[10px] sm:text-xs font-semibold leading-tight break-words ${alert.isDone ? 'text-emerald-200 line-through opacity-85' : 'text-white/90'}`}>
                             {alert.text}
                           </p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
                             {alert.time && (
-                              <span className={`text-[9px] font-mono flex items-center gap-1 ${alert.isDone ? 'text-emerald-300/70' : 'text-red-300/80'}`}>
-                                <Clock className="w-2.5 h-2.5" /> {alert.time}
+                              <span className={`text-[8px] sm:text-[9px] font-mono flex items-center gap-0.5 ${alert.isDone ? 'text-emerald-300/70' : 'text-red-300/80'}`}>
+                                <Clock className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> {alert.time}
                               </span>
                             )}
                             {alert.isDone && (
-                              <span className="text-[8.5px] bg-emerald-500/30 text-emerald-300 px-1 py-0.2 rounded font-bold">
+                              <span className="text-[7.5px] sm:text-[8.5px] bg-emerald-500/30 text-emerald-300 px-1 py-0.2 rounded font-bold">
                                 Done ✓
                               </span>
                             )}
@@ -290,13 +290,13 @@ export default function DeadlineTickerWidget() {
                           deadlineText: alert.text,
                           isDone: !!alert.isDone,
                         })}
-                        className={`p-1 rounded transition-colors shrink-0 ${alert.isDone
+                        className={`p-0.5 sm:p-1 rounded transition-colors shrink-0 ${alert.isDone
                           ? 'text-emerald-400 hover:bg-emerald-500/20'
                           : 'text-white/40 hover:text-emerald-400 hover:bg-white/10'
                           }`}
                         title="Mark as Done or Delete"
                       >
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </button>
                     </div>
                   ))}
@@ -306,9 +306,9 @@ export default function DeadlineTickerWidget() {
 
             {/* HORIZONTAL DIVIDER SECTION */}
             {todayAlerts.length > 0 && sortedUpcomingDays.length > 0 && (
-              <div className="relative py-1 flex items-center justify-center">
+              <div className="relative py-0.5 sm:py-1 flex items-center justify-center">
                 <div className="w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                <span className="absolute bg-[#0f1118] px-2 text-[8px] font-bold text-white/40 uppercase tracking-widest">
+                <span className="absolute bg-[#0f1118] px-1.5 sm:px-2 text-[7.5px] sm:text-[8px] font-bold text-white/40 uppercase tracking-widest">
                   Upcoming
                 </span>
               </div>
@@ -323,21 +323,21 @@ export default function DeadlineTickerWidget() {
               const daysLabel = daysAhead === 1 ? `Tomorrow (${dateLabel})` : `In ${daysAhead} Days (${dateLabel})`;
 
               return (
-                <div key={daysAhead} className="flex flex-col gap-1">
+                <div key={daysAhead} className="flex flex-col gap-0.5 sm:gap-1">
                   {/* Days Ahead Header with Date */}
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10 w-fit">
-                    <Calendar className="w-3 h-3 text-amber-400" />
-                    <span className="text-[9.5px] font-bold uppercase text-amber-300/90 tracking-wider">
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 w-fit">
+                    <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400" />
+                    <span className="text-[8.5px] sm:text-[9.5px] font-bold uppercase text-amber-300/90 tracking-wider">
                       {daysLabel} ({daysItems.length})
                     </span>
                   </div>
 
                   {/* Items for this day */}
-                  <div className="flex flex-col gap-1 pl-1">
+                  <div className="flex flex-col gap-1 pl-0.5 sm:pl-1">
                     {daysItems.map((alert) => (
                       <div
                         key={alert.id}
-                        className={`flex items-start justify-between p-2 rounded-xl transition-all shadow-sm ${alert.isDone
+                        className={`flex items-start justify-between p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all shadow-sm ${alert.isDone
                           ? 'bg-emerald-500/15 border border-emerald-500/30 opacity-80 hover:opacity-100'
                           : 'bg-white/[0.04] border border-white/10 hover:bg-white/[0.08]'
                           }`}
