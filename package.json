@@ -1,10 +1,11 @@
 {
   "name": "dashboard-cloud",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "grindboardVersions": {
     "2.1.8": "Fixed TaskManager drag handles; all perfect",
     "2.2.1": "Refined Day Start Morning Routine, fixed audio playback on sleep/wake, auto-purged calendar deadlines older than 7 days",
-    "2.2.2": "Standardized modal z-index hierarchy, added offline status notices to Leaderboard & Groups, refined loading screen vision & attribution, added 3D flip animation to sync status"
+    "2.2.2": "Standardized modal z-index hierarchy, added offline status notices to Leaderboard & Groups, refined loading screen vision & attribution, added 3D flip animation to sync status",
+    "2.2.3": "Refined ringtone selector UX, added group personal task return navigation, updated timer duration picker & header task title, and restored authentic brand dock icons"
   },
   "private": true,
   "scripts": {

@@ -865,22 +865,21 @@ export default function Timer() {
         <div className="w-64 rounded-3xl glass-panel border border-white/20 text-white flex flex-col shadow-2xl overflow-visible relative">
 
           {/* Top Title Bar */}
-          {!activeTaskTitle && (
-            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 bg-black/80 rounded-md text-[10px] sm:text-xs font-black tracking-widest text-blue-400 uppercase z-20 shadow-sm border border-white/5 backdrop-blur-md whitespace-nowrap">
-              Timer
-            </span>
-          )}
+          <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/90 rounded-lg text-xs sm:text-xs font-black tracking-widest text-blue-300 uppercase z-20 shadow-md border border-blue-500/40 backdrop-blur-md max-w-[220px] truncate text-center flex items-center justify-center gap-1.5">
+            {activeTaskTitle ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shrink-0"></span>
+                <span className="truncate">{activeTaskTitle}</span>
+              </>
+            ) : (
+              <span>Timer</span>
+            )}
+          </span>
 
           {/* Body */}
-          <div className="p-3 flex flex-col gap-2 cursor-default">
+          <div className="p-3 flex flex-col gap-2 cursor-default pt-4">
             {/* Timer Display / Editor */}
             <div className="text-center min-h-[80px] flex flex-col items-center justify-center relative">
-              {activeTaskTitle && (
-                <div className="w-full max-w-[220px] mb-3 text-sm font-bold text-white flex items-center justify-center gap-2 bg-blue-600/50 backdrop-blur-md border border-blue-400/50 px-2 py-2 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-                  <span className="shrink-0 w-2 h-2 rounded-full bg-blue-200 animate-pulse mt-[5px] self-start"></span>
-                  <span className="break-words whitespace-normal text-center leading-snug drop-shadow-md">{activeTaskTitle}</span>
-                </div>
-              )}
               <div className="flex items-center justify-center w-full relative">
                 {/* Quick Presets Right */}
                 {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !isAlarmPlaying && (
@@ -1061,19 +1060,19 @@ export default function Timer() {
                       {/* Target Clock Button */}
                       <button
                         onClick={() => setIsClockModalOpen(true)}
-                        className={`flex-1 border rounded-lg px-2 py-1 text-[11px] font-bold flex items-center justify-center gap-1 transition-all shadow-inner shrink-0 truncate ${
+                        className={`flex-1 border rounded-xl px-2 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-inner shrink-0 truncate cursor-pointer ${
                           highlightedField === 'clock'
-                            ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/30 text-white shadow-[0_0_15px_rgba(59,130,246,0.7)] animate-pulse'
-                            : 'bg-white/5 hover:bg-white/15 border-white/10 hover:border-blue-400/50 text-blue-300'
+                            ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
+                            : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-blue-400/60 text-sky-200'
                         }`}
                         title="Set target end clock time"
                       >
-                        <Clock size={11} className={highlightedField === 'clock' ? 'text-white shrink-0' : 'text-blue-400 shrink-0'} />
-                        <span className="truncate">{selectedHr}:{selectedMin} {selectedAmPm}</span>
+                        <Clock size={13} className={highlightedField === 'clock' ? 'text-white shrink-0' : 'text-sky-300 shrink-0'} />
+                        <span className="truncate tracking-wide text-xs sm:text-xs font-black">{selectedHr}:{selectedMin} {selectedAmPm}</span>
                       </button>
 
                       {/* OR Text Separator */}
-                      <span className="text-[10px] font-extrabold text-white/50 uppercase px-0.5 shrink-0 select-none">
+                      <span className="text-[10px] font-black text-white/70 uppercase px-0.5 shrink-0 select-none tracking-wider">
                         OR
                       </span>
 
@@ -1085,10 +1084,10 @@ export default function Timer() {
                           value={customMins}
                           onChange={(e) => handleCustomMinsChange(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                          className={`w-full border rounded-lg px-1.5 py-1 text-xs font-bold text-center outline-none transition-all placeholder:text-white/30 text-white/90 shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                          className={`w-full border rounded-xl px-1.5 py-1.5 text-xs font-black text-center outline-none transition-all placeholder:text-white/40 text-white shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                             highlightedField === 'minutes'
-                              ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/30 text-white shadow-[0_0_15px_rgba(59,130,246,0.7)] animate-pulse'
-                              : 'bg-white/5 border-white/10 hover:border-white/20 focus:border-blue-500/50'
+                              ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
+                              : 'bg-white/10 border-white/20 hover:border-white/30 focus:border-blue-400'
                           }`}
                           min="1"
                         />
