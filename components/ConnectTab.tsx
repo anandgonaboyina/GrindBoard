@@ -196,6 +196,11 @@ export default function ConnectTab() {
   // Group requests state for badge
   const [groupRequestsCount, setGroupRequestsCount] = useState(0);
 
+  // Friend action & request loading states
+  const [loadingFriendAction, setLoadingFriendAction] = useState<{ friendId: string; type: 'tasks' | 'timetable' | 'stats' } | null>(null);
+  const [sendingRequestUserId, setSendingRequestUserId] = useState<string | null>(null);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+
   // Info Modal state for Leaderboard
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [selectedImageOverlay, setSelectedImageOverlay] = useState<{ url: string; title: string } | null>(null);
@@ -575,6 +580,8 @@ export default function ConnectTab() {
   };
 
   const sendFriendRequest = async (receiverId: string) => {
+    if (sendingRequestUserId) return;
+    setSendingRequestUserId(receiverId);
     const token = localStorage.getItem('dashboard_sync_token');
     try {
       const res = await fetch('/api/friends', {
@@ -592,10 +599,16 @@ export default function ConnectTab() {
         const data = await res.json();
         showAlertModal('Request Error', data.error || 'Failed to send request');
       }
-    } catch (err) { }
+    } catch (err) {
+      showAlertModal('Network Error', 'Failed to send friend request');
+    } finally {
+      setSendingRequestUserId(null);
+    }
   };
 
   const handleFriendRequest = async (friendshipId: string, status: 'ACCEPTED' | 'REJECTED') => {
+    if (processingRequestId) return;
+    setProcessingRequestId(friendshipId);
     const token = localStorage.getItem('dashboard_sync_token');
     try {
       const res = await fetch('/api/friends', {
@@ -608,6 +621,9 @@ export default function ConnectTab() {
       });
       if (res.ok) fetchFriendsData();
     } catch (err) { }
+    finally {
+      setProcessingRequestId(null);
+    }
   };
 
   const removeFriend = async (friendshipId: string, friendName: string) => {
@@ -649,6 +665,8 @@ export default function ConnectTab() {
   };
 
   const viewFriendStats = async (friendId: string, friendUsername: string) => {
+    if (loadingFriendAction) return;
+    setLoadingFriendAction({ friendId, type: 'stats' });
     const token = localStorage.getItem('dashboard_sync_token');
     try {
       const res = await fetch(`/api/friends/stats?friendId=${friendId}`, {
@@ -666,10 +684,16 @@ export default function ConnectTab() {
       } else {
         showAlertModal('Error', 'Failed to fetch stats: ' + data.error);
       }
-    } catch (err) { }
+    } catch (err) {
+      showAlertModal('Error', 'Network error while fetching stats');
+    } finally {
+      setLoadingFriendAction(null);
+    }
   };
 
   const viewFriendTimetable = async (friendId: string, friendUsername: string) => {
+    if (loadingFriendAction) return;
+    setLoadingFriendAction({ friendId, type: 'timetable' });
     const token = localStorage.getItem('dashboard_sync_token');
     try {
       const res = await fetch(`/api/friends/stats?friendId=${friendId}`, {
@@ -682,10 +706,16 @@ export default function ConnectTab() {
       } else {
         showAlertModal('Error', 'Failed to fetch timetable: ' + data.error);
       }
-    } catch (err) { }
+    } catch (err) {
+      showAlertModal('Error', 'Network error while fetching timetable');
+    } finally {
+      setLoadingFriendAction(null);
+    }
   };
 
   const viewFriendTasks = async (friendId: string, friendUsername: string) => {
+    if (loadingFriendAction) return;
+    setLoadingFriendAction({ friendId, type: 'tasks' });
     const token = localStorage.getItem('dashboard_sync_token');
     try {
       const res = await fetch(`/api/friends/stats?friendId=${friendId}`, {
@@ -698,7 +728,11 @@ export default function ConnectTab() {
       } else {
         showAlertModal('Error', 'Failed to fetch tasks: ' + data.error);
       }
-    } catch (err) { }
+    } catch (err) {
+      showAlertModal('Error', 'Network error while fetching tasks');
+    } finally {
+      setLoadingFriendAction(null);
+    }
   };
 
   const handleToggleTaskSharing = async (friendshipId: string, currentSharingState: any) => {
@@ -1224,25 +1258,58 @@ export default function ConnectTab() {
                       {f.taskSharing?.[f.user.id] !== false && (
                         <button
                           onClick={() => viewFriendTasks(f.user.id, f.user.username)}
-                          className="p-1 md:px-2 md:py-1 bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-emerald-500/20 transition-colors h-6 md:h-7"
+                          disabled={!!loadingFriendAction}
+                          className="p-1 md:px-2 md:py-1 bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-emerald-500/20 transition-all h-6 md:h-7 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer active:scale-95 shadow-sm"
                           title="View Tasks"
                         >
-                          <Check size={10} className="md:w-3 md:h-3" /> <span>View Tasks</span>
+                          {loadingFriendAction?.friendId === f.user.id && loadingFriendAction?.type === 'tasks' ? (
+                            <>
+                              <RefreshCw size={10} className="md:w-3 md:h-3 animate-spin text-emerald-400 shrink-0" />
+                              <span>Loading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Check size={10} className="md:w-3 md:h-3 shrink-0" />
+                              <span>View Tasks</span>
+                            </>
+                          )}
                         </button>
                       )}
                       <button
                         onClick={() => viewFriendTimetable(f.user.id, f.user.username)}
-                        className="p-1 md:px-2 md:py-1 bg-purple-500/10 text-purple-300 rounded border border-purple-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-purple-500/20 transition-colors h-6 md:h-7"
+                        disabled={!!loadingFriendAction}
+                        className="p-1 md:px-2 md:py-1 bg-purple-500/10 text-purple-300 rounded border border-purple-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-purple-500/20 transition-all h-6 md:h-7 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer active:scale-95 shadow-sm"
                         title="View Timetable"
                       >
-                        <Calendar size={10} className="md:w-3 md:h-3" /> <span className="hidden md:inline">TimeTable</span>
+                        {loadingFriendAction?.friendId === f.user.id && loadingFriendAction?.type === 'timetable' ? (
+                          <>
+                            <RefreshCw size={10} className="md:w-3 md:h-3 animate-spin text-purple-400 shrink-0" />
+                            <span>Loading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Calendar size={10} className="md:w-3 md:h-3 shrink-0" />
+                            <span className="hidden md:inline">TimeTable</span>
+                          </>
+                        )}
                       </button>
                       <button
                         onClick={() => viewFriendStats(f.user.id, f.user.username)}
-                        className="p-1 md:px-2 md:py-1 bg-blue-500/10 text-blue-300 rounded border border-blue-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-blue-500/20 transition-colors h-6 md:h-7"
+                        disabled={!!loadingFriendAction}
+                        className="p-1 md:px-2 md:py-1 bg-blue-500/10 text-blue-300 rounded border border-blue-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-blue-500/20 transition-all h-6 md:h-7 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer active:scale-95 shadow-sm"
                         title="View Stats"
                       >
-                        <BarChart2 size={10} className="md:w-3 md:h-3" /> <span className="hidden md:inline">Stats</span>
+                        {loadingFriendAction?.friendId === f.user.id && loadingFriendAction?.type === 'stats' ? (
+                          <>
+                            <RefreshCw size={10} className="md:w-3 md:h-3 animate-spin text-blue-400 shrink-0" />
+                            <span>Loading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <BarChart2 size={10} className="md:w-3 md:h-3 shrink-0" />
+                            <span className="hidden md:inline">Stats</span>
+                          </>
+                        )}
                       </button>
                       <button
                         onClick={() => setFriendSettingsModal(f)}
@@ -1267,7 +1334,7 @@ export default function ConnectTab() {
 
           <form onSubmit={handleSearch} className="flex gap-2 w-full min-w-0 bg-white/5 p-2 rounded-xl border border-white/10">
             <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${isSearchingFriends ? 'text-blue-400 animate-spin' : 'text-white/40'}`} />
               <input
                 type="text"
                 placeholder="Find with User Name..."
@@ -1279,11 +1346,22 @@ export default function ConnectTab() {
                     setHasSearchedFriends(false);
                   }
                 }}
-                className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2 outline-none focus:border-blue-500 transition-colors text-xs"
+                className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2 outline-none focus:border-blue-500 transition-colors text-xs text-white/90 placeholder:text-white/30"
               />
             </div>
-            <button type="submit" className="bg-blue-500 hover:bg-blue-600 px-4 rounded-lg font-semibold transition-colors text-xs shrink-0 shadow-md">
-              Search
+            <button
+              type="submit"
+              disabled={isSearchingFriends || !searchQuery.trim()}
+              className="bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white px-4 rounded-lg font-semibold transition-all text-xs shrink-0 shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer min-w-[84px]"
+            >
+              {isSearchingFriends ? (
+                <>
+                  <RefreshCw size={12} className="animate-spin text-white shrink-0" />
+                  <span>Searching...</span>
+                </>
+              ) : (
+                <span>Search</span>
+              )}
             </button>
           </form>
 
@@ -1314,8 +1392,19 @@ export default function ConnectTab() {
                         )}
                       </span>
                     </div>
-                    <button onClick={() => sendFriendRequest(u.id)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg border border-blue-500/30 text-xs font-semibold whitespace-nowrap shrink-0 transition-colors">
-                      Add Friend
+                    <button
+                      onClick={() => sendFriendRequest(u.id)}
+                      disabled={sendingRequestUserId === u.id}
+                      className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg border border-blue-500/30 text-xs font-semibold whitespace-nowrap shrink-0 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      {sendingRequestUserId === u.id ? (
+                        <>
+                          <RefreshCw size={12} className="animate-spin text-blue-400 shrink-0" />
+                          <span>Sending...</span>
+                        </>
+                      ) : (
+                        <span>Add Friend</span>
+                      )}
                     </button>
                   </div>
                 ))}
@@ -1342,11 +1431,21 @@ export default function ConnectTab() {
                         <span className="font-medium text-xs truncate">{r.user.alias || r.user.username}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <button onClick={() => handleFriendRequest(r.id, 'ACCEPTED')} className="w-7 h-7 flex items-center justify-center bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-md border border-green-500/30 transition-colors">
-                          <Check size={14} />
+                        <button
+                          onClick={() => handleFriendRequest(r.id, 'ACCEPTED')}
+                          disabled={processingRequestId === r.id}
+                          className="w-7 h-7 flex items-center justify-center bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-md border border-green-500/30 transition-colors disabled:opacity-50 cursor-pointer active:scale-95"
+                          title="Accept"
+                        >
+                          {processingRequestId === r.id ? <RefreshCw size={12} className="animate-spin" /> : <Check size={14} />}
                         </button>
-                        <button onClick={() => handleFriendRequest(r.id, 'REJECTED')} className="w-7 h-7 flex items-center justify-center bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md border border-red-500/30 transition-colors">
-                          <X size={14} />
+                        <button
+                          onClick={() => handleFriendRequest(r.id, 'REJECTED')}
+                          disabled={processingRequestId === r.id}
+                          className="w-7 h-7 flex items-center justify-center bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md border border-red-500/30 transition-colors disabled:opacity-50 cursor-pointer active:scale-95"
+                          title="Reject"
+                        >
+                          {processingRequestId === r.id ? <RefreshCw size={12} className="animate-spin" /> : <X size={14} />}
                         </button>
                       </div>
                     </div>

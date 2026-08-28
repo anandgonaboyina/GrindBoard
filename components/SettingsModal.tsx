@@ -83,6 +83,39 @@ export default function SettingsModal() {
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
   const [showThemeNotice, setShowThemeNotice] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshApp = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+
+    try {
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.update().catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.warn('ServiceWorker refresh error:', err);
+    }
+
+    setTimeout(() => {
+      try {
+        window.location.reload();
+      } catch (err) {
+        window.location.href = window.location.origin + window.location.pathname + '?r=' + Date.now();
+      }
+    }, 100);
+
+    setTimeout(() => {
+      window.location.href = window.location.origin + window.location.pathname + '?refresh=' + Date.now();
+    }, 1000);
+  };
 
   // Mobile specific drill-down state
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
@@ -855,12 +888,15 @@ export default function SettingsModal() {
               <div className="relative group mt-1.5 md:mt-0">
                 <span className="absolute -top-2 left-2 px-1 bg-[#1a1b26]/90 backdrop-blur-md rounded-md text-[7px] md:text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300 whitespace-nowrap">Apply / Update</span>
                 <button
-                  onClick={() => window.location.reload()}
-                  className="flex flex-row items-center justify-center gap-1 md:gap-1.5 px-2 py-1.5 md:px-2.5 md:py-1.5 hover:bg-blue-500/20 hover:border-blue-500/50 rounded-lg transition-all border border-white/10 bg-black/40 shrink-0 whitespace-nowrap"
+                  onClick={handleRefreshApp}
+                  disabled={isRefreshing}
+                  className="flex flex-row items-center justify-center gap-1 md:gap-1.5 px-2 py-1.5 md:px-2.5 md:py-1.5 hover:bg-blue-500/20 hover:border-blue-500/50 active:bg-blue-600/30 rounded-lg transition-all border border-white/10 bg-black/40 shrink-0 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                   title="Refresh the app to apply changes or fix wallpaper bugs"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 md:w-3.5 md:h-3.5 text-blue-400 group-hover:rotate-180 transition-transform duration-500 shrink-0" />
-                  <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-semibold text-white/90 leading-none mt-0.5">Refresh App</span>
+                  <RefreshCw className={`w-3.5 h-3.5 md:w-3.5 md:h-3.5 text-blue-400 shrink-0 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                  <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-semibold text-white/90 leading-none mt-0.5">
+                    {isRefreshing ? 'Refreshing...' : 'Refresh App'}
+                  </span>
                 </button>
               </div>
             </div>
