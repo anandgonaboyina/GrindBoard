@@ -1211,25 +1211,56 @@ export default function ConnectGroupsTab() {
                     className="bg-black/60 border border-white/20 rounded px-2 py-1 text-xs font-mono text-white outline-none focus:border-blue-500 w-full placeholder:text-white/30"
                   />
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editGroupIsPrivate}
-                      onChange={e => setEditGroupIsPrivate(e.target.checked)}
-                      className="accent-blue-500 w-3 h-3"
-                    />
-                    <span className="text-[10px] text-white/80">Private</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editGroupAllowRequests}
-                      onChange={e => setEditGroupAllowRequests(e.target.checked)}
-                      className="accent-blue-500 w-3 h-3"
-                    />
-                    <span className="text-[10px] text-white/80">Allow Requests</span>
-                  </label>
+                <div className="flex flex-col gap-2 p-2 bg-black/40 border border-white/10 rounded-lg my-1 w-full">
+                  {/* Private vs Public Toggle */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] font-bold text-white/90">Group Visibility</span>
+                      <span className="text-[8.5px] text-white/50">
+                        {editGroupIsPrivate ? 'Private (Hidden from discovery)' : 'Public (Discoverable by everyone)'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditGroupIsPrivate(!editGroupIsPrivate)}
+                      className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${editGroupIsPrivate ? 'bg-purple-600' : 'bg-blue-600'}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${editGroupIsPrivate ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+
+                  <div className="h-px bg-white/10 w-full" />
+
+                  {/* Request Access / Instant Join Toggle */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-[10px] font-bold text-white/90">
+                        {editGroupIsPrivate ? 'Allow Join Requests' : 'Require Admin Approval to Join'}
+                      </span>
+                      <span className="text-[8.5px] leading-tight">
+                        {editGroupAllowRequests ? (
+                          editGroupIsPrivate ? (
+                            <span className="text-amber-300/90 font-medium">📩 Users can send join requests to admin</span>
+                          ) : (
+                            <span className="text-amber-300/90 font-medium">🔒 Approval Required: Members must request access to join</span>
+                          )
+                        ) : (
+                          editGroupIsPrivate ? (
+                            <span className="text-rose-300/90 font-medium">🚫 Invite Only: Join requests blocked</span>
+                          ) : (
+                            <span className="text-emerald-300 font-bold">⚡ Anyone can join instantly without request access</span>
+                          )
+                        )}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditGroupAllowRequests(!editGroupAllowRequests)}
+                      className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${editGroupAllowRequests ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${editGroupAllowRequests ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex gap-1.5 mt-1">
                   <button type="submit" className="px-2.5 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] rounded font-bold">Save</button>
@@ -1814,29 +1845,56 @@ export default function ConnectGroupsTab() {
                     onChange={e => setNewGroupAvatarUrl(e.target.value)}
                     className="bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 text-white placeholder:text-white/30 font-mono"
                   />
-                  <div className="flex flex-col gap-1 mt-1">
-                    <label className="flex items-center gap-1.5 cursor-pointer w-fit">
-                      <input
-                        type="checkbox"
-                        checked={newGroupIsPrivate}
-                        onChange={e => setNewGroupIsPrivate(e.target.checked)}
-                        className="accent-blue-500"
-                      />
-                      <span className="text-[10px] text-white/70">Private Group (Only invited members)</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer w-fit">
-                      <input
-                        type="checkbox"
-                        checked={newGroupAllowRequests}
-                        onChange={e => setNewGroupAllowRequests(e.target.checked)}
-                        className="accent-blue-500"
-                      />
-                      <span className="text-[10px] text-white/70">
-                        {newGroupIsPrivate
-                          ? 'Allow Join Requests'
-                          : 'Require Admin Approval to Join (Enabled by default)'}
-                      </span>
-                    </label>
+                  <div className="flex flex-col gap-2 p-2 bg-black/40 border border-white/10 rounded-lg my-1 w-full">
+                    {/* Private vs Public Toggle */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] font-bold text-white/90">Group Visibility</span>
+                        <span className="text-[8.5px] text-white/50">
+                          {newGroupIsPrivate ? 'Private (Hidden from discovery)' : 'Public (Discoverable by everyone)'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNewGroupIsPrivate(!newGroupIsPrivate)}
+                        className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${newGroupIsPrivate ? 'bg-purple-600' : 'bg-blue-600'}`}
+                      >
+                        <span className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${newGroupIsPrivate ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+
+                    <div className="h-px bg-white/10 w-full" />
+
+                    {/* Request Access / Instant Join Toggle */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-[10px] font-bold text-white/90">
+                          {newGroupIsPrivate ? 'Allow Join Requests' : 'Require Admin Approval to Join'}
+                        </span>
+                        <span className="text-[8.5px] leading-tight">
+                          {newGroupAllowRequests ? (
+                            newGroupIsPrivate ? (
+                              <span className="text-amber-300/90 font-medium">📩 Users can send join requests to admin</span>
+                            ) : (
+                              <span className="text-amber-300/90 font-medium">🔒 Approval Required: Members must request access to join</span>
+                            )
+                          ) : (
+                            newGroupIsPrivate ? (
+                              <span className="text-rose-300/90 font-medium">🚫 Invite Only: Join requests blocked</span>
+                            ) : (
+                              <span className="text-emerald-300 font-bold">⚡ Anyone can join instantly without request access</span>
+                            )
+                          )}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNewGroupAllowRequests(!newGroupAllowRequests)}
+                        className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${newGroupAllowRequests ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                      >
+                        <span className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${newGroupAllowRequests ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
                   </div>
 
                   {newGroupTasks.length > 0 && (
