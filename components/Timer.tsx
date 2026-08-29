@@ -41,6 +41,7 @@ export default function Timer() {
   const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
   const [customMins, setCustomMins] = useState<any>('');
   const [isIntervalRinging, setIsIntervalRinging] = useState(false);
+  const [isUnlockingAudio, setIsUnlockingAudio] = useState(false);
 
   // Local state for UI updates (does not spam DB)
   const [localTimeLeft, setLocalTimeLeft] = useState(0);
@@ -169,9 +170,7 @@ export default function Timer() {
   }, [timerLastSavedChunks]);
 
   useEffect(() => {
-    if (timerLastAlertedChunks <= 0) {
-      alertedChunksRef.current = timerLastAlertedChunks;
-    }
+    alertedChunksRef.current = timerLastAlertedChunks;
   }, [timerLastAlertedChunks]);
 
   // Ensure local time immediately reflects store changes
@@ -331,7 +330,7 @@ export default function Timer() {
             }
 
             // Interval Alert Beep
-            if (remaining > 0 && !wasSleeping) {
+            if (remaining > 5 && !wasSleeping) {
               let isIntervalActive = false;
               let activeIntervalMins = 0;
 
@@ -343,48 +342,29 @@ export default function Timer() {
                 activeIntervalMins = timerIntervalMins;
               }
 
-              if (isIntervalActive) {
+              if (isIntervalActive && timerInitialMins) {
                 const alertIntervalSecs = activeIntervalMins * 60;
+                const elapsedSeconds = Math.max(0, (timerInitialMins * 60) - remaining);
+                const currentChunk = Math.floor(elapsedSeconds / alertIntervalSecs);
 
                 if (
-                  alertedChunksRef.current === 0 ||
                   lastIntervalAlertMinsRef.current !== activeIntervalMins ||
-                  lastIsIntervalEnabledRef.current !== isIntervalActive ||
-                  remaining > alertedChunksRef.current + alertIntervalSecs + 5
+                  lastIsIntervalEnabledRef.current !== isIntervalActive
                 ) {
-                  // Initialize or handle timer time increases or interval changes
-                  let nextAlert = remaining - alertIntervalSecs;
-                  if (nextAlert === 0) nextAlert = -1; // Prevent beep precisely at 0 (timer end)
-
-                  alertedChunksRef.current = nextAlert;
                   lastIntervalAlertMinsRef.current = activeIntervalMins;
                   lastIsIntervalEnabledRef.current = isIntervalActive;
-                  if (isOwner) {
-                    setTimerLastAlertedChunks(nextAlert);
-                  }
-                } else if (remaining <= alertedChunksRef.current) {
-                  // Crossed a boundary downwards!
-                  let nextAlert = remaining - alertIntervalSecs;
-                  if (nextAlert === 0) nextAlert = -1;
-
-                  alertedChunksRef.current = nextAlert;
+                  alertedChunksRef.current = currentChunk;
+                } else if (currentChunk > alertedChunksRef.current && currentChunk > 0) {
+                  alertedChunksRef.current = currentChunk;
 
                   // Only the device that started it (owner) will ring, preventing background ghosts on other laptops
                   if (isOwner) {
-                    setTimerLastAlertedChunks(nextAlert);
+                    setTimerLastAlertedChunks(currentChunk);
                     if (enableAlarmSound || enableAlarmVibration) {
-                      console.log(`[AUDIO DEBUG] Interval beep triggered. Next alert at ${nextAlert}s. enableAlarmSound: ${enableAlarmSound}, hasAudioRef: ${!!intervalAudioRef.current}`);
+                      console.log(`[AUDIO DEBUG] Interval beep triggered at chunk ${currentChunk} (${elapsedSeconds}s elapsed).`);
                       setIsIntervalRinging(true);
                       isIntervalRingingRef.current = true;
-
-                      if (enableAlarmSound && intervalAudioRef.current) {
-                        intervalAudioRef.current.muted = false;
-                        const vol = alarmVolume !== undefined ? alarmVolume : 1;
-                        intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4; // Slightly lower volume for the interval beep
-                        intervalAudioRef.current.currentTime = 0;
-                        console.log(`[AUDIO DEBUG] Playing interval audio...`);
-                        intervalAudioRef.current.play().then(() => console.log('[AUDIO DEBUG] Interval audio play success')).catch(e => console.error('[AUDIO DEBUG] Interval beep failed:', e));
-                      }
+                      useDashboardStore.setState({ isTimerOpen: true });
 
                       if (enableAlarmVibration) {
                         if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -394,9 +374,6 @@ export default function Timer() {
 
                       const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
                       setTimeout(() => {
-                        if (intervalAudioRef.current) {
-                          intervalAudioRef.current.pause();
-                        }
                         setIsIntervalRinging(false);
                         isIntervalRingingRef.current = false;
                       }, duration);
@@ -554,6 +531,23 @@ export default function Timer() {
     }
   }, [isAlarmPlaying, enableAlarmSound, alarmVolume, resolvedAlarmUrl, alarmSound]);
 
+  // Handle Interval Audio playback reacting to isIntervalRinging state
+  useEffect(() => {
+    if (intervalAudioRef.current) {
+      if (isIntervalRinging && enableAlarmSound) {
+        intervalAudioRef.current.muted = false;
+        const vol = alarmVolume !== undefined ? alarmVolume : 1;
+        intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4;
+        intervalAudioRef.current.currentTime = 0;
+        console.log('[AUDIO DEBUG] Playing interval audio via useEffect...');
+        intervalAudioRef.current.play().then(() => console.log('[AUDIO DEBUG] Interval audio play success')).catch(e => console.error('[AUDIO DEBUG] Interval beep failed:', e));
+      } else {
+        intervalAudioRef.current.pause();
+        intervalAudioRef.current.currentTime = 0;
+      }
+    }
+  }, [isIntervalRinging, enableAlarmSound, alarmVolume, resolvedAlarmUrl, alarmSound]);
+
   const getAlarmTitle = () => {
     if (enableAlarmSound && enableAlarmVibration) return 'PWA_ALARM_RING_VIBRATE';
     if (enableAlarmSound) return 'PWA_ALARM_RING';
@@ -629,6 +623,9 @@ export default function Timer() {
     setTimerPausedLeft(null);
     setTimerEndAt(Date.now() + seconds * 1000);
     savedChunksRef.current = 0;
+    alertedChunksRef.current = 0;
+    lastIntervalAlertMinsRef.current = 0;
+    lastIsIntervalEnabledRef.current = false;
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
     setTimerDeviceId(getDeviceId());
@@ -643,41 +640,48 @@ export default function Timer() {
 
     // Unlock audio for mobile browsers during this user interaction
     // We unlock silently by setting muted = true and volume to 0. Real alarms will reset muted and volume before playing.
-    if (audioRef.current && enableAlarmSound) {
+    if (enableAlarmSound) {
+      setIsUnlockingAudio(true);
       isUnlockingAudioRef.current = true;
-      audioRef.current.muted = true;
-      audioRef.current.volume = 0;
-      audioRef.current.play().then(() => {
-        setTimeout(() => {
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-            audioRef.current.muted = false;
-          }
+      if (audioRef.current) {
+        audioRef.current.muted = true;
+        audioRef.current.volume = 0;
+        audioRef.current.play().then(() => {
+          setTimeout(() => {
+            if (audioRef.current) {
+              audioRef.current.pause();
+              audioRef.current.currentTime = 0;
+              audioRef.current.muted = false;
+            }
+            isUnlockingAudioRef.current = false;
+            setIsUnlockingAudio(false);
+          }, 50); // Silent unlock
+        }).catch(e => {
+          console.log('Audio unlock failed:', e);
+          if (audioRef.current) audioRef.current.muted = false;
           isUnlockingAudioRef.current = false;
-        }, 50); // Silent unlock
-      }).catch(e => {
-        console.log('Audio unlock failed:', e);
-        if (audioRef.current) audioRef.current.muted = false;
-        isUnlockingAudioRef.current = false;
-      });
-    }
+          setIsUnlockingAudio(false);
+        });
+      }
 
-    if (intervalAudioRef.current && enableAlarmSound) {
-      intervalAudioRef.current.muted = true;
-      intervalAudioRef.current.volume = 0;
-      intervalAudioRef.current.play().then(() => {
-        setTimeout(() => {
-          if (intervalAudioRef.current) {
-            intervalAudioRef.current.pause();
-            intervalAudioRef.current.currentTime = 0;
-            intervalAudioRef.current.muted = false;
-          }
-        }, 50);
-      }).catch(e => {
-        console.log('Interval Audio unlock failed:', e);
-        if (intervalAudioRef.current) intervalAudioRef.current.muted = false;
-      });
+      if (intervalAudioRef.current) {
+        intervalAudioRef.current.muted = true;
+        intervalAudioRef.current.volume = 0;
+        intervalAudioRef.current.play().then(() => {
+          setTimeout(() => {
+            if (intervalAudioRef.current) {
+              intervalAudioRef.current.pause();
+              intervalAudioRef.current.currentTime = 0;
+              intervalAudioRef.current.muted = false;
+            }
+            setIsUnlockingAudio(false);
+          }, 50);
+        }).catch(e => {
+          console.log('Interval Audio unlock failed:', e);
+          if (intervalAudioRef.current) intervalAudioRef.current.muted = false;
+          setIsUnlockingAudio(false);
+        });
+      }
     }
 
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -743,6 +747,11 @@ export default function Timer() {
   const resetTimer = () => {
     saveAndClearActiveTaskTimer();
     savedChunksRef.current = 0;
+    alertedChunksRef.current = 0;
+    lastIntervalAlertMinsRef.current = 0;
+    lastIsIntervalEnabledRef.current = false;
+    setTimerLastSavedChunks(0);
+    setTimerLastAlertedChunks(0);
     setTimerEndAt(null);
     setTimerPausedLeft(null);
     setTimerInitialMins(null);
@@ -1149,7 +1158,7 @@ export default function Timer() {
           {/* Hidden Audio Elements */}
           <audio
             ref={audioRef}
-            src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))}
+            src={(isAlarmPlaying || isUnlockingAudio) ? (resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))) : undefined}
             loop
             preload="auto"
             onError={(e) => {
@@ -1158,7 +1167,7 @@ export default function Timer() {
           />
           <audio
             ref={intervalAudioRef}
-            src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))}
+            src={(isIntervalRinging || isUnlockingAudio) ? (resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))) : undefined}
             preload="auto"
             onError={(e) => {
               console.log('Interval alarm audio failed to load:', e);

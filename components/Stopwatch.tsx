@@ -20,6 +20,7 @@ export default function Stopwatch() {
   const [elapsedSecs, setElapsedSecs] = useState(0);
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
   const [isIntervalRinging, setIsIntervalRinging] = useState(false);
+  const [isUnlockingAudio, setIsUnlockingAudio] = useState(false);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -68,6 +69,23 @@ export default function Stopwatch() {
       }
     }
   }, [isSettingsOpen]);
+
+  // Handle Interval Audio playback reacting to isIntervalRinging state
+  useEffect(() => {
+    if (intervalAudioRef.current) {
+      if (isIntervalRinging && enableAlarmSound) {
+        intervalAudioRef.current.muted = false;
+        const vol = alarmVolume !== undefined ? alarmVolume : 1;
+        intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4;
+        intervalAudioRef.current.currentTime = 0;
+        console.log('[AUDIO DEBUG] Playing stopwatch interval audio via useEffect...');
+        intervalAudioRef.current.play().then(() => console.log('[AUDIO DEBUG] Stopwatch interval audio play success')).catch(e => console.error('[AUDIO DEBUG] Stopwatch interval beep failed:', e));
+      } else {
+        intervalAudioRef.current.pause();
+        intervalAudioRef.current.currentTime = 0;
+      }
+    }
+  }, [isIntervalRinging, enableAlarmSound, alarmVolume, resolvedAlarmUrl, alarmSound]);
 
   const updateInteraction = () => {
     if (typeof window !== 'undefined') {
@@ -181,18 +199,12 @@ export default function Stopwatch() {
             if (isOwner) {
               if (enableAlarmSound || enableAlarmVibration) {
                 setIsIntervalRinging(true);
-                if (enableAlarmSound && intervalAudioRef.current) {
-                  const vol = alarmVolume !== undefined ? alarmVolume : 1;
-                  intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4;
-                  intervalAudioRef.current.currentTime = 0;
-                  intervalAudioRef.current.play().catch(e => console.log('Interval beep failed:', e));
-                }
+                useDashboardStore.setState({ isStopwatchOpen: true });
                 if (enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) {
                   try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) { }
                 }
                 const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
                 setTimeout(() => {
-                  if (intervalAudioRef.current) intervalAudioRef.current.pause();
                   setIsIntervalRinging(false);
                 }, duration);
               }
@@ -225,21 +237,26 @@ export default function Stopwatch() {
       }
 
       // Unlock audio for mobile browsers during this user interaction
-      if (intervalAudioRef.current && enableAlarmSound) {
-        intervalAudioRef.current.muted = true;
-        intervalAudioRef.current.volume = 0;
-        intervalAudioRef.current.play().then(() => {
-          setTimeout(() => {
-            if (intervalAudioRef.current) {
-              intervalAudioRef.current.pause();
-              intervalAudioRef.current.currentTime = 0;
-              intervalAudioRef.current.muted = false;
-            }
-          }, 50); // Silent unlock
-        }).catch(e => {
-          console.log('Stopwatch Audio unlock failed:', e);
-          if (intervalAudioRef.current) intervalAudioRef.current.muted = false;
-        });
+      if (enableAlarmSound) {
+        setIsUnlockingAudio(true);
+        if (intervalAudioRef.current) {
+          intervalAudioRef.current.muted = true;
+          intervalAudioRef.current.volume = 0;
+          intervalAudioRef.current.play().then(() => {
+            setTimeout(() => {
+              if (intervalAudioRef.current) {
+                intervalAudioRef.current.pause();
+                intervalAudioRef.current.currentTime = 0;
+                intervalAudioRef.current.muted = false;
+              }
+              setIsUnlockingAudio(false);
+            }, 50); // Silent unlock
+          }).catch(e => {
+            console.log('Stopwatch Audio unlock failed:', e);
+            if (intervalAudioRef.current) intervalAudioRef.current.muted = false;
+            setIsUnlockingAudio(false);
+          });
+        }
       }
     }
   };
@@ -467,7 +484,7 @@ export default function Stopwatch() {
 
           <audio
             ref={intervalAudioRef}
-            src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : alarmSound) || undefined}
+            src={(isIntervalRinging || isUnlockingAudio) ? (resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : alarmSound) || '/ringtones/narutoBGM.mp3') : undefined}
             preload="auto"
             onError={(e) => {
               console.log('Stopwatch interval alarm audio failed to load:', e);
