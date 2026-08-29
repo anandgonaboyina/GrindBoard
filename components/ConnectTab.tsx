@@ -899,8 +899,8 @@ export default function ConnectTab() {
   return (
     <div className="flex flex-col w-full h-full max-h-[80vh] min-w-0 relative max-w-lg mx-auto pt-2 px-2">
 
-      {/* Pill-shaped Navbar - Now OUTSIDE the scroller, pinned to the absolute top */}
-      <div className="sticky flex justify-between items-center bg-black/60 backdrop-blur-xl border border-white/10 rounded-full p-1 mb-2 shadow-lg w-full shrink-0">
+      {/* Pill-shaped Navbar - Pinned sticky to the absolute top */}
+      <div className="sticky top-0 z-30 flex justify-between items-center bg-black/90 backdrop-blur-xl border border-white/10 rounded-full p-1 mb-2 shadow-lg w-full shrink-0">
         <button
           onClick={() => setActiveTab('profile')}
           className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-all ${activeTab === 'profile' ? 'bg-blue-500 text-white shadow-md' : 'text-white/50 hover:text-white/90'}`}

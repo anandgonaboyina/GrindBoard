@@ -58,6 +58,49 @@ export async function POST(req: Request) {
     const client = await clientPromise;
     const db = client.db();
 
+    const group = await db.collection('Group').findOne({ _id: new ObjectId(groupId) });
+    if (!group) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+
+    const isMember = group.members.some((m: any) => m.userId === user.userId);
+    if (isMember) {
+        return NextResponse.json({ error: 'Already a member' }, { status: 400 });
+    }
+
+    // Instant join only if group is public (!isPrivate) AND allowJoinRequests is explicitly false
+    const allowInstantJoin = !group.isPrivate && group.allowJoinRequests === false;
+
+    if (allowInstantJoin) {
+      await db.collection('Group').updateOne(
+        { _id: new ObjectId(groupId) },
+        {
+          $push: {
+            members: {
+              userId: user.userId,
+              username: user.username,
+              role: 'member',
+              canEdit: false,
+              joinedAt: new Date()
+            }
+          },
+          $unset: {
+            [`completions.${user.userId}`]: "",
+            [`memberTasks.${user.userId}`]: "",
+            [`memberTabNames.${user.userId}`]: "",
+            [`completions.${user.username}`]: "",
+            [`memberTasks.${user.username}`]: "",
+            [`memberTabNames.${user.username}`]: ""
+          }
+        } as any
+      );
+      await db.collection('GroupRequest').deleteMany({ groupId, userId: user.userId });
+      return NextResponse.json({ success: true, joinedInstantly: true });
+    }
+
+    // Check if private group blocked requests
+    if (group.isPrivate && group.allowJoinRequests === false) {
+      return NextResponse.json({ error: 'Join requests are disabled for this private group' }, { status: 400 });
+    }
+
     const existing = await db.collection('GroupRequest').findOne({
       groupId,
       userId: user.userId,
@@ -66,14 +109,6 @@ export async function POST(req: Request) {
 
     if (existing) {
       return NextResponse.json({ error: 'Request already sent' }, { status: 400 });
-    }
-
-    const group = await db.collection('Group').findOne({ _id: new ObjectId(groupId) });
-    if (!group) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
-
-    const isMember = group.members.some((m: any) => m.userId === user.userId);
-    if (isMember) {
-        return NextResponse.json({ error: 'Already a member' }, { status: 400 });
     }
 
     await db.collection('GroupRequest').insertOne({
@@ -126,6 +161,14 @@ export async function PATCH(req: Request) {
               canEdit: false,
               joinedAt: new Date()
             }
+          },
+          $unset: {
+            [`completions.${request.userId}`]: "",
+            [`memberTasks.${request.userId}`]: "",
+            [`memberTabNames.${request.userId}`]: "",
+            [`completions.${request.username}`]: "",
+            [`memberTasks.${request.username}`]: "",
+            [`memberTabNames.${request.username}`]: ""
           }
         } as any
       );

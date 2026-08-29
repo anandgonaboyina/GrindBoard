@@ -80,9 +80,19 @@ export default function Stopwatch() {
         intervalAudioRef.current.currentTime = 0;
         console.log('[AUDIO DEBUG] Playing stopwatch interval audio via useEffect...');
         intervalAudioRef.current.play().then(() => console.log('[AUDIO DEBUG] Stopwatch interval audio play success')).catch(e => console.error('[AUDIO DEBUG] Stopwatch interval beep failed:', e));
+        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+          try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+        }
       } else {
-        intervalAudioRef.current.pause();
-        intervalAudioRef.current.currentTime = 0;
+        try {
+          intervalAudioRef.current.pause();
+          intervalAudioRef.current.currentTime = 0;
+          intervalAudioRef.current.removeAttribute('src');
+          intervalAudioRef.current.load();
+        } catch (e) {}
+        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+          try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+        }
       }
     }
   }, [isIntervalRinging, enableAlarmSound, alarmVolume, resolvedAlarmUrl, alarmSound]);
@@ -141,8 +151,8 @@ export default function Stopwatch() {
         const now = Date.now();
         const gap = now - (lastTickTimeRef.current || now);
         lastTickTimeRef.current = now;
-        const wasSleeping = gap > 8000;
-        const systemJustWoke = wasSleeping || (systemWakeTimeRef.current > 0 && now - systemWakeTimeRef.current < 5000);
+        const wasSleeping = gap > 3000;
+        const systemJustWoke = wasSleeping;
 
         const stored = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_last_active') : null;
         const lastActive = stored ? parseInt(stored) : now;
@@ -236,26 +246,21 @@ export default function Stopwatch() {
         }, 3000);
       }
 
-      // Unlock audio for mobile browsers during this user interaction
-      if (enableAlarmSound) {
-        setIsUnlockingAudio(true);
-        if (intervalAudioRef.current) {
-          intervalAudioRef.current.muted = true;
-          intervalAudioRef.current.volume = 0;
-          intervalAudioRef.current.play().then(() => {
-            setTimeout(() => {
-              if (intervalAudioRef.current) {
-                intervalAudioRef.current.pause();
-                intervalAudioRef.current.currentTime = 0;
-                intervalAudioRef.current.muted = false;
-              }
-              setIsUnlockingAudio(false);
-            }, 50); // Silent unlock
-          }).catch(e => {
-            console.log('Stopwatch Audio unlock failed:', e);
-            if (intervalAudioRef.current) intervalAudioRef.current.muted = false;
-            setIsUnlockingAudio(false);
-          });
+      // Unlock audio using Web Audio API (does NOT create/register HTMLMediaElements with OS MediaSession)
+      if (enableAlarmSound && typeof window !== 'undefined') {
+        try {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioCtx) {
+            const ctx = new AudioCtx();
+            if (ctx.state === 'suspended') ctx.resume();
+            const buffer = ctx.createBuffer(1, 1, 22050);
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ctx.destination);
+            source.start(0);
+          }
+        } catch (e) {
+          console.log('Stopwatch Web Audio unlock:', e);
         }
       }
     }
@@ -482,18 +487,20 @@ export default function Stopwatch() {
             )}
           </div>
 
-          <audio
-            ref={intervalAudioRef}
-            src={(isIntervalRinging || isUnlockingAudio) ? (resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : alarmSound) || '/ringtones/narutoBGM.mp3') : undefined}
-            preload="auto"
-            onError={(e) => {
-              console.log('Stopwatch interval alarm audio failed to load:', e);
-              const target = e.currentTarget as HTMLAudioElement;
-              if (!target.src.endsWith('/ringtones/narutoBGM.mp3')) {
-                target.src = '/ringtones/narutoBGM.mp3';
-              }
-            }}
-          />
+          {isIntervalRinging && (
+            <audio
+              ref={intervalAudioRef}
+              src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : alarmSound) || '/ringtones/narutoBGM.mp3'}
+              preload="none"
+              onError={(e) => {
+                console.log('Stopwatch interval alarm audio failed to load:', e);
+                const target = e.currentTarget as HTMLAudioElement;
+                if (!target.src.endsWith('/ringtones/narutoBGM.mp3')) {
+                  target.src = '/ringtones/narutoBGM.mp3';
+                }
+              }}
+            />
+          )}
         </div>
       </div>
 

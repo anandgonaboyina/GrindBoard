@@ -252,6 +252,8 @@ export default function Timer() {
           intervalAudioRef.current.pause();
           intervalAudioRef.current.currentTime = 0;
         }
+        setIsIntervalRinging(false);
+        isIntervalRingingRef.current = false;
       }
     };
 
@@ -279,6 +281,8 @@ export default function Timer() {
         intervalAudioRef.current.pause();
         intervalAudioRef.current.currentTime = 0;
       }
+      setIsIntervalRinging(false);
+      isIntervalRingingRef.current = false;
     }
   }, [isSettingsOpen]);
 
@@ -294,19 +298,21 @@ export default function Timer() {
         const now = Date.now();
         const gap = now - (lastTickTimeRef.current || now);
         lastTickTimeRef.current = now;
-        const wasSleeping = gap > 8000 || (systemWakeTimeRef.current > 0 && now - systemWakeTimeRef.current < 5000); // Gap > 8 seconds or recent wake event
+        const wasSleeping = gap > 3000; // Execution gap > 3 seconds indicates system sleep/lock
 
         const remaining = Math.floor((timerEndAt - now) / 1000);
         const isOwner = timerDeviceId === getDeviceId();
 
         if (wasSleeping) {
-          // If system was sleeping, sync interval alert ref to avoid firing retroactive beeps on wake up
+          // If system was sleeping or just woke up (e.g. Win+L unlock), sync interval alerted chunks ref to current chunk without ringing
+          let isIntervalActive = activeTaskId ? (isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0) : (isTimerIntervalEnabled && timerIntervalMins > 0);
           let activeIntervalMins = activeTaskId ? taskIntervalAlertMins : timerIntervalMins;
-          if (activeIntervalMins > 0) {
-            let nextAlert = remaining - (activeIntervalMins * 60);
-            if (nextAlert === 0) nextAlert = -1;
-            alertedChunksRef.current = nextAlert;
+          if (isIntervalActive && activeIntervalMins > 0 && timerInitialMins) {
+            const alertIntervalSecs = activeIntervalMins * 60;
+            const elapsedSeconds = Math.max(0, (timerInitialMins * 60) - remaining);
+            alertedChunksRef.current = Math.floor(elapsedSeconds / alertIntervalSecs);
           }
+          return;
         }
 
         if (timerInitialMins) {
@@ -421,11 +427,8 @@ export default function Timer() {
           setIsIntervalRinging(false);
           isIntervalRingingRef.current = false;
 
-          const isOverdue = now - timerEndAt > 15000; // Timer expired > 15s ago
-          const systemJustWoke = wasSleeping || (systemWakeTimeRef.current > 0 && now - systemWakeTimeRef.current < 10000);
-
-          // Only trigger alarm if system was active and NOT sleeping / overdue when timer expired
-          if (isOwner && !systemJustWoke && !isOverdue) {
+          // Only trigger alarm if system was active and NOT sleeping when timer expired
+          if (isOwner && !wasSleeping) {
             playAlarm();
           }
 
@@ -524,9 +527,19 @@ export default function Timer() {
         const vol = alarmVolume !== undefined ? alarmVolume : 1;
         audioRef.current.volume = vol > 1 ? vol / 100 : vol;
         audioRef.current.play().catch(e => console.error('Failed to play alarm:', e));
+        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+          try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+        }
       } else {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+        try {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+          audioRef.current.removeAttribute('src');
+          audioRef.current.load();
+        } catch (e) {}
+        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+          try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+        }
       }
     }
   }, [isAlarmPlaying, enableAlarmSound, alarmVolume, resolvedAlarmUrl, alarmSound]);
@@ -541,9 +554,19 @@ export default function Timer() {
         intervalAudioRef.current.currentTime = 0;
         console.log('[AUDIO DEBUG] Playing interval audio via useEffect...');
         intervalAudioRef.current.play().then(() => console.log('[AUDIO DEBUG] Interval audio play success')).catch(e => console.error('[AUDIO DEBUG] Interval beep failed:', e));
+        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+          try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+        }
       } else {
-        intervalAudioRef.current.pause();
-        intervalAudioRef.current.currentTime = 0;
+        try {
+          intervalAudioRef.current.pause();
+          intervalAudioRef.current.currentTime = 0;
+          intervalAudioRef.current.removeAttribute('src');
+          intervalAudioRef.current.load();
+        } catch (e) {}
+        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+          try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+        }
       }
     }
   }, [isIntervalRinging, enableAlarmSound, alarmVolume, resolvedAlarmUrl, alarmSound]);
@@ -556,7 +579,7 @@ export default function Timer() {
   };
 
   const playAlarm = async () => {
-    console.log(`[AUDIO DEBUG] playAlarm triggered: Main timer finished. enableAlarmSound: ${enableAlarmSound}, hasAudioRef: ${!!audioRef.current}`);
+    console.log(`[AUDIO DEBUG] playAlarm triggered: Main timer finished. enableAlarmSound: ${enableAlarmSound}`);
     setIsAlarmPlaying(true);
     useDashboardStore.setState({ isTimerOpen: true });
     const durationSecs = useDashboardStore.getState().alarmDurationSecs || 60;
@@ -597,6 +620,17 @@ export default function Timer() {
 
   const stopAlarm = async () => {
     setIsAlarmPlaying(false);
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
+      } catch (e) {}
+    }
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+      try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+    }
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.ready;
@@ -608,8 +642,15 @@ export default function Timer() {
 
   const stopIntervalBeep = () => {
     if (intervalAudioRef.current) {
-      intervalAudioRef.current.pause();
-      intervalAudioRef.current.currentTime = 0;
+      try {
+        intervalAudioRef.current.pause();
+        intervalAudioRef.current.currentTime = 0;
+        intervalAudioRef.current.removeAttribute('src');
+        intervalAudioRef.current.load();
+      } catch (e) {}
+    }
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+      try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
     }
     setIsIntervalRinging(false);
     isIntervalRingingRef.current = false;
@@ -638,49 +679,21 @@ export default function Timer() {
       }, 3000);
     }
 
-    // Unlock audio for mobile browsers during this user interaction
-    // We unlock silently by setting muted = true and volume to 0. Real alarms will reset muted and volume before playing.
-    if (enableAlarmSound) {
-      setIsUnlockingAudio(true);
-      isUnlockingAudioRef.current = true;
-      if (audioRef.current) {
-        audioRef.current.muted = true;
-        audioRef.current.volume = 0;
-        audioRef.current.play().then(() => {
-          setTimeout(() => {
-            if (audioRef.current) {
-              audioRef.current.pause();
-              audioRef.current.currentTime = 0;
-              audioRef.current.muted = false;
-            }
-            isUnlockingAudioRef.current = false;
-            setIsUnlockingAudio(false);
-          }, 50); // Silent unlock
-        }).catch(e => {
-          console.log('Audio unlock failed:', e);
-          if (audioRef.current) audioRef.current.muted = false;
-          isUnlockingAudioRef.current = false;
-          setIsUnlockingAudio(false);
-        });
-      }
-
-      if (intervalAudioRef.current) {
-        intervalAudioRef.current.muted = true;
-        intervalAudioRef.current.volume = 0;
-        intervalAudioRef.current.play().then(() => {
-          setTimeout(() => {
-            if (intervalAudioRef.current) {
-              intervalAudioRef.current.pause();
-              intervalAudioRef.current.currentTime = 0;
-              intervalAudioRef.current.muted = false;
-            }
-            setIsUnlockingAudio(false);
-          }, 50);
-        }).catch(e => {
-          console.log('Interval Audio unlock failed:', e);
-          if (intervalAudioRef.current) intervalAudioRef.current.muted = false;
-          setIsUnlockingAudio(false);
-        });
+    // Unlock audio using Web Audio API (does NOT create/register HTMLMediaElements with OS MediaSession)
+    if (enableAlarmSound && typeof window !== 'undefined') {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          if (ctx.state === 'suspended') ctx.resume();
+          const buffer = ctx.createBuffer(1, 1, 22050);
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(ctx.destination);
+          source.start(0);
+        }
+      } catch (e) {
+        console.log('Web Audio unlock:', e);
       }
     }
 
@@ -1155,24 +1168,28 @@ export default function Timer() {
 
           </div>
 
-          {/* Hidden Audio Elements */}
-          <audio
-            ref={audioRef}
-            src={(isAlarmPlaying || isUnlockingAudio) ? (resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))) : undefined}
-            loop
-            preload="auto"
-            onError={(e) => {
-              console.log('Main alarm audio failed to load:', e);
-            }}
-          />
-          <audio
-            ref={intervalAudioRef}
-            src={(isIntervalRinging || isUnlockingAudio) ? (resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))) : undefined}
-            preload="auto"
-            onError={(e) => {
-              console.log('Interval alarm audio failed to load:', e);
-            }}
-          />
+          {/* Hidden Audio Elements - Conditionally mounted to prevent OS/browser resume on Win+L wake */}
+          {isAlarmPlaying && (
+            <audio
+              ref={audioRef}
+              src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))}
+              loop
+              preload="none"
+              onError={(e) => {
+                console.log('Main alarm audio failed to load:', e);
+              }}
+            />
+          )}
+          {isIntervalRinging && (
+            <audio
+              ref={intervalAudioRef}
+              src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))}
+              preload="none"
+              onError={(e) => {
+                console.log('Interval alarm audio failed to load:', e);
+              }}
+            />
+          )}
         </div>
       </div>
 

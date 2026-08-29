@@ -25,6 +25,11 @@ export async function GET(req: Request) {
     const client = await clientPromise;
     const db = client.db();
 
+    // Clean up any groups whose 3-day deletion window has expired
+    await db.collection('Group').deleteMany({
+      'pendingDeletion.scheduledAt': { $lte: new Date().toISOString() }
+    });
+
     const groups = await db.collection('Group').find({
       'members.userId': user.userId
     }).toArray();
@@ -51,10 +56,14 @@ export async function GET(req: Request) {
     const userIndexMap: Record<string, number> = {};
     const userAliasMap: Record<string, string> = {};
     const userNameMap: Record<string, string> = {};
+    const userPicMap: Record<string, string> = {};
     users.forEach((u, index) => {
       userIndexMap[u._id.toString()] = index;
       if (u.alias) userAliasMap[u._id.toString()] = u.alias;
       userNameMap[u._id.toString()] = u.username;
+      const pic = u.profilePicture || u.avatarUrl || u.avatar || '';
+      userPicMap[u._id.toString()] = pic;
+      if (u.userId) userPicMap[u.userId] = pic;
     });
 
     // 3. Process groups and anonymize names
@@ -78,7 +87,8 @@ export async function GET(req: Request) {
 
         return {
           ...member,
-          username: displayName, // Overwrite the username with the anonymous/display name
+          username: displayName,
+          avatarUrl: member.avatarUrl || userPicMap[memberIdStr] || '',
           isMe
         };
       });
@@ -100,7 +110,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { title, description, isPrivate, allowJoinRequests, tasks } = await req.json();
+    const { title, description, isPrivate, allowJoinRequests, tasks, avatarUrl } = await req.json();
     if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 });
 
     const client = await clientPromise;
@@ -114,6 +124,7 @@ export async function POST(req: Request) {
     const newGroup = {
       title,
       description: description || '',
+      avatarUrl: avatarUrl || '',
       isPrivate: isPrivate || false,
       allowJoinRequests: allowJoinRequests !== undefined ? allowJoinRequests : true,
       adminId: user.userId,

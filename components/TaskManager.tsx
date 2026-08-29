@@ -232,13 +232,31 @@ export default function TaskManager() {
     
     if (selectedGroupId) {
         const activeGroup = userGroups.find(g => g._id === selectedGroupId);
-        if (activeGroup && activeGroup.tasks) {
+        if (activeGroup) {
             const username = typeof window !== 'undefined' ? localStorage.getItem('dashboard_username') : '';
-            const myMemberInfo = activeGroup.members?.find((m: any) => m.username === username);
+            const myMemberInfo = activeGroup.members?.find((m: any) => m.username === username || m.isMe);
+            const myUserId = myMemberInfo?.userId || '';
+            const myUsername = myMemberInfo?.username || username || '';
+
+            let myTasks: any[] = [];
+            if (activeGroup.memberTasks) {
+                if (myUserId && activeGroup.memberTasks[myUserId] !== undefined) {
+                    myTasks = activeGroup.memberTasks[myUserId];
+                } else if (myUsername && activeGroup.memberTasks[myUsername] !== undefined) {
+                    myTasks = activeGroup.memberTasks[myUsername];
+                } else {
+                    const isGroupAdmin = activeGroup.adminId === myUserId || activeGroup.adminId === myUsername || myMemberInfo?.role === 'admin';
+                    if (isGroupAdmin) {
+                        myTasks = activeGroup.tasks || [];
+                    }
+                }
+            } else {
+                myTasks = activeGroup.tasks || [];
+            }
+
             const todayStr = getLocalDateString();
-            // In GroupTaskManager, completions are tracked by date string
-            const myCompletions = activeGroup.completions?.[myMemberInfo?.userId || '']?.[todayStr] || {};
-            totalRemainingMinutes = activeGroup.tasks.filter((t: any) => !myCompletions[t.id]?.completed).reduce((sum: number, t: any) => sum + Math.max(0, (t.duration || 0) - (myCompletions[t.id]?.timeSpent || 0)), 0);
+            const myCompletions = (myUserId && activeGroup.completions?.[myUserId]?.[todayStr]) || (myUsername && activeGroup.completions?.[myUsername]?.[todayStr]) || {};
+            totalRemainingMinutes = myTasks.filter((t: any) => !myCompletions[t.id]?.completed).reduce((sum: number, t: any) => sum + Math.max(0, (t.duration || 0) - (myCompletions[t.id]?.timeSpent || 0)), 0);
         }
     } else {
         totalRemainingMinutes = currentTasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + (t.duration || 0), 0);
@@ -550,6 +568,9 @@ export default function TaskManager() {
                                                         className="flex flex-col items-center opacity-40 hover:opacity-100 transition-opacity justify-center mt-1.5 shrink-0 -ml-0.5 cursor-grab active:cursor-grabbing touch-none select-none p-1"
                                                         onPointerDown={(e) => {
                                                             e.stopPropagation();
+                                                            try {
+                                                                (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                                                            } catch {}
                                                             draggedIndexRef.current = index;
                                                             setDraggedIndex(index);
                                                         }}

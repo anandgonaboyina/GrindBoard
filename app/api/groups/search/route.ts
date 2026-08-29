@@ -59,10 +59,12 @@ export async function GET(req: Request) {
     const userIndexMap: Record<string, number> = {};
     const userAliasMap: Record<string, string> = {};
     const userNameMap: Record<string, string> = {};
+    const userPicMap: Record<string, string> = {};
     users.forEach((u, index) => {
       userIndexMap[u._id.toString()] = index;
       if (u.alias) userAliasMap[u._id.toString()] = u.alias;
       userNameMap[u._id.toString()] = u.username;
+      userPicMap[u._id.toString()] = u.profilePicture || u.avatarUrl || '';
     });
 
     const safeGroups = groups.map(g => {
@@ -86,6 +88,7 @@ export async function GET(req: Request) {
             return {
                 ...member,
                 username: displayName,
+                avatarUrl: member.avatarUrl || userPicMap[memberIdStr] || '',
                 isMe
             };
         });

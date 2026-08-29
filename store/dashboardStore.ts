@@ -1081,19 +1081,37 @@ export const useDashboardStore = create<DashboardState>()(
 
         let foundGroup: any = null;
         let foundTask: any = null;
+        let foundUserId: string | null = null;
+
         for (const g of state.userGroups) {
-           const t = g.tasks?.find((task: any) => task.id === id);
-           if (t) {
-             foundGroup = g;
-             foundTask = t;
-             break;
-           }
+          if (g.memberTasks) {
+            for (const uId in g.memberTasks) {
+              const t = g.memberTasks[uId]?.find((task: any) => task.id === id);
+              if (t) {
+                foundGroup = g;
+                foundTask = t;
+                foundUserId = uId;
+                break;
+              }
+            }
+          }
+          if (!foundTask) {
+            const t = g.tasks?.find((task: any) => task.id === id);
+            if (t) {
+              foundGroup = g;
+              foundTask = t;
+              break;
+            }
+          }
+          if (foundGroup) break;
         }
 
         if (foundGroup) {
-          const username = localStorage.getItem('dashboard_username');
-          const myMemberInfo = foundGroup.members?.find((m: any) => m.username === username);
-          if (myMemberInfo) {
+          const username = typeof window !== 'undefined' ? localStorage.getItem('dashboard_username') : '';
+          const myMemberInfo = foundGroup.members?.find((m: any) => m.username === username || m.isMe);
+          const targetUId = foundUserId || myMemberInfo?.userId || myMemberInfo?.username;
+
+          if (targetUId) {
              const d = new Date();
              const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
              
@@ -1102,7 +1120,7 @@ export const useDashboardStore = create<DashboardState>()(
              const newUserGroups = state.userGroups.map(g => {
                 if (g._id === foundGroup._id) {
                    const completions = g.completions || {};
-                   const userCompletions = completions[myMemberInfo.userId] || {};
+                   const userCompletions = completions[targetUId] || {};
                    const todayCompletions = userCompletions[todayStr] || {};
                    const taskCompletion = todayCompletions[id] || { timeSpent: 0, completed: false };
                    
@@ -1116,7 +1134,7 @@ export const useDashboardStore = create<DashboardState>()(
 
                    const newCompletions = {
                       ...completions,
-                      [myMemberInfo.userId]: {
+                      [targetUId]: {
                          ...userCompletions,
                          [todayStr]: {
                             ...todayCompletions,
@@ -1133,7 +1151,8 @@ export const useDashboardStore = create<DashboardState>()(
                        dateStr: todayStr,
                        taskId: id,
                        completed: newCompleted,
-                       timeSpent: newTimeSpent
+                       timeSpent: newTimeSpent,
+                       targetUserId: targetUId
                    };
 
                    return {
@@ -1144,7 +1163,7 @@ export const useDashboardStore = create<DashboardState>()(
                 return g;
              });
 
-             const token = localStorage.getItem('dashboard_sync_token');
+             const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
              if (token && updatedCompletionParams) {
                 fetch(`/api/groups/${foundGroup._id}`, {
                     method: 'PATCH',

@@ -2,26 +2,79 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Plus, Play, Trash2, CheckCircle, Circle, Clock, RotateCcw, Filter, BellRing, ClipboardList, Info, X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Plus, Play, Trash2, CheckCircle, Circle, Clock, RotateCcw, Filter, BellRing, ClipboardList, Info, X, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react';
 import { fetchQuote } from '@/utils/quoteEngine';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 
-export default function GroupTaskManager({ groupId }: { groupId: string }) {
+interface GroupTaskManagerProps {
+    groupId: string;
+    targetUserId?: string;
+    activeTabProp?: number;
+    onTabChange?: (tabIdx: number) => void;
+    dateStrProp?: string;
+    hideHeader?: boolean;
+}
+
+export default function GroupTaskManager({
+    groupId,
+    targetUserId,
+    activeTabProp,
+    onTabChange,
+    dateStrProp,
+    hideHeader = false
+}: GroupTaskManagerProps) {
     const { userGroups, setUserGroups, triggerTimer, isTaskManagerOpen, showQuotePopup, activeTaskId, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, taskIntervalAlertMins, setTaskIntervalAlertMins } = useDashboardStore();
     const group = userGroups.find(g => g._id === groupId);
-    
-    const [tasks, setTasks] = useState<any[]>(group?.tasks || []);
+
+    const username = typeof window !== 'undefined' ? localStorage.getItem('dashboard_username') : '';
+    const members = group?.members || [];
+    const myMemberInfo = members.find((m: any) => m.username === username || m.isMe);
+    const myUserId = myMemberInfo?.userId || '';
+
+    const effectiveUserId = targetUserId || myUserId;
+    const isMe = targetUserId ? effectiveUserId === myUserId : true;
+    const canEdit = isMe && (!!myMemberInfo || (group?.members && group.members.some((m: any) => m.isMe)));
+
+    const getUserTasks = (groupData: any, uId: string) => {
+        if (!groupData || !uId) return [];
+        if (groupData.memberTasks && groupData.memberTasks[uId] !== undefined) {
+            return groupData.memberTasks[uId];
+        }
+        const isGroupAdmin = groupData.adminId === uId || groupData.members?.some((m: any) => (m.userId === uId || m.username === uId) && m.role === 'admin');
+        if (isGroupAdmin) {
+            return groupData.tasks || [];
+        }
+        return [];
+    };
+
+    const getLocalDateString = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+    const todayStr = dateStrProp || getLocalDateString();
+
+    const [tasks, setTasks] = useState<any[]>(getUserTasks(group, effectiveUserId));
     const [completions, setCompletions] = useState<any>(group?.completions || {});
-    const [members, setMembers] = useState<any[]>(group?.members || []);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskDuration, setNewTaskDuration] = useState('');
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [editingDurationId, setEditingDurationId] = useState<string | null>(null);
     const [editingTimeSpentId, setEditingTimeSpentId] = useState<string | null>(null);
-    const [activeGroupTab, setActiveGroupTab] = useState<number>(0);
+    const [internalActiveGroupTab, setInternalActiveGroupTab] = useState<number>(0);
     const [editingGroupIndex, setEditingGroupIndex] = useState<number | null>(null);
-    const [tabNames, setTabNames] = useState<string[]>(group?.tabNames || ['Tab 1', 'Tab 2', 'Tab 3']);
+
+    const activeGroupTab = activeTabProp !== undefined ? activeTabProp : internalActiveGroupTab;
+    const setActiveGroupTab = (idx: number) => {
+        setInternalActiveGroupTab(idx);
+        if (onTabChange) onTabChange(idx);
+    };
+
+    const initialTabNames = group?.memberTabNames?.[effectiveUserId] || ['Tab 1', 'Tab 2', 'Tab 3'];
+    const [tabNames, setTabNames] = useState<string[]>(initialTabNames);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const draggedIndexRef = useRef<number | null>(null);
@@ -34,14 +87,54 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
         message: React.ReactNode;
         isDestructive?: boolean;
         onConfirm: () => void;
-    }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+    }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
 
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const infoRef = useRef<HTMLDivElement>(null);
 
-    const username = localStorage.getItem('dashboard_username');
-    const myMemberInfo = members.find((m: any) => m.username === username);
-    const canEdit = myMemberInfo?.role === 'admin' || myMemberInfo?.canEdit;
+    const handleExitGroup = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Exit Group',
+            message: `Are you sure you want to exit "${group?.title || 'this group'}"? ${myMemberInfo?.role === 'admin' ? 'As admin, group ownership will be transferred to the next member.' : 'Your group task progress will be removed.'}`,
+            isDestructive: true,
+            onConfirm: async () => {
+                const token = localStorage.getItem('dashboard_sync_token');
+                try {
+                    const res = await fetch(`/api/groups/${groupId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ action: 'exit_group' })
+                    });
+                    if (res.ok) {
+                        const updatedGroups = useDashboardStore.getState().userGroups.filter((g: any) => g._id !== groupId);
+                        setUserGroups(updatedGroups);
+                        if (useDashboardStore.getState().selectedGroupId === groupId) {
+                            useDashboardStore.getState().setSelectedGroupId(null);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to exit group:', e);
+                }
+            }
+        });
+    };
+
+    const handleClaimLeadership = async () => {
+        const token = localStorage.getItem('dashboard_sync_token');
+        try {
+            const res = await fetch(`/api/groups/${groupId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ action: 'claim_leadership' })
+            });
+            if (res.ok) {
+                fetchGroupData();
+            }
+        } catch (e) {
+            console.error('Failed to claim leadership:', e);
+        }
+    };
 
     useEffect(() => {
         draggedIndexRef.current = draggedIndex;
@@ -54,7 +147,7 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
         updatedTasks.splice(toIndex, 0, movedTask);
 
         setTasks(updatedTasks);
-        const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, tasks: updatedTasks } : g);
+        const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, memberTasks: { ...(g.memberTasks || {}), [effectiveUserId]: updatedTasks } } : g);
         setUserGroups(updatedGroups);
         updateTasksInDB(updatedTasks);
     };
@@ -112,69 +205,50 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
         };
     }, [canEdit, tasks]);
 
-    const getLocalDateString = () => {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
-    const todayStr = getLocalDateString();
-    const myCompletions = completions[myMemberInfo?.userId || '']?.[todayStr] || {};
+    const myCompletions = completions[effectiveUserId]?.[todayStr] || {};
 
     const fetchGroupData = async () => {
         const token = localStorage.getItem('dashboard_sync_token');
+        if (!token) return;
         try {
             const res = await fetch(`/api/groups/${groupId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
             if (data.group) {
-                setTasks(data.group.tasks || []);
-                setCompletions(data.group.completions || {});
-                setMembers(data.group.members || []);
-                setTabNames(data.group.tabNames || ['Tab 1', 'Tab 2', 'Tab 3']);
-                
+                const uId = effectiveUserId;
+                if (uId) {
+                    setTasks(getUserTasks(data.group, uId));
+                    setCompletions(data.group.completions || {});
+                    setTabNames(data.group.memberTabNames?.[uId] || ['Tab 1', 'Tab 2', 'Tab 3']);
+                }
+
                 // Sync to global store to keep timer logic accurate
                 const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? data.group : g);
                 setUserGroups(updatedGroups);
             }
-        } catch (e) {}
+        } catch (e) { }
     };
 
     useEffect(() => {
         fetchGroupData();
         const interval = setInterval(fetchGroupData, 10000); // Polling every 10s for sync
         return () => clearInterval(interval);
-    }, [groupId]);
+    }, [groupId, targetUserId]);
 
     useEffect(() => {
-        if (group) {
-            if (group.tasks) setTasks(group.tasks);
-            if (group.completions) setCompletions(group.completions);
-            if (group.members) setMembers(group.members);
-            if (group.tabNames) setTabNames(group.tabNames);
+        if (group && effectiveUserId) {
+            setTasks(getUserTasks(group, effectiveUserId));
+            setCompletions(group.completions || {});
+            setTabNames(group.memberTabNames?.[effectiveUserId] || ['Tab 1', 'Tab 2', 'Tab 3']);
         }
-    }, [group]);
+    }, [group, effectiveUserId]);
 
     const updateTasksInDB = async (newTasks: any[]) => {
-        const token = localStorage.getItem('dashboard_sync_token');
-        try {
-            await fetch(`/api/groups/${groupId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ action: 'update_task_list', tasks: newTasks })
-            });
-        } catch (e) {}
-    };
-
-    const updateTabNameInDB = async (idx: number, name: string) => {
-        if (!canEdit) return;
-        const newTabNames = [...tabNames];
-        newTabNames[idx] = name;
-        setTabNames(newTabNames);
-        
-        const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, tabNames: newTabNames } : g);
+        const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? {
+            ...g,
+            memberTasks: { ...(g.memberTasks || {}), [effectiveUserId]: newTasks }
+        } : g);
         setUserGroups(updatedGroups);
 
         const token = localStorage.getItem('dashboard_sync_token');
@@ -182,9 +256,31 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
             await fetch(`/api/groups/${groupId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ action: 'update_tab_names', tabNames: newTabNames })
+                body: JSON.stringify({ action: 'update_task_list', tasks: newTasks, targetUserId: effectiveUserId })
             });
-        } catch (e) {}
+        } catch (e) { }
+    };
+
+    const updateTabNameInDB = async (idx: number, name: string) => {
+        if (!canEdit) return;
+        const newTabNames = [...tabNames];
+        newTabNames[idx] = name;
+        setTabNames(newTabNames);
+
+        const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? {
+            ...g,
+            memberTabNames: { ...(g.memberTabNames || {}), [effectiveUserId]: newTabNames }
+        } : g);
+        setUserGroups(updatedGroups);
+
+        const token = localStorage.getItem('dashboard_sync_token');
+        try {
+            await fetch(`/api/groups/${groupId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ action: 'update_tab_names', tabNames: newTabNames, targetUserId: effectiveUserId })
+            });
+        } catch (e) { }
     };
 
     const updateCompletionInDB = async (taskId: string, completed: boolean, timeSpent: number) => {
@@ -193,18 +289,19 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
             await fetch(`/api/groups/${groupId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ action: 'update_completion', dateStr: todayStr, taskId, completed, timeSpent })
+                body: JSON.stringify({ action: 'update_completion', dateStr: todayStr, taskId, completed, timeSpent, targetUserId: effectiveUserId })
             });
-        } catch (e) {}
+        } catch (e) { }
     };
 
     const handleToggleTask = async (id: string) => {
+        if (!canEdit) return;
         const comp = myCompletions[id] || { completed: false, timeSpent: 0 };
         const newCompleted = !comp.completed;
         const newComps = { ...myCompletions, [id]: { ...comp, completed: newCompleted } };
-        const finalCompletions = { ...completions, [myMemberInfo.userId]: { ...completions[myMemberInfo.userId], [todayStr]: newComps } };
+        const finalCompletions = { ...completions, [effectiveUserId]: { ...(completions[effectiveUserId] || {}), [todayStr]: newComps } };
         setCompletions(finalCompletions);
-        
+
         const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, completions: finalCompletions } : g);
         setUserGroups(updatedGroups);
 
@@ -224,7 +321,7 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
             isDestructive: false,
             onConfirm: () => {
                 const newComps = { ...myCompletions, [id]: { completed: false, timeSpent: 0 } };
-                const finalCompletions = { ...completions, [myMemberInfo.userId]: { ...completions[myMemberInfo.userId], [todayStr]: newComps } };
+                const finalCompletions = { ...completions, [effectiveUserId]: { ...(completions[effectiveUserId] || {}), [todayStr]: newComps } };
                 setCompletions(finalCompletions);
 
                 const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, completions: finalCompletions } : g);
@@ -239,6 +336,18 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
         e.preventDefault();
         if (!newTaskTitle.trim() || !canEdit) return;
 
+        const countInTab = tasks.filter(t => (t.groupId || 0) === activeGroupTab).length;
+        if (countInTab >= 6) {
+            setConfirmModal({
+                isOpen: true,
+                title: 'Limit Reached',
+                message: 'Each tab section can have at most 6 tasks.',
+                isDestructive: false,
+                onConfirm: () => { }
+            });
+            return;
+        }
+
         const newTask = {
             id: Date.now().toString(),
             title: newTaskTitle.trim(),
@@ -248,7 +357,7 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
         const newTasks = [...tasks, newTask];
         setTasks(newTasks);
 
-        const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, tasks: newTasks } : g);
+        const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, memberTasks: { ...(g.memberTasks || {}), [effectiveUserId]: newTasks } } : g);
         setUserGroups(updatedGroups);
 
         updateTasksInDB(newTasks);
@@ -286,8 +395,28 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
 
     return (
         <div className="flex flex-col h-full w-full">
+            {/* 3-day Abandonment / Deletion Notice Banner */}
+            {!hideHeader && group?.pendingDeletion && (
+                <div className="mx-2 mt-2 p-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-[10px] flex items-center justify-between gap-2 shadow-md animate-in fade-in">
+                    <div className="flex flex-col min-w-0">
+                        <span className="font-bold flex items-center gap-1 text-amber-300">
+                            <Clock size={12} className="animate-spin" style={{ animationDuration: '6s' }} /> Admin Abandonment Grace Period
+                        </span>
+                        <span className="text-[9px] text-white/70 truncate">
+                            Admin left group. Auto-deletes in 3 days unless claimed!
+                        </span>
+                    </div>
+                    <button
+                        onClick={handleClaimLeadership}
+                        className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-black text-[9.5px] font-bold rounded-lg transition-colors cursor-pointer shrink-0 shadow-sm"
+                    >
+                        Claim Leadership
+                    </button>
+                </div>
+            )}
+
             {/* Sub-tabs for grouping */}
-            <div className="flex items-start gap-1 p-2 border-t border-white/5 bg-black/20">
+            <div className="flex items-start gap-1 p-1.5 border-t border-white/5 bg-black/20">
                 {[0, 1, 2].map((idx) => {
                     const tabTasks = tasks.filter(t => (t.groupId || 0) === idx);
                     const tabRemaining = tabTasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + Math.max(0, (t.duration || 0) - (myCompletions[t.id]?.timeSpent || 0)), 0);
@@ -296,7 +425,7 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                     return (
                         <div
                             key={idx}
-                            className={`relative flex flex-col flex-1 min-w-0 rounded-md border transition-all h-[25px] ${activeGroupTab === idx
+                            className={`relative flex flex-col flex-1 min-w-0 rounded-md border transition-all h-[22px] ${activeGroupTab === idx
                                 ? 'bg-blue-500/20 border-blue-500/50 text-blue-200'
                                 : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10 hover:text-white/80 cursor-pointer'
                                 }`}
@@ -305,7 +434,7 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                             {editingGroupIndex === idx && canEdit ? (
                                 <input
                                     autoFocus
-                                    className="absolute inset-0 w-full h-full bg-transparent outline-none px-1.5 py-1 text-[8px] font-bold text-left text-white"
+                                    className="absolute inset-0 w-full h-full bg-transparent outline-none px-1 py-0.5 text-[7.5px] font-bold text-left text-white"
                                     defaultValue={tabNames[idx]}
                                     onBlur={(e) => {
                                         updateTabNameInDB(idx, e.target.value.trim() || `Tab ${idx + 1}`);
@@ -321,37 +450,60 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                             ) : (
                                 <div
                                     onDoubleClick={() => { if (canEdit) setEditingGroupIndex(idx) }}
-                                    className={`w-full px-1.5 py-1 text-[8px] font-bold uppercase tracking-wider text-left truncate select-none ${canEdit ? 'cursor-text' : 'cursor-default'}`}
+                                    className={`w-full px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-wider text-left truncate select-none ${canEdit ? 'cursor-text' : 'cursor-default'}`}
                                     title={canEdit ? "Double click to rename tab" : ""}
                                 >
                                     {tabNames[idx]}
                                 </div>
                             )}
                             {timeDisplay && (
-                                <div className={`absolute bottom-0 right-0 text-[7.5px] font-bold uppercase tracking-widest px-1 py-[1px] rounded-tl-md rounded-br-md border-t border-l shadow-sm ${activeGroupTab === idx ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-black/60 text-white/40 border-white/20 border-t-white/20 border-l-white/20'}`}>
+                                <div className={`absolute bottom-0 right-0 text-[7px] font-bold uppercase tracking-widest px-1 py-[0px] rounded-tl-md rounded-br-md border-t border-l shadow-sm ${activeGroupTab === idx ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-black/60 text-white/40 border-white/20 border-t-white/20 border-l-white/20'}`}>
                                     {timeDisplay}
                                 </div>
                             )}
                         </div>
                     );
                 })}
-                <button
-                    onClick={() => setIsInfoOpen(true)}
-                    className="p-1 text-sky-300 hover:text-white hover:bg-white/10 rounded-md transition-colors shrink-0 self-center"
-                    title="Group Task Rules & Reset Info"
-                >
-                    <Info size={14} />
-                </button>
+                {!hideHeader && (
+                    <>
+                        <button
+                            onClick={() => setIsInfoOpen(true)}
+                            className="p-1 text-sky-300 hover:text-white hover:bg-white/10 rounded-md transition-colors shrink-0 self-center"
+                            title="Group Task Rules & Reset Info"
+                        >
+                            <Info size={14} />
+                        </button>
+                        <button
+                            onClick={handleExitGroup}
+                            className="px-2 py-0.5 text-[9px] font-bold bg-rose-500/20 text-rose-300 hover:bg-rose-500 hover:text-white rounded-md transition-colors cursor-pointer border border-rose-500/30 shrink-0 self-center"
+                            title="Exit this group"
+                        >
+                            Exit
+                        </button>
+                    </>
+                )}
             </div>
 
-            <ScrollableWithArrows className="p-1.5 max-h-[350px] ">
+            <ScrollableWithArrows className={`p-1 ${hideHeader ? 'max-h-[210px] sm:max-h-[230px]' : 'max-h-[350px]'}`}>
                 {filteredTasks.length === 0 ? (
-                    <div className="text-center text-white/40 p-3 text-[10px] italic">
-                        No tasks in this group.
-                    </div>
+                    canEdit ? (
+                        <div className="flex flex-col items-center justify-center p-2 text-center border border-dashed border-sky-500/30 rounded-lg bg-sky-500/5 my-0.5 gap-0.5 shadow-inner">
+                            <div className="w-5 h-5 rounded-full bg-sky-500/20 border border-sky-400/35 flex items-center justify-center text-sky-300 shadow-sm mb-0.5">
+                                <Sparkles size={11} className="animate-pulse text-sky-300" />
+                            </div>
+                            <span className="text-[9.5px] font-bold text-white/90">No tasks added yet!</span>
+                            <span className="text-[8px] text-white/50 max-w-[160px] leading-tight">
+                                Add your first task below to start tracking duration & focus progress!
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center p-2 text-center border border-dashed border-white/10 rounded-lg bg-white/[0.02] my-0.5 gap-0.5">
+                            <span className="text-[9px] font-medium text-white/40 italic">No active tasks in this tab yet</span>
+                        </div>
+                    )
                 ) : (
                     <div
-                        className="flex flex-col gap-1.5 "
+                        className="flex flex-col gap-1 scale-0.8"
                         onPointerDown={() => setDraggedIndex(null)}
                         onPointerUp={() => setDraggedIndex(null)}
                         onPointerCancel={() => setDraggedIndex(null)}
@@ -379,7 +531,7 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                                             }
                                         }
                                     }}
-                                    className={`group flex items-start justify-between p-1.5 rounded-lg border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/30 hover:border-white/50'}`}
+                                    className={`group flex items-start justify-between p-1 py-0.5 rounded-md border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/20 hover:border-white/40'}`}
                                 >
                                     <div className="flex items-start gap-1.5 flex-1 min-w-0 pl-1">
                                         {canEdit && (
@@ -387,6 +539,9 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                                                 className="flex flex-col items-center opacity-40 hover:opacity-100 transition-opacity justify-center mt-1.5 shrink-0 -ml-0.5 cursor-grab active:cursor-grabbing touch-none select-none p-1"
                                                 onPointerDown={(e) => {
                                                     e.stopPropagation();
+                                                    try {
+                                                        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                                                     } catch { }
                                                     draggedIndexRef.current = index;
                                                     setDraggedIndex(index);
                                                 }}
@@ -500,10 +655,10 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                                                                 onBlur={(e) => {
                                                                     const dur = parseInt(e.target.value);
                                                                     if (!isNaN(dur) && dur >= 0) {
-                                                                        const newComps = { ...myCompletions, [task.id]: { completed: false, timeSpent: dur } };
-                                                                        const finalCompletions = { ...completions, [myMemberInfo.userId]: { ...completions[myMemberInfo.userId], [todayStr]: newComps } };
-                                                                        setCompletions(finalCompletions);
-                                                                        
+                                                                         const newComps = { ...myCompletions, [task.id]: { completed: false, timeSpent: dur } };
+                                                                         const finalCompletions = { ...completions, [effectiveUserId]: { ...(completions[effectiveUserId] || {}), [todayStr]: newComps } };
+                                                                         setCompletions(finalCompletions);
+
                                                                         const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, completions: finalCompletions } : g);
                                                                         setUserGroups(updatedGroups);
 
@@ -540,29 +695,30 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                                     </div>
 
                                     <div className="flex flex-col items-end justify-between gap-1 shrink-0 ml-1 self-stretch">
-                                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                            {!isTaskDone && (
-                                                <button
-                                                    onClick={() => {
-                                                        const timeLeft = Math.max(0, task.duration - timeSpent);
-                                                        triggerTimer(timeLeft, task.id, task.title);
-                                                    }}
-                                                    className="p-1 bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white rounded-md transition-all active:scale-95"
-                                                    title={`Start ${Math.max(0, task.duration - timeSpent)}m timer`}
-                                                >
-                                                    <Play className="w-3 h-3 fill-current" />
-                                                </button>
-                                            )}
-                                            {(isTaskDone || timeSpent > 0) && (
-                                                <button
-                                                    onClick={() => handleRestartTask(task.id)}
-                                                    className="p-1 bg-orange-500/10 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-all active:scale-95 border border-orange-500/20 hover:border-transparent"
-                                                    title="Restart task"
-                                                >
-                                                    <RotateCcw className="w-3 h-3 " />
-                                                </button>
-                                            )}
-                                            {canEdit && (
+                                        {canEdit && (
+                                            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                {!isTaskDone && (
+                                                    <button
+                                                        onClick={() => {
+                                                            const timeLeft = Math.max(0, task.duration - timeSpent);
+                                                            const taggedTitle = group?.title ? `👥 [Group: ${group.title}] ${task.title}` : task.title;
+                                                            triggerTimer(timeLeft, task.id, taggedTitle);
+                                                        }}
+                                                        className="p-1 bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white rounded-md transition-all active:scale-95"
+                                                        title={`Start ${Math.max(0, task.duration - timeSpent)}m timer`}
+                                                    >
+                                                        <Play className="w-3 h-3 fill-current" />
+                                                    </button>
+                                                )}
+                                                {(isTaskDone || timeSpent > 0) && (
+                                                    <button
+                                                        onClick={() => handleRestartTask(task.id)}
+                                                        className="p-1 bg-orange-500/10 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-all active:scale-95 border border-orange-500/20 hover:border-transparent"
+                                                        title="Restart task"
+                                                    >
+                                                        <RotateCcw className="w-3 h-3 " />
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => {
                                                         setConfirmModal({
@@ -573,8 +729,8 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                                                             onConfirm: () => {
                                                                 const newTasks = tasks.filter(t => t.id !== task.id);
                                                                 setTasks(newTasks);
-                                                                const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, tasks: newTasks } : g);
-                                                                setUserGroups(updatedGroups);
+                                                                 const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, memberTasks: { ...(g.memberTasks || {}), [effectiveUserId]: newTasks } } : g);
+                                                                 setUserGroups(updatedGroups);
                                                                 updateTasksInDB(newTasks);
                                                             }
                                                         });
@@ -583,8 +739,8 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                                                 >
                                                     <Trash2 className="w-3 h-3 " />
                                                 </button>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -594,9 +750,9 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
             </ScrollableWithArrows>
 
             {canEdit && (
-                <form onSubmit={handleAddTask} className="p-2 border-t border-white/20 bg-black/20 flex gap-2 items-end mt-1 pt-3">
+                <form onSubmit={handleAddTask} className="p-1 border-t border-white/10 bg-black/20 flex gap-1 items-end mt-0.5 pt-2">
                     <div className="relative flex-1 group/task">
-                        <span className="absolute -top-[9px] left-1 px-1 bg-[#1a1a1a] rounded text-[6.5px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/task:text-blue-300">
+                        <span className="absolute -top-[8px] left-1 px-1 bg-[#1a1a1a] rounded text-[6px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/task:text-blue-300">
                             Task Name
                         </span>
                         <textarea
@@ -614,11 +770,11 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                                 }
                             }}
                             rows={1}
-                            className="w-full bg-white/5 border border-white/20 rounded-md px-2 py-1.5 text-[11px] outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 shadow-inner resize-none overflow-hidden min-h-[28px] max-h-[80px]"
+                            className="w-full bg-white/5 border border-white/20 rounded-md px-1.5 py-1 text-[9.5px] outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 shadow-inner resize-none overflow-hidden min-h-[24px] max-h-[70px]"
                         />
                     </div>
-                    <div className="relative -top-[5px] flex-col items-center shrink-0 group/duration">
-                        <span className="absolute -top-[9px] left-1 px-1 bg-[#1a1a1a] rounded text-[6.5px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/duration:text-blue-300 whitespace-nowrap">
+                    <div className="relative -top-[4px] flex-col items-center shrink-0 group/duration">
+                        <span className="absolute -top-[8px] left-1 px-1 bg-[#1a1a1a] rounded text-[6px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/duration:text-blue-300 whitespace-nowrap">
                             duration(min)
                         </span>
                         <input
@@ -626,11 +782,11 @@ export default function GroupTaskManager({ groupId }: { groupId: string }) {
                             placeholder="min"
                             value={newTaskDuration}
                             onChange={(e) => setNewTaskDuration(e.target.value)}
-                            className="w-[50px] bg-white/5 border border-white/20 rounded-md px-1.5 py-1.5 text-[11px] font-semibold text-center outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                            className="w-[45px] bg-white/5 border border-white/20 rounded-md px-1 py-1 text-[9.5px] font-semibold text-center outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner h-[24px]"
                         />
                     </div>
-                    <button type="submit" className="h-[28px] w-[28px] bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/20 flex items-center justify-center mb-px">
-                        <Plus className="w-4 h-4" />
+                    <button type="submit" className="h-[24px] w-[24px] bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/20 flex items-center justify-center mb-px">
+                        <Plus className="w-3.5 h-3.5" />
                     </button>
                 </form>
             )}

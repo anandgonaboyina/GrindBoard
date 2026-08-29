@@ -6,6 +6,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 
 export default function GroupRequestPopup() {
   const [pendingCount, setPendingCount] = useState(0);
+  const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -21,7 +22,6 @@ export default function GroupRequestPopup() {
         });
         
         if (res.status === 401) {
-          // Unlikely to happen here without friends API also failing
           return;
         }
         
@@ -29,10 +29,11 @@ export default function GroupRequestPopup() {
 
         if (res.ok && data.requests && data.requests.length > 0) {
           setPendingCount(data.requests.length);
+          setTargetGroupId(data.requests[0].groupId);
           setIsVisible(true);
         }
       } catch (err) {
-        // Silently ignore network errors to prevent console spam
+        // Silently ignore network errors
       }
     };
 
@@ -77,6 +78,11 @@ export default function GroupRequestPopup() {
                 state.toggleSettings();
               }
               window.dispatchEvent(new Event('open-connect'));
+              if (targetGroupId) {
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('open-group-direct', { detail: { groupId: targetGroupId } }));
+                }, 100);
+              }
             }}
             className="bg-emerald-500/20 hover:bg-emerald-500 border border-emerald-500/30 text-emerald-300 hover:text-white text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1.5 rounded md:rounded-md transition-all active:scale-95 shadow-sm"
           >
