@@ -1876,7 +1876,9 @@ export default function ConnectTab() {
         const viewingFriend = useDashboardStore.getState().viewingFriend;
         const friendStats = viewingFriend?.stats || {};
         const friendTasksList = friendTaskTab === 'today' ? (friendStats.tasks || []) : (friendStats.tomorrowTasks || []);
-        const friendGroupNames = friendStats.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3'];
+        const DEFAULT_TAB_NAMES = ['Core Tasks', 'Daily Routine', 'Milestones'];
+        const rawGroupNames = friendStats.taskGroupNames || DEFAULT_TAB_NAMES;
+        const friendGroupNames = [0, 1, 2].map(i => (!rawGroupNames[i] || !rawGroupNames[i].trim() || rawGroupNames[i] === `Tab ${i + 1}`) ? DEFAULT_TAB_NAMES[i] : rawGroupNames[i].trim());
 
         const isTaskDone = (t: any) => {
           if (Boolean(t.completed) && t.completed !== 'false') return true;

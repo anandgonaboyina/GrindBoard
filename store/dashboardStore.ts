@@ -814,10 +814,12 @@ export const useDashboardStore = create<DashboardState>()(
       tasks: [],
       tomorrowTasks: [],
       tasksDate: getLocalDateString(),
-      taskGroupNames: ['Tab 1', 'Tab 2', 'Tab 3'],
+      taskGroupNames: ['Core Tasks', 'Daily Routine', 'Milestones'],
       setTaskGroupName: (index, name) => set((state) => {
-        const newNames = [...(state.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3'])];
-        newNames[index] = name;
+        const DEFAULT_TAB_NAMES = ['Core Tasks', 'Daily Routine', 'Milestones'];
+        const newNames = [...(state.taskGroupNames || DEFAULT_TAB_NAMES)];
+        const cleanName = name.trim() || DEFAULT_TAB_NAMES[index] || `Tab ${index + 1}`;
+        newNames[index] = cleanName === `Tab ${index + 1}` ? DEFAULT_TAB_NAMES[index] : cleanName;
         return { taskGroupNames: newNames };
       }),
       isHidden: false,

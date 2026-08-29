@@ -108,7 +108,7 @@ export async function GET(request: Request) {
       tasksCompleted: (parsedData.tasks || []).filter((t: any) => t.completed).length,
       tasks: isTaskSharingEnabled ? (parsedData.tasks || []) : undefined,
       tomorrowTasks: isTaskSharingEnabled ? (parsedData.tomorrowTasks || []) : undefined,
-      taskGroupNames: isTaskSharingEnabled ? (parsedData.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3']) : undefined,
+      taskGroupNames: isTaskSharingEnabled ? (parsedData.taskGroupNames || ['Core Tasks', 'Daily Routine', 'Milestones']) : undefined,
       deadlines: parsedData.deadlines || [],
       timetableGrid: parsedData.timetableGrid || null,
       timetableColors: parsedData.timetableColors || null,

@@ -73,7 +73,16 @@ export default function GroupTaskManager({
         if (onTabChange) onTabChange(idx);
     };
 
-    const initialTabNames = group?.memberTabNames?.[effectiveUserId] || ['Tab 1', 'Tab 2', 'Tab 3'];
+    const DEFAULT_UNIVERSAL_TAB_NAMES = ['Core Tasks', 'Daily Routine', 'Milestones'];
+    const formatTabName = (name: string | undefined | null, idx: number): string => {
+        if (!name || !name.trim() || name === `Tab ${idx + 1}`) {
+            return DEFAULT_UNIVERSAL_TAB_NAMES[idx] || `Tab ${idx + 1}`;
+        }
+        return name.trim();
+    };
+
+    const initialRaw = group?.memberTabNames?.[effectiveUserId] || group?.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
+    const initialTabNames = [0, 1, 2].map(idx => formatTabName(initialRaw[idx], idx));
     const [tabNames, setTabNames] = useState<string[]>(initialTabNames);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
@@ -220,7 +229,8 @@ export default function GroupTaskManager({
                 if (uId) {
                     setTasks(getUserTasks(data.group, uId));
                     setCompletions(data.group.completions || {});
-                    setTabNames(data.group.memberTabNames?.[uId] || ['Tab 1', 'Tab 2', 'Tab 3']);
+                    const rawNames = data.group.memberTabNames?.[uId] || data.group.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
+                    setTabNames([0, 1, 2].map(i => formatTabName(rawNames[i], i)));
                 }
 
                 // Sync to global store to keep timer logic accurate
@@ -240,7 +250,8 @@ export default function GroupTaskManager({
         if (group && effectiveUserId) {
             setTasks(getUserTasks(group, effectiveUserId));
             setCompletions(group.completions || {});
-            setTabNames(group.memberTabNames?.[effectiveUserId] || ['Tab 1', 'Tab 2', 'Tab 3']);
+            const rawNames = group.memberTabNames?.[effectiveUserId] || group.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
+            setTabNames([0, 1, 2].map(i => formatTabName(rawNames[i], i)));
         }
     }, [group, effectiveUserId]);
 
@@ -263,8 +274,9 @@ export default function GroupTaskManager({
 
     const updateTabNameInDB = async (idx: number, name: string) => {
         if (!canEdit) return;
+        const cleanName = formatTabName(name, idx);
         const newTabNames = [...tabNames];
-        newTabNames[idx] = name;
+        newTabNames[idx] = cleanName;
         setTabNames(newTabNames);
 
         const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? {
@@ -437,12 +449,12 @@ export default function GroupTaskManager({
                                     className="absolute inset-0 w-full h-full bg-transparent outline-none px-1 py-0.5 text-[7.5px] font-bold text-left text-white"
                                     defaultValue={tabNames[idx]}
                                     onBlur={(e) => {
-                                        updateTabNameInDB(idx, e.target.value.trim() || `Tab ${idx + 1}`);
+                                        updateTabNameInDB(idx, e.target.value.trim());
                                         setEditingGroupIndex(null);
                                     }}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
-                                            updateTabNameInDB(idx, e.currentTarget.value.trim() || `Tab ${idx + 1}`);
+                                            updateTabNameInDB(idx, e.currentTarget.value.trim());
                                             setEditingGroupIndex(null);
                                         }
                                     }}

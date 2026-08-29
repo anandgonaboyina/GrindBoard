@@ -567,7 +567,7 @@ export default function SettingsModal() {
           taskIntervalAlertMins: state.taskIntervalAlertMins || 10,
           taskIntervalRingSecs: state.taskIntervalRingSecs || 10,
           isTaskIntervalAlertEnabled: state.isTaskIntervalAlertEnabled || false,
-          taskGroupNames: state.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3']
+          taskGroupNames: state.taskGroupNames || ['Core Tasks', 'Daily Routine', 'Milestones']
         };
       }
     );
@@ -587,7 +587,7 @@ export default function SettingsModal() {
           taskIntervalAlertMins: data.taskIntervalAlertMins || 10,
           taskIntervalRingSecs: data.taskIntervalRingSecs || 10,
           isTaskIntervalAlertEnabled: data.isTaskIntervalAlertEnabled || false,
-          taskGroupNames: data.taskGroupNames || ['Tab 1', 'Tab 2', 'Tab 3']
+          taskGroupNames: data.taskGroupNames || ['Core Tasks', 'Daily Routine', 'Milestones']
         });
         showAlertModal('Data Restored', 'Plan Your Day data restored successfully!');
       } catch (err) {

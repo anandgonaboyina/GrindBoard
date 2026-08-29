@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     const groups = await db.collection('Group')
       .find(queryObj)
       .sort({ createdAt: -1 })
-      .project({ title: 1, description: 1, adminId: 1, members: 1, tasks: 1, completions: 1, tabNames: 1, isPrivate: 1, allowJoinRequests: 1 })
+      .project({ title: 1, description: 1, avatarUrl: 1, adminId: 1, members: 1, tasks: 1, completions: 1, tabNames: 1, isPrivate: 1, allowJoinRequests: 1 })
       .limit(20)
       .toArray();
 
@@ -97,12 +97,13 @@ export async function GET(req: Request) {
             _id: g._id,
             title: g.title,
             description: g.description,
+            avatarUrl: g.avatarUrl || '',
             adminId: g.adminId,
             memberCount: processedMembers.length,
             members: processedMembers,
             tasks: g.tasks || [],
             completions: g.completions || {},
-            tabNames: g.tabNames || ['Tab 1', 'Tab 2', 'Tab 3'],
+            tabNames: (g.tabNames || ['Core Tasks', 'Daily Routine', 'Milestones']).map((n: string, i: number) => (!n || !n.trim() || n === `Tab ${i + 1}`) ? ['Core Tasks', 'Daily Routine', 'Milestones'][i] : n.trim()),
             isPrivate: g.isPrivate || false,
             allowJoinRequests: g.allowJoinRequests !== undefined ? g.allowJoinRequests : true
         };

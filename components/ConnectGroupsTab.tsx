@@ -5,6 +5,14 @@ import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 import GroupTaskManager from './GroupTaskManager';
 
+const DEFAULT_UNIVERSAL_TAB_NAMES = ['Core Tasks', 'Daily Routine', 'Milestones'];
+const formatTabName = (name: string | undefined | null, idx: number): string => {
+  if (!name || !name.trim() || name === `Tab ${idx + 1}`) {
+    return DEFAULT_UNIVERSAL_TAB_NAMES[idx] || `Tab ${idx + 1}`;
+  }
+  return name.trim();
+};
+
 function EmptyCreatedGroupsState({ onOpenCreate }: { onOpenCreate: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-b from-sky-950/30 via-black/40 to-black/60 border border-sky-500/25 text-center shadow-lg relative my-1.5 group w-full box-border">
@@ -970,6 +978,26 @@ export default function ConnectGroupsTab() {
             {/* Top Bar: Group Title + Status Badges + Action Buttons */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
+                  {viewingGroup.avatarUrl ? (
+                    <img
+                      src={viewingGroup.avatarUrl}
+                      alt={viewingGroup.title}
+                      className="w-full h-full object-cover object-center aspect-square shrink-0 z-10 relative"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <span
+                    style={{ display: viewingGroup.avatarUrl ? 'none' : 'flex' }}
+                    className="w-full h-full items-center justify-center text-white font-black text-xs uppercase pointer-events-none"
+                  >
+                    {viewingGroup.title?.[0] || 'G'}
+                  </span>
+                </div>
                 <h3 className="font-bold text-white text-sm sm:text-base md:text-lg tracking-tight truncate max-w-[160px] xs:max-w-[240px] sm:max-w-xs md:max-w-md">
                   {viewingGroup.title}
                 </h3>
@@ -1142,8 +1170,9 @@ export default function ConnectGroupsTab() {
                 }, 0);
                 const activeTabDuration = myTabTasks.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
                 const activeTabLeft = Math.max(0, activeTabDuration - activeTabDone);
-                const myTabNames = viewingGroup.memberTabNames?.[myUserId] || viewingGroup.tabNames || ['Tab 1', 'Tab 2', 'Tab 3'];
-                const currentTabName = myTabNames[activeGroupTab] || `Tab ${activeGroupTab + 1}`;
+                const rawMyTabNames = viewingGroup.memberTabNames?.[myUserId] || viewingGroup.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
+                const myTabNames = [0, 1, 2].map(idx => formatTabName(rawMyTabNames[idx], idx));
+                const currentTabName = myTabNames[activeGroupTab];
 
                 return (
                   <div className="flex items-center justify-between text-[9px] px-2.5 py-1 bg-white/[0.04] rounded-lg border border-white/10 font-mono w-full">
@@ -1351,7 +1380,8 @@ export default function ConnectGroupsTab() {
                   {(() => {
                     const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
                     const myUserId = myMemberInfo?.userId || '';
-                    const groupTabNames = viewingGroup.tabNames || ['Tab 1', 'Tab 2', 'Tab 3'];
+                    const rawTabNames = viewingGroup.tabNames || ['Core Tasks', 'Daily Routine', 'Milestones'];
+                    const groupTabNames = [0, 1, 2].map(i => formatTabName(rawTabNames[i], i));
 
                     return groupTabNames.map((tabName: string, idx: number) => {
                       const isEditingThisTab = editingTabIdx === idx;
@@ -1374,7 +1404,7 @@ export default function ConnectGroupsTab() {
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   const currentNames = [...groupTabNames];
-                                  currentNames[idx] = editingTabName.trim() || `Tab ${idx + 1}`;
+                                  currentNames[idx] = formatTabName(editingTabName, idx);
                                   handleUpdateGroupTabNames(viewingGroup._id, currentNames);
                                   setEditingTabIdx(null);
                                 }
@@ -1382,7 +1412,7 @@ export default function ConnectGroupsTab() {
                               }}
                               onBlur={() => {
                                 const currentNames = [...groupTabNames];
-                                currentNames[idx] = editingTabName.trim() || `Tab ${idx + 1}`;
+                                currentNames[idx] = formatTabName(editingTabName, idx);
                                 handleUpdateGroupTabNames(viewingGroup._id, currentNames);
                                 setEditingTabIdx(null);
                               }}
@@ -1977,12 +2007,25 @@ export default function ConnectGroupsTab() {
 
                       <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md">
+                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
                             {group.avatarUrl ? (
-                              <img src={group.avatarUrl} alt={group.title} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                            ) : (
-                              <span className="text-white font-black text-sm uppercase">{group.title?.[0] || 'G'}</span>
-                            )}
+                              <img
+                                src={group.avatarUrl}
+                                alt={group.title}
+                                className="w-full h-full object-cover object-center aspect-square shrink-0 z-10 relative"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <span
+                              style={{ display: group.avatarUrl ? 'none' : 'flex' }}
+                              className="w-full h-full items-center justify-center text-white font-black text-sm uppercase pointer-events-none"
+                            >
+                              {group.title?.[0] || 'G'}
+                            </span>
                           </div>
                           <div className="flex flex-col min-w-0 flex-1">
                             <span className="text-sm font-bold text-white flex items-center gap-1.5 truncate group-hover/card:text-blue-300 transition-colors">
@@ -2038,12 +2081,25 @@ export default function ConnectGroupsTab() {
 
                       <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md">
+                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
                             {group.avatarUrl ? (
-                              <img src={group.avatarUrl} alt={group.title} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                            ) : (
-                              <span className="text-white font-black text-sm uppercase">{group.title?.[0] || 'G'}</span>
-                            )}
+                              <img
+                                src={group.avatarUrl}
+                                alt={group.title}
+                                className="w-full h-full object-cover object-center aspect-square shrink-0 z-10 relative"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <span
+                              style={{ display: group.avatarUrl ? 'none' : 'flex' }}
+                              className="w-full h-full items-center justify-center text-white font-black text-sm uppercase pointer-events-none"
+                            >
+                              {group.title?.[0] || 'G'}
+                            </span>
                           </div>
                           <div className="flex flex-col min-w-0 flex-1">
                             <span className="text-sm font-bold text-white flex items-center gap-1.5 truncate group-hover/card:text-blue-300 transition-colors">
@@ -2119,12 +2175,25 @@ export default function ConnectGroupsTab() {
 
                       <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
                             {group.avatarUrl ? (
-                              <img src={group.avatarUrl} alt={group.title} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
-                            ) : (
-                              <span className="text-white font-black text-xs sm:text-sm uppercase">{group.title?.[0] || 'G'}</span>
-                            )}
+                              <img
+                                src={group.avatarUrl}
+                                alt={group.title}
+                                className="w-full h-full object-cover object-center aspect-square shrink-0 z-10 relative"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <span
+                              style={{ display: group.avatarUrl ? 'none' : 'flex' }}
+                              className="w-full h-full items-center justify-center text-white font-black text-xs sm:text-sm uppercase pointer-events-none"
+                            >
+                              {group.title?.[0] || 'G'}
+                            </span>
                           </div>
                           <div className="flex flex-col min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
