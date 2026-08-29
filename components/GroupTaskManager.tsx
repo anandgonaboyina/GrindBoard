@@ -503,7 +503,7 @@ export default function GroupTaskManager({
                     )
                 ) : (
                     <div
-                        className="flex flex-col gap-1 scale-0.8"
+                        className="flex flex-col gap-1 w-full"
                         onPointerDown={() => setDraggedIndex(null)}
                         onPointerUp={() => setDraggedIndex(null)}
                         onPointerCancel={() => setDraggedIndex(null)}
@@ -531,12 +531,12 @@ export default function GroupTaskManager({
                                             }
                                         }
                                     }}
-                                    className={`group flex items-start justify-between p-1 py-0.5 rounded-md border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/20 hover:border-white/40'}`}
+                                    className={`group flex items-center justify-between p-1 px-1.5 py-1 rounded-md border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/20 hover:border-white/40'}`}
                                 >
-                                    <div className="flex items-start gap-1.5 flex-1 min-w-0 pl-1">
+                                    <div className="flex items-start gap-1 flex-1 min-w-0 pl-0">
                                         {canEdit && (
                                             <div
-                                                className="flex flex-col items-center opacity-40 hover:opacity-100 transition-opacity justify-center mt-1.5 shrink-0 -ml-0.5 cursor-grab active:cursor-grabbing touch-none select-none p-1"
+                                                className="flex flex-col items-center opacity-40 hover:opacity-100 transition-opacity justify-center mt-0.5 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none p-0.5"
                                                 onPointerDown={(e) => {
                                                     e.stopPropagation();
                                                     try {
@@ -552,10 +552,10 @@ export default function GroupTaskManager({
                                                 }}
                                                 onMouseDown={(e) => e.stopPropagation()}
                                             >
-                                                <svg className="w-3.5 h-3.5 text-white/50 hover:text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /></svg>
+                                                <svg className="w-3 h-3 text-white/50 hover:text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /></svg>
                                             </div>
                                         )}
-                                        <div className="flex flex-col items-center justify-center gap-0.5 mt-0.5 shrink-0 px-0.5">
+                                        <div className="flex flex-col items-center justify-center gap-0.5 mt-0.5 shrink-0 px-0">
                                             <button onClick={() => handleToggleTask(task.id)} className="text-white/50 hover:text-white hover:scale-110 transition-all active:scale-95 flex items-center justify-center">
                                                 {isTaskDone ? (
                                                     <div className="w-3.5 h-3.5 rounded-[4px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] flex items-center justify-center">
@@ -565,9 +565,9 @@ export default function GroupTaskManager({
                                                     <div className="w-3.5 h-3.5 rounded-[4px] border-[1.5px] border-white/40 group-hover:border-white/70 transition-colors" />
                                                 )}
                                             </button>
-                                            <span className="text-[11px] font-black text-sky-300/90 tabular-nums select-none leading-none mt-0.5">{index + 1}</span>
+                                            <span className="text-[10px] font-black text-sky-300/90 tabular-nums select-none leading-none mt-0.5">{index + 1}</span>
                                         </div>
-                                        <div className="flex flex-col gap-0.5 flex-1 min-w-0 w-full ml-0.5 ">
+                                        <div className="flex flex-col gap-0.5 flex-1 min-w-0 w-full ml-0.5">
                                             {canEdit && editingTaskId === task.id ? (
                                                 <textarea
                                                     autoFocus
@@ -586,27 +586,27 @@ export default function GroupTaskManager({
                                                     }}
                                                     rows={1}
                                                     spellCheck={false}
-                                                    className={`bg-black/40 outline-none w-full text-[11px] leading-snug border-b border-sky-500/50 px-1 -mx-1 resize-none overflow-hidden block text-white rounded-md shadow-inner transition-colors`}
+                                                    className={`bg-black/40 outline-none w-full text-[11px] leading-snug border-b border-sky-500/50 px-0.5 resize-none overflow-hidden block text-white rounded-md shadow-inner transition-colors`}
                                                 />
                                             ) : (
                                                 <div
                                                     onDoubleClick={() => canEdit && setEditingTaskId(task.id)}
-                                                    className={`w-full text-[11px] leading-snug px-1 -mx-1 ${canEdit ? 'cursor-text' : 'cursor-default'} whitespace-pre-wrap ${isTaskDone ? 'line-through text-white/60' : 'text-white/90'}`}
+                                                    className={`w-full text-[11px] leading-snug px-0.5 ${canEdit ? 'cursor-text' : 'cursor-default'} whitespace-pre-wrap ${isTaskDone ? 'line-through text-white/60' : 'text-white/90'}`}
                                                 >
                                                     {task.title}
                                                 </div>
                                             )}
-                                            <div className="flex items-center gap-1 mt-0.5 overflow-hidden w-full">
+                                            <div className="flex items-center gap-1 mt-0.5 overflow-hidden w-full flex-wrap">
                                                 {task.duration > 0 && !isTaskDone && (
                                                     canEdit && editingDurationId === task.id ? (
-                                                        <div className="shrink-0 flex items-center bg-sky-500/30 rounded-full border border-sky-400/30 px-1.5 py-px shadow-sm">
+                                                        <div className="shrink-0 flex items-center bg-sky-500/30 rounded-full border border-sky-400/30 px-1 py-px shadow-sm">
                                                             <input
                                                                 autoFocus
                                                                 type="number"
                                                                 defaultValue={Math.max(0, task.duration - timeSpent)}
                                                                 min="0"
                                                                 max="999"
-                                                                className="w-8 bg-transparent text-[9px] font-bold text-white outline-none placeholder:text-white/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                className="w-7 bg-transparent text-[8.5px] font-bold text-white outline-none placeholder:text-white/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                 onBlur={(e) => {
                                                                     const dur = parseInt(e.target.value);
                                                                     if (!isNaN(dur) && dur >= 0) {
@@ -623,7 +623,7 @@ export default function GroupTaskManager({
                                                                     }
                                                                 }}
                                                             />
-                                                            <span className="text-[9px] font-semibold text-white/80 ml-0.5">m</span>
+                                                            <span className="text-[8.5px] font-semibold text-white/80 ml-0.5">m</span>
                                                         </div>
                                                     ) : (
                                                         <span
@@ -633,7 +633,7 @@ export default function GroupTaskManager({
                                                                     setEditingDurationId(task.id);
                                                                 }
                                                             }}
-                                                            className={`shrink-0 text-[9px] font-semibold tracking-wide text-white/90 bg-sky-500/20 ${canEdit ? 'hover:bg-sky-500/40 cursor-pointer' : 'cursor-default'} px-1.5 py-0.5 rounded-full border border-sky-400/20 transition-colors shadow-sm`}
+                                                            className={`shrink-0 text-[8.5px] font-semibold tracking-wide text-white/90 bg-sky-500/20 ${canEdit ? 'hover:bg-sky-500/40 cursor-pointer' : 'cursor-default'} px-1.5 py-0.5 rounded-full border border-sky-400/20 transition-colors shadow-sm`}
                                                         >
                                                             {(() => {
                                                                 const timeLeft = Math.max(0, task.duration - timeSpent);
@@ -644,14 +644,14 @@ export default function GroupTaskManager({
                                                 )}
                                                 {(
                                                     !isTaskDone && editingTimeSpentId === task.id ? (
-                                                        <div className="shrink-0 flex items-center bg-emerald-500/30 rounded-full border border-emerald-400/30 px-1.5 py-px shadow-sm">
+                                                        <div className="shrink-0 flex items-center bg-emerald-500/30 rounded-full border border-emerald-400/30 px-1 py-px shadow-sm">
                                                             <input
                                                                 autoFocus
                                                                 type="number"
                                                                 defaultValue={timeSpent}
                                                                 min="0"
                                                                 max="999"
-                                                                className="w-8 bg-transparent text-[9px] font-bold text-emerald-100 outline-none placeholder:text-emerald-100/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                className="w-7 bg-transparent text-[8.5px] font-bold text-emerald-100 outline-none placeholder:text-emerald-100/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                 onBlur={(e) => {
                                                                     const dur = parseInt(e.target.value);
                                                                     if (!isNaN(dur) && dur >= 0) {
@@ -672,7 +672,7 @@ export default function GroupTaskManager({
                                                                     }
                                                                 }}
                                                             />
-                                                            <span className="text-[9px] font-semibold text-emerald-100/80 ml-0.5">m done</span>
+                                                            <span className="text-[8.5px] font-semibold text-emerald-100/80 ml-0.5">m done</span>
                                                         </div>
                                                     ) : (
                                                         <span
@@ -681,7 +681,7 @@ export default function GroupTaskManager({
                                                                 e.stopPropagation();
                                                                 setEditingTimeSpentId(task.id);
                                                             }}
-                                                            className={`shrink-0 text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded-full border transition-colors shadow-sm ${isTaskDone ? 'text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20 cursor-default' : 'text-emerald-200 bg-emerald-500/20 hover:bg-emerald-500/40 cursor-pointer border-emerald-400/20'}`}
+                                                            className={`shrink-0 text-[8.5px] font-semibold tracking-wide px-1.5 py-0.5 rounded-full border transition-colors shadow-sm ${isTaskDone ? 'text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20 cursor-default' : 'text-emerald-200 bg-emerald-500/20 hover:bg-emerald-500/40 cursor-pointer border-emerald-400/20'}`}
                                                         >
                                                             {(() => {
                                                                 const doneMins = isTaskDone ? Math.max(timeSpent || 0, task.duration || 0) : (timeSpent || 0);
@@ -694,9 +694,9 @@ export default function GroupTaskManager({
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col items-end justify-between gap-1 shrink-0 ml-1 self-stretch">
+                                    <div className="flex flex-col items-end justify-center shrink-0 ml-1">
                                         {canEdit && (
-                                            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                 {!isTaskDone && (
                                                     <button
                                                         onClick={() => {
@@ -704,19 +704,19 @@ export default function GroupTaskManager({
                                                             const taggedTitle = group?.title ? `👥 [Group: ${group.title}] ${task.title}` : task.title;
                                                             triggerTimer(timeLeft, task.id, taggedTitle);
                                                         }}
-                                                        className="p-1 bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white rounded-md transition-all active:scale-95"
+                                                        className="p-0.5 bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white rounded transition-all active:scale-95"
                                                         title={`Start ${Math.max(0, task.duration - timeSpent)}m timer`}
                                                     >
-                                                        <Play className="w-3 h-3 fill-current" />
+                                                        <Play className="w-2.5 h-2.5 fill-current" />
                                                     </button>
                                                 )}
                                                 {(isTaskDone || timeSpent > 0) && (
                                                     <button
                                                         onClick={() => handleRestartTask(task.id)}
-                                                        className="p-1 bg-orange-500/10 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-all active:scale-95 border border-orange-500/20 hover:border-transparent"
+                                                        className="p-0.5 bg-orange-500/10 text-orange-300 hover:bg-orange-500 hover:text-white rounded transition-all active:scale-95 border border-orange-500/20 hover:border-transparent"
                                                         title="Restart task"
                                                     >
-                                                        <RotateCcw className="w-3 h-3 " />
+                                                        <RotateCcw className="w-2.5 h-2.5" />
                                                     </button>
                                                 )}
                                                 <button
@@ -735,9 +735,9 @@ export default function GroupTaskManager({
                                                             }
                                                         });
                                                     }}
-                                                    className="p-1 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all active:scale-95 border border-transparent hover:border-rose-500/20"
+                                                    className="p-0.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-all active:scale-95 border border-transparent hover:border-rose-500/20"
                                                 >
-                                                    <Trash2 className="w-3 h-3 " />
+                                                    <Trash2 className="w-2.5 h-2.5" />
                                                 </button>
                                             </div>
                                         )}
