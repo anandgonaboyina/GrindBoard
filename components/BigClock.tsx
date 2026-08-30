@@ -197,6 +197,7 @@ export default function BigClock() {
       {clockVisible && (
         <Tooltip text="Toggle 12/24 Hour Format" position="bottom">
           <div
+            data-tour="clock"
             className="flex flex-col items-center cursor-pointer pointer-events-auto group"
           >
             <div
@@ -226,26 +227,29 @@ export default function BigClock() {
               onMouseLeave={handlePillTouchEnd}
             >
 
-              <div className="flex gap-1">
+              <div className="flex gap-1 relative">
                 {/* Focus Pill for BOTH Desktop & Mobile */}
                 {focusPillVisible && (
-                  <div
-                    onClick={(e) => {
-                      if (wasSwiped.current) {
-                        wasSwiped.current = false;
-                        return;
-                      }
-                      toggleHide();
-                    }}
-                    className="flex items-center gap-1.5 md:gap-2 text-[11px] md:text-[13px] px-4 py-1.5 shadow-[0_5px_20px_rgba(59,130,246,0.3)] rounded-full bg-black/80 backdrop-blur-xl text-white border border-white/10 cursor-pointer pointer-events-auto shrink-0 transition-transform active:scale-95 hover:bg-black/90 group"
-                  >
-                    <div className="flex items-center justify-center bg-orange-500/20 w-5 h-5 md:w-6 md:h-6 rounded-full border-blue-500 shadow-[0_0_10px_rgba(249,115,22,0.3)]">
-                      <Flame className="text-orange-400 w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
-                    </div>
-                    <div className="flex items-center whitespace-nowrap">
-                      <span>Today: <span className="text-white/90 font-bold ml-1">{focusText}</span></span>
-                      <span className="text-white/30 mx-1.5 md:mx-2">|</span>
-                      <span className="text-white/80">{timeLeftText}</span>
+                  <div className="relative flex items-center">
+                    <div
+                      data-tour="focus-pill"
+                      onClick={(e) => {
+                        if (wasSwiped.current) {
+                          wasSwiped.current = false;
+                          return;
+                        }
+                        toggleHide();
+                      }}
+                      className="flex items-center gap-1.5 md:gap-2 text-[11px] md:text-[13px] px-4 py-1.5 shadow-[0_5px_20px_rgba(59,130,246,0.3)] rounded-full bg-black/80 backdrop-blur-xl text-white border border-white/10 cursor-pointer pointer-events-auto shrink-0 transition-transform active:scale-95 hover:bg-black/90 group"
+                    >
+                      <div className="flex items-center justify-center bg-orange-500/20 w-5 h-5 md:w-6 md:h-6 rounded-full border-blue-500 shadow-[0_0_10px_rgba(249,115,22,0.3)]">
+                        <Flame className="text-orange-400 w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+                      </div>
+                      <div className="flex items-center whitespace-nowrap">
+                        <span>Today: <span className="text-white/90 font-bold ml-1">{focusText}</span></span>
+                        <span className="text-white/30 mx-1.5 md:mx-2">|</span>
+                        <span className="text-white/80">{timeLeftText}</span>
+                      </div>
                     </div>
                     <Tooltip text="Toggle Hidden Mode (Ctrl+H)" position="right" />
                   </div>

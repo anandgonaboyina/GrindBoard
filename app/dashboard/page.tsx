@@ -27,6 +27,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import NewsModal from "@/components/NewsModal";
 import ConnectionStatusToast from "@/components/ConnectionStatusToast";
 import Tooltip from "@/components/Tooltip";
+import GuidedTour from "@/components/GuidedTour";
 
 import { useEffect, useState, useRef } from "react";
 import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users, Hourglass } from "lucide-react";
@@ -257,6 +258,7 @@ export default function Dashboard() {
       {/* Background Switcher */}
       {!isPanicHidden && (!isHidden || !hideConfig.bgSwitcher) && showBgSwitcher && (
         <button
+          data-tour="wallpaper-btn"
           onClick={cycleWallpaper}
           className="fixed top-10 left-3 z-[40] p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/20 shadow-xl transition-all glass-btn hidden md:block group"
         >
@@ -333,6 +335,7 @@ export default function Dashboard() {
             <>
               {/* Edge Peek Tab for Calendar */}
               <div
+                data-tour="calendar-drawer"
                 className={`fixed left-0 top-[20vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={handleCalendarExpand}
               >
@@ -342,6 +345,7 @@ export default function Dashboard() {
 
               {/* Edge Peek Tab for Leaderboard */}
               <div
+                data-tour="leaderboard-drawer"
                 className={`fixed left-0 top-[28vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={() => {
                   useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'leaderboard' });
@@ -353,6 +357,7 @@ export default function Dashboard() {
 
               {/* Edge Peek Tab for Groups */}
               <div
+                data-tour="groups-drawer"
                 className={`fixed left-0 top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={() => {
                   useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'groups' });
@@ -410,6 +415,7 @@ export default function Dashboard() {
             <>
               {/* Edge Peek Tab for Task Manager */}
               <div
+                data-tour="task-drawer"
                 className={`fixed right-0 top-[20vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTaskManagerOpen ? 'translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={() => { if (!isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: true }) }}
               >
@@ -447,6 +453,7 @@ export default function Dashboard() {
           {(!isHidden || !hideConfig.settingsBtn) && (
             <>
               <div
+                data-tour="news-drawer"
                 className={`fixed right-0 top-[28vh] sm:top-[30vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isNewsOpen ? 'translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={() => useDashboardStore.setState({ isNewsOpen: true })}
               >
@@ -572,6 +579,9 @@ export default function Dashboard() {
 
       {/* Global Developer Broadcast Notification */}
       <GlobalBroadcastPopup />
+
+      {/* Guided Onboarding Tour */}
+      <GuidedTour />
 
     </main>
   );

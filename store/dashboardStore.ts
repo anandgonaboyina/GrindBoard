@@ -143,6 +143,12 @@ interface DashboardState {
   connectInitialTab?: 'profile' | 'friends' | 'leaderboard' | 'groups';
   setConnectInitialTab: (tab?: 'profile' | 'friends' | 'leaderboard' | 'groups') => void;
   
+  hasSeenOnboarding: boolean;
+  setHasSeenOnboarding: (seen: boolean) => void;
+  isTourOpen: boolean;
+  setIsTourOpen: (open: boolean) => void;
+  startTour: () => void;
+  
   userGroups: any[];
   setUserGroups: (groups: any[]) => void;
   selectedGroupId: string | null;
@@ -1045,6 +1051,11 @@ export const useDashboardStore = create<DashboardState>()(
       toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false })),
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
       setConnectInitialTab: (tab) => set({ connectInitialTab: tab }),
+      hasSeenOnboarding: false,
+      setHasSeenOnboarding: (seen: boolean) => set({ hasSeenOnboarding: seen }),
+      isTourOpen: false,
+      setIsTourOpen: (open: boolean) => set({ isTourOpen: open }),
+      startTour: () => set({ isTourOpen: true }),
       timerTrigger: null,
       triggerTimer: (mins, taskId, taskTitle) => set((state) => {
         const currentZ = state.widgetZIndices || {};
@@ -1913,7 +1924,7 @@ export const useDashboardStore = create<DashboardState>()(
           'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
           'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
           'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
-          'widgetZIndices', 'isAlarmPlaying'
+          'widgetZIndices', 'isAlarmPlaying', 'isTourOpen'
         ].includes(key))
       ),
       merge: (persistedState: any, currentState: DashboardState) => {

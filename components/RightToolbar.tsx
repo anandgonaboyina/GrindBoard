@@ -87,6 +87,7 @@ export default function RightToolbar() {
         {/* Panic Button - Mobile Only */}
         <Tooltip text={isHidden ? "Unhide Interface" : (panicButtonMode === 'redirect' ? "Panic! Launch App" : "Panic! Hide Interface")} position="left">
           <button
+            data-tour="eye-toggle"
             onClick={handlePanic}
             className={`lg:hidden p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-red-500/30 bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 shadow-xl shadow-red-500/10 transition-all backdrop-blur-xl ${isHidden && panicButtonMode === 'hide' ? 'opacity-0' : 'opacity-100'}`}
           >
@@ -98,6 +99,7 @@ export default function RightToolbar() {
         {showPlans && (
           <Tooltip text="Roadmap & Plans" position="left">
             <button
+              data-tour="plans-btn"
               onClick={togglePlans}
               className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isPlansOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.plans ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
@@ -132,6 +134,7 @@ export default function RightToolbar() {
         {showStats && (
           <Tooltip text="Focus History" position="left">
             <button
+              data-tour="stats-btn"
               onClick={toggleStats}
               className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isStatsOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.stats ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
@@ -144,6 +147,7 @@ export default function RightToolbar() {
         {showStopwatch && (
           <Tooltip text="Stopwatch" position="left">
             <button
+              data-tour="stopwatch-btn"
               onClick={toggleStopwatch}
               className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isStopwatchOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.stopwatch ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
@@ -156,6 +160,7 @@ export default function RightToolbar() {
         {showTimer && (
           <Tooltip text="Session Timer" position="left">
             <button
+              data-tour="timer-btn"
               onClick={toggleTimer}
               className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isTimerOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.timer ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
@@ -168,6 +173,7 @@ export default function RightToolbar() {
         {showNotes && (
           <Tooltip text="Quick Notes" position="left">
             <button
+              data-tour="notes-btn"
               onClick={toggleNotes}
               className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isNotesOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.notes ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
@@ -180,6 +186,7 @@ export default function RightToolbar() {
         {showSettingsBtn && (
           <Tooltip text="Settings" position="left">
             <button
+              data-tour="settings-btn"
               onClick={toggleSettings}
               className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all glass-btn ${isHidden && hideConfig.settingsBtn ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >

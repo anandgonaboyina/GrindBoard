@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor } from 'lucide-react';
+import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
 import ScrollableWithArrows from './ScrollableWithArrows';
@@ -1484,14 +1484,26 @@ export default function SettingsModal() {
                           <Clock className="w-3.5 h-3.5 text-rose-400" />
                           <span>Widget Drag Locking</span>
                         </h4>
-                        <button
-                          onClick={() => {
-                            if (currentBgSrc) resetAllOffsets(currentBgSrc);
-                          }}
-                          className="px-2 py-1 md:px-2.5 md:py-1 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-md transition-colors border border-red-500/30 font-medium text-[9px] md:text-[10px] whitespace-nowrap cursor-pointer"
-                        >
-                          Reset Default Positions
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              useDashboardStore.getState().startTour();
+                              toggleSettings();
+                            }}
+                            className="px-2 py-1 md:px-2.5 md:py-1 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded-md transition-colors border border-indigo-500/30 font-medium text-[9px] md:text-[10px] whitespace-nowrap cursor-pointer flex items-center gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>Replay Tour</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (currentBgSrc) resetAllOffsets(currentBgSrc);
+                            }}
+                            className="px-2 py-1 md:px-2.5 md:py-1 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-md transition-colors border border-red-500/30 font-medium text-[9px] md:text-[10px] whitespace-nowrap cursor-pointer"
+                          >
+                            Reset Default Positions
+                          </button>
+                        </div>
                       </div>
                       <p className="text-[9px] md:text-[10px] text-white/50 px-0.5">Lock elements so they cannot be dragged accidentally on screen.</p>
 
