@@ -8,6 +8,7 @@ import { getLocalDateString } from '@/utils/date';
 import DraggableWidget from './DraggableWidget';
 import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { getDeviceId } from '@/utils/deviceId';
+import Tooltip from './Tooltip';
 
 const HR_OPTIONS = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
 const MIN_OPTIONS = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
@@ -888,19 +889,20 @@ export default function Timer() {
 
           {/* Header Title Bar (Flex Sibling) */}
           <div className="pt-1 px-3 pb-1 flex justify-center items-center w-full border-b border-white/10 bg-black/40">
-            <span
-              className="px-2 py-0.5 rounded-md text-[10px] sm:text-[10.5px] font-bold tracking-wider text-blue-300 uppercase max-w-full text-center flex items-center justify-center gap-1.5 whitespace-normal break-words leading-tight"
-              title={displayTaskTitle || 'Timer'}
-            >
-              {displayTaskTitle ? (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shrink-0"></span>
-                  <span className="break-words leading-tight">{displayTaskTitle}</span>
-                </>
-              ) : (
-                <span className="font-black text-blue-400 uppercase tracking-widest">Timer</span>
-              )}
-            </span>
+            <Tooltip text={displayTaskTitle || 'Timer'} position="bottom">
+              <span
+                className="px-2 py-0.5 rounded-md text-[10px] sm:text-[10.5px] font-bold tracking-wider text-blue-300 uppercase max-w-full text-center flex items-center justify-center gap-1.5 whitespace-normal break-words leading-tight"
+              >
+                {displayTaskTitle ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shrink-0"></span>
+                    <span className="break-words leading-tight">{displayTaskTitle}</span>
+                  </>
+                ) : (
+                  <span className="font-black text-blue-400 uppercase tracking-widest">Timer</span>
+                )}
+              </span>
+            </Tooltip>
           </div>
 
           {/* Body */}
@@ -926,13 +928,14 @@ export default function Timer() {
                   <div className="flex items-center justify-center gap-1">
                     {/* Hours Column */}
                     <div className="flex flex-col items-center">
-                      <button
-                        onClick={() => adjustEditTime('h', 1)}
-                        className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
-                        title="Increase hours"
-                      >
-                        <ChevronUp size={20} />
-                      </button>
+                      <Tooltip text="Increase hours" position="top">
+                        <button
+                          onClick={() => adjustEditTime('h', 1)}
+                          className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
+                        >
+                          <ChevronUp size={20} />
+                        </button>
+                      </Tooltip>
                       <input
                         type="number"
                         value={editHours}
@@ -942,13 +945,14 @@ export default function Timer() {
                         min="0"
                         max="99"
                       />
-                      <button
-                        onClick={() => adjustEditTime('h', -1)}
-                        className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
-                        title="Decrease hours"
-                      >
-                        <ChevronDown size={20} />
-                      </button>
+                      <Tooltip text="Decrease hours" position="bottom">
+                        <button
+                          onClick={() => adjustEditTime('h', -1)}
+                          className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
+                        >
+                          <ChevronDown size={20} />
+                        </button>
+                      </Tooltip>
                       <span className="text-[10px] font-bold text-blue-300/70 uppercase tracking-widest mt-0.5">hr</span>
                     </div>
 
@@ -956,13 +960,14 @@ export default function Timer() {
 
                     {/* Minutes Column */}
                     <div className="flex flex-col items-center">
-                      <button
-                        onClick={() => adjustEditTime('m', 1)}
-                        className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
-                        title="Increase minutes"
-                      >
-                        <ChevronUp size={20} />
-                      </button>
+                      <Tooltip text="Increase minutes" position="top">
+                        <button
+                          onClick={() => adjustEditTime('m', 1)}
+                          className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
+                        >
+                          <ChevronUp size={20} />
+                        </button>
+                      </Tooltip>
                       <input
                         type="number"
                         value={editMins}
@@ -971,23 +976,25 @@ export default function Timer() {
                         className="w-14 bg-transparent text-4xl sm:text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
                         min="0"
                       />
-                      <button
-                        onClick={() => adjustEditTime('m', -1)}
-                        className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
-                        title="Decrease minutes"
-                      >
-                        <ChevronDown size={20} />
-                      </button>
+                      <Tooltip text="Decrease minutes" position="bottom">
+                        <button
+                          onClick={() => adjustEditTime('m', -1)}
+                          className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
+                        >
+                          <ChevronDown size={20} />
+                        </button>
+                      </Tooltip>
                       <span className="text-[10px] font-bold text-blue-300/70 uppercase tracking-widest mt-0.5">min</span>
                     </div>
 
-                    <button
-                      onClick={saveEditor}
-                      className="ml-2 p-2 bg-blue-500 hover:bg-blue-600 rounded-xl transition-all shadow-md active:scale-95 text-white flex items-center justify-center self-center"
-                      title="Save Time"
-                    >
-                      <Check size={18} />
-                    </button>
+                    <Tooltip text="Save Time" position="right">
+                      <button
+                        onClick={saveEditor}
+                        className="ml-2 p-2 bg-blue-500 hover:bg-blue-600 rounded-xl transition-all shadow-md active:scale-95 text-white flex items-center justify-center self-center"
+                      >
+                        <Check size={18} />
+                      </button>
+                    </Tooltip>
                   </div>
                 ) : (
                   <div className="text-5xl font-light tracking-widest tabular-nums drop-shadow-md">
@@ -1063,20 +1070,22 @@ export default function Timer() {
                 {/* Controls */}
                 {!isEditingTime && (timerEndAt || timerPausedLeft) && (
                   <div className="flex justify-center gap-2">
-                    <button
-                      onClick={togglePause}
-                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                      title={timerEndAt ? "Pause" : "Resume"}
-                    >
-                      {timerEndAt ? <Pause size={20} /> : <Play size={20} />}
-                    </button>
-                    <button
-                      onClick={resetTimer}
-                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                      title="Stop Timer"
-                    >
-                      <Square size={20} className="fill-current" />
-                    </button>
+                    <Tooltip text={timerEndAt ? "Pause" : "Resume"} position="top">
+                      <button
+                        onClick={togglePause}
+                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                      >
+                        {timerEndAt ? <Pause size={20} /> : <Play size={20} />}
+                      </button>
+                    </Tooltip>
+                    <Tooltip text="Stop Timer" position="top">
+                      <button
+                        onClick={resetTimer}
+                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                      >
+                        <Square size={20} className="fill-current" />
+                      </button>
+                    </Tooltip>
                   </div>
                 )}
 
@@ -1085,17 +1094,18 @@ export default function Timer() {
                   <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/10">
                     <div className="flex items-center gap-1.5">
                       {/* Target Clock Button */}
-                      <button
-                        onClick={() => setIsClockModalOpen(true)}
-                        className={`flex-1 border rounded-xl px-2 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-inner shrink-0 truncate cursor-pointer ${highlightedField === 'clock'
-                          ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
-                          : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-blue-400/60 text-sky-200'
-                          }`}
-                        title="Set target end clock time"
-                      >
-                        <Clock size={13} className={highlightedField === 'clock' ? 'text-white shrink-0' : 'text-sky-300 shrink-0'} />
-                        <span className="truncate tracking-wide text-xs sm:text-xs font-black">{selectedHr}:{selectedMin} {selectedAmPm}</span>
-                      </button>
+                      <Tooltip text="Set target end clock time" position="top" className="flex-1">
+                        <button
+                          onClick={() => setIsClockModalOpen(true)}
+                          className={`w-full border rounded-xl px-2 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-inner shrink-0 truncate cursor-pointer ${highlightedField === 'clock'
+                            ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
+                            : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-blue-400/60 text-sky-200'
+                            }`}
+                        >
+                          <Clock size={13} className={highlightedField === 'clock' ? 'text-white shrink-0' : 'text-sky-300 shrink-0'} />
+                          <span className="truncate tracking-wide text-xs sm:text-xs font-black">{selectedHr}:{selectedMin} {selectedAmPm}</span>
+                        </button>
+                      </Tooltip>
 
                       {/* OR Text Separator */}
                       <span className="text-[10px] font-black text-white/70 uppercase px-0.5 shrink-0 select-none tracking-wider">
@@ -1119,13 +1129,14 @@ export default function Timer() {
                       </div>
 
                       {/* Start Button */}
-                      <button
-                        onClick={handleCustomStart}
-                        className="p-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
-                        title="Start timer"
-                      >
-                        <Play className="w-3.5 h-3.5 fill-current" />
-                      </button>
+                      <Tooltip text="Start timer" position="top">
+                        <button
+                          onClick={handleCustomStart}
+                          className="p-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                        </button>
+                      </Tooltip>
                     </div>
 
                     <div className="flex items-center justify-start gap-1 pt-1 border-t border-white/5 w-full">

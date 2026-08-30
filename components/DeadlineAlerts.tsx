@@ -4,6 +4,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { CalendarClock, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import Tooltip from './Tooltip';
 
 export default function DeadlineAlerts() {
   const { deadlines, deadlineAlertDays, dismissedDeadlineAlerts, dismissDeadlineAlert, deleteDeadline, isDeadlinesCollapsed, setIsDeadlinesCollapsed, theme } = useDashboardStore();
@@ -54,15 +55,16 @@ export default function DeadlineAlerts() {
 
   if (isDeadlinesCollapsed) {
     return (
-      <div
-        className={`hidden md:flex fixed top-3 left-3 z-[950] flex-row gap-1.5 cursor-pointer pointer-events-auto hover:scale-105 active:scale-95 transition-transform p-1.5 rounded-full border backdrop-blur-md shadow-lg ${theme === 'light' ? 'bg-white/60 border-red-500/30 shadow-red-500/10' : 'bg-black/40 border-red-500/20'}`}
-        onClick={() => setIsDeadlinesCollapsed(false)}
-        title="Show Deadline Alerts"
-      >
-        <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)] border border-red-900/50" />
-        <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)] border border-red-900/50" style={{ animationDelay: '150ms' }} />
-        <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)] border border-red-900/50" style={{ animationDelay: '300ms' }} />
-      </div>
+      <Tooltip text="Show Deadline Alerts" position="right">
+        <div
+          className={`hidden md:flex fixed top-3 left-3 z-[950] flex-row gap-1.5 cursor-pointer pointer-events-auto hover:scale-105 active:scale-95 transition-transform p-1.5 rounded-full border backdrop-blur-md shadow-lg ${theme === 'light' ? 'bg-white/60 border-red-500/30 shadow-red-500/10' : 'bg-black/40 border-red-500/20'}`}
+          onClick={() => setIsDeadlinesCollapsed(false)}
+        >
+          <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)] border border-red-900/50" />
+          <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)] border border-red-900/50" style={{ animationDelay: '150ms' }} />
+          <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)] border border-red-900/50" style={{ animationDelay: '300ms' }} />
+        </div>
+      </Tooltip>
     );
   }
 
@@ -152,20 +154,21 @@ export default function DeadlineAlerts() {
 
                     {/* Delete Button with Confirmation */}
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmDeleteModal({
-                            isOpen: true,
-                            deadlineId: alert.id,
-                            deadlineText: alert.text,
-                          });
-                        }}
-                        className={`p-0.5 hover:bg-red-500/20 text-white/40 hover:text-red-400 rounded shrink-0 transition-colors active:scale-90 flex items-center justify-center`}
-                        title="Delete deadline from calendar"
-                      >
-                        <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                      </button>
+                      <Tooltip text="Delete deadline from calendar" position="left">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteModal({
+                              isOpen: true,
+                              deadlineId: alert.id,
+                              deadlineText: alert.text,
+                            });
+                          }}
+                          className={`p-0.5 hover:bg-red-500/20 text-white/40 hover:text-red-400 rounded shrink-0 transition-colors active:scale-90 flex items-center justify-center`}
+                        >
+                          <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
 

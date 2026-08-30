@@ -7,6 +7,7 @@ import DraggableWidget from './DraggableWidget';
 import ConfirmationModal from './ConfirmationModal';
 import { getLocalDateString } from '@/utils/date';
 import { getDeviceId } from '@/utils/deviceId';
+import Tooltip from './Tooltip';
 
 export default function Stopwatch() {
   const {
@@ -422,30 +423,33 @@ export default function Stopwatch() {
                 {/* Controls */}
                 <div className="flex justify-center items-center gap-2">
                   {!isRunning ? (
-                    <button
-                      onClick={handleStart}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
-                      title="Start Stopwatch"
-                    >
-                      <Play fill="currentColor" size={14} className="ml-0.5" />
-                    </button>
+                    <Tooltip text="Start Stopwatch" position="top">
+                      <button
+                        onClick={handleStart}
+                        className="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
+                      >
+                        <Play fill="currentColor" size={14} className="ml-0.5" />
+                      </button>
+                    </Tooltip>
                   ) : (
-                    <button
-                      onClick={handlePause}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
-                      title="Pause Stopwatch"
-                    >
-                      <Pause fill="currentColor" size={14} />
-                    </button>
+                    <Tooltip text="Pause Stopwatch" position="top">
+                      <button
+                        onClick={handlePause}
+                        className="w-8 h-8 flex items-center justify-center rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95"
+                      >
+                        <Pause fill="currentColor" size={14} />
+                      </button>
+                    </Tooltip>
                   )}
-                  <button
-                    onClick={handleStop}
-                    disabled={elapsedSecs === 0}
-                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
-                    title="Stop & Save"
-                  >
-                    <Square fill="currentColor" size={12} />
-                  </button>
+                  <Tooltip text="Stop & Save" position="top">
+                    <button
+                      onClick={handleStop}
+                      disabled={elapsedSecs === 0}
+                      className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                    >
+                      <Square fill="currentColor" size={12} />
+                    </button>
+                  </Tooltip>
                 </div>
 
                 <div className="flex items-center justify-start gap-1 pt-1 border-t border-white/5 w-full">

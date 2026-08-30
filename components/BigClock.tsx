@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { getLocalDateString } from '@/utils/date';
 import { Timer, Clock, Flame } from 'lucide-react';
+import Tooltip from './Tooltip';
 
 export default function BigClock() {
   const [time, setTime] = useState<Date | null>(null);
@@ -49,6 +50,7 @@ export default function BigClock() {
 
   const swipeStartX = useRef<number | null>(null);
   const wasSwiped = useRef<boolean>(false);
+  const pointerDownPos = useRef({ x: 0, y: 0 });
 
   const handlePillTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     wasSwiped.current = false;
@@ -193,19 +195,21 @@ export default function BigClock() {
       style={{ zoom: clockScale }}
     >
       {clockVisible && (
-        <>
+        <Tooltip text="Toggle 12/24 Hour Format" position="bottom">
           <div
-            onClick={toggle24HourClock}
-            className={`${(isTimetableOpen && !isMobile) ? 'text-[3.5rem] md:text-[5rem]' : 'text-[5.5rem] md:text-[12rem]'} tabular-nums font-bold leading-none tracking-tighter pointer-events-auto cursor-pointer transition-all duration-700 text-transparent bg-clip-text bg-gradient-to-b from-white/90 via-white/50 to-white/10 [-webkit-text-stroke:1px_rgba(255,255,255,0.5)] md:[-webkit-text-stroke:1.5px_rgba(255,255,255,0.5)] drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] md:drop-shadow-[0_30px_40px_rgba(0,0,0,0.8)] drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] md:drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:from-white hover:to-white/40`}
-            title="Toggle 12/24 Hour Format"
+            className="flex flex-col items-center cursor-pointer pointer-events-auto group"
           >
-            {hours}:{minutes}
+            <div
+              className={`${(isTimetableOpen && !isMobile) ? 'text-[3.5rem] md:text-[5rem]' : 'text-[5.5rem] md:text-[12rem]'} tabular-nums font-bold leading-none tracking-tighter transition-all duration-700 text-transparent bg-clip-text bg-gradient-to-b from-white/90 via-white/50 to-white/10 [-webkit-text-stroke:1px_rgba(255,255,255,0.5)] md:[-webkit-text-stroke:1.5px_rgba(255,255,255,0.5)] drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] md:drop-shadow-[0_30px_40px_rgba(0,0,0,0.8)] drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] md:drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] group-hover:from-white group-hover:to-white/40`}
+            >
+              {hours}:{minutes}
+            </div>
+            <div className={`${(isTimetableOpen && !isMobile) ? 'text-lg md:text-2xl' : 'text-2xl md:text-5xl'} font-semibold tracking-widest uppercase mt-1 md:mt-2 transition-all duration-700 flex items-baseline`}>
+              <span className="tabular-nums text-transparent bg-clip-text bg-gradient-to-b from-white/90 to-white/30 [-webkit-text-stroke:1px_rgba(255,255,255,0.4)] drop-shadow-[0_15px_20px_rgba(0,0,0,0.7)]">{seconds}</span>
+              {!is24HourClock && <span className="text-white/40 ml-1.5 md:ml-2 [-webkit-text-stroke:0px]">{ampm}</span>}
+            </div>
           </div>
-          <div className={`${(isTimetableOpen && !isMobile) ? 'text-lg md:text-2xl' : 'text-2xl md:text-5xl'} font-semibold tracking-widest uppercase mt-1 md:mt-2 transition-all duration-700 flex items-baseline`}>
-            <span className="tabular-nums text-transparent bg-clip-text bg-gradient-to-b from-white/90 to-white/30 [-webkit-text-stroke:1px_rgba(255,255,255,0.4)] drop-shadow-[0_15px_20px_rgba(0,0,0,0.7)]">{seconds}</span>
-            {!is24HourClock && <span className="text-white/40 ml-1.5 md:ml-2 [-webkit-text-stroke:0px]">{ampm}</span>}
-          </div>
-        </>
+        </Tooltip>
       )}
       <div className='center pills fixed top-0 left-0 w-full flex justify-center  items-center'>
         {/* Top Floating Pills (Global Focus + Global Timer) */}
@@ -233,8 +237,7 @@ export default function BigClock() {
                       }
                       toggleHide();
                     }}
-                    title="Toggle Hidden Mode (Ctrl+H)"
-                    className="flex items-center gap-1.5 md:gap-2 text-[11px] md:text-[13px] px-4 py-1.5 shadow-[0_5px_20px_rgba(59,130,246,0.3)] rounded-full bg-black/80 backdrop-blur-xl text-white border border-white/10 cursor-pointer pointer-events-auto shrink-0 transition-transform active:scale-95 hover:bg-black/90"
+                    className="flex items-center gap-1.5 md:gap-2 text-[11px] md:text-[13px] px-4 py-1.5 shadow-[0_5px_20px_rgba(59,130,246,0.3)] rounded-full bg-black/80 backdrop-blur-xl text-white border border-white/10 cursor-pointer pointer-events-auto shrink-0 transition-transform active:scale-95 hover:bg-black/90 group"
                   >
                     <div className="flex items-center justify-center bg-orange-500/20 w-5 h-5 md:w-6 md:h-6 rounded-full border-blue-500 shadow-[0_0_10px_rgba(249,115,22,0.3)]">
                       <Flame className="text-orange-400 w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
@@ -244,6 +247,7 @@ export default function BigClock() {
                       <span className="text-white/30 mx-1.5 md:mx-2">|</span>
                       <span className="text-white/80">{timeLeftText}</span>
                     </div>
+                    <Tooltip text="Toggle Hidden Mode (Ctrl+H)" position="right" />
                   </div>
                 )}
 

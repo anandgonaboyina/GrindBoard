@@ -26,6 +26,7 @@ import VideoBackground from "@/components/VideoBackground";
 import LoadingScreen from "@/components/LoadingScreen";
 import NewsModal from "@/components/NewsModal";
 import ConnectionStatusToast from "@/components/ConnectionStatusToast";
+import Tooltip from "@/components/Tooltip";
 
 import { useEffect, useState, useRef } from "react";
 import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users, Hourglass } from "lucide-react";
@@ -257,10 +258,10 @@ export default function Dashboard() {
       {!isPanicHidden && (!isHidden || !hideConfig.bgSwitcher) && showBgSwitcher && (
         <button
           onClick={cycleWallpaper}
-          className="fixed top-10 left-3 z-[40] p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/20 shadow-xl transition-all glass-btn hidden md:block"
-          title="Next Wallpaper"
+          className="fixed top-10 left-3 z-[40] p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/20 shadow-xl transition-all glass-btn hidden md:block group"
         >
           <ImageIcon className="w-1 h-1 sm:w-4 sm:h-4" />
+          <Tooltip text="Next Wallpaper" position="right" />
         </button>
       )}
 
@@ -332,43 +333,43 @@ export default function Dashboard() {
             <>
               {/* Edge Peek Tab for Calendar */}
               <div
-                className={`fixed left-0 top-[20vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'}`}
+                className={`fixed left-0 top-[20vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={handleCalendarExpand}
-                title="Open Calendar"
               >
                 <Calendar size={20} className="sm:w-6 sm:h-6" />
+                <Tooltip text="Open Calendar" position="right" />
               </div>
 
               {/* Edge Peek Tab for Leaderboard */}
               <div
-                className={`fixed left-0 top-[28vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'}`}
+                className={`fixed left-0 top-[28vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={() => {
                   useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'leaderboard' });
                 }}
-                title="Open Leaderboard"
               >
                 <Trophy size={20} className="sm:w-6 sm:h-6" />
+                <Tooltip text="Open Leaderboard" position="right" />
               </div>
 
               {/* Edge Peek Tab for Groups */}
               <div
-                className={`fixed left-0 top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'}`}
+                className={`fixed left-0 top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={() => {
                   useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'groups' });
                 }}
-                title="Open Groups"
               >
                 <Users size={20} className="sm:w-6 sm:h-6" />
+                <Tooltip text="Open Groups" position="right" />
               </div>
 
               {/* Edge Peek Tab for Target Countdowns */}
               {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
                 <div
-                  className={`fixed left-0 top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[50] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'}`}
+                  className={`fixed left-0 top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[50] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'} group`}
                   onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(true)}
-                  title="Open Target Countdowns"
                 >
                   <Hourglass size={20} className="sm:w-6 sm:h-6 text-indigo-400 animate-pulse" />
+                  <Tooltip text="Open Target Countdowns" position="right" />
                 </div>
               )}
 
@@ -409,11 +410,11 @@ export default function Dashboard() {
             <>
               {/* Edge Peek Tab for Task Manager */}
               <div
-                className={`fixed right-0 top-[20vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTaskManagerOpen ? 'translate-x-[120%]' : 'translate-x-0'}`}
+                className={`fixed right-0 top-[20vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTaskManagerOpen ? 'translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={() => { if (!isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: true }) }}
-                title="Open Tasks"
               >
                 <ListTodo size={20} className="sm:w-6 sm:h-6" />
+                <Tooltip text="Open Tasks" position="left" />
               </div>
 
               <div
@@ -446,9 +447,8 @@ export default function Dashboard() {
           {(!isHidden || !hideConfig.settingsBtn) && (
             <>
               <div
-                className={`fixed right-0 top-[28vh] sm:top-[30vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isNewsOpen ? 'translate-x-[120%]' : 'translate-x-0'}`}
+                className={`fixed right-0 top-[28vh] sm:top-[30vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isNewsOpen ? 'translate-x-[120%]' : 'translate-x-0'} group`}
                 onClick={() => useDashboardStore.setState({ isNewsOpen: true })}
-                title="What's New"
               >
                 <div className="relative flex flex-col items-center">
                   <Newspaper size={20} className="sm:w-6 sm:h-6 text-blue-400" />
@@ -458,6 +458,7 @@ export default function Dashboard() {
                     </span>
                   )}
                 </div>
+                <Tooltip text="What's New" position="left" />
               </div>
               <NewsModal />
             </>
@@ -509,9 +510,10 @@ export default function Dashboard() {
               >
                 <button
                   onClick={() => setIsTimetableOpen(true)}
-                  className="bg-black/20 backdrop-blur-md border border-white/10 rounded-full px-3 py-3 text-white/80 hover:text-white hover:bg-black/40 transition-colors flex items-center gap-2 shadow-xl hover:scale-105"
+                  className="bg-black/20 backdrop-blur-md border border-white/10 rounded-full px-3 py-3 text-white/80 hover:text-white hover:bg-black/40 transition-colors flex items-center gap-2 shadow-xl hover:scale-105 group"
                 >
                   <CalendarDays size={20} className="text-purple-400" />
+                  <Tooltip text="Timetable" position="top" />
                 </button>
               </div>
             </div>

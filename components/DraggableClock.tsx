@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
+import Tooltip from './Tooltip';
 
 export default function DraggableClock({ children }: { children: React.ReactNode }) {
   const { 
@@ -17,7 +18,11 @@ export default function DraggableClock({ children }: { children: React.ReactNode
     customDesktopWallpapers,
     activeDesktopCustomIndex,
     customMobileWallpapers,
-    activeMobileCustomIndex
+    activeMobileCustomIndex,
+    showClock,
+    isHidden,
+    hideConfig: baseHideConfig,
+    mobileHideConfig
   } = useDashboardStore();
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -25,6 +30,9 @@ export default function DraggableClock({ children }: { children: React.ReactNode
   const startOffset = useRef({ x: 0, y: 0 });
   const latestPos = useRef({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
+
+  const hideConfig = isMobile ? mobileHideConfig : baseHideConfig;
+  const clockVisible = showClock && (!isHidden || !hideConfig.clock);
 
   // Match VideoBackground logic perfectly for active source
   let activeBgSrc = isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : (currentBgSrc || wallpaper || "/wallpapers/naruto.webp");
@@ -58,8 +66,8 @@ export default function DraggableClock({ children }: { children: React.ReactNode
     bringToFront('clock');
     if (lockedWidgets.includes('clock')) return;
 
-    // Only allow dragging on the wrapper itself, not on interactive children (buttons, toggles)
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('.cursor-pointer')) {
+    // Only allow dragging on the wrapper itself, not on interactive buttons
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('.no-drag')) {
       // If they clicked a button inside, let the button handle it
       return;
     }
@@ -91,9 +99,14 @@ export default function DraggableClock({ children }: { children: React.ReactNode
     setIsDragging(false);
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
 
-    // Save to store
-    // Save to store using the guaranteed latest position
-    if (activeBgSrc) {
+    const dx = Math.abs(e.clientX - startPos.current.x);
+    const dy = Math.abs(e.clientY - startPos.current.y);
+
+    if (dx < 5 && dy < 5) {
+      // Single click without dragging: toggle 12/24 hour format
+      useDashboardStore.getState().toggle24HourClock();
+    } else if (activeBgSrc) {
+      // Save to store using the guaranteed latest position
       updateClockOffset(activeBgSrc, latestPos.current.x, latestPos.current.y);
     }
   };
@@ -105,6 +118,10 @@ export default function DraggableClock({ children }: { children: React.ReactNode
       setPosition({ x: 0, y: 0 });
     }
   };
+
+  if (!clockVisible) {
+    return <>{children}</>;
+  }
 
   return (
     <div 
@@ -121,14 +138,15 @@ export default function DraggableClock({ children }: { children: React.ReactNode
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onDoubleClick={handleDoubleClick}
-      title={lockedWidgets.includes('clock') ? '' : "Drag to move. Double-click to reset position."}
     >
-      {!lockedWidgets.includes('clock') && (
-        <div className={`absolute inset-0 border-2 border-white/20 bg-white/5 rounded-3xl opacity-0 transition-opacity pointer-events-none ${isDragging ? 'opacity-100' : 'group-hover:opacity-100'}`}></div>
-      )}
-      <div className="relative pointer-events-auto">
-        {children}
-      </div>
+      <Tooltip text={lockedWidgets.includes('clock') ? '' : "Drag to move. Double-click to reset position."} position="top">
+        {!lockedWidgets.includes('clock') && (
+          <div className={`absolute inset-0 border-2 border-white/20 bg-white/5 rounded-3xl opacity-0 transition-opacity pointer-events-none ${isDragging ? 'opacity-100' : 'group-hover:opacity-100'}`}></div>
+        )}
+        <div className="relative pointer-events-auto">
+          {children}
+        </div>
+      </Tooltip>
     </div>
   );
 }

@@ -97,7 +97,7 @@ export default function SettingsModal() {
       if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
         for (const reg of registrations) {
-          await reg.update().catch(() => {});
+          await reg.update().catch(() => { });
         }
       }
     } catch (err) {
@@ -1559,9 +1559,6 @@ export default function SettingsModal() {
                               <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${showClock ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                             </button>
                           </div>
-                          <p className="text-[8px] md:text-[9px] text-white/40 mt-1 leading-tight italic">
-                            * Permanently hidden on mobile space to save area.
-                          </p>
                         </div>
                       </div>
                     </div>
@@ -1608,11 +1605,10 @@ export default function SettingsModal() {
                                   stopPreviewAudio();
                                   setAlarmSound(sound.url);
                                 }}
-                                className={`flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all select-none cursor-pointer ${
-                                  isActive
+                                className={`flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all select-none cursor-pointer ${isActive
                                     ? 'bg-blue-600/30 border-blue-500/70 text-white shadow-md shadow-blue-500/10'
                                     : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10 text-white/80 hover:text-white'
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-center gap-2.5 min-w-0 pr-2 flex-1">
                                   <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-blue-400 bg-blue-500/30' : 'border-white/30'}`}>
@@ -2101,7 +2097,7 @@ export default function SettingsModal() {
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
-                                 if (file.size > 25 * 1024 * 1024) {
+                                if (file.size > 25 * 1024 * 1024) {
                                   showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }

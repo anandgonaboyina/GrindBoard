@@ -4,6 +4,7 @@ import { useDashboardStore } from "@/store/dashboardStore";
 import { CalendarDays, Edit2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Check, Settings, Plus, Trash, Clock, ArrowUp, ArrowDown, X, Sun, Moon, Copy, ClipboardPaste, Download, Upload } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import ConfirmationModal from './ConfirmationModal';
+import Tooltip from './Tooltip';
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const WEEKENDS = ["Sat", "Sun"];
@@ -495,13 +496,14 @@ export default function Timetable() {
       {/* Header Area */}
       <div className={`flex items-center justify-between mb-1.5 md:mb-2 pb-1.5 border-b px-1 min-w-0 md:min-w-[400px] lg:min-w-[700px]  ${isDark ? 'border-white/5' : 'border-black/5'}`}>
         <div className="flex items-center min-w-[40px]">
-          <button
-            onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
-            className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-800'}`}
-            title="Previous view"
-          >
-            <ChevronLeft size={24} strokeWidth={2.5} />
-          </button>
+          <Tooltip text="Previous view" position="top">
+            <button
+              onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
+              className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-800'}`}
+            >
+              <ChevronLeft size={24} strokeWidth={2.5} />
+            </button>
+          </Tooltip>
         </div>
 
         <div className="flex items-center gap-1 md:gap-1.5 relative" ref={settingsRef}>
@@ -524,13 +526,14 @@ export default function Timetable() {
             </button>
           )}
 
-          <button
-            onClick={toggleTheme}
-            className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
-            title="Toggle Theme"
-          >
-            {isDark ? <Sun size={14} /> : <Moon size={14} />}
-          </button>
+          <Tooltip text="Toggle Theme" position="top">
+            <button
+              onClick={toggleTheme}
+              className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
+            >
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+          </Tooltip>
 
           {showSettings && (
             <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 rounded-xl shadow-2xl py-1 z-50 flex flex-col min-w-[160px] animate-in slide-in-from-top-2 fade-in duration-200 backdrop-blur-xl border ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-black/10'}`}>
@@ -563,13 +566,14 @@ export default function Timetable() {
         </div>
 
         <div className="flex items-center min-w-[40px] justify-end">
-          <button
-            onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
-            className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-800'}`}
-            title="Next view"
-          >
-            <ChevronRight size={24} strokeWidth={2.5} />
-          </button>
+          <Tooltip text="Next view" position="top">
+            <button
+              onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
+              className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-800'}`}
+            >
+              <ChevronRight size={24} strokeWidth={2.5} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -623,7 +627,6 @@ export default function Timetable() {
               }
             }}
             className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm active:scale-95 ${isCopyMode ? (isDark ? 'text-white bg-red-500 border-red-500' : 'text-white bg-red-500 border-red-600') : (isDark ? 'text-white/40 bg-white/5 border-white/10 hover:bg-white/10' : 'text-slate-500 bg-slate-100 border-slate-200 hover:bg-slate-200')}`}
-            title="Toggle Copy Mode"
           >
             <Copy size={10} className="shrink-0" />
             <span className="whitespace-nowrap">{!isCopyMode ? 'Copy Day' : 'Cancel Copy'}</span>
@@ -696,48 +699,51 @@ export default function Timetable() {
                   {day}
                   {!viewingFriend && isCopyMode && (
                     copiedDay === day ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCopiedDay(null);
-                          setIsCopyMode(!isCopyMode);
-                        }}
-                        className={`absolute right-1 p-0.5 rounded transition-all hover:scale-110 active:scale-95 ${isDark ? 'text-rose-400 hover:bg-rose-500/20' : 'text-rose-600 hover:bg-rose-500/10'}`}
-                        title="Cancel copy"
-                      >
-                        <X size={10} strokeWidth={3} />
-                      </button>
+                      <Tooltip text="Cancel copy" position="left">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCopiedDay(null);
+                            setIsCopyMode(!isCopyMode);
+                          }}
+                          className={`absolute right-1 p-0.5 rounded transition-all hover:scale-110 active:scale-95 ${isDark ? 'text-rose-400 hover:bg-rose-500/20' : 'text-rose-600 hover:bg-rose-500/10'}`}
+                        >
+                          <X size={10} strokeWidth={3} />
+                        </button>
+                      </Tooltip>
                     ) : copiedDay ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmModal({
-                            isOpen: true,
-                            title: 'Paste Schedule',
-                            message: `Are you sure you want to paste ${copiedDay}'s schedule to ${day}? This will overwrite the existing schedule for ${day}.`,
-                            onConfirm: () => {
-                              executeCopy(copiedDay, day);
-                              setCopiedDay(null);
-                            }
-                          });
-                        }}
-                        className={`absolute right-1 p-0.5 rounded transition-all hover:scale-110 active:scale-95 animate-pulse ${isDark ? 'text-emerald-400 hover:bg-emerald-500/20' : 'text-emerald-600 hover:bg-emerald-500/10'}`}
-                        title={`Paste ${copiedDay}'s schedule here`}
-                      >
-                        <ClipboardPaste size={10} />
-                      </button>
+                      <Tooltip text={`Paste ${copiedDay}'s schedule here`} position="left">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmModal({
+                              isOpen: true,
+                              title: 'Paste Schedule',
+                              message: `Are you sure you want to paste ${copiedDay}'s schedule to ${day}? This will overwrite the existing schedule for ${day}.`,
+                              onConfirm: () => {
+                                executeCopy(copiedDay, day);
+                                setCopiedDay(null);
+                              }
+                            });
+                          }}
+                          className={`absolute right-1 p-0.5 rounded transition-all hover:scale-110 active:scale-95 animate-pulse ${isDark ? 'text-emerald-400 hover:bg-emerald-500/20' : 'text-emerald-600 hover:bg-emerald-500/10'}`}
+                        >
+                          <ClipboardPaste size={10} />
+                        </button>
+                      </Tooltip>
                     ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCopiedDay(day);
-                          showToast(`Copied ${day}. Click on another column to paste there.`);
-                        }}
-                        className={`absolute right-1 p-0.5 rounded transition-all hover:scale-110 active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-black/30 hover:text-black hover:bg-black/10'}`}
-                        title={`Copy ${day}'s schedule`}
-                      >
-                        <Copy size={10} />
-                      </button>
+                      <Tooltip text={`Copy ${day}'s schedule`} position="left">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCopiedDay(day);
+                            showToast(`Copied ${day}. Click on another column to paste there.`);
+                          }}
+                          className={`absolute right-1 p-0.5 rounded transition-all hover:scale-110 active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-black/30 hover:text-black hover:bg-black/10'}`}
+                        >
+                          <Copy size={10} />
+                        </button>
+                      </Tooltip>
                     )
                   )}
                 </div>
@@ -888,14 +894,14 @@ export default function Timetable() {
               {CELL_COLORS.map(c => {
                 const isActive = (timetableColors?.[editingCell.day]?.[editingCell.time] || 'default') === c.name;
                 return (
-                  <button
-                    key={c.name}
-                    onClick={() => updateTimetableColor(editingCell.day, editingCell.time, c.name)}
-                    title={c.name}
-                    className={`w-6 h-6 rounded-full ${isDark ? c.solidBg : c.lightSolidBg} ${isActive ? `ring-2 ring-white ring-offset-1 scale-110 shadow-lg ${isDark ? 'ring-offset-[#111827]' : 'ring-offset-[#ffffff]'}` : 'opacity-80 hover:scale-110 hover:opacity-100'} transition-all duration-200 flex items-center justify-center shrink-0`}
-                  >
-                    {isActive && <Check size={12} className="text-white drop-shadow-md" />}
-                  </button>
+                  <Tooltip key={c.name} text={c.name} position="top">
+                    <button
+                      onClick={() => updateTimetableColor(editingCell.day, editingCell.time, c.name)}
+                      className={`w-6 h-6 rounded-full ${isDark ? c.solidBg : c.lightSolidBg} ${isActive ? `ring-2 ring-white ring-offset-1 scale-110 shadow-lg ${isDark ? 'ring-offset-[#111827]' : 'ring-offset-[#ffffff]'}` : 'opacity-80 hover:scale-110 hover:opacity-100'} transition-all duration-200 flex items-center justify-center shrink-0`}
+                    >
+                      {isActive && <Check size={12} className="text-white drop-shadow-md" />}
+                    </button>
+                  </Tooltip>
                 );
               })}
             </div>

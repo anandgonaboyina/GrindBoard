@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Flame, Calendar, ChevronDown, ChevronUp, X, AlertTriangle, Clock, Info, CheckCircle2, Check, Trash2, Lock } from 'lucide-react';
+import Tooltip from './Tooltip';
 
 export default function DeadlineTickerWidget() {
   const { deadlines, deadlineAlertDays, dismissedDeadlineAlerts, deleteDeadline, toggleDeadlineDone, dockOffset, widgetZIndices } = useDashboardStore();
@@ -76,13 +77,14 @@ export default function DeadlineTickerWidget() {
                 </div>
                 <span className="text-[10px] sm:text-xs font-bold text-white tracking-wide">No Deadlines Today 🎉</span>
               </div>
-              <button
-                onClick={() => setShowEmptyInfo(false)}
-                className="p-0.5 text-white/40 hover:text-white rounded hover:bg-white/10 transition-colors"
-                title="Close"
-              >
-                <X className="w-3 h-3" />
-              </button>
+              <Tooltip text="Close" position="left">
+                <button
+                  onClick={() => setShowEmptyInfo(false)}
+                  className="p-0.5 text-white/40 hover:text-white rounded hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Tooltip>
             </div>
             <p className="text-[10px] sm:text-[11px] text-white/70 leading-relaxed">
               You currently have no active deadline alerts. You can add deadlines in the <strong className="text-sky-300">Calendar Widget</strong> to track important target dates!
@@ -117,15 +119,16 @@ export default function DeadlineTickerWidget() {
             )}
           </div>
         ) : (
-          <button
-            onClick={() => setShowEmptyInfo(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-white/15 text-white/70 hover:text-white shadow-xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group text-xs font-medium"
-            title="Click for Deadline Alert Info"
-          >
-            <Calendar className="w-3 h-3 text-emerald-400" />
-            <span className="text-[10px] sm:text-[11px]">No Deadlines</span>
-            <Info className="w-2.5 h-2.5 text-white/40 group-hover:text-white/80" />
-          </button>
+          <Tooltip text="Click for Deadline Alert Info" position="top">
+            <button
+              onClick={() => setShowEmptyInfo(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-white/15 text-white/70 hover:text-white shadow-xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group text-xs font-medium"
+            >
+              <Calendar className="w-3 h-3 text-emerald-400" />
+              <span className="text-[10px] sm:text-[11px]">No Deadlines</span>
+              <Info className="w-2.5 h-2.5 text-white/40 group-hover:text-white/80" />
+            </button>
+          </Tooltip>
         )}
       </div>
     );
@@ -214,20 +217,22 @@ export default function DeadlineTickerWidget() {
 
               {/* Minimize Toggle: Disabled if any pending deadlines exist for Today */}
               {hasPendingToday ? (
-                <div
-                  className="p-0.5 rounded-md text-white/30 cursor-not-allowed flex items-center gap-0.5"
-                  title="Cannot contract widget while today deadlines are pending!"
-                >
-                  <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-red-400/80" />
-                </div>
+                <Tooltip text="Cannot contract widget while today deadlines are pending!" position="left">
+                  <div
+                    className="p-0.5 rounded-md text-white/30 cursor-not-allowed flex items-center gap-0.5"
+                  >
+                    <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-red-400/80" />
+                  </div>
+                </Tooltip>
               ) : (
-                <button
-                  onClick={() => setIsMinimized(true)}
-                  className="p-0.5 hover:bg-white/10 rounded-md text-white/50 hover:text-white transition-colors"
-                  title="Minimize alerts"
-                >
-                  <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                </button>
+                <Tooltip text="Minimize alerts" position="left">
+                  <button
+                    onClick={() => setIsMinimized(true)}
+                    className="p-0.5 hover:bg-white/10 rounded-md text-white/50 hover:text-white transition-colors"
+                  >
+                    <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -283,21 +288,22 @@ export default function DeadlineTickerWidget() {
                       </div>
 
                       {/* Action Button: Triggers Choice Modal */}
-                      <button
-                        onClick={() => setActionModal({
-                          isOpen: true,
-                          deadlineId: alert.id,
-                          deadlineText: alert.text,
-                          isDone: !!alert.isDone,
-                        })}
-                        className={`p-0.5 sm:p-1 rounded transition-colors shrink-0 ${alert.isDone
-                          ? 'text-emerald-400 hover:bg-emerald-500/20'
-                          : 'text-white/40 hover:text-emerald-400 hover:bg-white/10'
-                          }`}
-                        title="Mark as Done or Delete"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </button>
+                      <Tooltip text="Mark as Done or Delete" position="left">
+                        <button
+                          onClick={() => setActionModal({
+                            isOpen: true,
+                            deadlineId: alert.id,
+                            deadlineText: alert.text,
+                            isDone: !!alert.isDone,
+                          })}
+                          className={`p-0.5 sm:p-1 rounded transition-colors shrink-0 ${alert.isDone
+                            ? 'text-emerald-400 hover:bg-emerald-500/20'
+                            : 'text-white/40 hover:text-emerald-400 hover:bg-white/10'
+                            }`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   ))}
                 </div>
@@ -358,21 +364,22 @@ export default function DeadlineTickerWidget() {
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => setActionModal({
-                            isOpen: true,
-                            deadlineId: alert.id,
-                            deadlineText: alert.text,
-                            isDone: !!alert.isDone,
-                          })}
-                          className={`p-1 rounded transition-colors shrink-0 ${alert.isDone
-                            ? 'text-emerald-400 hover:bg-emerald-500/20'
-                            : 'text-white/40 hover:text-emerald-400 hover:bg-white/10'
-                            }`}
-                          title="Mark as Done or Delete"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
+                        <Tooltip text="Mark as Done or Delete" position="left">
+                          <button
+                            onClick={() => setActionModal({
+                              isOpen: true,
+                              deadlineId: alert.id,
+                              deadlineText: alert.text,
+                              isDone: !!alert.isDone,
+                            })}
+                            className={`p-1 rounded transition-colors shrink-0 ${alert.isDone
+                              ? 'text-emerald-400 hover:bg-emerald-500/20'
+                              : 'text-white/40 hover:text-emerald-400 hover:bg-white/10'
+                              }`}
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
                       </div>
                     ))}
                   </div>
