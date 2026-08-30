@@ -238,7 +238,7 @@ export default function Timer() {
       systemWakeTimeRef.current = Date.now();
       const storeState = useDashboardStore.getState();
       const isAlarm = storeState.isAlarmPlaying;
-      
+
       // Stop audio if not an active alarm or if timer is overdue / finished during sleep
       if (!isAlarm || (storeState.timerEndAt && Date.now() - storeState.timerEndAt > 15000)) {
         if (isAlarm) {
@@ -414,10 +414,8 @@ export default function Timer() {
           clearInterval(interval);
           setLocalTimeLeft(0);
 
-          if (isOwner) {
-            setTimerEndAt(null);
-            setTimerPausedLeft(null);
-          }
+          setTimerEndAt(null);
+          setTimerPausedLeft(null);
 
           // Force stop any lingering interval beep
           if (intervalAudioRef.current) {
@@ -528,7 +526,7 @@ export default function Timer() {
         audioRef.current.volume = vol > 1 ? vol / 100 : vol;
         audioRef.current.play().catch(e => console.error('Failed to play alarm:', e));
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-          try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+          try { navigator.mediaSession.playbackState = 'playing'; } catch (e) { }
         }
       } else {
         try {
@@ -536,9 +534,9 @@ export default function Timer() {
           audioRef.current.currentTime = 0;
           audioRef.current.removeAttribute('src');
           audioRef.current.load();
-        } catch (e) {}
+        } catch (e) { }
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-          try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+          try { navigator.mediaSession.playbackState = 'none'; } catch (e) { }
         }
       }
     }
@@ -555,7 +553,7 @@ export default function Timer() {
         console.log('[AUDIO DEBUG] Playing interval audio via useEffect...');
         intervalAudioRef.current.play().then(() => console.log('[AUDIO DEBUG] Interval audio play success')).catch(e => console.error('[AUDIO DEBUG] Interval beep failed:', e));
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-          try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+          try { navigator.mediaSession.playbackState = 'playing'; } catch (e) { }
         }
       } else {
         try {
@@ -563,9 +561,9 @@ export default function Timer() {
           intervalAudioRef.current.currentTime = 0;
           intervalAudioRef.current.removeAttribute('src');
           intervalAudioRef.current.load();
-        } catch (e) {}
+        } catch (e) { }
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-          try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+          try { navigator.mediaSession.playbackState = 'none'; } catch (e) { }
         }
       }
     }
@@ -626,10 +624,10 @@ export default function Timer() {
         audioRef.current.currentTime = 0;
         audioRef.current.removeAttribute('src');
         audioRef.current.load();
-      } catch (e) {}
+      } catch (e) { }
     }
     if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-      try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+      try { navigator.mediaSession.playbackState = 'none'; } catch (e) { }
     }
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       try {
@@ -647,10 +645,10 @@ export default function Timer() {
         intervalAudioRef.current.currentTime = 0;
         intervalAudioRef.current.removeAttribute('src');
         intervalAudioRef.current.load();
-      } catch (e) {}
+      } catch (e) { }
     }
     if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-      try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+      try { navigator.mediaSession.playbackState = 'none'; } catch (e) { }
     }
     setIsIntervalRinging(false);
     isIntervalRingingRef.current = false;
@@ -878,39 +876,46 @@ export default function Timer() {
   const elapsedSecs = timerInitialMins ? Math.max(0, (timerInitialMins * 60) - localTimeLeft) : 0;
   const doneMins = Math.floor(elapsedSecs / 60);
 
+  const displayTaskTitle = activeTaskTitle ? activeTaskTitle.replace(/^👥\s*\[Group:[^\]]+\]\s*/i, '') : null;
+
   return (
     <DraggableWidget id="timer">
       <div
         onPointerDown={updateInteraction}
         className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying || isIntervalRinging ? '' : 'hidden'}`}
       >
-        <div className="w-64 rounded-3xl glass-panel border border-white/20 text-white flex flex-col shadow-2xl overflow-visible relative">
+        <div className="w-64 rounded-3xl glass-panel border border-white/20 text-white flex flex-col shadow-2xl overflow-hidden relative">
 
-          {/* Top Title Bar */}
-          <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/90 rounded-lg text-xs sm:text-xs font-black tracking-widest text-blue-300 uppercase z-20 shadow-md border border-blue-500/40 backdrop-blur-md max-w-[220px] truncate text-center flex items-center justify-center gap-1.5">
-            {activeTaskTitle ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shrink-0"></span>
-                <span className="truncate">{activeTaskTitle}</span>
-              </>
-            ) : (
-              <span>Timer</span>
-            )}
-          </span>
+          {/* Header Title Bar (Flex Sibling) */}
+          <div className="pt-1 px-3 pb-1 flex justify-center items-center w-full border-b border-white/10 bg-black/40">
+            <span
+              className="px-2 py-0.5 rounded-md text-[10px] sm:text-[10.5px] font-bold tracking-wider text-blue-300 uppercase max-w-full text-center flex items-center justify-center gap-1.5 whitespace-normal break-words leading-tight"
+              title={displayTaskTitle || 'Timer'}
+            >
+              {displayTaskTitle ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shrink-0"></span>
+                  <span className="break-words leading-tight">{displayTaskTitle}</span>
+                </>
+              ) : (
+                <span className="font-black text-blue-400 uppercase tracking-widest">Timer</span>
+              )}
+            </span>
+          </div>
 
           {/* Body */}
-          <div className="p-3 flex flex-col gap-2 cursor-default pt-4">
+          <div className="p-3 flex flex-col gap-2 cursor-default">
             {/* Timer Display / Editor */}
-            <div className="text-center min-h-[80px] flex flex-col items-center justify-center relative">
+            <div className="text-center min-h-[60px] flex flex-col items-center justify-center relative">
               <div className="flex items-center justify-center w-full relative">
                 {/* Quick Presets Right */}
                 {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !isAlarmPlaying && (
-                  <div className="absolute right-1 top-1 mt-[20px] ml-[5px] -translate-y-1/2 flex flex-col gap-1.5">
+                  <div className="absolute right-1 top-1 mt-[18px] ml-[5px] -translate-y-1/2 flex flex-col gap-1">
                     {[5, 15, 25].map((preset) => (
                       <button
                         key={preset}
                         onClick={() => startTimer(preset * 60)}
-                        className="w-10 py-1 text-xs bg-white/5 hover:bg-white/20 rounded-lg transition-colors border border-white/10 font-medium"
+                        className="w-8 py-0.5 text-xs bg-grey/30 hover:bg-white/20 rounded-lg transition-colors border border-white/40 font-medium"
                       >
                         {preset}m
                       </button>
@@ -918,7 +923,7 @@ export default function Timer() {
                   </div>
                 )}
                 {isEditingTime ? (
-                  <div className="flex items-center justify-center gap-1.5 my-1">
+                  <div className="flex items-center justify-center gap-1">
                     {/* Hours Column */}
                     <div className="flex flex-col items-center">
                       <button
@@ -1056,7 +1061,7 @@ export default function Timer() {
             ) : (
               <>
                 {/* Controls */}
-                {!isEditingTime && (timerEndAt || timerPausedLeft) && timerDeviceId === getDeviceId() && (
+                {!isEditingTime && (timerEndAt || timerPausedLeft) && (
                   <div className="flex justify-center gap-2">
                     <button
                       onClick={togglePause}
@@ -1082,11 +1087,10 @@ export default function Timer() {
                       {/* Target Clock Button */}
                       <button
                         onClick={() => setIsClockModalOpen(true)}
-                        className={`flex-1 border rounded-xl px-2 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-inner shrink-0 truncate cursor-pointer ${
-                          highlightedField === 'clock'
-                            ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
-                            : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-blue-400/60 text-sky-200'
-                        }`}
+                        className={`flex-1 border rounded-xl px-2 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-inner shrink-0 truncate cursor-pointer ${highlightedField === 'clock'
+                          ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
+                          : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-blue-400/60 text-sky-200'
+                          }`}
                         title="Set target end clock time"
                       >
                         <Clock size={13} className={highlightedField === 'clock' ? 'text-white shrink-0' : 'text-sky-300 shrink-0'} />
@@ -1106,11 +1110,10 @@ export default function Timer() {
                           value={customMins}
                           onChange={(e) => handleCustomMinsChange(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                          className={`w-full border rounded-xl px-1.5 py-1.5 text-xs font-black text-center outline-none transition-all placeholder:text-white/40 text-white shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                            highlightedField === 'minutes'
-                              ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
-                              : 'bg-white/10 border-white/20 hover:border-white/30 focus:border-blue-400'
-                          }`}
+                          className={`w-full border rounded-xl px-1.5 py-1.5 text-xs font-black text-center outline-none transition-all placeholder:text-white/40 text-white shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${highlightedField === 'minutes'
+                            ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
+                            : 'bg-white/10 border-white/20 hover:border-white/30 focus:border-blue-400'
+                            }`}
                           min="1"
                         />
                       </div>

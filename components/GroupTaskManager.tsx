@@ -713,8 +713,7 @@ export default function GroupTaskManager({
                                                     <button
                                                         onClick={() => {
                                                             const timeLeft = Math.max(0, task.duration - timeSpent);
-                                                            const taggedTitle = group?.title ? `👥 [Group: ${group.title}] ${task.title}` : task.title;
-                                                            triggerTimer(timeLeft, task.id, taggedTitle);
+                                                            triggerTimer(timeLeft, task.id, task.title);
                                                         }}
                                                         className="p-0.5 bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white rounded transition-all active:scale-95"
                                                         title={`Start ${Math.max(0, task.duration - timeSpent)}m timer`}

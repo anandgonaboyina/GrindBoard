@@ -345,16 +345,17 @@ export default function Stopwatch() {
         className={`relative pointer-events-auto select-none ${isStopwatchOpen ? '' : 'hidden'}`}
       >
 
-        <div className="w-48 rounded-3xl glass-panel border border-white/20 text-white flex flex-col min-h-[90px] overflow-visible relative">
-          {/* Top Border Title */}
-          <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 bg-black/80 rounded-md text-[10px] sm:text-xs font-black tracking-widest text-blue-400 uppercase z-20 shadow-sm border border-white/5 backdrop-blur-md whitespace-nowrap">
-            Stopwatch
-          </span>
-
+        <div className="w-48 rounded-3xl glass-panel border border-white/20 text-white flex flex-col min-h-[90px] overflow-hidden relative">
+          {/* Header Title Bar (Flex Sibling) */}
           <div
-            className="w-full py-1.5 px-3 bg-white/5 hover:bg-white/10 transition-colors flex items-center border-b border-white/5 cursor-grab active:cursor-grabbing"
+            className="pt-1 px-3 pb-1 flex justify-center items-center w-full border-b border-white/10 bg-black/40"
             onPointerDown={updateInteraction}
           >
+            <span
+              className="px-2 py-0.5 rounded-md text-[10px] sm:text-[10.5px] font-bold tracking-wider text-blue-400 uppercase max-w-full text-center flex items-center justify-center gap-1.5 whitespace-normal break-words leading-tight"
+            >
+              <span className="font-black text-blue-400 uppercase tracking-widest">Stopwatch</span>
+            </span>
           </div>
           {/* Body - Non-draggable */}
           <div
