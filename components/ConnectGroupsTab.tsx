@@ -816,7 +816,7 @@ export default function ConnectGroupsTab() {
               delete updatedMemberTasks[targetUserId];
               const updatedCompletions = { ...(viewingGroup.completions || {}) };
               delete updatedCompletions[targetUserId];
-              
+
               setViewingGroup({
                 ...viewingGroup,
                 members: viewingGroup.members.filter((m: any) => m.userId !== targetUserId),
@@ -947,58 +947,40 @@ export default function ConnectGroupsTab() {
     const isAdmin = Boolean(meMember?.role === 'admin') || Boolean(viewingGroup.adminId && (meMember?.userId === viewingGroup.adminId || (myUsername && viewingGroup.adminId === myUsername)));
 
     return (
-      <div className="flex flex-col w-full animate-in fade-in slide-in-from-right-2">
+      <div className="flex flex-col w-full animate-in fade-in slide-in-from-right-2 gap-2 sm:gap-3">
         {typeof navigator !== 'undefined' && !navigator.onLine && (
-          <div className="w-full px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] md:text-xs font-medium flex items-center justify-between gap-2 shadow-sm mb-2 shrink-0 animate-in fade-in">
+          <div className="w-full px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] sm:text-xs font-medium flex items-center justify-between gap-2 shadow-sm shrink-0 animate-in fade-in backdrop-blur-md">
             <div className="flex items-center gap-1.5 min-w-0">
               <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="truncate">Offline Mode: Showing cached group data. Member ranks will sync live when online.</span>
+              <span className="truncate">Offline Mode: Showing cached data.</span>
             </div>
-            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 text-[9px] font-mono shrink-0 uppercase font-bold">Offline</span>
+            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 text-[9px] font-mono shrink-0 uppercase font-bold tracking-wide">Offline</span>
           </div>
         )}
-        {/* Sticky Top-Left Floating Rounded Back Button - Pinned below the top Connect navbar */}
-        <div className="sticky top-14 z-20 py-1 mb-2 flex items-center justify-between w-full pointer-events-none">
+
+        {/* Sticky Top-Left Floating Rounded Back Button */}
+        <div className="sticky top-12 sm:top-14 z-20 py-0.5 flex items-center justify-between w-full pointer-events-none shrink-0">
           <button
             onClick={() => setViewingGroup(null)}
-            className="pointer-events-auto p-1.5 px-3 rounded-full bg-slate-900/90 hover:bg-black text-white shadow-xl border border-white/20 backdrop-blur-xl flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 cursor-pointer hover:border-blue-400 group"
+            className="pointer-events-auto px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white/90 hover:text-white shadow-lg border border-white/10 hover:border-blue-500/50 backdrop-blur-xl flex items-center gap-1.5 text-[10px] sm:text-xs font-bold transition-all active:scale-95 cursor-pointer group"
             title="Back to groups list"
           >
             <ArrowLeft size={14} className="text-blue-400 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Back to Groups</span>
+            <span>Groups</span>
           </button>
         </div>
 
-        {/* Group Header Card - Standard Relative Card (Scrolls Up naturally with content) */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-purple-950/80 p-2.5 sm:p-3 rounded-2xl border border-white/20 shadow-xl mb-3 backdrop-blur-xl">
+        {/* Group Header Card - Glassmorphic & Compact */}
+        <div className="relative overflow-hidden bg-slate-900/40 p-2 sm:p-3 rounded-2xl border border-white/10 shadow-xl backdrop-blur-2xl">
           {/* Ambient Decorative Glow */}
-          <div className="absolute -top-10 -right-10 w-24 h-24 bg-blue-500/10 rounded-full blur-xl pointer-events-none z-0" />
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-[40px] pointer-events-none z-0" />
 
-          <div className="relative z-10 flex flex-col gap-1.5 w-full">
+          <div className="relative z-10 flex flex-col gap-2 w-full">
             {/* Top Bar: Group Title + Status Badges + Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 w-full">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2.5 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
-                  {viewingGroup.avatarUrl ? (
-                    <img
-                      src={viewingGroup.avatarUrl}
-                      alt={viewingGroup.title}
-                      className="w-full h-full object-cover object-center aspect-square shrink-0 z-10 relative"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                        if (fallback) fallback.style.display = 'flex';
-                      }}
-                    />
-                  ) : null}
-                  <span
-                    style={{ display: viewingGroup.avatarUrl ? 'none' : 'flex' }}
-                    className="w-full h-full items-center justify-center text-white font-black text-xs uppercase pointer-events-none"
-                  >
-                    {viewingGroup.title?.[0] || 'G'}
-                  </span>
-                </div>
-                <h3 className="font-bold text-white text-sm sm:text-base md:text-lg tracking-tight truncate max-w-[160px] xs:max-w-[240px] sm:max-w-xs md:max-w-md">
+
+                <h3 className="font-bold text-white text-sm sm:text-base tracking-tight truncate max-w-[180px] xs:max-w-[220px] sm:max-w-xs md:max-w-sm">
                   {viewingGroup.title}
                 </h3>
 
@@ -1007,14 +989,11 @@ export default function ConnectGroupsTab() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (isAdmin) {
-                        handleToggleGroupPrivacy(viewingGroup._id, viewingGroup.isPrivate);
-                      }
+                      if (isAdmin) handleToggleGroupPrivacy(viewingGroup._id, viewingGroup.isPrivate);
                     }}
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-colors ${isAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${viewingGroup.isPrivate ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}
-                    title={isAdmin ? "Click to toggle privacy" : "Privacy status"}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors ${isAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${viewingGroup.isPrivate ? 'bg-red-500/10 text-red-300 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'}`}
                   >
-                    {viewingGroup.isPrivate ? <><ShieldAlert size={8} /> Private</> : <><Check size={8} /> Public</>}
+                    {viewingGroup.isPrivate ? <><ShieldAlert size={10} /> Private</> : <><Check size={10} /> Public</>}
                   </button>
 
                   <button
@@ -1025,32 +1004,29 @@ export default function ConnectGroupsTab() {
                         handleToggleGroupRequests(viewingGroup._id, currentStatus);
                       }
                     }}
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-colors ${isAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'}`}
-                    title={isAdmin ? "Click to toggle join requests requirement" : "Join requests status"}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider transition-colors ${isAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true) ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'bg-orange-500/10 text-orange-300 border border-orange-500/20'}`}
                   >
                     {viewingGroup.isPrivate ? (
-                      (viewingGroup.allowJoinRequests !== false) ? <><Check size={8} /> Requests Allowed</> : <><ShieldAlert size={8} /> Requests Blocked</>
+                      (viewingGroup.allowJoinRequests !== false) ? <><Check size={10} /> Requests Allowed</> : <><ShieldAlert size={10} /> Requests Blocked</>
                     ) : (
-                      (viewingGroup.allowJoinRequests !== false) ? <><ShieldAlert size={8} /> Approval Required</> : <><Check size={8} /> Instant Join Enabled</>
+                      (viewingGroup.allowJoinRequests !== false) ? <><ShieldAlert size={10} /> Approval Required</> : <><Check size={10} /> Instant Join</>
                     )}
                   </button>
 
-                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
-                    <Users size={8} /> {viewingGroup.members?.length || 0}
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-300 border border-blue-500/20 flex items-center gap-1">
+                    <Users size={10} /> {viewingGroup.members?.length || 0}
                   </span>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+              <div className="flex items-center gap-1.5 shrink-0 w-full lg:w-auto overflow-x-auto no-scrollbar pb-0.5 lg:pb-0">
                 <button
                   type="button"
                   onClick={() => setShowWelcomeModal(true)}
-                  className="px-2 py-0.5 flex items-center gap-1 rounded-md bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-white transition-colors cursor-pointer text-[10px] font-bold uppercase tracking-wider border border-purple-500/30 shadow-sm"
-                  title="Group Member Controls Guide"
+                  className="px-2.5 py-1 flex items-center gap-1 rounded-md bg-white/5 hover:bg-purple-500/20 text-purple-300 hover:text-white transition-colors cursor-pointer text-[10px] font-bold uppercase tracking-wider border border-purple-500/30 shrink-0"
                 >
-                  <Sparkles size={10} className="text-purple-300 animate-pulse" />
-                  <span>Guide</span>
+                  <Sparkles size={12} className="text-purple-400 animate-pulse" /> Guide
                 </button>
                 {isAdmin && (
                   <button
@@ -1062,24 +1038,22 @@ export default function ConnectGroupsTab() {
                       setEditGroupAllowRequests(viewingGroup.allowJoinRequests !== undefined ? viewingGroup.allowJoinRequests : true);
                       setEditingGroupId(viewingGroup._id);
                     }}
-                    className="px-2 py-0.5 flex items-center gap-1 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-white transition-colors cursor-pointer text-[10px] font-bold uppercase tracking-wider border border-blue-500/30 shadow-sm"
-                    title="Edit Group Settings"
+                    className="px-2.5 py-1 flex items-center gap-1 rounded-md bg-white/5 hover:bg-blue-500/20 text-blue-300 hover:text-white transition-colors cursor-pointer text-[10px] font-bold uppercase tracking-wider border border-blue-500/30 shrink-0"
                   >
-                    <Settings size={10} />
-                    <span>Edit</span>
+                    <Settings size={12} /> Edit
                   </button>
                 )}
 
                 {!isMember && (
                   (viewingGroup.isPrivate && viewingGroup.allowJoinRequests === false) ? (
-                    <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold rounded-md border border-red-500/30 whitespace-nowrap">
+                    <span className="px-3 py-1 bg-red-500/10 text-red-400 text-[10px] font-bold rounded-md border border-red-500/20 whitespace-nowrap shrink-0">
                       Blocked
                     </span>
                   ) : (
                     <button
                       onClick={() => handleJoinRequest(viewingGroup._id)}
                       disabled={sentRequests.some(r => String(r.groupId) === String(viewingGroup._id))}
-                      className="px-2.5 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold rounded-md transition-colors disabled:opacity-50 whitespace-nowrap shadow-sm"
+                      className="px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold rounded-md transition-colors disabled:opacity-50 whitespace-nowrap shadow-sm shrink-0"
                     >
                       {sentRequests.some(r => String(r.groupId) === String(viewingGroup._id)) ? 'Pending' : viewingGroup.isPrivate ? 'Request' : 'Join'}
                     </button>
@@ -1090,10 +1064,9 @@ export default function ConnectGroupsTab() {
                   <button
                     type="button"
                     onClick={() => handleExitGroup(viewingGroup._id, viewingGroup.title, isAdmin)}
-                    className="px-2 py-0.5 text-[10px] font-bold bg-rose-500/20 text-rose-300 hover:bg-rose-500 hover:text-white rounded-md transition-colors cursor-pointer border border-rose-500/30"
-                    title="Exit group"
+                    className="px-2.5 py-1 text-[10px] font-bold bg-white/5 hover:bg-rose-500/20 text-rose-300 hover:text-white rounded-md transition-colors cursor-pointer border border-rose-500/30 shrink-0"
                   >
-                    Exit Group
+                    Exit
                   </button>
                 )}
 
@@ -1101,7 +1074,7 @@ export default function ConnectGroupsTab() {
                   <button
                     type="button"
                     onClick={() => handleDeleteGroup(viewingGroup._id, viewingGroup.title)}
-                    className="px-2 py-0.5 text-[10px] font-bold bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-md transition-colors cursor-pointer border border-red-500/30"
+                    className="px-2.5 py-1 text-[10px] font-bold bg-white/5 hover:bg-red-500/20 text-red-400 hover:text-white rounded-md transition-colors cursor-pointer border border-red-500/30 shrink-0"
                   >
                     Delete
                   </button>
@@ -1109,99 +1082,91 @@ export default function ConnectGroupsTab() {
               </div>
             </div>
 
-            {/* Rounded Rectangle Profile Photo + 2x2 Stats Grid (Table of Rows & Columns) */}
-            <div className="flex flex-col gap-2 mt-1 bg-black/40 p-2.5 rounded-xl border border-white/10 shadow-inner w-full">
-              <div className="flex items-center gap-2.5 w-full">
-                {/* Rounded Rectangle Group Profile Photo */}
-                <div className="relative group/avatar shrink-0">
-                  {viewingGroup.avatarUrl ? (
-                    <img
-                      src={viewingGroup.avatarUrl}
-                      alt={viewingGroup.title}
-                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover border border-white/20 shadow-md bg-black/60"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-blue-600/40 via-indigo-600/40 to-purple-600/40 border border-white/20 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-md uppercase tracking-wider">
-                      {viewingGroup.title?.[0] || 'G'}
-                    </div>
-                  )}
-                </div>
-
-                {/* 2x2 Table Grid of 4 Metrics */}
-                <div className="grid grid-cols-2 gap-1.5 flex-1 min-w-0 font-mono">
-                  {/* Row 1 Col 1: Target Time */}
-                  <div className="flex items-center justify-between px-2 py-1 bg-sky-500/10 rounded-lg border border-sky-500/20 text-[9px] sm:text-[10px]">
-                    <span className="text-sky-300/80 font-sans font-bold flex items-center gap-1">🎯 Target</span>
-                    <span className="font-bold text-sky-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).totalDuration)}</span>
+            {/* Rounded Rectangle Profile Photo + Stats Grid */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 mt-0.5 bg-black/20 p-2 sm:p-2.5 rounded-xl border border-white/5 shadow-inner w-full">
+              {/* Rounded Rectangle Group Profile Photo */}
+              <div className="relative group/avatar shrink-0 hidden sm:block">
+                {viewingGroup.avatarUrl ? (
+                  <img
+                    src={viewingGroup.avatarUrl}
+                    alt={viewingGroup.title}
+                    className="w-12 h-12 rounded-xl object-cover border border-white/10 shadow-sm bg-black/40"
+                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600/30 to-purple-600/30 border border-white/10 flex items-center justify-center text-white/80 font-black text-xl shadow-sm uppercase">
+                    {viewingGroup.title?.[0] || 'G'}
                   </div>
-                  {/* Row 1 Col 2: High Time */}
-                  <div className="flex items-center justify-between px-2 py-1 bg-amber-500/10 rounded-lg border border-amber-500/20 text-[9px] sm:text-[10px]">
-                    <span className="text-amber-300/80 font-sans font-bold flex items-center gap-1">🏆 High Time</span>
-                    <span className="font-bold text-amber-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).highestDone)}</span>
-                  </div>
-                  {/* Row 2 Col 1: Done Time */}
-                  <div className="flex items-center justify-between px-2 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-[9px] sm:text-[10px]">
-                    <span className="text-emerald-300/80 font-sans font-bold flex items-center gap-1">✅ Done Time</span>
-                    <span className="font-bold text-emerald-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).myDone)}</span>
-                  </div>
-                  {/* Row 2 Col 2: Left Time */}
-                  <div className="flex items-center justify-between px-2 py-1 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-[9px] sm:text-[10px]">
-                    <span className="text-indigo-300/80 font-sans font-bold flex items-center gap-1">⏳ Left Time</span>
-                    <span className="font-bold text-indigo-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).myTimeLeft)}</span>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Tab-specific summary in Header */}
-              {(() => {
-                const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
-                const myUserId = myMemberInfo?.userId || '';
-                const myAllTasks = viewingGroup.memberTasks?.[myUserId] || viewingGroup.tasks || [];
-                const myTabTasks = myAllTasks.filter((t: any) => (t.groupId || 0) === activeGroupTab);
-                const myComps = viewingGroup.completions?.[myUserId]?.[dateStr] || {};
-                const activeTabDone = myTabTasks.reduce((sum: number, t: any) => {
-                  const comp = myComps[t.id];
-                  if (!comp) return sum;
-                  if (comp.completed) return sum + Math.max(comp.timeSpent || 0, t.duration || 0);
-                  return sum + (comp.timeSpent || 0);
-                }, 0);
-                const activeTabDuration = myTabTasks.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
-                const activeTabLeft = Math.max(0, activeTabDuration - activeTabDone);
-                const rawMyTabNames = viewingGroup.memberTabNames?.[myUserId] || viewingGroup.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
-                const myTabNames = [0, 1, 2].map(idx => formatTabName(rawMyTabNames[idx], idx));
-                const currentTabName = myTabNames[activeGroupTab];
-
-                return (
-                  <div className="flex items-center justify-between text-[9px] px-2.5 py-1 bg-white/[0.04] rounded-lg border border-white/10 font-mono w-full">
-                    <span className="text-white/60 font-sans font-medium flex items-center gap-1">
-                      📌 <strong className="text-blue-300">{currentTabName}</strong> Specific:
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <span>Done: <strong className="text-emerald-300">{globalFormatTime(activeTabDone)}</strong></span>
-                      <span>Left: <strong className="text-indigo-300">{globalFormatTime(activeTabLeft)}</strong></span>
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* 2x2 Table Grid of 4 Metrics */}
+              <div className="grid grid-cols-2 gap-1.5 w-full flex-1 font-mono">
+                <div className="flex items-center justify-between px-2 py-1 sm:py-1.5 bg-sky-500/10 rounded-md border border-sky-500/10 text-[9px] sm:text-[10px]">
+                  <span className="text-sky-300/80 font-sans font-bold flex items-center gap-1">🎯 Target</span>
+                  <span className="font-bold text-sky-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).totalDuration)}</span>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1 sm:py-1.5 bg-amber-500/10 rounded-md border border-amber-500/10 text-[9px] sm:text-[10px]">
+                  <span className="text-amber-300/80 font-sans font-bold flex items-center gap-1">🏆 High Time</span>
+                  <span className="font-bold text-amber-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).highestDone)}</span>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1 sm:py-1.5 bg-emerald-500/10 rounded-md border border-emerald-500/10 text-[9px] sm:text-[10px]">
+                  <span className="text-emerald-300/80 font-sans font-bold flex items-center gap-1">✅ Done</span>
+                  <span className="font-bold text-emerald-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).myDone)}</span>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1 sm:py-1.5 bg-indigo-500/10 rounded-md border border-indigo-500/10 text-[9px] sm:text-[10px]">
+                  <span className="text-indigo-300/80 font-sans font-bold flex items-center gap-1">⏳ Left</span>
+                  <span className="font-bold text-indigo-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).myTimeLeft)}</span>
+                </div>
+              </div>
             </div>
+
+            {/* Tab-specific summary in Header */}
+            {(() => {
+              const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
+              const myUserId = myMemberInfo?.userId || '';
+              const myAllTasks = viewingGroup.memberTasks?.[myUserId] || viewingGroup.tasks || [];
+              const myTabTasks = myAllTasks.filter((t: any) => (t.groupId || 0) === activeGroupTab);
+              const myComps = viewingGroup.completions?.[myUserId]?.[dateStr] || {};
+              const activeTabDone = myTabTasks.reduce((sum: number, t: any) => {
+                const comp = myComps[t.id];
+                if (!comp) return sum;
+                if (comp.completed) return sum + Math.max(comp.timeSpent || 0, t.duration || 0);
+                return sum + (comp.timeSpent || 0);
+              }, 0);
+              const activeTabDuration = myTabTasks.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
+              const activeTabLeft = Math.max(0, activeTabDuration - activeTabDone);
+              const rawMyTabNames = viewingGroup.memberTabNames?.[myUserId] || viewingGroup.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
+              const myTabNames = [0, 1, 2].map(idx => formatTabName(rawMyTabNames[idx], idx));
+              const currentTabName = myTabNames[activeGroupTab];
+
+              return (
+                <div className="flex items-center justify-between text-[9px] sm:text-[10px] px-2.5 py-1.5 bg-white/5 rounded-lg border border-white/10 font-mono w-full shadow-sm">
+                  <span className="text-white/60 font-sans font-medium flex items-center gap-1.5 truncate">
+                    📌 <strong className="text-blue-300 truncate max-w-[80px] xs:max-w-[120px] sm:max-w-none">{currentTabName}</strong> Specific:
+                  </span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span>Done: <strong className="text-emerald-300">{globalFormatTime(activeTabDone)}</strong></span>
+                    <span>Left: <strong className="text-indigo-300">{globalFormatTime(activeTabLeft)}</strong></span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* 3-day Abandonment Claim Banner */}
             {viewingGroup.pendingDeletion && (
-              <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-200 text-[10px] flex items-center justify-between gap-2 shadow-sm my-0.5">
+              <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-[10px] flex items-center justify-between gap-2 shadow-sm my-0.5">
                 <div className="flex flex-col min-w-0">
-                  <span className="font-bold flex items-center gap-1 text-amber-300">
-                    <Clock size={11} className="animate-spin" style={{ animationDuration: '6s' }} /> Admin Left Group
+                  <span className="font-bold flex items-center gap-1.5 text-amber-300">
+                    <Clock size={12} className="animate-spin" style={{ animationDuration: '6s' }} /> Admin Left Group
                   </span>
-                  <span className="text-[9px] text-white/70 truncate">
+                  <span className="text-[9px] text-white/60 truncate">
                     Group scheduled for deletion in 3 days unless claimed!
                   </span>
                 </div>
                 <button
                   onClick={() => handleClaimLeadership(viewingGroup._id)}
-                  className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-black text-[9.5px] font-bold rounded-md transition-colors cursor-pointer shrink-0 shadow-sm"
+                  className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black text-[10px] font-bold rounded-md transition-colors cursor-pointer shrink-0 border border-amber-500/30"
                 >
                   Claim Leadership
                 </button>
@@ -1210,39 +1175,39 @@ export default function ConnectGroupsTab() {
 
             {/* Editing Form or Description Strip */}
             {editingGroupId === viewingGroup._id ? (
-              <form onSubmit={handleUpdateGroupInfo} className="flex flex-col gap-1.5 bg-black/40 p-2 rounded-lg border border-white/10 mt-0.5 w-full">
-                <div className="flex flex-col gap-0.5 w-full">
-                  <label className="text-[9px] text-white/50 font-bold uppercase">Group Title</label>
+              <form onSubmit={handleUpdateGroupInfo} className="flex flex-col gap-2 bg-black/30 p-2.5 rounded-xl border border-white/10 mt-1 w-full shadow-inner">
+                <div className="flex flex-col gap-1 w-full">
+                  <label className="text-[9px] text-white/50 font-bold uppercase tracking-wider">Group Title</label>
                   <input
                     autoFocus
                     value={editGroupTitle}
                     onChange={e => setEditGroupTitle(e.target.value)}
-                    className="bg-black/60 border border-white/20 rounded px-2 py-1 text-xs font-bold text-white outline-none focus:border-blue-500 w-full"
+                    className="bg-black/50 border border-white/10 rounded-md px-2.5 py-1.5 text-xs font-bold text-white outline-none focus:border-blue-500/50 w-full"
                   />
                 </div>
-                <div className="flex flex-col gap-0.5 w-full">
-                  <label className="text-[9px] text-white/50 font-bold uppercase">Group Description</label>
+                <div className="flex flex-col gap-1 w-full">
+                  <label className="text-[9px] text-white/50 font-bold uppercase tracking-wider">Group Description</label>
                   <textarea
                     rows={2}
                     value={editGroupDesc}
                     onChange={e => setEditGroupDesc(e.target.value)}
                     placeholder="Enter group description..."
-                    className="bg-black/60 border border-white/20 rounded px-2 py-1 text-[10.5px] text-white outline-none focus:border-blue-500 w-full resize-none"
+                    className="bg-black/50 border border-white/10 rounded-md px-2.5 py-1.5 text-xs text-white outline-none focus:border-blue-500/50 w-full resize-none custom-scrollbar"
                   />
                 </div>
-                <div className="flex flex-col gap-0.5 w-full">
-                  <label className="text-[9px] text-white/50 font-bold uppercase">Group Profile Photo URL</label>
+                <div className="flex flex-col gap-1 w-full">
+                  <label className="text-[9px] text-white/50 font-bold uppercase tracking-wider">Group Profile Photo URL</label>
                   <input
                     type="url"
                     value={editGroupAvatarUrl}
                     onChange={e => setEditGroupAvatarUrl(e.target.value)}
                     placeholder="https://example.com/avatar.png"
-                    className="bg-black/60 border border-white/20 rounded px-2 py-1 text-xs font-mono text-white outline-none focus:border-blue-500 w-full placeholder:text-white/30"
+                    className="bg-black/50 border border-white/10 rounded-md px-2.5 py-1.5 text-xs font-mono text-white outline-none focus:border-blue-500/50 w-full placeholder:text-white/30"
                   />
                 </div>
-                <div className="flex flex-col gap-2 p-2 bg-black/40 border border-white/10 rounded-lg my-1 w-full">
+                <div className="flex flex-col gap-2 p-2.5 bg-black/40 border border-white/5 rounded-lg mt-1 w-full">
                   {/* Private vs Public Toggle */}
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-col min-w-0">
                       <span className="text-[10px] font-bold text-white/90">Group Visibility</span>
                       <span className="text-[8.5px] text-white/50">
@@ -1252,32 +1217,32 @@ export default function ConnectGroupsTab() {
                     <button
                       type="button"
                       onClick={() => setEditGroupIsPrivate(!editGroupIsPrivate)}
-                      className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${editGroupIsPrivate ? 'bg-purple-600' : 'bg-blue-600'}`}
+                      className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${editGroupIsPrivate ? 'bg-purple-500' : 'bg-blue-500'}`}
                     >
                       <span className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${editGroupIsPrivate ? 'translate-x-3.5' : 'translate-x-0'}`} />
                     </button>
                   </div>
 
-                  <div className="h-px bg-white/10 w-full" />
+                  <div className="h-px bg-white/5 w-full" />
 
                   {/* Request Access / Instant Join Toggle */}
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-[10px] font-bold text-white/90">
                         {editGroupIsPrivate ? 'Allow Join Requests' : 'Require Admin Approval to Join'}
                       </span>
-                      <span className="text-[8.5px] leading-tight">
+                      <span className="text-[8.5px] leading-tight mt-0.5">
                         {editGroupAllowRequests ? (
                           editGroupIsPrivate ? (
-                            <span className="text-amber-300/90 font-medium">📩 Users can send join requests to admin</span>
+                            <span className="text-amber-300/80 font-medium">📩 Users can send join requests</span>
                           ) : (
-                            <span className="text-amber-300/90 font-medium">🔒 Approval Required: Members must request access to join</span>
+                            <span className="text-amber-300/80 font-medium">🔒 Approval Required to join</span>
                           )
                         ) : (
                           editGroupIsPrivate ? (
-                            <span className="text-rose-300/90 font-medium">🚫 Invite Only: Join requests blocked</span>
+                            <span className="text-rose-300/80 font-medium">🚫 Invite Only: Requests blocked</span>
                           ) : (
-                            <span className="text-emerald-300 font-bold">⚡ Anyone can join instantly without request access</span>
+                            <span className="text-emerald-300/80 font-bold">⚡ Anyone can join instantly</span>
                           )
                         )}
                       </span>
@@ -1291,9 +1256,9 @@ export default function ConnectGroupsTab() {
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-1.5 mt-1">
-                  <button type="submit" className="px-2.5 py-0.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] rounded font-bold">Save</button>
-                  <button type="button" onClick={() => setEditingGroupId(null)} className="px-2.5 py-0.5 bg-white/10 hover:bg-white/20 text-white text-[10px] rounded font-bold">Cancel</button>
+                <div className="flex gap-2 mt-1.5 justify-end">
+                  <button type="button" onClick={() => setEditingGroupId(null)} className="px-4 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 text-[10px] sm:text-xs rounded-md font-bold transition-colors">Cancel</button>
+                  <button type="submit" className="px-5 py-1.5 bg-blue-500/20 hover:bg-blue-500 text-blue-300 hover:text-white border border-blue-500/30 text-[10px] sm:text-xs rounded-md font-bold transition-colors">Save</button>
                 </div>
               </form>
             ) : viewingGroup.description && (
@@ -1308,10 +1273,10 @@ export default function ConnectGroupsTab() {
                     setEditingGroupId(viewingGroup._id);
                   }
                 }}
-                className={`w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-1 ${isAdmin ? 'cursor-text' : ''}`}
+                className={`w-full bg-black/20 border border-white/5 rounded-lg px-2.5 py-1.5 mt-0.5 ${isAdmin ? 'cursor-text hover:bg-black/30 transition-colors' : ''}`}
                 title={isAdmin ? "Double click to edit" : ""}
               >
-                <p className="text-[10.5px] sm:text-xs text-white/80 leading-snug break-words">
+                <p className="text-[10px] sm:text-xs text-white/70 leading-relaxed break-words">
                   {viewingGroup.description}
                 </p>
               </div>
@@ -1319,21 +1284,24 @@ export default function ConnectGroupsTab() {
           </div>
         </div>
 
+        {/* Join Requests (Admin Only) */}
         {requests.filter(r => String(r.groupId) === String(viewingGroup._id)).length > 0 && members.find((m: any) => m.isMe)?.role === 'admin' && (
-          <div className="mb-3 px-1 border border-blue-500/30 bg-blue-500/5 rounded-xl p-2">
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-300/80 mb-2 px-1">Join Requests</h4>
+          <div className="px-2 py-2.5 border border-blue-500/20 bg-blue-500/10 rounded-xl backdrop-blur-md">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-300/80 mb-2 px-1 flex items-center gap-1.5">
+              <Users size={12} /> Pending Join Requests
+            </h4>
             <div className="flex flex-col gap-1.5">
               {requests.filter(r => String(r.groupId) === String(viewingGroup._id)).map(req => (
-                <div key={req._id} className="bg-blue-500/10 border border-blue-500/20 p-2 rounded-xl flex items-center justify-between">
+                <div key={req._id} className="bg-black/30 border border-white/5 p-2 rounded-lg flex items-center justify-between shadow-inner">
                   <div className="flex flex-col">
-                    <span className="text-[11px] font-bold text-white/90">{req.username}</span>
-                    <span className="text-[9px] text-white/50">wants to join this group</span>
+                    <span className="text-[11px] sm:text-xs font-bold text-white/90">{req.username}</span>
+                    <span className="text-[9px] text-white/40">wants to join this group</span>
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => handleProcessRequest(req._id, 'accepted')} className="p-1.5 bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-white rounded-lg transition-colors cursor-pointer" type="button">
+                  <div className="flex gap-1.5">
+                    <button onClick={() => handleProcessRequest(req._id, 'accepted')} className="p-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 rounded-md transition-colors cursor-pointer" type="button" title="Accept">
                       <Check size={14} />
                     </button>
-                    <button onClick={() => handleProcessRequest(req._id, 'rejected')} className="p-1.5 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-colors cursor-pointer" type="button">
+                    <button onClick={() => handleProcessRequest(req._id, 'rejected')} className="p-1.5 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 rounded-md transition-colors cursor-pointer" type="button" title="Reject">
                       <X size={14} />
                     </button>
                   </div>
@@ -1343,40 +1311,46 @@ export default function ConnectGroupsTab() {
           </div>
         )}
 
+        {/* Content Body: Private Shield or Tabs+Search */}
         {(!members.find((m: any) => m.isMe) && !groups.some(g => String(g._id) === String(viewingGroup._id))) && viewingGroup.isPrivate ? (
-          <div className="flex flex-col items-center justify-center p-8 bg-black/20 border border-white/5 rounded-xl my-4">
-            <ShieldAlert size={32} className="text-white/20 mb-3" />
-            <h4 className="text-sm font-bold text-white/70 mb-1">Private Group</h4>
-            <p className="text-[10px] text-white/40 text-center max-w-[250px]">
+          <div className="flex flex-col items-center justify-center p-6 sm:p-10 bg-slate-900/40 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl mx-1 animate-in fade-in zoom-in-95 mt-2">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-black/40 rounded-full flex items-center justify-center mb-4 border border-white/5 shadow-inner">
+              <ShieldAlert size={32} className="text-white/30 sm:w-10 sm:h-10" />
+            </div>
+            <h4 className="text-base sm:text-lg font-black text-white/90 mb-2 tracking-wide">Private Group</h4>
+            <p className="text-[10px] sm:text-xs text-white/50 text-center max-w-[280px] sm:max-w-md leading-relaxed">
               The tasks and progress of this group are hidden from non-members.
-              {(viewingGroup.allowJoinRequests !== false) ? ' You can request to join to gain access.' : ' The Admin of this Group has blocked join requests.'}
+              {(viewingGroup.allowJoinRequests !== false)
+                ? <span className="block mt-2 text-blue-300/80 font-medium">You can request to join to gain access.</span>
+                : <span className="block mt-2 text-red-300/80 font-medium">The Admin has blocked join requests.</span>}
             </p>
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-2.5 mb-3 w-full bg-black/40 p-2 rounded-xl border border-white/10">
+            <div className="flex flex-col gap-2.5 w-full bg-slate-900/40 p-2 sm:p-2.5 rounded-2xl border border-white/10 backdrop-blur-xl shadow-lg mt-1">
               {/* Row 1: Day Switcher + Group Header Tab Selector */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 w-full">
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 w-full">
+
                 {/* Day Switcher */}
-                <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10 shrink-0 w-full sm:w-auto">
+                <div className="flex bg-black/40 rounded-lg overflow-hidden border border-white/5 p-0.5 w-full lg:w-auto shrink-0 shadow-inner">
                   <button
                     type="button"
                     onClick={() => setViewingDay('yesterday')}
-                    className={`flex-1 sm:flex-none px-3 py-1.5 text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${viewingDay === 'yesterday' ? 'bg-purple-500/80 text-white shadow-sm' : 'text-white/40 hover:text-white/80'}`}
+                    className={`flex-1 lg:flex-none px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all rounded-md flex items-center justify-center gap-1.5 ${viewingDay === 'yesterday' ? 'bg-purple-500/80 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
                   >
-                    <Calendar size={11} /> Yesterday
+                    <Calendar size={12} className="sm:w-3.5 sm:h-3.5" /> Yesterday
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewingDay('today')}
-                    className={`flex-1 sm:flex-none px-3 py-1.5 text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${viewingDay === 'today' ? 'bg-blue-500/80 text-white shadow-sm' : 'text-white/40 hover:text-white/80'}`}
+                    className={`flex-1 lg:flex-none px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all rounded-md flex items-center justify-center gap-1.5 ${viewingDay === 'today' ? 'bg-blue-500/80 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
                   >
                     Today
                   </button>
                 </div>
 
-                {/* Group Header Tab Selector (Group Level Tab Names) */}
-                <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10 w-full sm:w-auto sm:flex-1 max-w-full sm:max-w-sm p-0.5 gap-1">
+                {/* Group Header Tab Selector */}
+                <div className="flex bg-black/40 rounded-lg overflow-hidden border border-white/5 w-full lg:flex-1 max-w-full p-0.5 gap-0.5 shadow-inner">
                   {(() => {
                     const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
                     const myUserId = myMemberInfo?.userId || '';
@@ -1389,11 +1363,10 @@ export default function ConnectGroupsTab() {
                       return (
                         <div
                           key={idx}
-                          className={`flex-1 flex items-center justify-center rounded-md text-[9.5px] font-bold uppercase transition-all ${
-                            activeGroupTab === idx
-                              ? 'bg-blue-500/25 text-blue-300 border border-blue-400/40 shadow-sm'
-                              : 'text-white/50 hover:text-white/80 border border-transparent'
-                          }`}
+                          className={`flex-1 flex items-center justify-center rounded-md text-[9.5px] sm:text-[11px] font-bold uppercase tracking-wide transition-all ${activeGroupTab === idx
+                            ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30 shadow-sm'
+                            : 'text-white/40 hover:text-white/80 border border-transparent hover:bg-white/5'
+                            }`}
                         >
                           {isEditingThisTab ? (
                             <input
@@ -1416,7 +1389,7 @@ export default function ConnectGroupsTab() {
                                 handleUpdateGroupTabNames(viewingGroup._id, currentNames);
                                 setEditingTabIdx(null);
                               }}
-                              className="w-full bg-black/80 border border-blue-400 rounded px-1 py-0.5 text-[9.5px] text-white outline-none text-center font-bold"
+                              className="w-full h-full min-h-[28px] sm:min-h-[32px] bg-black/80 border border-blue-400/50 rounded-md px-1.5 text-white outline-none text-center font-bold"
                             />
                           ) : (
                             <div
@@ -1428,12 +1401,12 @@ export default function ConnectGroupsTab() {
                                   setEditingTabName(tabName);
                                 }
                               }}
-                              className="w-full py-1 px-1.5 flex items-center justify-center gap-1 cursor-pointer truncate"
-                              title={viewingGroup.adminId === myUserId ? "Double click to rename group header tab" : "Group Header Tab"}
+                              className="w-full h-full min-h-[28px] sm:min-h-[32px] px-1 sm:px-2 flex items-center justify-center gap-1 cursor-pointer truncate active:scale-95 transition-transform select-none"
+                              title={viewingGroup.adminId === myUserId ? "Double click to rename tab" : "Group Tab"}
                             >
                               <span className="truncate">{tabName}</span>
-                              {activeGroupTab === idx && (
-                                <span className="text-[7.5px] text-blue-300/60 font-mono">✏️</span>
+                              {activeGroupTab === idx && viewingGroup.adminId === myUserId && (
+                                <span className="text-[8px] sm:text-[9px] text-blue-300/40 font-mono hidden sm:inline" title="Double click to edit">✏️</span>
                               )}
                             </div>
                           )}
@@ -1444,23 +1417,23 @@ export default function ConnectGroupsTab() {
                 </div>
               </div>
 
-              {/* Row 2: Member Search Bar (Single Dedicated Full Width for Desktop & Mobile) */}
-              <div className="relative w-full">
-                <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+              {/* Row 2: Member Search Bar */}
+              <div className="relative w-full group">
+                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-blue-400 transition-colors pointer-events-none sm:w-3.5 sm:h-3.5" />
                 <input
                   type="text"
                   placeholder="Search member..."
                   value={memberSearchQuery}
                   onChange={(e) => setMemberSearchQuery(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg pl-7 pr-6 py-1.5 text-[10px] text-white placeholder:text-white/30 outline-none focus:border-blue-500/50 transition-all font-semibold"
+                  className="w-full bg-black/30 border border-white/10 rounded-lg sm:rounded-xl pl-8 sm:pl-9 pr-8 py-2 sm:py-2.5 text-[10px] sm:text-xs text-white placeholder:text-white/30 outline-none focus:border-blue-500/50 focus:bg-black/50 transition-all font-medium shadow-inner"
                 />
                 {memberSearchQuery && (
                   <button
                     type="button"
                     onClick={() => setMemberSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white text-[10px] font-bold"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-white/40 hover:text-white hover:bg-white/10 rounded transition-colors"
                   >
-                    ✕
+                    <X size={12} className="sm:w-3.5 sm:h-3.5" />
                   </button>
                 )}
               </div>
@@ -1560,13 +1533,12 @@ export default function ConnectGroupsTab() {
                   return (
                     <div
                       key={member.userId}
-                      className={`relative bg-black/40 border p-1.5 pt-2.5 rounded-xl flex flex-col gap-1 shadow-sm transition-all w-full h-fit ${
-                        isGroupAdmin
-                          ? 'border-amber-500/40 bg-gradient-to-b from-amber-500/10 via-black/40 to-black/40 shadow-[0_0_12px_rgba(245,158,11,0.12)]'
-                          : isCoAdmin
+                      className={`relative bg-black/40 border p-1.5 pt-2.5 rounded-xl flex flex-col gap-1 shadow-sm transition-all w-full h-fit ${isGroupAdmin
+                        ? 'border-amber-500/40 bg-gradient-to-b from-amber-500/10 via-black/40 to-black/40 shadow-[0_0_12px_rgba(245,158,11,0.12)]'
+                        : isCoAdmin
                           ? 'border-sky-500/40 bg-gradient-to-b from-sky-500/10 via-black/40 to-black/40 shadow-[0_0_10px_rgba(56,189,248,0.1)]'
                           : 'border-white/10'
-                      }`}
+                        }`}
                     >
                       {/* Top Border Role / Self Badge */}
                       {isGroupAdmin ? (
@@ -1588,15 +1560,14 @@ export default function ConnectGroupsTab() {
                       )}
 
                       {/* Top Right Border Rank Badge */}
-                      <span className={`absolute -top-2.5 right-2 px-2 py-0.5 bg-black/90 rounded-md text-[11px] font-black tracking-wider uppercase z-20 shadow-md border backdrop-blur-md ${
-                        rankIdx === 0
-                          ? 'text-amber-300 border-amber-500/60 shadow-amber-500/20'
-                          : rankIdx === 1
+                      <span className={`absolute -top-2.5 right-2 px-2 py-0.5 bg-black/90 rounded-md text-[11px] font-black tracking-wider uppercase z-20 shadow-md border backdrop-blur-md ${rankIdx === 0
+                        ? 'text-amber-300 border-amber-500/60 shadow-amber-500/20'
+                        : rankIdx === 1
                           ? 'text-slate-200 border-slate-300/60'
                           : rankIdx === 2
-                          ? 'text-amber-400 border-amber-700/60'
-                          : 'text-white/70 border-white/20'
-                      }`}>
+                            ? 'text-amber-400 border-amber-700/60'
+                            : 'text-white/70 border-white/20'
+                        }`}>
                         #{rankIdx + 1}
                       </span>
 
@@ -1739,7 +1710,8 @@ export default function ConnectGroupsTab() {
               })()}
             </div>
           </>
-        )}
+        )
+        }
         <ConfirmationModal
           isOpen={confirmModal.isOpen}
           onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
@@ -1748,7 +1720,7 @@ export default function ConnectGroupsTab() {
           message={confirmModal.message}
           isDestructive={confirmModal.isDestructive}
         />
-      </div>
+      </div >
     );
   }
 

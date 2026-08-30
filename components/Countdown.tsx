@@ -155,39 +155,28 @@ export default function Countdown({
   // EMPTY STATE CARD
   if (!id || totalCount === 0 || countdowns.length === 0) {
     return (
-      <div className="w-[180px] xs:w-[200px] sm:w-[280px] bg-gradient-to-br from-indigo-950/90 via-slate-900/90 to-purple-950/95 border border-indigo-500/30 shadow-[0_15px_40px_rgba(0,0,0,0.85)] backdrop-blur-2xl rounded-xl sm:rounded-3xl p-1.5 sm:p-3 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300">
-        <div className="flex items-center gap-1 sm:gap-2 pb-1 mb-1.5 sm:mb-2 border-b border-white/10">
+      <div className="w-[150px] sm:w-[200px] bg-slate-900/30 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-2xl p-1.5 sm:p-2 text-white pointer-events-auto select-none overflow-hidden transition-all duration-300">
+        <div className="flex items-center gap-1 pb-1.5 border-b border-white/10">
           <button
             onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
-            className="p-0.5 sm:p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-            title="Collapse to left edge"
+            className="p-1 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
           >
-            <ChevronLeft size={14} className="sm:w-4 sm:h-4" />
+            <ChevronLeft size={12} />
           </button>
-          <div className="p-0.5 sm:p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 shrink-0">
-            <Hourglass className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse" />
-          </div>
-          <span className="text-[10px] sm:text-xs font-black tracking-wide bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent uppercase break-words flex-1">
-            Target Countdowns
+          <Hourglass className="w-3 h-3 text-indigo-400 animate-pulse shrink-0" />
+          <span className="text-[10px] sm:text-xs font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-pink-300 uppercase truncate flex-1">
+            Targets
           </span>
         </div>
 
-        <div className="flex flex-col items-center justify-center p-1.5 sm:p-3 text-center gap-1 sm:gap-2 bg-white/5 border border-white/10 rounded-lg sm:rounded-xl my-0.5">
-          <div className="p-1 sm:p-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <h4 className="text-[10px] sm:text-xs font-bold text-white">No Target Days Set</h4>
-            <p className="text-[8.5px] sm:text-[10px] text-white/60 leading-tight">
-              Set exam dates, birthdays, or target goals to see days remaining!
-            </p>
-          </div>
+        <div className="flex flex-col items-center justify-center py-3 text-center gap-1.5">
+          <Calendar className="w-6 h-6 text-white/20" />
+          <h4 className="text-[9px] sm:text-[10px] font-bold text-white">No Targets Set</h4>
           <button
             onClick={handleAddNew}
-            className="mt-0.5 px-2 py-0.5 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[9px] sm:text-[11px] font-bold shadow-lg shadow-indigo-500/25 active:scale-95 transition-all flex items-center gap-1"
+            className="mt-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white text-[9px] font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1"
           >
-            <Plus className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
-            <span>Add Target</span>
+            <Plus size={10} /> Add
           </button>
         </div>
       </div>
@@ -197,248 +186,189 @@ export default function Countdown({
   const hasTime = examCountdown.endDate && examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
 
   return (
-    <div className="group w-[180px] xs:w-[200px] sm:w-[280px] bg-gradient-to-br from-indigo-950/95 via-slate-900/95 to-purple-950/95 border border-indigo-500/35 shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl rounded-xl sm:rounded-3xl p-1.5 sm:p-3 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300 hover:border-indigo-500/60">
-      {/* Header Bar: Collapse Arrow + Hourglass + FULL Title */}
-      <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2 pb-0.5 sm:pb-1.5 border-b border-white/10">
-        {/* Collapse Arrow on FAR LEFT */}
+    <div className="group w-[150px] sm:w-[210px] bg-indigo-950/30 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-2xl p-1.5 sm:p-2 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300 hover:border-white/20 flex flex-col gap-1">
+
+      {/* Ambient Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-cyan-400/20 blur-[25px] pointer-events-none rounded-full" />
+
+      {/* Header Bar */}
+      <div className="flex items-center gap-1 pb-1 border-b border-white/10 relative z-10 shrink-0">
         <button
           onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
-          className="p-0.5 sm:p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-          title="Collapse to left edge"
+          className="p-1 rounded-md text-white/50 hover:text-white hover:bg-white/60 transition-colors shrink-0"
         >
-          <ChevronLeft size={14} className="sm:w-4 sm:h-4" />
+          <ChevronLeft size={12} />
         </button>
-
-        <div className="p-0.5 sm:p-1 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 shrink-0">
-          <Hourglass className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 animate-pulse" />
-        </div>
-
-        {/* Full Title without truncation */}
-        <div className="font-black text-[10px] sm:text-[13px] bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 bg-clip-text text-transparent leading-tight break-words flex-1">
-          {isEditing ? "Edit Target" : (examCountdown.title || "Set Target Title")}
+        <Hourglass className="w-2.5 h-2.5 text-indigo-400 animate-pulse shrink-0" />
+        <div className="font-black text-[13px] sm:text-[15px] text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-pink-300 truncate flex-1 leading-tight">
+          {isEditing ? "Edit Target" : (examCountdown.title || "Set Title")}
         </div>
       </div>
 
       {showMaxError && (
-        <div className="mb-1.5 p-1 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[9px] font-bold text-center animate-in fade-in zoom-in-95">
-          Maximum 5 target countdowns allowed!
+        <div className="px-1 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[8px] font-bold text-center animate-in fade-in zoom-in-95 relative z-10">
+          Max 5 allowed!
         </div>
       )}
 
-      {/* Editing State Form */}
-      {isEditing ? (
-        <div className="space-y-1 sm:space-y-2 py-0.5">
-          <input
-            type="text"
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            className="w-full bg-slate-950/80 border border-indigo-500/40 rounded-lg px-2 py-1 text-white outline-none focus:border-indigo-400 text-[10px] sm:text-xs font-semibold placeholder:text-white/30"
-            placeholder="Set Target Title"
-            autoFocus
-          />
-          <div className="flex flex-col gap-1 sm:gap-1.5 relative">
-            <div className="w-full">
-              <CustomDatePicker value={editDateOnly} onChange={setEditDateOnly} placeholder="Select Target Date" />
-            </div>
-            <div className="w-full">
-              <CustomTimePicker value={editTimeOnly} onChange={setEditTimeOnly} />
-            </div>
+      {/* Content Area */}
+      <div className="flex-1 flex flex-col justify-center min-h-[75px] sm:min-h-[85px] relative z-10">
+        {isEditing ? (
+          <div className="flex flex-col gap-1 w-full">
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-md px-1.5 py-1 text-white outline-none focus:border-cyan-400 text-[10px] font-bold placeholder:text-white/30"
+              placeholder="Target Title"
+              autoFocus
+            />
+            <CustomDatePicker value={editDateOnly} onChange={setEditDateOnly} placeholder="Date" />
+            <CustomTimePicker value={editTimeOnly} onChange={setEditTimeOnly} />
           </div>
-          <button
-            onClick={handleSave}
-            className="w-full py-1 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[10px] sm:text-xs font-bold shadow-md shadow-emerald-500/20 transition-all active:scale-95"
-          >
-            Save Target
-          </button>
-        </div>
-      ) : (
-        /* Countdown Days Display */
-        <div className="flex flex-col items-center justify-center py-0.5">
-          {/* Main Counter Row with Edge Navigation Arrows */}
-          <div className="flex items-center justify-between gap-0.5 sm:gap-1.5 w-full">
-            {/* Left Edge Arrow */}
-            {totalCount > 1 && (
-              <button
-                disabled={!hasPrev}
-                onClick={onPrev}
-                className="p-0.5 sm:p-1.5 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white disabled:opacity-25 disabled:hover:bg-white/5 disabled:hover:text-white/70 transition-all shrink-0 active:scale-95"
-                title="Previous Target"
-              >
-                <ChevronLeft size={12} className="sm:w-4 sm:h-4" />
-              </button>
-            )}
+        ) : (
+          <div className="flex items-center justify-between w-full">
+            {/* Prev Arrow */}
+            <div className="w-4 flex justify-start">
+              {totalCount > 1 && (
+                <button
+                  disabled={!hasPrev}
+                  onClick={onPrev}
+                  className="p-0.5 rounded-full text-white/40 hover:text-white bg-white/60 disabled:opacity-0 transition-all"
+                >
+                  <ChevronLeft size={12} className="text-black" />
+                </button>
+              )}
+            </div>
 
-            {/* Compact Days Counter Block */}
-            <div className="relative flex-1 bg-slate-950/70 border border-indigo-500/20 rounded-lg sm:rounded-xl p-0.5 sm:p-1.5 text-center flex flex-col items-center justify-center shadow-inner overflow-hidden">
-              {/* Ambient Background Radial Glow */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 via-indigo-500/10 to-pink-500/10 blur-md pointer-events-none" />
-
-              {!hasTime ? (
+            {/* Main Countdown Display Logic */}
+            <div className="flex flex-col items-center justify-center flex-1">
+              {hasTime && timeLeft.days === 0 && timeLeft.hours < 12 ? (
+                // LESS THAN 12 HOURS - SHOW HUGE TIME
                 <>
-                  {/* Tomorrow & under 12 hrs left */}
-                  {timeLeft.days === 1 && timeLeft.hours < 12 ? (
-                    <>
-                      <div className="text-base sm:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-indigo-200 to-pink-300 drop-shadow-md font-mono">
-                        {timeLeft.hours}h {String(timeLeft.mins).padStart(2, '0')}m
-                      </div>
-                      <div className="text-[6.5px] sm:text-[8px] font-mono uppercase tracking-widest text-amber-300/90 font-black mt-0.5">
-                        Tomorrow
-                      </div>
-                    </>
-                  ) : timeLeft.days === 1 ? (
-                    <>
-                      <div className="text-lg sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
-                        01
-                      </div>
-                      <div className="text-[6.5px] sm:text-[8px] font-mono uppercase tracking-widest text-cyan-300/80 font-bold mt-0.5">
-                        Tomorrow
-                      </div>
-                    </>
-                  ) : timeLeft.days === 0 ? (
-                    <>
-                      <div className="text-base sm:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 drop-shadow-md font-mono">
-                        {timeLeft.hours}h {String(timeLeft.mins).padStart(2, '0')}m
-                      </div>
-                      <div className="text-[6.5px] sm:text-[8px] font-mono uppercase tracking-widest text-emerald-400 font-extrabold mt-0.5">
-                        Target Today!
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-lg sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
-                        {String(timeLeft.days).padStart(2, '0')}
-                      </div>
-                      <div className="text-[6.5px] sm:text-[8px] font-mono uppercase tracking-widest text-cyan-300/80 font-bold mt-0.5">
-                        Days Remaining
-                      </div>
-                    </>
-                  )}
+                  <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-pink-400 tracking-tighter drop-shadow-sm font-mono leading-none">
+                    {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.mins).padStart(2, '0')}
+                  </span>
+                  <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-amber-400 animate-pulse mt-0.5">
+                    Hours Left
+                  </span>
+                </>
+              ) : timeLeft.days === 0 && !hasTime ? (
+                // NO TIME SPECIFIED, DAY IS 0 -> TARGET TODAY
+                <>
+                  <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-teal-500 tracking-tighter drop-shadow-sm leading-none">
+                    00
+                  </span>
+                  <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-emerald-400 animate-pulse mt-0.5">
+                    Target Today
+                  </span>
                 </>
               ) : (
+                // DEFAULT SHOW HUGE DAYS (Subtext Time if applicable)
                 <>
-                  <div className="text-lg sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-indigo-200 to-pink-300 drop-shadow-md">
+                  <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-cyan-200 tracking-tighter leading-none drop-shadow-sm">
                     {String(timeLeft.days).padStart(2, '0')}
-                  </div>
-                  <div className="text-[6.5px] sm:text-[8px] font-mono uppercase tracking-widest text-cyan-300/80 font-bold mt-0.5">
-                    Days Remaining
-                  </div>
+                  </span>
+                  {hasTime ? (
+                    <div className="flex items-center gap-0.5 mt-0.5 bg-black/20 px-1.5 py-0.5 rounded border border-white/5 text-[8px] font-mono text-cyan-200/80">
+                      <span>{String(timeLeft.hours).padStart(2, '0')}h</span>
+                      <span>{String(timeLeft.mins).padStart(2, '0')}m</span>
+                    </div>
+                  ) : (
+                    <span className="text-[7px] uppercase font-black tracking-widest text-cyan-400/80 mt-0.5">
+                      Days Left
+                    </span>
+                  )}
                 </>
               )}
             </div>
 
-            {/* Right Edge Arrow */}
-            {totalCount > 1 && (
-              <button
-                disabled={!hasNext}
-                onClick={onNext}
-                className="p-0.5 sm:p-1.5 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white disabled:opacity-25 disabled:hover:bg-white/5 disabled:hover:text-white/70 transition-all shrink-0 active:scale-95"
-                title="Next Target"
-              >
-                <ChevronRight size={12} className="sm:w-4 sm:h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Sub-Time Row (HH:MM:SS) if time specified or available */}
-          {hasTime && (
-            <div className="grid grid-cols-3 gap-0.5 sm:gap-1.5 w-full mt-0.5 sm:mt-1.5 text-center">
-              <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-lg py-0.5 px-0.5 sm:px-1">
-                <div className="text-[10px] sm:text-xs font-black text-white">{String(timeLeft.hours).padStart(2, '0')}</div>
-                <div className="text-[6px] sm:text-[7px] text-white/50 uppercase tracking-wider font-bold">Hours</div>
-              </div>
-              <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-lg py-0.5 px-0.5 sm:px-1">
-                <div className="text-[10px] sm:text-xs font-black text-white">{String(timeLeft.mins).padStart(2, '0')}</div>
-                <div className="text-[6px] sm:text-[7px] text-white/50 uppercase tracking-wider font-bold">Mins</div>
-              </div>
-              <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-lg py-0.5 px-0.5 sm:px-1">
-                <div className="text-[10px] sm:text-xs font-black text-cyan-400">{String(timeLeft.secs).padStart(2, '0')}</div>
-                <div className="text-[6px] sm:text-[7px] text-white/50 uppercase tracking-wider font-bold">Secs</div>
-              </div>
+            {/* Next Arrow */}
+            <div className="w-4 flex justify-end">
+              {totalCount > 1 && (
+                <button
+                  disabled={!hasNext}
+                  onClick={onNext}
+                  className="p-0.5 rounded-full text-white/40 hover:text-white bg-white/60 disabled:opacity-0 transition-all"
+                >
+                  <ChevronRight size={12} className="text-black" />
+                </button>
+              )}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Footer Actions Row */}
-      <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between gap-1 text-[10px]">
-        {totalCount > 1 && (
-          <span className="text-[10px] font-mono text-cyan-300/80 font-bold px-1">
-            {currentIndex + 1}/{totalCount}
-          </span>
+          </div>
         )}
-
-        <div className="flex items-center gap-1.5 ml-auto">
-          {/* Add New Target Button */}
-          <button
-            onClick={handleAddNew}
-            disabled={countdowns.length >= 5}
-            className={`px-2 py-1 rounded-lg border transition-all flex items-center gap-1 ${
-              countdowns.length >= 5
-                ? 'opacity-40 cursor-not-allowed bg-white/5 border-white/10 text-white/40'
-                : 'bg-indigo-500/20 hover:bg-indigo-500/40 border-indigo-500/30 text-indigo-300 hover:text-white'
-            }`}
-            title={countdowns.length >= 5 ? "Maximum 5 target countdowns allowed" : "Add New Target"}
-          >
-            <Plus size={12} />
-            <span className="font-semibold text-[10px]">Add</span>
-          </button>
-
-          {/* Edit / Save Button */}
-          <button
-            onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-            className={`px-2 py-1 rounded-lg transition-all border flex items-center gap-1 ${
-              isEditing
-                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
-                : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/15'
-            }`}
-            title={isEditing ? "Save Target" : "Edit Target"}
-          >
-            {isEditing ? <Check size={12} className="text-emerald-400" /> : <Edit2 size={12} />}
-            <span className="font-semibold text-[10px]">{isEditing ? "Save" : "Edit"}</span>
-          </button>
-
-          {/* Delete Button */}
-          {!isEditing && id && (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/30 border border-red-500/20 text-red-400 transition-all"
-              title="Delete Target"
-            >
-              <Trash2 size={12} />
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[900] flex items-center justify-center pointer-events-auto p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
-          <div className="relative bg-slate-950 border border-red-500/40 rounded-3xl p-5 z-10 w-full max-w-[280px] shadow-2xl animate-in zoom-in-95 text-center">
-            <div className="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto mb-3">
-              <Trash2 size={20} />
-            </div>
-            <h3 className="text-white font-bold text-sm mb-1">Delete Countdown?</h3>
-            <p className="text-white/60 text-xs mb-4 leading-tight">
-              Are you sure you want to delete <span className="text-white font-semibold">{examCountdown.title ? `"${examCountdown.title}"` : 'this target'}</span>?
-            </p>
+      {/* Footer Actions Row */}
+      <div className="pt-1 border-t border-white/10 flex items-center justify-between relative z-10 shrink-0">
+        <div className="flex items-center">
+          {totalCount > 1 && !isEditing ? (
+            <span className="text-[8px] font-mono text-white/40 font-bold px-1">
+              {currentIndex + 1}/{totalCount}
+            </span>
+          ) : (
+            <span className="w-1" />
+          )}
+        </div>
 
-            <div className="flex gap-2">
+        <div className="flex items-center gap-1">
+          {isEditing ? (
+            // EDIT MODE: CANCEL & SAVE SIDE-BY-SIDE
+            <>
               <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-colors"
+                onClick={() => setIsEditing(false)}
+                className="px-2 py-1 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 transition-all text-[9px] font-bold"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  if (id) deleteCountdown(id);
-                }}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-colors shadow-lg shadow-red-500/30"
+                onClick={handleSave}
+                className="px-2 py-1 rounded border border-emerald-500/30 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition-all text-[9px] font-bold flex items-center gap-1"
               >
-                Delete
+                <Check size={10} /> Save
               </button>
+            </>
+          ) : (
+            // VIEW MODE: MINIMAL ICONS
+            <>
+              <button
+                onClick={handleAddNew}
+                disabled={countdowns.length >= 5}
+                className="p-1 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-30 transition-all"
+              >
+                <Plus size={10} />
+              </button>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-1 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all"
+              >
+                <Edit2 size={10} />
+              </button>
+              {id && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-1 rounded border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
+                >
+                  <Trash2 size={10} />
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal (Unchanged structurally, just styled compact) */}
+      {showDeleteConfirm && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[900] flex items-center justify-center pointer-events-auto p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="relative bg-slate-900/90 backdrop-blur-xl border border-red-500/30 rounded-2xl p-4 z-10 w-[220px] shadow-2xl animate-in zoom-in-95 text-center">
+            <h3 className="text-white font-bold text-sm mb-1">Delete Target?</h3>
+            <p className="text-white/60 text-[10px] mb-4">
+              Delete <span className="text-white font-bold">{examCountdown.title || 'this target'}</span>?
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-[11px] font-bold text-white transition-colors">Cancel</button>
+              <button onClick={() => { setShowDeleteConfirm(false); if (id) deleteCountdown(id); }} className="flex-1 py-1.5 bg-red-500/80 hover:bg-red-500 rounded-md text-[11px] font-bold text-white transition-colors">Delete</button>
             </div>
           </div>
         </div>,
@@ -460,39 +390,25 @@ function CustomTimePicker({ value, onChange }: { value: string, onChange: (time:
     <>
       <div
         onClick={() => setIsOpen(true)}
-        className="w-full bg-slate-950/80 border border-indigo-500/30 hover:border-indigo-400 rounded-xl px-3 py-1.5 text-white cursor-pointer transition-colors text-xs text-center flex items-center justify-center min-h-[36px]"
+        className="w-full bg-black/30 border border-white/10 hover:border-cyan-500/50 rounded-md px-1.5 py-1 text-white cursor-pointer text-[9px] text-center min-h-[24px] flex items-center justify-center transition-colors"
       >
-        <span className={value ? "text-white font-semibold" : "text-white/40"}>{value || "Select Time (Optional)"}</span>
+        <span className={value ? "font-bold text-cyan-300" : "text-white/40"}>{value || "Time (Optional)"}</span>
       </div>
 
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[900] flex items-center justify-center pointer-events-auto p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
-          <div className="relative bg-slate-950 border border-indigo-500/40 rounded-3xl p-5 z-10 w-full max-w-[280px] shadow-2xl animate-in zoom-in-95">
-            <h3 className="text-white text-center font-bold mb-3 tracking-wide text-sm">
-              Target Time <span className="text-white/40 text-[10px] font-normal">(Optional)</span>
-            </h3>
-
+          <div className="relative bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-4 z-10 w-[220px] shadow-2xl animate-in zoom-in-95">
+            <h3 className="text-white text-center font-bold mb-3 text-xs">Set Time</h3>
             <input
               type="time"
               value={tempTime}
               onChange={e => setTempTime(e.target.value)}
-              className="w-full bg-slate-900 text-white rounded-xl px-3 py-3 border border-indigo-500/30 outline-none focus:border-indigo-400 mb-4 [color-scheme:dark] text-xl text-center shadow-inner font-mono font-bold"
+              className="w-full bg-black/40 text-white rounded-lg px-2 py-2 border border-white/10 outline-none mb-4 text-lg text-center font-mono"
             />
-
             <div className="flex gap-2">
-              <button
-                onClick={() => { onChange(''); setIsOpen(false); }}
-                className="flex-1 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-xl text-xs font-bold transition-colors"
-              >
-                Clear
-              </button>
-              <button
-                onClick={() => { onChange(tempTime); setIsOpen(false); }}
-                className="flex-[2] py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-colors shadow-lg shadow-indigo-500/30"
-              >
-                Save Time
-              </button>
+              <button onClick={() => { onChange(''); setIsOpen(false); }} className="flex-1 py-1.5 bg-red-500/20 text-red-400 rounded-md text-[11px] font-bold">Clear</button>
+              <button onClick={() => { onChange(tempTime); setIsOpen(false); }} className="flex-[2] py-1.5 bg-indigo-500/80 text-white rounded-md text-[11px] font-bold">Save</button>
             </div>
           </div>
         </div>,
