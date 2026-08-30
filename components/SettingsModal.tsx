@@ -1023,6 +1023,34 @@ export default function SettingsModal() {
                     </button>
                   </div>
 
+                  {/* Top Replay Tour Banner in Preferences */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-black/40 border border-indigo-500/30 gap-3 shadow-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
+                        <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                          <span>Guided Onboarding Tour</span>
+                          <span className="text-[9px] bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 px-1.5 py-0.2 rounded-full">Interactive</span>
+                        </h4>
+                        <p className="text-[10px] sm:text-[11px] text-white/70 leading-tight mt-0.5">
+                          Need a refresher on layout tools, focus trackers, or shortcuts? Replay the guided tour anytime!
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        useDashboardStore.getState().startTour();
+                        toggleSettings();
+                      }}
+                      className="px-3.5 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer self-end sm:self-auto"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>Replay Tour</span>
+                    </button>
+                  </div>
+
                   <div className="flex flex-col gap-4">
                     {/* SECTION 1: THEME & DISPLAY OPTIONS */}
                     <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
@@ -1977,6 +2005,34 @@ export default function SettingsModal() {
                     </div>
                     <button onClick={() => setInfoModalKey('wallpapers')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors shrink-0">
                       <Info className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Replay Tour Banner in Wallpaper Settings */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-black/40 border border-emerald-500/30 gap-3 shadow-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                        <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                          <span>Wallpaper & Layout Refresher</span>
+                          <span className="text-[9px] bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 px-1.5 py-0.2 rounded-full">Guided Tour</span>
+                        </h4>
+                        <p className="text-[10px] sm:text-[11px] text-white/70 leading-tight mt-0.5">
+                          Need a refresher on switching wallpapers, cycling backgrounds, or workspace hotkeys? Replay the 1-minute guided tour!
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        useDashboardStore.getState().startTour();
+                        toggleSettings();
+                      }}
+                      className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer self-end sm:self-auto"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>Replay Tour</span>
                     </button>
                   </div>
 
