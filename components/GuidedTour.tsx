@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { ChevronLeft, ChevronRight, Clock, Flame, Calendar, ListTodo, Sparkles, Settings, CheckCircle2, Map, BarChart2, StickyNote, Timer as TimerIcon, Newspaper, Trophy, Users, Image as ImageIcon, EyeOff, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Flame, Calendar, ListTodo, Sparkles, Settings, CheckCircle2, Map, BarChart2, StickyNote, Timer as TimerIcon, Newspaper, Trophy, Users, Image as ImageIcon, EyeOff, Target, CalendarDays, MonitorPlay, Download, Sliders, ExternalLink, PartyPopper, Check } from 'lucide-react';
 
 interface TourStep {
   id: string;
@@ -106,9 +106,17 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: 'dock',
     selector: '#nav-dock',
-    title: 'App Dock & Timetable Hub',
-    description: 'Launch essential web tools (Gemini, Keep, WhatsApp, VS Code, Translate) with 1 click, and expand your customized Weekly Timetable right from the bottom bar!',
+    title: 'App Dock Command Center',
+    description: 'Launch essential productivity web tools (Gemini, Keep, WhatsApp, VS Code, Translate) with 1 click right from the bottom dock!',
     icon: Sparkles,
+    positionHint: 'top',
+  },
+  {
+    id: 'timetable',
+    selector: '[data-tour="timetable-btn"]',
+    title: 'Interactive Weekly Timetable 🗓️',
+    description: 'Tap to expand your timetable! Timeslots adjust dynamically based on your custom Day Start Time (e.g. 8:00 AM) and duration settings. ⚠️ IMPORTANT: Be sure to click "Backup" (download json) after setting up your schedule to avoid timetable loss during updates—you can 1-click Restore it anytime!',
+    icon: CalendarDays,
     positionHint: 'top',
   },
   {
@@ -154,12 +162,64 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: 'settings',
     selector: '[data-tour="settings-btn"]',
-    title: 'Settings & Workspace Control',
-    description: 'Customize everything—wallpaper scale, widget visibility, alarm sounds, and hotkeys. Need a refresher? Replay this guided tour anytime from Settings!',
+    title: 'Settings & Workspace Control ⚙️',
+    description: 'Customize everything—wallpaper scale, alarm ringtones, theme, and hotkeys. Need a refresher? Replay this guided tour anytime from Settings!',
     icon: Settings,
     positionHint: 'left',
   },
 ];
+
+const FlowerFlowAnimation = () => {
+  const flowers = ['🌸', '🌺', '🌻', '🌼', '🌷', '🎉', '✨', '🏵️', '💐', '⭐', '🌸', '🌼', '🌺', '✨', '🌷'];
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[99999] overflow-hidden">
+      {Array.from({ length: 35 }).map((_, i) => {
+        const flower = flowers[i % flowers.length];
+        const left = (i * 2.9) % 100;
+        const duration = 3.2 + (i % 5) * 0.7;
+        const delay = (i % 8) * 0.25;
+        const fontSize = 18 + (i % 5) * 5;
+        return (
+          <div
+            key={i}
+            className="absolute -top-10 animate-flower-fall opacity-0"
+            style={{
+              left: `${left}%`,
+              fontSize: `${fontSize}px`,
+              animationDuration: `${duration}s`,
+              animationDelay: `${delay}s`,
+              animationIterationCount: 'infinite',
+              animationTimingFunction: 'ease-in-out',
+            }}
+          >
+            {flower}
+          </div>
+        );
+      })}
+      <style jsx global>{`
+        @keyframes flowerFall {
+          0% {
+            transform: translateY(-10vh) rotate(0deg) scale(0.6);
+            opacity: 0;
+          }
+          15% {
+            opacity: 1;
+          }
+          85% {
+            opacity: 0.9;
+          }
+          100% {
+            transform: translateY(105vh) rotate(360deg) scale(1.2);
+            opacity: 0;
+          }
+        }
+        .animate-flower-fall {
+          animation-name: flowerFall;
+        }
+      `}</style>
+    </div>
+  );
+};
 
 export default function GuidedTour() {
   const { hasSeenOnboarding, isTourOpen, setIsTourOpen, setHasSeenOnboarding, _hasHydrated, isPanicHidden, isHidden } = useDashboardStore();
@@ -173,6 +233,10 @@ export default function GuidedTour() {
   // Mandatory 2-step practice tracking for Focus Mode (Focus -> Restore)
   const [hasHiddenFocus, setHasHiddenFocus] = useState(false);
   const [hasRestoredFocus, setHasRestoredFocus] = useState(false);
+
+  // Completion modal state
+  const [showFinishModal, setShowFinishModal] = useState(false);
+  const [finishModalStep, setFinishModalStep] = useState<1 | 2>(1);
 
   // Auto-start tour for new users on initial load
   useEffect(() => {
@@ -308,8 +372,6 @@ export default function GuidedTour() {
     };
   }, [isTourOpen, currentStepIndex]);
 
-  if (!isTourOpen || typeof document === 'undefined') return null;
-
   const currentStep = TOUR_STEPS[currentStepIndex];
   const StepIcon = currentStep?.icon || Sparkles;
   const isFirstStep = currentStepIndex === 0;
@@ -319,7 +381,7 @@ export default function GuidedTour() {
   const currentStepId = currentStep?.id;
   const isPanicStep = currentStepId === 'hide-peek';
   const isFocusStep = currentStepId === 'focus-mode';
-  
+
   // Practice states
   const hasPracticedPanic = hasHiddenPeek && hasRestoredPeek && !isPanicHidden;
   const hasPracticedFocus = hasHiddenFocus && hasRestoredFocus && !isHidden;
@@ -327,9 +389,9 @@ export default function GuidedTour() {
   const isPanicLocked = isPanicStep && !hasPracticedPanic;
   const isFocusLocked = isFocusStep && !hasPracticedFocus;
   const isStepLocked = isPanicLocked || isFocusLocked;
-  
-  let currentTitle = currentStep.title;
-  let currentDescription = currentStep.description;
+
+  let currentTitle = currentStep?.title || '';
+  let currentDescription = currentStep?.description || '';
 
   if (isPanicStep) {
     if (hasPracticedPanic) {
@@ -411,6 +473,8 @@ export default function GuidedTour() {
     setHasSeenOnboarding(true);
     setIsTourOpen(false);
     setCurrentStepIndex(0);
+    setFinishModalStep(1);
+    setShowFinishModal(true);
   };
 
   // Compute spotlight cutout style cleanly wrapping element bounds
@@ -498,8 +562,8 @@ export default function GuidedTour() {
       top = targetRect.top + (targetRect.height / 2) - (cardHeight / 2);
     } else if (hint === 'left') {
       left = targetRect.left - cardWidth - padding;
-      // For lower right toolbar items (Stopwatch, Timer, Notes & Settings), position card significantly higher up
-      const isBottomToolbarItem = ['stopwatch', 'timer', 'notes', 'settings'].includes(currentStep.id) || targetRect.bottom > window.innerHeight - 350;
+      // For lower right toolbar items (Stopwatch, Timer, Notes, Settings & Preferences), position card significantly higher up
+      const isBottomToolbarItem = ['stopwatch', 'timer', 'notes', 'settings', 'preferences-visibility'].includes(currentStep.id) || targetRect.bottom > window.innerHeight - 350;
       if (isBottomToolbarItem) {
         top = targetRect.top - cardHeight - 20;
       } else {
@@ -516,7 +580,7 @@ export default function GuidedTour() {
     }
 
     // Clamp top so card's bottom edge is AT LEAST 120px above screen bottom for bottom toolbar elements
-    const isBottomToolbarItem = ['stopwatch', 'timer', 'notes', 'settings'].includes(currentStep.id) || targetRect.bottom > window.innerHeight - 350;
+    const isBottomToolbarItem = ['stopwatch', 'timer', 'notes', 'settings', 'preferences-visibility'].includes(currentStep.id) || targetRect.bottom > window.innerHeight - 350;
     const maxTopAllowed = isBottomToolbarItem
       ? window.innerHeight - cardHeight - 120
       : window.innerHeight - cardHeight - 50;
@@ -530,6 +594,158 @@ export default function GuidedTour() {
       left: `${left}px`,
     };
   };
+
+  if (showFinishModal && typeof document !== 'undefined') {
+    return createPortal(
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[99990] flex items-center justify-center p-4 select-none">
+        <FlowerFlowAnimation />
+        <div className="relative z-[100000] bg-[#12121a] border border-emerald-500/40 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-[0_0_60px_rgba(16,185,129,0.3)] animate-in zoom-in-95 duration-300 text-white flex flex-col gap-4">
+          
+          {/* Header & Celebration */}
+          <div className="flex flex-col items-center text-center gap-1.5 border-b border-white/10 pb-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-amber-300 flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-0.5">
+              <PartyPopper className="w-6 h-6 text-white animate-bounce" />
+            </div>
+            <h2 className="text-lg sm:text-xl font-black bg-gradient-to-r from-emerald-300 via-teal-200 to-amber-300 bg-clip-text text-transparent">
+              Congratulations! Tour Completed! 🎉
+            </h2>
+            <p className="text-xs text-white/70">
+              Here are 2 essential pro tips to get the ultimate experience from GrindBoard:
+            </p>
+          </div>
+
+          {/* Sub Navigation Tabs */}
+          <div className="flex bg-black/40 p-1 rounded-xl border border-white/10 gap-1">
+            <button
+              onClick={() => setFinishModalStep(1)}
+              className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                finishModalStep === 1
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-white/50 hover:text-white'
+              }`}
+            >
+              <Sliders size={14} />
+              <span>1. Preferences & Focus Mode</span>
+            </button>
+            <button
+              onClick={() => setFinishModalStep(2)}
+              className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                finishModalStep === 2
+                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm'
+                  : 'text-white/50 hover:text-white'
+              }`}
+            >
+              <MonitorPlay size={14} />
+              <span>2. PC Desktop Wallpaper</span>
+            </button>
+          </div>
+
+          {/* Step 1 Content: Preferences & Focus Mode setup */}
+          {finishModalStep === 1 && (
+            <div className="flex flex-col gap-3 bg-white/5 p-4 rounded-2xl border border-white/10 text-xs text-white/80 leading-relaxed animate-in fade-in duration-200">
+              <div className="flex items-start gap-2.5">
+                <Sliders className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-white text-sm mb-1">Hide Any Unwanted Widgets or Controls</h4>
+                  <p className="text-white/70">
+                    Want a cleaner layout? Any widget, button, or drawer on screen (Timers, Notes, Calendar, Deadlines, Dock, Stopwatch, etc.) can be turned OFF anytime!
+                  </p>
+                </div>
+              </div>
+              
+              <div className="bg-black/40 p-3 rounded-xl border border-white/5 flex flex-col gap-2 text-[11px]">
+                <div className="flex items-center gap-1.5 font-semibold text-emerald-300">
+                  <Sparkles size={12} className="text-amber-300" />
+                  <span>Two Ways to Customize Visibility:</span>
+                </div>
+                <p className="text-white/80">
+                  1️⃣ <strong>Settings (⚙️) ➔ Preferences / Visibility:</strong> Permanently toggle off any widget you don't want on your screen.
+                </p>
+                <p className="text-white/80">
+                  2️⃣ <strong>Focus Mode Specific Setup:</strong> In <strong>Settings ➔ Focus / Peek</strong>, choose exactly which widgets hide during Focus Mode (Ctrl+H) so you only see what you need!
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2 Content: PC Wallpaper Setup */}
+          {finishModalStep === 2 && (
+            <div className="flex flex-col gap-3 bg-white/5 p-4 rounded-2xl border border-white/10 text-xs text-white/80 max-h-[35vh] overflow-y-auto custom-scrollbar animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-blue-300 font-bold border-b border-white/10 pb-2">
+                <MonitorPlay className="w-4 h-4 text-blue-400 shrink-0" />
+                <span>Run GrindBoard as Windows Interactive Desktop</span>
+              </div>
+              <p className="text-[11px] text-white/70 leading-relaxed">
+                You can run GrindBoard directly as your interactive Windows desktop background instead of inside a browser!
+              </p>
+              <ol className="list-decimal pl-4 space-y-2 text-[11px] text-white/80">
+                <li>
+                  Download & Install Lively Wallpaper:
+                  <div className="flex gap-2 mt-1">
+                    <a
+                      href="https://drive.google.com/file/d/1TJWAWPTtTbKNMaNVAwz2GwbSb04NO-J5/view?usp=drivesdk"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:underline font-bold bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/30 flex items-center gap-1.5"
+                    >
+                      <Download size={11} /> Direct Google Drive Download
+                    </a>
+                  </div>
+                </li>
+                <li>Open Lively Wallpaper and click <strong>"Add Wallpaper" (+ icon)</strong>.</li>
+                <li>Under <strong>"Enter URL"</strong>, type <code className="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono">https://wallpaper-dashboard-cloud.vercel.app/</code> and press <strong>→</strong>.</li>
+                <li>
+                  <strong>Required Lively Performance Settings:</strong>
+                  <ul className="list-disc pl-4 mt-1 space-y-1 text-white/70">
+                    <li>Settings (⚙️) ➔ <strong>Wallpaper</strong> ➔ Set Web Browser Engine to <strong>Edge (WebView2)</strong>.</li>
+                    <li>Click ⚙️ next to WebView2 and set <strong>Cache Directory</strong> to <strong>Disk</strong> (prevents data loss on restart).</li>
+                    <li>Settings (⚙️) ➔ <strong>Audio</strong> ➔ Untick <strong>"Play audio only when desktop is focused"</strong> (so timer alarms ring anytime!).</li>
+                    <li>Settings (⚙️) ➔ <strong>General</strong> ➔ Toggle <strong>"Start with Windows"</strong> ON.</li>
+                  </ul>
+                </li>
+              </ol>
+            </div>
+          )}
+
+          {/* Modal Action Buttons (Back / Next / Finish) */}
+          <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/10">
+            {finishModalStep === 1 ? (
+              <div />
+            ) : (
+              <button
+                onClick={() => setFinishModalStep(1)}
+                className="flex items-center gap-1 px-3 py-2 text-xs font-semibold rounded-xl border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <ChevronLeft size={14} />
+                <span>Back</span>
+              </button>
+            )}
+
+            {finishModalStep === 1 ? (
+              <button
+                onClick={() => setFinishModalStep(2)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer ml-auto"
+              >
+                <span>Next: PC Wallpaper Setup</span>
+                <ChevronRight size={14} />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowFinishModal(false)}
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-500/30 active:scale-95 transition-all cursor-pointer ml-auto"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Awesome, Let's Grind! 🚀</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  if (!isTourOpen || typeof document === 'undefined') return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] pointer-events-auto select-none animate-in fade-in duration-300">

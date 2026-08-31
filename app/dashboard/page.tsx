@@ -512,6 +512,7 @@ export default function Dashboard() {
 
               {/* The Closed Button */}
               <div
+                data-tour="timetable-btn"
                 onPointerDown={() => bringToFront('timetable')}
                 className={`absolute bottom-0 origin-bottom transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isTimetableOpen ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto delay-300' : 'opacity-0 translate-y-8 scale-50 pointer-events-none'}`}
               >

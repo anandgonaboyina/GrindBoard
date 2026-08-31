@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock, Sparkles, Flame, WifiOff, Calendar, Lock } from 'lucide-react';
+import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock, Sparkles, Flame, WifiOff, Calendar, Lock, Copy, CopyCheck } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 import GroupTaskManager from './GroupTaskManager';
@@ -189,6 +189,17 @@ export default function ConnectGroupsTab() {
   const [memberActiveTabs, setMemberActiveTabs] = useState<Record<string, number>>({});
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
+  const [isCopyMode, setIsCopyMode] = useState<boolean>(false);
+  const [copyNoticeModal, setCopyNoticeModal] = useState<boolean>(false);
+  const [copyConfirmModal, setCopyConfirmModal] = useState<{
+    isOpen: boolean;
+    targetMember: any | null;
+  }>({ isOpen: false, targetMember: null });
+
+  useEffect(() => {
+    setIsCopyMode(false);
+    setCopyConfirmModal({ isOpen: false, targetMember: null });
+  }, [viewingGroup?._id]);
 
   useEffect(() => {
     if (viewingGroup) {
@@ -438,6 +449,78 @@ export default function ConnectGroupsTab() {
         }
       }
     });
+  };
+
+  const handleConfirmCopyTasks = async () => {
+    if (!copyConfirmModal.targetMember || !viewingGroup) return;
+    const targetMember = copyConfirmModal.targetMember;
+
+    // Find source tasks
+    let sourceTasks: any[] = [];
+    if (viewingGroup.memberTasks) {
+      if (targetMember.userId && viewingGroup.memberTasks[targetMember.userId] !== undefined) {
+        sourceTasks = viewingGroup.memberTasks[targetMember.userId];
+      } else if (targetMember.username && viewingGroup.memberTasks[targetMember.username] !== undefined) {
+        sourceTasks = viewingGroup.memberTasks[targetMember.username];
+      }
+    }
+    if (!sourceTasks || sourceTasks.length === 0) {
+      const isTargetAdmin = viewingGroup.adminId === targetMember.userId || viewingGroup.adminId === targetMember.username || targetMember.role === 'admin';
+      if (isTargetAdmin && viewingGroup.tasks) {
+        sourceTasks = viewingGroup.tasks;
+      }
+    }
+
+    if (!sourceTasks || sourceTasks.length === 0) {
+      showAlertModal('No Tasks Found', `${targetMember.username} has no tasks to copy.`);
+      setCopyConfirmModal({ isOpen: false, targetMember: null });
+      setIsCopyMode(false);
+      return;
+    }
+
+    // Deep clone tasks with unique IDs
+    const clonedTasks = sourceTasks.map((t: any) => ({
+      ...t,
+      id: Date.now().toString() + '_' + Math.random().toString(36).substring(2, 7),
+      completed: false,
+      timeSpent: 0
+    }));
+
+    // Identify current user's ID
+    const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
+    const myEffectiveId = myMemberInfo?.userId || myUsername;
+
+    // Local state update
+    const updatedMemberTasks = {
+      ...(viewingGroup.memberTasks || {}),
+      [myEffectiveId]: clonedTasks
+    };
+    const updatedGroup = { ...viewingGroup, memberTasks: updatedMemberTasks };
+    setViewingGroup(updatedGroup);
+
+    // Global Zustand store update
+    const updatedUserGroups = userGroups.map((g: any) =>
+      g._id === viewingGroup._id ? { ...g, memberTasks: updatedMemberTasks } : g
+    );
+    setUserGroups(updatedUserGroups);
+
+    // Sync to database
+    const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
+    if (token) {
+      try {
+        await fetch(`/api/groups/${viewingGroup._id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ action: 'update_task_list', targetUserId: myEffectiveId, tasks: clonedTasks })
+        });
+      } catch (e) {
+        console.error("Failed to sync copied tasks:", e);
+      }
+    }
+
+    setCopyConfirmModal({ isOpen: false, targetMember: null });
+    setIsCopyMode(false);
+    showAlertModal('Tasks Copied!', `🎉 Successfully copied all tasks from ${targetMember.username} across all tabs to your group task list!`);
   };
 
   const handleClaimLeadership = async (groupId: string) => {
@@ -976,10 +1059,9 @@ export default function ConnectGroupsTab() {
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-[40px] pointer-events-none z-0" />
 
           <div className="relative z-10 flex flex-col gap-2 w-full">
-            {/* Top Bar: Group Title + Status Badges + Action Buttons */}
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2.5 w-full">
+            {/* Top Bar: Group Title + Status Badges */}
+            <div className="flex items-center justify-between gap-2 w-full flex-wrap">
               <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-
                 <h3 className="font-bold text-white text-sm sm:text-base tracking-tight truncate max-w-[180px] xs:max-w-[220px] sm:max-w-xs md:max-w-sm">
                   {viewingGroup.title}
                 </h3>
@@ -1019,15 +1101,58 @@ export default function ConnectGroupsTab() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-1.5 shrink-0 w-full lg:w-auto overflow-x-auto no-scrollbar pb-0.5 lg:pb-0">
+              {!isMember && (
+                (viewingGroup.isPrivate && viewingGroup.allowJoinRequests === false) ? (
+                  <span className="px-3 py-1 bg-red-500/10 text-red-400 text-[10px] font-bold rounded-md border border-red-500/20 whitespace-nowrap shrink-0">
+                    Blocked
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => handleJoinRequest(viewingGroup._id)}
+                    disabled={sentRequests.some(r => String(r.groupId) === String(viewingGroup._id))}
+                    className="px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold rounded-md transition-colors disabled:opacity-50 whitespace-nowrap shadow-sm shrink-0"
+                  >
+                    {sentRequests.some(r => String(r.groupId) === String(viewingGroup._id)) ? 'Pending' : viewingGroup.isPrivate ? 'Request' : 'Join'}
+                  </button>
+                )
+              )}
+            </div>
+
+            {/* Dedicated Action Toolbar Strip */}
+            <div className="flex items-center justify-between flex-wrap gap-1.5 pt-1 border-t border-white/5 w-full">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {isMember && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isCopyMode) {
+                        setIsCopyMode(false);
+                      } else {
+                        setIsCopyMode(true);
+                        setCopyNoticeModal(true);
+                      }
+                    }}
+                    className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer border shrink-0 flex items-center gap-1 ${isCopyMode
+                      ? 'bg-amber-500 text-black border-amber-400 font-black shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse'
+                      : 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 border-sky-500/30'
+                      }`}
+                    title="Copy tasks from any member in this group"
+                  >
+                    <Copy size={11} />
+                    <span>{isCopyMode ? 'Exit Copy Mode' : 'Copy Member Tasks'}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setShowWelcomeModal(true)}
                   className="px-2.5 py-1 flex items-center gap-1 rounded-md bg-white/5 hover:bg-purple-500/20 text-purple-300 hover:text-white transition-colors cursor-pointer text-[10px] font-bold uppercase tracking-wider border border-purple-500/30 shrink-0"
                 >
-                  <Sparkles size={12} className="text-purple-400 animate-pulse" /> Guide
+                  <Sparkles size={12} className="text-purple-400" /> Guide
                 </button>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {isAdmin && (
                   <button
                     onClick={() => {
@@ -1042,22 +1167,6 @@ export default function ConnectGroupsTab() {
                   >
                     <Settings size={12} /> Edit
                   </button>
-                )}
-
-                {!isMember && (
-                  (viewingGroup.isPrivate && viewingGroup.allowJoinRequests === false) ? (
-                    <span className="px-3 py-1 bg-red-500/10 text-red-400 text-[10px] font-bold rounded-md border border-red-500/20 whitespace-nowrap shrink-0">
-                      Blocked
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => handleJoinRequest(viewingGroup._id)}
-                      disabled={sentRequests.some(r => String(r.groupId) === String(viewingGroup._id))}
-                      className="px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold rounded-md transition-colors disabled:opacity-50 whitespace-nowrap shadow-sm shrink-0"
-                    >
-                      {sentRequests.some(r => String(r.groupId) === String(viewingGroup._id)) ? 'Pending' : viewingGroup.isPrivate ? 'Request' : 'Join'}
-                    </button>
-                  )
                 )}
 
                 {isMember && (
@@ -1439,6 +1548,27 @@ export default function ConnectGroupsTab() {
               </div>
             </div>
 
+            {/* Copy Mode Interactive Instruction Banner */}
+            {isCopyMode && (
+              <div className="w-full p-2.5 my-1.5 rounded-xl bg-gradient-to-r from-sky-950/80 via-blue-950/80 to-purple-950/80 border-2 border-sky-400 text-white flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(56,189,248,0.25)] animate-pulse">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-sky-500/20 border border-sky-400 flex items-center justify-center shrink-0">
+                    <Copy className="w-3.5 h-3.5 text-sky-300 animate-bounce" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[11px] font-black text-sky-200 uppercase tracking-wide">Copy Mode Active</span>
+                    <span className="text-[9.5px] text-white/80 truncate sm:whitespace-normal">Click any member's card below to copy all their group tasks to your task list across all tabs!</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsCopyMode(false)}
+                  className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer border border-white/20 shrink-0"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
             {/* Member Leaderboard & Status Overview */}
             <div className="pb-6">
               {(() => {
@@ -1530,14 +1660,23 @@ export default function ConnectGroupsTab() {
                   const isCoAdmin = member.role === 'co-admin' || (!isGroupAdmin && Boolean(member.canEdit));
                   const viewerIsAdmin = isAdmin;
 
+                  const canSelectInCopyMode = isCopyMode && !isMe;
+
                   return (
                     <div
                       key={member.userId}
-                      className={`relative bg-black/40 border p-1.5 pt-2.5 rounded-xl flex flex-col gap-1 shadow-sm transition-all w-full h-fit ${isGroupAdmin
-                        ? 'border-amber-500/40 bg-gradient-to-b from-amber-500/10 via-black/40 to-black/40 shadow-[0_0_12px_rgba(245,158,11,0.12)]'
-                        : isCoAdmin
-                          ? 'border-sky-500/40 bg-gradient-to-b from-sky-500/10 via-black/40 to-black/40 shadow-[0_0_10px_rgba(56,189,248,0.1)]'
-                          : 'border-white/10'
+                      onClick={() => {
+                        if (canSelectInCopyMode) {
+                          setCopyConfirmModal({ isOpen: true, targetMember: member });
+                        }
+                      }}
+                      className={`relative bg-black/40 border p-1.5 pt-2.5 rounded-xl flex flex-col gap-1 shadow-sm transition-all w-full h-fit ${canSelectInCopyMode
+                        ? 'ring-2 ring-sky-400 border-sky-400 cursor-pointer bg-sky-950/40 hover:bg-sky-900/60 shadow-[0_0_20px_rgba(56,189,248,0.35)] scale-[1.01]'
+                        : isGroupAdmin
+                          ? 'border-amber-500/40 bg-gradient-to-b from-amber-500/10 via-black/40 to-black/40 shadow-[0_0_12px_rgba(245,158,11,0.12)]'
+                          : isCoAdmin
+                            ? 'border-sky-500/40 bg-gradient-to-b from-sky-500/10 via-black/40 to-black/40 shadow-[0_0_10px_rgba(56,189,248,0.1)]'
+                            : 'border-white/10'
                         }`}
                     >
                       {/* Top Border Role / Self Badge */}
@@ -1643,6 +1782,21 @@ export default function ConnectGroupsTab() {
                           <span className="text-white/60">Done: <strong className="text-emerald-300">{globalFormatTime(totalMemberDone)}</strong></span>
                           <span className="text-white/60">Left: <strong className="text-indigo-300">{globalFormatTime(totalMemberLeft)}</strong></span>
                         </div>
+
+                        {canSelectInCopyMode && (
+                          <div className="mt-1 pt-1 border-t border-sky-500/30 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCopyConfirmModal({ isOpen: true, targetMember: member });
+                              }}
+                              className="w-full py-1 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-black font-black text-[9px] rounded-md shadow-md flex items-center justify-center gap-1 transition-transform active:scale-95 cursor-pointer uppercase tracking-wider"
+                            >
+                              <Copy size={11} /> Copy {member.username}'s Tasks
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Direct rendering of GroupTaskManager for each member */}
@@ -1720,6 +1874,197 @@ export default function ConnectGroupsTab() {
           message={confirmModal.message}
           isDestructive={confirmModal.isDestructive}
         />
+
+        {/* Copy Mode Instructional Modal */}
+        {copyNoticeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+            <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-sky-500/50 rounded-2xl p-5 max-w-sm w-full shadow-[0_0_35px_rgba(56,189,248,0.25)] flex flex-col gap-3 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-sky-500/20 border border-sky-400/50 flex items-center justify-center mx-auto shadow-inner text-sky-300">
+                <Copy size={24} className="animate-bounce" />
+              </div>
+              <h3 className="text-base font-black text-white tracking-wide">Copy Member Tasks</h3>
+              <p className="text-xs text-white/70 leading-relaxed">
+                Copy Mode is now enabled! Click on any member's card below to copy all of their tasks across all 3 tabs (<strong className="text-sky-300">Core Tasks, Daily Routine, Milestones</strong>) directly into your group task list.
+              </p>
+              <div className="p-2 bg-sky-500/10 border border-sky-500/20 rounded-xl text-[10px] text-sky-200 font-medium">
+                💡 This will overwrite your group tasks with theirs so you can work on the exact same goals together!
+              </div>
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCopyNoticeModal(false);
+                    setIsCopyMode(false);
+                  }}
+                  className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCopyNoticeModal(false)}
+                  className="flex-1 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-black font-black text-xs rounded-xl shadow-lg transition-transform active:scale-95 cursor-pointer uppercase tracking-wider"
+                >
+                  Select Member
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Copy Confirm Modal */}
+        {copyConfirmModal.isOpen && copyConfirmModal.targetMember && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+            <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-sky-500/50 rounded-2xl p-5 max-w-sm w-full shadow-[0_0_35px_rgba(56,189,248,0.25)] flex flex-col gap-3 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-sky-500/20 border border-sky-400/50 flex items-center justify-center mx-auto shadow-inner text-sky-300">
+                <CopyCheck size={24} />
+              </div>
+              <h3 className="text-base font-black text-white tracking-wide">Confirm Copying Tasks</h3>
+              <p className="text-xs text-white/70 leading-relaxed">
+                Are you sure you want to copy all tasks from <strong className="text-sky-300 font-bold">{copyConfirmModal.targetMember.username}</strong> to your task list in <strong className="text-white font-bold">{viewingGroup?.title}</strong>?
+              </p>
+              <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[10px] text-amber-200 text-left font-medium flex items-start gap-1.5">
+                <ShieldAlert size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                <span>This action will overwrite your current tasks in this group with {copyConfirmModal.targetMember.username}'s tasks across all tabs.</span>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setCopyConfirmModal({ isOpen: false, targetMember: null })}
+                  className="flex-1 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCopyTasks}
+                  className="flex-1 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-black font-black text-xs rounded-xl shadow-lg transition-transform active:scale-95 cursor-pointer uppercase tracking-wider"
+                >
+                  Yes, Copy Tasks
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Member Onboarding & Controls Guide Modal */}
+        {showWelcomeModal && viewingGroup && (
+          <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[110] p-4 animate-in fade-in"
+            onClick={dismissWelcomeModal}
+          >
+            <div
+              className="bg-[#121216] border border-blue-500/35 rounded-2xl w-full max-w-md overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.25)] flex flex-col animate-in zoom-in-95 duration-200"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header Banner */}
+              <div className="relative p-4 bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0 shadow-inner">
+                    <Sparkles className="w-5 h-5 animate-pulse text-blue-400" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <h3 className="text-sm font-bold text-white tracking-wide truncate">
+                      Welcome to {viewingGroup.title}!
+                    </h3>
+                    <span className="text-[10px] text-blue-300/80 font-medium">
+                      Member Quick Guide & Task Controls
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={dismissWelcomeModal}
+                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-white/60 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* Guide Content */}
+              <div className="p-4 flex flex-col gap-3 max-h-[70vh] overflow-y-auto">
+                <p className="text-[11px] text-white/70 leading-relaxed">
+                  Here is what you can do in <strong className="text-white">{viewingGroup.title}</strong> to track your focus & rank up on the leaderboard:
+                </p>
+
+                {/* Feature 1: Add & Edit Tasks */}
+                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0 mt-0.5">
+                    <Plus size={14} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-emerald-300">1. Add & Edit Your Tasks</span>
+                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                      Use the input box at the bottom of your member card to add tasks with custom target durations (minutes). Double-click task titles or duration tags anytime to edit them.
+                    </span>
+                  </div>
+                </div>
+
+                {/* Feature 2: Run Timers & Track Time */}
+                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0 mt-0.5">
+                    <Clock size={14} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-sky-300">2. Run Timers & Track Time</span>
+                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                      Click the Play ▶ button on your tasks to start live timing. As you work, your logged time automatically updates your stats!
+                    </span>
+                  </div>
+                </div>
+
+                {/* Feature 3: Delete & Manage */}
+                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
+                    <Trash2 size={14} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-purple-300">3. Complete, Restart & Delete</span>
+                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                      Check off tasks as done, click restart ↺ to clear elapsed time, or click the trash 🗑 icon to delete a task.
+                    </span>
+                  </div>
+                </div>
+
+                {/* Feature 4: Copy Member Tasks */}
+                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-400/30 flex items-center justify-center text-blue-300 shrink-0 mt-0.5">
+                    <Copy size={14} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-blue-300">4. Copy Member Tasks</span>
+                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                      Click "Copy Member Tasks" in the top toolbar to enable Copy Mode, then select any member's card to copy all their tasks across all tabs into your personal task list!
+                    </span>
+                  </div>
+                </div>
+
+                {/* Feature 5: Leaderboard Rank */}
+                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
+                    <Flame size={14} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-amber-300">5. Leaderboard Ranking</span>
+                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                      Your member card rank badge (#1, #2, #3...) updates live based on your total completed focus time in this group!
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-3 bg-white/5 border-t border-white/10 flex justify-end">
+                <button
+                  type="button"
+                  onClick={dismissWelcomeModal}
+                  className="w-full py-2 bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span>Got It! Let's Start Grinding</span> 🚀
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div >
     );
   }

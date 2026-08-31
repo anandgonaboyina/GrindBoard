@@ -1004,8 +1004,33 @@ export default function Timer() {
               </div>
             </div>
 
+            {/* Interval Alert Banner (Separate Top/Middle Slot) */}
+            {isIntervalRinging && (
+              <div className="w-full my-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (intervalAudioRef.current) {
+                      intervalAudioRef.current.pause();
+                      intervalAudioRef.current.currentTime = 0;
+                    }
+                    setIsIntervalRinging(false);
+                    isIntervalRingingRef.current = false;
+                  }}
+                  className="w-full py-2 px-3 flex flex-col items-center justify-center gap-0.5 bg-sky-500 hover:bg-sky-400 rounded-xl transition-all animate-pulse shadow-lg cursor-pointer active:scale-95 border border-sky-300/40"
+                >
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">
+                    {activeTaskId ? (taskIntervalAlertMins || 5) : (timerIntervalMins || 5)}m Span ({doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m"} / {(timerInitialMins || 0) >= 60 ? Math.floor((timerInitialMins || 0) / 60) + "h " + ((timerInitialMins || 0) % 60) + "m" : (timerInitialMins || 0) + "m"})
+                  </span>
+                  <span className="text-base font-bold tracking-wide flex items-center gap-1 text-white">
+                    <Check size={18} strokeWidth={2.5} /> Okay
+                  </span>
+                </button>
+              </div>
+            )}
+
             {/* Alarm State */}
-            {isAlarmPlaying ? (
+            {isAlarmPlaying && (
               showContinuePrompt ? (
                 <div className="flex flex-col items-center gap-3 w-full py-2">
                   <p className="text-sm font-semibold text-blue-300">Are you still working?</p>
@@ -1046,140 +1071,118 @@ export default function Timer() {
                   STOP TIMER
                 </button>
               )
-            ) : isIntervalRinging ? (
-              <button
-                onClick={() => {
-                  if (intervalAudioRef.current) {
-                    intervalAudioRef.current.pause();
-                    intervalAudioRef.current.currentTime = 0;
-                  }
-                  setIsIntervalRinging(false);
-                  isIntervalRingingRef.current = false;
-                }}
-                className="w-full py-2 px-3 flex flex-col items-center justify-center gap-0.5 bg-sky-500/80 hover:bg-sky-500 rounded-xl transition-colors animate-pulse shadow-lg"
-              >
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">
-                  {activeTaskId ? (taskIntervalAlertMins || 5) : (timerIntervalMins || 5)}m Span ({doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m"} / {(timerInitialMins || 0) >= 60 ? Math.floor((timerInitialMins || 0) / 60) + "h " + ((timerInitialMins || 0) % 60) + "m" : (timerInitialMins || 0) + "m"})
-                </span>
-                <span className="text-base font-bold tracking-wide flex items-center gap-1 text-white">
-                  <Check size={18} strokeWidth={2.5} /> Okay
-                </span>
-              </button>
-            ) : (
-              <>
-                {/* Controls */}
-                {!isEditingTime && (timerEndAt || timerPausedLeft) && (
-                  <div className="flex justify-center gap-2">
-                    <Tooltip text={timerEndAt ? "Pause" : "Resume"} position="top">
-                      <button
-                        onClick={togglePause}
-                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                      >
-                        {timerEndAt ? <Pause size={20} /> : <Play size={20} />}
-                      </button>
-                    </Tooltip>
-                    <Tooltip text="Stop Timer" position="top">
-                      <button
-                        onClick={resetTimer}
-                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                      >
-                        <Square size={20} className="fill-current" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                )}
-
-                {/* Custom Input - Ultra Compact Height */}
-                {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
-                  <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/10">
-                    <div className="flex items-center gap-1.5">
-                      {/* Target Clock Button */}
-                      <Tooltip text="Set target end clock time" position="top" className="flex-1">
-                        <button
-                          onClick={() => setIsClockModalOpen(true)}
-                          className={`w-full border rounded-xl px-2 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-inner shrink-0 truncate cursor-pointer ${highlightedField === 'clock'
-                            ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
-                            : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-blue-400/60 text-sky-200'
-                            }`}
-                        >
-                          <Clock size={13} className={highlightedField === 'clock' ? 'text-white shrink-0' : 'text-sky-300 shrink-0'} />
-                          <span className="truncate tracking-wide text-xs sm:text-xs font-black">{selectedHr}:{selectedMin} {selectedAmPm}</span>
-                        </button>
-                      </Tooltip>
-
-                      {/* OR Text Separator */}
-                      <span className="text-[10px] font-black text-white/70 uppercase px-0.5 shrink-0 select-none tracking-wider">
-                        OR
-                      </span>
-
-                      {/* Minutes Input */}
-                      <div className="w-16 relative shrink-0">
-                        <input
-                          type="number"
-                          placeholder="Mins"
-                          value={customMins}
-                          onChange={(e) => handleCustomMinsChange(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                          className={`w-full border rounded-xl px-1.5 py-1.5 text-xs font-black text-center outline-none transition-all placeholder:text-white/40 text-white shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${highlightedField === 'minutes'
-                            ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
-                            : 'bg-white/10 border-white/20 hover:border-white/30 focus:border-blue-400'
-                            }`}
-                          min="1"
-                        />
-                      </div>
-
-                      {/* Start Button */}
-                      <Tooltip text="Start timer" position="top">
-                        <button
-                          onClick={handleCustomStart}
-                          className="p-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                        </button>
-                      </Tooltip>
-                    </div>
-
-                    <div className="flex items-center justify-start gap-1 pt-1 border-t border-white/5 w-full">
-                      <div className="flex items-center gap-1 cursor-pointer" onClick={() => setIsTimerIntervalEnabled(!isTimerIntervalEnabled)}>
-                        <BellRing size={12} className={isTimerIntervalEnabled ? "text-sky-300" : "text-white/40"} />
-                        <span className="text-[9px] font-medium text-white/70">Interval</span>
-                        <button
-                          className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTimerIntervalEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
-                        >
-                          <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isTimerIntervalEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
-                        </button>
-                      </div>
-                      {isTimerIntervalEnabled ? (
-                        <div className="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-white/10">
-                          <input
-                            type="number"
-                            value={timerIntervalMins || ''}
-                            onChange={(e) => {
-                              if (e.target.value === '') {
-                                setTimerIntervalMins(0);
-                              } else {
-                                const parsed = parseInt(e.target.value);
-                                if (!isNaN(parsed) && parsed >= 0) {
-                                  setTimerIntervalMins(parsed);
-                                }
-                              }
-                            }}
-                            className="w-7 bg-black/40 border border-white/20 rounded px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
-                            min="1"
-                          />
-                          <span className="text-[8px] font-bold text-white/40">min</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center pl-1.5 ml-0.5 border-l border-white/10">
-                          <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
             )}
 
+            {/* Bottom Controls */}
+            {!isIntervalRinging && !isAlarmPlaying && !isEditingTime && (timerEndAt || timerPausedLeft) && (
+              <div className="flex justify-center gap-2">
+                <Tooltip text={timerEndAt ? "Pause" : "Resume"} position="top">
+                  <button
+                    onClick={togglePause}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                  >
+                    {timerEndAt ? <Pause size={20} /> : <Play size={20} />}
+                  </button>
+                </Tooltip>
+                <Tooltip text="Stop Timer" position="top">
+                  <button
+                    onClick={resetTimer}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                  >
+                    <Square size={20} className="fill-current" />
+                  </button>
+                </Tooltip>
+              </div>
+            )}
+
+            {/* Custom Input - Ultra Compact Height */}
+            {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
+              <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/10">
+                <div className="flex items-center gap-1.5">
+                  {/* Target Clock Button */}
+                  <Tooltip text="Set target end clock time" position="top" className="flex-1">
+                    <button
+                      onClick={() => setIsClockModalOpen(true)}
+                      className={`w-full border rounded-xl px-2 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-inner shrink-0 truncate cursor-pointer ${highlightedField === 'clock'
+                        ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
+                        : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-blue-400/60 text-sky-200'
+                        }`}
+                    >
+                      <Clock size={13} className={highlightedField === 'clock' ? 'text-white shrink-0' : 'text-sky-300 shrink-0'} />
+                      <span className="truncate tracking-wide text-xs sm:text-xs font-black">{selectedHr}:{selectedMin} {selectedAmPm}</span>
+                    </button>
+                  </Tooltip>
+
+                  {/* OR Text Separator */}
+                  <span className="text-[10px] font-black text-white/70 uppercase px-0.5 shrink-0 select-none tracking-wider">
+                    OR
+                  </span>
+
+                  {/* Minutes Input */}
+                  <div className="w-16 relative shrink-0">
+                    <input
+                      type="number"
+                      placeholder="Mins"
+                      value={customMins}
+                      onChange={(e) => handleCustomMinsChange(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
+                      className={`w-full border rounded-xl px-1.5 py-1.5 text-xs font-black text-center outline-none transition-all placeholder:text-white/40 text-white shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${highlightedField === 'minutes'
+                        ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
+                        : 'bg-white/10 border-white/20 hover:border-white/30 focus:border-blue-400'
+                        }`}
+                      min="1"
+                    />
+                  </div>
+
+                  {/* Start Button */}
+                  <Tooltip text="Start timer" position="top">
+                    <button
+                      onClick={handleCustomStart}
+                      className="p-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                    </button>
+                  </Tooltip>
+                </div>
+
+                <div className="flex items-center justify-start gap-1 pt-1 border-t border-white/5 w-full">
+                  <div className="flex items-center gap-1 cursor-pointer" onClick={() => setIsTimerIntervalEnabled(!isTimerIntervalEnabled)}>
+                    <BellRing size={12} className={isTimerIntervalEnabled ? "text-sky-300" : "text-white/40"} />
+                    <span className="text-[9px] font-medium text-white/70">Interval</span>
+                    <button
+                      className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTimerIntervalEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
+                    >
+                      <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isTimerIntervalEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                  {isTimerIntervalEnabled ? (
+                    <div className="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-white/10">
+                      <input
+                        type="number"
+                        value={timerIntervalMins || ''}
+                        onChange={(e) => {
+                          if (e.target.value === '') {
+                            setTimerIntervalMins(0);
+                          } else {
+                            const parsed = parseInt(e.target.value);
+                            if (!isNaN(parsed) && parsed >= 0) {
+                              setTimerIntervalMins(parsed);
+                            }
+                          }
+                        }}
+                        className="w-7 bg-black/40 border border-white/20 rounded px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                        min="1"
+                      />
+                      <span className="text-[8px] font-bold text-white/40">min</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center pl-1.5 ml-0.5 border-l border-white/10">
+                      <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Hidden Audio Elements - Conditionally mounted to prevent OS/browser resume on Win+L wake */}
