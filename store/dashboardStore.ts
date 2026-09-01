@@ -100,6 +100,19 @@ interface DashboardState {
   activeMobileCustomIndex: number | null;
   setActiveMobileCustomIndex: (index: number | null) => void;
 
+  showManifestationBoard: boolean;
+  setShowManifestationBoard: (show: boolean) => void;
+
+  manifestationDesktopPhotos: string[];
+  setManifestationDesktopPhotos: (urls: string[]) => void;
+  activeManifestationDesktopIndex: number | null;
+  setActiveManifestationDesktopIndex: (index: number | null) => void;
+
+  manifestationMobilePhotos: string[];
+  setManifestationMobilePhotos: (urls: string[]) => void;
+  activeManifestationMobileIndex: number | null;
+  setActiveManifestationMobileIndex: (index: number | null) => void;
+
   history: Record<string, number>;
   tasks: Task[];
   tomorrowTasks: Task[];
@@ -867,6 +880,19 @@ export const useDashboardStore = create<DashboardState>()(
       setCustomMobileWallpapers: (urls) => set({ customMobileWallpapers: urls }),
       activeMobileCustomIndex: null,
       setActiveMobileCustomIndex: (index) => set({ activeMobileCustomIndex: index }),
+
+      showManifestationBoard: false,
+      setShowManifestationBoard: (show) => set({ showManifestationBoard: show }),
+
+      manifestationDesktopPhotos: [],
+      setManifestationDesktopPhotos: (urls) => set({ manifestationDesktopPhotos: urls }),
+      activeManifestationDesktopIndex: null,
+      setActiveManifestationDesktopIndex: (index) => set({ activeManifestationDesktopIndex: index }),
+
+      manifestationMobilePhotos: [],
+      setManifestationMobilePhotos: (urls) => set({ manifestationMobilePhotos: urls }),
+      activeManifestationMobileIndex: null,
+      setActiveManifestationMobileIndex: (index) => set({ activeManifestationMobileIndex: index }),
 
       addMins: (dateKey, mins) => {
         set((state) => {
@@ -1785,7 +1811,7 @@ export const useDashboardStore = create<DashboardState>()(
       toggleVisibility: (key) => set((state) => ({ [key]: !state[key] })),
 
       hideConfig: {
-        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
       },
       setHideConfig: (key, value) => {
         set((state) => ({ hideConfig: { ...state.hideConfig, [key]: value } }));
@@ -1794,7 +1820,7 @@ export const useDashboardStore = create<DashboardState>()(
         if (hide) {
           set({
             hideConfig: {
-              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
             }
           });
         } else {
@@ -1803,7 +1829,7 @@ export const useDashboardStore = create<DashboardState>()(
       },
 
       mobileHideConfig: {
-        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
       },
       setMobileHideConfig: (key, value) => {
         set((state) => ({ mobileHideConfig: { ...state.mobileHideConfig, [key]: value } }));
@@ -1812,7 +1838,7 @@ export const useDashboardStore = create<DashboardState>()(
         if (hide) {
           set({
             mobileHideConfig: {
-              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true
+              quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
             }
           });
         } else {

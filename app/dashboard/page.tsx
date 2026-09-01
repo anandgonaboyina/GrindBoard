@@ -28,6 +28,7 @@ import NewsModal from "@/components/NewsModal";
 import ConnectionStatusToast from "@/components/ConnectionStatusToast";
 import Tooltip from "@/components/Tooltip";
 import GuidedTour from "@/components/GuidedTour";
+import ManifestationBoard from "@/components/ManifestationBoard";
 
 import { useEffect, useState, useRef } from "react";
 import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users, Hourglass } from "lucide-react";
@@ -328,6 +329,11 @@ export default function Dashboard() {
 
           {/* Draggable Widgets */}
           <div className="absolute inset-0 pointer-events-none z-50">
+            {(!isHidden || !hideConfig.manifestation) && (
+              <DraggableWidget id="manifestation">
+                <ManifestationBoard />
+              </DraggableWidget>
+            )}
           </div>
 
           {/* Left Side Drawer: Calendar */}

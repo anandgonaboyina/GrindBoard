@@ -79,7 +79,7 @@ const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, onSho
 };
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, dashboardScale, setDashboardScale, mobileDashboardScale, setMobileDashboardScale, dockScale, setDockScale, dockOffset, setDockOffset, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, autoOpenCountdowns, setAutoOpenCountdowns } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, dashboardScale, setDashboardScale, mobileDashboardScale, setMobileDashboardScale, dockScale, setDockScale, dockOffset, setDockOffset, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, autoOpenCountdowns, setAutoOpenCountdowns, showManifestationBoard, setShowManifestationBoard, manifestationDesktopPhotos, setManifestationDesktopPhotos, activeManifestationDesktopIndex, setActiveManifestationDesktopIndex, manifestationMobilePhotos, setManifestationMobilePhotos, activeManifestationMobileIndex, setActiveManifestationMobileIndex } = useDashboardStore();
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
   const [showThemeNotice, setShowThemeNotice] = useState(false);
@@ -2216,6 +2216,214 @@ export default function SettingsModal() {
                       </button>
                     </div>
                   )}
+
+                  {/* MANIFESTATION BOARD SECTION */}
+                  <div className="mt-4 flex flex-col gap-3 p-3.5 sm:p-4 rounded-xl bg-gradient-to-r from-amber-950/30 via-black/40 to-purple-950/30 border border-amber-500/30 shadow-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs md:text-sm font-bold text-white flex items-center gap-2">
+                            <span>Manifestation Board (Dream & Goal Vision)</span>
+                            <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-full font-mono">Offline Only</span>
+                          </h4>
+                          <p className="text-[10px] md:text-[11px] text-white/60 leading-tight mt-0.5">
+                            Upload photos of your goals, dreams & luxury targets saved 100% locally offline. Separate lists for Desktop & Mobile.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Enable Toggle Button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowManifestationBoard(!showManifestationBoard)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 border cursor-pointer ${
+                          showManifestationBoard
+                            ? 'bg-amber-500/30 text-amber-200 border-amber-500/50 hover:bg-amber-500/40'
+                            : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <Flame className={`w-3.5 h-3.5 ${showManifestationBoard ? 'text-amber-400 animate-pulse' : ''}`} />
+                        <span>{showManifestationBoard ? 'Board ON' : 'Board OFF'}</span>
+                      </button>
+                    </div>
+
+                    {showManifestationBoard && (
+                      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4 mt-1">
+                        {/* Desktop Manifestation Photos */}
+                        <div className="bg-black/30 border border-white/10 rounded-lg md:rounded-xl p-3 flex flex-col gap-2.5">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                            <h5 className="font-medium text-[10px] md:text-[11px] text-amber-300">Desktop Manifestation Photos ({manifestationDesktopPhotos.length}/6)</h5>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            {manifestationDesktopPhotos.map((url, i) => (
+                              <CustomWallpaperPreview
+                                key={`desktop-manif-${i}`}
+                                url={url}
+                                isActive={activeManifestationDesktopIndex === i}
+                                onClick={() => setActiveManifestationDesktopIndex(i)}
+                                onShowAlert={showAlertModal}
+                                onDelete={async (e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Remove Photo',
+                                    message: 'Are you sure you want to remove this manifestation photo?',
+                                    isDestructive: true,
+                                    onConfirm: async () => {
+                                      const newUrls = [...manifestationDesktopPhotos];
+                                      newUrls.splice(i, 1);
+                                      setManifestationDesktopPhotos(newUrls);
+                                      if (activeManifestationDesktopIndex === i) setActiveManifestationDesktopIndex(null);
+                                      else if (activeManifestationDesktopIndex !== null && activeManifestationDesktopIndex > i) setActiveManifestationDesktopIndex(activeManifestationDesktopIndex - 1);
+                                      if (url.startsWith('custom-')) await deleteWallpaperFromDB(url);
+                                    }
+                                  });
+                                }}
+                                label={url.startsWith('custom-') ? 'Local File' : (url.split('/').pop() || 'image')}
+                                aspectClass="aspect-video"
+                              />
+                            ))}
+                          </div>
+
+                          {manifestationDesktopPhotos.length < 6 && (
+                            <div className="flex gap-2 w-full mt-1">
+                              <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 border-dashed rounded text-[9px] md:text-[10px] text-amber-200 cursor-pointer transition-colors">
+                                <Plus className="w-3 h-3" /> Upload File
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    if (file.size > 25 * 1024 * 1024) {
+                                      showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
+                                      return;
+                                    }
+                                    const id = `custom-manifest-desktop-${Date.now()}`;
+                                    await saveWallpaperToDB(id, file);
+                                    setManifestationDesktopPhotos([...manifestationDesktopPhotos, id]);
+                                    if (activeManifestationDesktopIndex === null) setActiveManifestationDesktopIndex(manifestationDesktopPhotos.length);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Add Photo URL',
+                                    message: 'Enter direct image URL (https://...):',
+                                    isPrompt: true,
+                                    promptPlaceholder: 'https://...',
+                                    onConfirm: (url?: string) => {
+                                      if (url && url.trim().startsWith('http')) {
+                                        setManifestationDesktopPhotos([...manifestationDesktopPhotos, url.trim()]);
+                                        if (activeManifestationDesktopIndex === null) setActiveManifestationDesktopIndex(manifestationDesktopPhotos.length);
+                                      }
+                                    }
+                                  });
+                                }}
+                                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                              >
+                                Add URL
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Mobile Manifestation Photos */}
+                        <div className="bg-black/30 border border-white/10 rounded-lg md:rounded-xl p-3 flex flex-col gap-2.5">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                            <h5 className="font-medium text-[10px] md:text-[11px] text-pink-300">Mobile Manifestation Photos ({manifestationMobilePhotos.length}/6)</h5>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            {manifestationMobilePhotos.map((url, i) => (
+                              <CustomWallpaperPreview
+                                key={`mobile-manif-${i}`}
+                                url={url}
+                                isActive={activeManifestationMobileIndex === i}
+                                onClick={() => setActiveManifestationMobileIndex(i)}
+                                onShowAlert={showAlertModal}
+                                onDelete={async (e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Remove Photo',
+                                    message: 'Are you sure you want to remove this manifestation photo?',
+                                    isDestructive: true,
+                                    onConfirm: async () => {
+                                      const newUrls = [...manifestationMobilePhotos];
+                                      newUrls.splice(i, 1);
+                                      setManifestationMobilePhotos(newUrls);
+                                      if (activeManifestationMobileIndex === i) setActiveManifestationMobileIndex(null);
+                                      else if (activeManifestationMobileIndex !== null && activeManifestationMobileIndex > i) setActiveManifestationMobileIndex(activeManifestationMobileIndex - 1);
+                                      if (url.startsWith('custom-')) await deleteWallpaperFromDB(url);
+                                    }
+                                  });
+                                }}
+                                label={url.startsWith('custom-') ? 'Local File' : (url.split('/').pop() || 'image')}
+                                aspectClass="aspect-[9/16]"
+                              />
+                            ))}
+                          </div>
+
+                          {manifestationMobilePhotos.length < 6 && (
+                            <div className="flex gap-2 w-full mt-1">
+                              <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 border-dashed rounded text-[9px] md:text-[10px] text-pink-200 cursor-pointer transition-colors">
+                                <Plus className="w-3 h-3" /> Upload File
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    if (file.size > 25 * 1024 * 1024) {
+                                      showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
+                                      return;
+                                    }
+                                    const id = `custom-manifest-mobile-${Date.now()}`;
+                                    await saveWallpaperToDB(id, file);
+                                    setManifestationMobilePhotos([...manifestationMobilePhotos, id]);
+                                    if (activeManifestationMobileIndex === null) setActiveManifestationMobileIndex(manifestationMobilePhotos.length);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Add Photo URL',
+                                    message: 'Enter direct image URL (https://...):',
+                                    isPrompt: true,
+                                    promptPlaceholder: 'https://...',
+                                    onConfirm: (url?: string) => {
+                                      if (url && url.trim().startsWith('http')) {
+                                        setManifestationMobilePhotos([...manifestationMobilePhotos, url.trim()]);
+                                        if (activeManifestationMobileIndex === null) setActiveManifestationMobileIndex(manifestationMobilePhotos.length);
+                                      }
+                                    }
+                                  });
+                                }}
+                                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                              >
+                                Add URL
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -2368,7 +2576,8 @@ export default function SettingsModal() {
                         timer: 'Session Timer', dock: 'Bottom Dock', clock: 'Big Clock',
                         todayFocusPill: 'Focus Pill', timerPill: 'Timer Pill',
                         deadlineAlerts: 'Alerts', bgSwitcher: 'Bg Switcher', stopwatch: 'Stopwatch',
-                        settingsBtn: 'Settings Btn', videoControls: 'Video Ctrl'
+                        settingsBtn: 'Settings Btn', videoControls: 'Video Ctrl',
+                        manifestation: 'Manifestation Board'
                       }).map(([key, label]) => {
                         const isHidden = focusPlatform === 'desktop' ? hideConfig[key] : mobileHideConfig[key];
                         return (
