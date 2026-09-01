@@ -469,7 +469,7 @@ export default function ManifestationSettingsModal({ onClose }: ManifestationSet
         <div
           className="absolute inset-0 bg-black/80 sm:bg-black/60 backdrop-blur-md sm:backdrop-blur-sm cursor-pointer"
           onClick={() => {
-            useDashboardStore.getState().pushMediaToDB();
+            useDashboardStore.getState().pushManifestationToDB();
             onClose();
           }}
         />
@@ -484,7 +484,7 @@ export default function ManifestationSettingsModal({ onClose }: ManifestationSet
             </h3>
             <button
               onClick={() => {
-                useDashboardStore.getState().pushMediaToDB();
+                useDashboardStore.getState().pushManifestationToDB();
                 onClose();
               }}
               className="p-1.5 rounded-full bg-white/10 sm:bg-transparent hover:bg-white/20 text-white/80 hover:text-white transition-colors"

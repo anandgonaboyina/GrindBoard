@@ -431,7 +431,8 @@ interface DashboardState {
   setMobileHideAll: (hide: boolean) => void;
 
   forceInstantSave: () => void;
-  pushMediaToDB: () => void;
+  pushManifestationToDB: () => void;
+  pushWallpapersToDB: () => void;
 
   isPanicHidden: boolean;
   togglePanicHide: () => void;
@@ -700,13 +701,25 @@ const performSave = async () => {
       }
     }
 
+    let parsedData = null;
+    try {
+      parsedData = JSON.parse(valueToSave);
+    } catch (parseErr) {
+      console.error("Failed to parse valueToSave:", parseErr, "Value was:", valueToSave?.substring(0, 200));
+      isSaving = false;
+      return;
+    }
+
+    const payload = JSON.stringify({ data: parsedData, lastModified, modifiedCollections, modifiedKeys });
+    console.log(`[performSave] Payload size: ${(payload.length / 1024).toFixed(2)} KB`);
+
     const res = await fetch('/api/store', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${getSyncToken()}`
       },
-      body: JSON.stringify({ data: JSON.parse(valueToSave), lastModified, modifiedCollections, modifiedKeys }),
+      body: payload,
     });
 
     if (res.status === 409) {
@@ -1258,7 +1271,7 @@ export const pushDeadlinesToDB = async (payload: any) => {
 
 export const useDashboardStore = create<DashboardState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       wallpaper: '/wallpapers/naruto.webp',
       bgIndex: 0,
       currentBgType: null,
@@ -1514,8 +1527,9 @@ export const useDashboardStore = create<DashboardState>()(
       toggleSettings: () => set((state) => {
         const willClose = state.isSettingsOpen;
         if (willClose && typeof window !== 'undefined') {
-          // Push media explicitly to bypass performSave concurrency issues
-          useDashboardStore.getState().pushMediaToDB();
+          // Push both explicitly to bypass performSave concurrency issues
+          useDashboardStore.getState().pushWallpapersToDB();
+          useDashboardStore.getState().pushManifestationToDB();
         }
         return { isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false };
       }),
@@ -2466,12 +2480,18 @@ export const useDashboardStore = create<DashboardState>()(
         }
       },
 
-      pushMediaToDB: () => {
+      pushManifestationToDB: () => {
         const state = get();
         pushSettingsToDB({
           manifestationDesktopPhotos: state.manifestationDesktopPhotos,
           manifestationMobilePhotos: state.manifestationMobilePhotos,
           manifestationCustomQuotes: state.manifestationCustomQuotes,
+        });
+      },
+
+      pushWallpapersToDB: () => {
+        const state = get();
+        pushSettingsToDB({
           customDesktopWallpapers: state.customDesktopWallpapers,
           customMobileWallpapers: state.customMobileWallpapers,
           hiddenWallpapers: state.hiddenWallpapers
