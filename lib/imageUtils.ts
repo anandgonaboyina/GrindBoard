@@ -12,9 +12,9 @@ export async function prepareFileForStorage(file: File, prefix: string = 'custom
   // If it's an image, compress to lightweight WebP Data URL for universal cloud sync
   if (file.type.startsWith('image/')) {
     try {
-      const dataUrl = await compressImageToDataUrl(file, 1920, 1080, 0.82);
-      // Ensure dataUrl is under 1.5MB to keep cloud sync fast and light
-      if (dataUrl && dataUrl.length < 2 * 1024 * 1024) {
+      const dataUrl = await compressImageToDataUrl(file, 1280, 720, 0.6);
+      // Ensure dataUrl is under 400KB to keep cloud sync fast and avoid Vercel/localStorage quota crashes
+      if (dataUrl && dataUrl.length < 400 * 1024) {
         return {
           id,
           dataUrl,
@@ -38,9 +38,9 @@ export async function prepareFileForStorage(file: File, prefix: string = 'custom
  */
 export function compressImageToDataUrl(
   file: File,
-  maxWidth: number = 1920,
-  maxHeight: number = 1080,
-  quality: number = 0.82
+  maxWidth: number = 1280,
+  maxHeight: number = 720,
+  quality: number = 0.6
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

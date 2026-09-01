@@ -43,6 +43,31 @@ export default function Dashboard() {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    // State Healer: Remove massive base64 strings that break localStorage and API quotas (5MB limit)
+    const state = useDashboardStore.getState();
+    let healed = false;
+    const healArray = (arr: string[]) => {
+      if (!Array.isArray(arr)) return arr;
+      const originalLength = arr.length;
+      const newArr = arr.filter(item => !(typeof item === 'string' && item.startsWith('data:image') && item.length > 500000));
+      if (newArr.length !== originalLength) healed = true;
+      return newArr;
+    };
+    
+    const healedDesktop = healArray(state.customDesktopWallpapers);
+    const healedMobile = healArray(state.customMobileWallpapers);
+    
+    if (healed) {
+      useDashboardStore.setState({
+        customDesktopWallpapers: healedDesktop,
+        customMobileWallpapers: healedMobile
+      });
+      console.warn("Healed dashboard state by removing oversized base64 wallpapers.");
+      setTimeout(() => useDashboardStore.getState().forceInstantSave(), 1000);
+    }
+  }, []);
+
+  useEffect(() => {
     setIsMobile(window.innerWidth <= 768);
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
