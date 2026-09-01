@@ -547,18 +547,31 @@ const mergeArraysById = (localArr: any[] = [], cloudArr: any[] = []) => {
   return Array.from(map.values());
 };
 
-const mergeStringArrays = (localArr: any, cloudArr: any, cloudIsNewer: boolean = false) => {
+const mergeStringArrays = (localArr: any, cloudArr: any, baseArr: any = null, cloudIsNewer: boolean = false) => {
   if (!Array.isArray(localArr)) localArr = [];
   if (!Array.isArray(cloudArr)) cloudArr = [];
+  if (!Array.isArray(baseArr)) baseArr = [];
 
-  // When cloud is newer (i.e. on pull/refresh), ALWAYS trust cloud — even if it's empty.
-  // An empty cloudArr means the user deleted all items on another device — respect that.
+  const localStr = JSON.stringify(localArr);
+  const cloudStr = JSON.stringify(cloudArr);
+  const baseStr = JSON.stringify(baseArr);
+
+  // 3-way merge if base is available
+  if (baseArr.length > 0 || localArr.length > 0 || cloudArr.length > 0) {
+    const localChanged = localStr !== baseStr;
+    const cloudChanged = cloudStr !== baseStr;
+
+    if (localChanged && !cloudChanged) return localArr;
+    if (cloudChanged && !localChanged) return cloudArr;
+    if (localChanged && cloudChanged) {
+      if (localStr === cloudStr) return localArr;
+      return Array.from(new Set([...localArr, ...cloudArr])); // union
+    }
+  }
+
+  // Fallback to legacy behavior if no base difference is detectable
   if (cloudIsNewer) return cloudArr;
-  
-  // If we don't know who is newer, take cloud data if local is completely empty (initial load)
   if (localArr.length === 0 && cloudArr.length > 0) return cloudArr;
-
-  // Otherwise stick to local (it might be newly added unsynced items, or intentionally empty)
   return localArr;
 };
 
@@ -748,12 +761,12 @@ const performSave = async () => {
         plans: mergeArraysById(parsedLocal.state.plans, parsedCloud.state.plans),
         customAlarmSounds: mergeArraysById(parsedLocal.state.customAlarmSounds, parsedCloud.state.customAlarmSounds),
 
-        manifestationDesktopPhotos: mergeStringArrays(parsedLocal.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos),
-        manifestationMobilePhotos: mergeStringArrays(parsedLocal.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos),
-        customDesktopWallpapers: mergeStringArrays(parsedLocal.state.customDesktopWallpapers, parsedCloud.state.customDesktopWallpapers),
-        customMobileWallpapers: mergeStringArrays(parsedLocal.state.customMobileWallpapers, parsedCloud.state.customMobileWallpapers),
-        customQuotes: mergeStringArrays(parsedLocal.state.customQuotes, parsedCloud.state.customQuotes),
-        manifestationCustomQuotes: mergeStringArrays(parsedLocal.state.manifestationCustomQuotes, parsedCloud.state.manifestationCustomQuotes),
+        manifestationDesktopPhotos: mergeStringArrays(parsedLocal.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos), // In 409, base is cloud so local overrides if different
+        manifestationMobilePhotos: mergeStringArrays(parsedLocal.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos),
+        customDesktopWallpapers: mergeStringArrays(parsedLocal.state.customDesktopWallpapers, parsedCloud.state.customDesktopWallpapers, parsedCloud.state.customDesktopWallpapers),
+        customMobileWallpapers: mergeStringArrays(parsedLocal.state.customMobileWallpapers, parsedCloud.state.customMobileWallpapers, parsedCloud.state.customMobileWallpapers),
+        customQuotes: mergeStringArrays(parsedLocal.state.customQuotes, parsedCloud.state.customQuotes, parsedCloud.state.customQuotes),
+        manifestationCustomQuotes: mergeStringArrays(parsedLocal.state.manifestationCustomQuotes, parsedCloud.state.manifestationCustomQuotes, parsedCloud.state.manifestationCustomQuotes),
 
         // Active wallpaper/manifestation index: LOCAL always wins — it's a per-device UI selection.
         // Cloud only fills in when local is null (fresh device).
@@ -937,13 +950,14 @@ const fileStorage = createJSONStorage(() => ({
               const cloudLastMod = json.data.lastModified ? Number(json.data.lastModified) : 0;
               const isCloudNewer = cloudLastMod > getSyncLastModified();
 
-              const mergedManifestationDesktopPhotos = mergeStringArrays(localState.manifestationDesktopPhotos, cloudState.manifestationDesktopPhotos, isCloudNewer);
-              const mergedManifestationMobilePhotos = mergeStringArrays(localState.manifestationMobilePhotos, cloudState.manifestationMobilePhotos, isCloudNewer);
-              const mergedCustomDesktopWallpapers = mergeStringArrays(localState.customDesktopWallpapers, cloudState.customDesktopWallpapers, isCloudNewer);
-              const mergedCustomMobileWallpapers = mergeStringArrays(localState.customMobileWallpapers, cloudState.customMobileWallpapers, isCloudNewer);
-              const mergedCustomQuotes = mergeStringArrays(localState.customQuotes, cloudState.customQuotes, isCloudNewer);
-              const mergedManifestationCustomQuotes = mergeStringArrays(localState.manifestationCustomQuotes, cloudState.manifestationCustomQuotes, isCloudNewer);
-              const mergedLockedWidgets = mergeStringArrays(localState.lockedWidgets, cloudState.lockedWidgets, isCloudNewer);
+              const baseState = lastSavedValue ? (JSON.parse(lastSavedValue).state || {}) : {};
+              const mergedManifestationDesktopPhotos = mergeStringArrays(localState.manifestationDesktopPhotos, cloudState.manifestationDesktopPhotos, baseState.manifestationDesktopPhotos, isCloudNewer);
+              const mergedManifestationMobilePhotos = mergeStringArrays(localState.manifestationMobilePhotos, cloudState.manifestationMobilePhotos, baseState.manifestationMobilePhotos, isCloudNewer);
+              const mergedCustomDesktopWallpapers = mergeStringArrays(localState.customDesktopWallpapers, cloudState.customDesktopWallpapers, baseState.customDesktopWallpapers, isCloudNewer);
+              const mergedCustomMobileWallpapers = mergeStringArrays(localState.customMobileWallpapers, cloudState.customMobileWallpapers, baseState.customMobileWallpapers, isCloudNewer);
+              const mergedCustomQuotes = mergeStringArrays(localState.customQuotes, cloudState.customQuotes, baseState.customQuotes, isCloudNewer);
+              const mergedManifestationCustomQuotes = mergeStringArrays(localState.manifestationCustomQuotes, cloudState.manifestationCustomQuotes, baseState.manifestationCustomQuotes, isCloudNewer);
+              const mergedLockedWidgets = mergeStringArrays(localState.lockedWidgets, cloudState.lockedWidgets, baseState.lockedWidgets, isCloudNewer);
 
               const mergedWeekdayTimes = (Array.isArray(cloudState.weekdayTimes) && cloudState.weekdayTimes.length > 0)
                 ? cloudState.weekdayTimes
@@ -1062,7 +1076,9 @@ const fileStorage = createJSONStorage(() => ({
                 console.warn("Failed to update localStorage with merged data:", e);
               }
 
-              lastSavedValue = mergedStr;
+              // CRITICAL: If there are local changes, lastSavedValue MUST be the cloud state
+              // so that the scheduled performSave() detects the diff and pushes them to the DB.
+              lastSavedValue = isDifferentFromCloud ? JSON.stringify({ version: 2, state: cloudState }) : mergedStr;
               return mergedStr;
             } else {
               // No local state (fresh device/browser) — use cloud as-is but validate timer
