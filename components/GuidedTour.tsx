@@ -377,9 +377,9 @@ export default function GuidedTour() {
       elements.forEach((el) => {
         const htmlEl = el as HTMLElement;
         const rect = htmlEl.getBoundingClientRect();
-        
+
         const isNavDock = htmlEl.id === 'nav-dock' || step.id === 'dock';
-        
+
         let elTop = rect.top;
         let elLeft = rect.left;
         let elWidth = rect.width;
@@ -556,8 +556,8 @@ export default function GuidedTour() {
     const width = isFlushLeft
       ? targetRect.width + 8
       : isFlushRight
-      ? targetRect.width + 8
-      : targetRect.width + padding * 2;
+        ? targetRect.width + 8
+        : targetRect.width + padding * 2;
     const height = targetRect.height + padding * 2;
 
     return {
@@ -666,7 +666,7 @@ export default function GuidedTour() {
       <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[99990] flex items-center justify-center p-4 select-none">
         <FlowerFlowAnimation />
         <div className="relative z-[100000] bg-[#12121a] border border-emerald-500/40 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-[0_0_60px_rgba(16,185,129,0.3)] animate-in zoom-in-95 duration-300 text-white flex flex-col gap-4">
-          
+
           {/* Header & Celebration */}
           <div className="flex flex-col items-center text-center gap-1.5 border-b border-white/10 pb-3.5">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-amber-300 flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-0.5">
@@ -684,22 +684,20 @@ export default function GuidedTour() {
           <div className="flex bg-black/40 p-1 rounded-xl border border-white/10 gap-1">
             <button
               onClick={() => setFinishModalStep(1)}
-              className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                finishModalStep === 1
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                  : 'text-white/50 hover:text-white'
-              }`}
+              className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${finishModalStep === 1
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'text-white/50 hover:text-white'
+                }`}
             >
               <Sliders size={14} />
               <span>1. Preferences & Focus Mode</span>
             </button>
             <button
               onClick={() => setFinishModalStep(2)}
-              className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                finishModalStep === 2
-                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm'
-                  : 'text-white/50 hover:text-white'
-              }`}
+              className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${finishModalStep === 2
+                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm'
+                : 'text-white/50 hover:text-white'
+                }`}
             >
               <MonitorPlay size={14} />
               <span>2. PC Desktop Wallpaper</span>
@@ -718,7 +716,7 @@ export default function GuidedTour() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="bg-black/40 p-3 rounded-xl border border-white/5 flex flex-col gap-2 text-[11px]">
                 <div className="flex items-center gap-1.5 font-semibold text-emerald-300">
                   <Sparkles size={12} className="text-amber-300" />
@@ -765,9 +763,8 @@ export default function GuidedTour() {
                 <button
                   onClick={() => setTourWallpaperStep((prev) => Math.max(0, prev - 1))}
                   disabled={tourWallpaperStep === 0}
-                  className={`absolute left-1.5 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-xl bg-black/80 hover:bg-blue-600 text-white border border-white/20 transition-all cursor-pointer ${
-                    tourWallpaperStep === 0 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100'
-                  }`}
+                  className={`absolute left-1.5 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-xl bg-black/80 hover:bg-blue-600 text-white border border-white/20 transition-all cursor-pointer ${tourWallpaperStep === 0 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100'
+                    }`}
                   title="Previous Step"
                 >
                   <ChevronLeft size={18} />
@@ -777,9 +774,8 @@ export default function GuidedTour() {
                 <button
                   onClick={() => setTourWallpaperStep((prev) => Math.min(WALLPAPER_TUTORIAL_STEPS.length - 1, prev + 1))}
                   disabled={tourWallpaperStep === WALLPAPER_TUTORIAL_STEPS.length - 1}
-                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-xl bg-black/80 hover:bg-blue-600 text-white border border-white/20 transition-all cursor-pointer ${
-                    tourWallpaperStep === WALLPAPER_TUTORIAL_STEPS.length - 1 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100'
-                  }`}
+                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-xl bg-black/80 hover:bg-blue-600 text-white border border-white/20 transition-all cursor-pointer ${tourWallpaperStep === WALLPAPER_TUTORIAL_STEPS.length - 1 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100'
+                    }`}
                   title="Next Step"
                 >
                   <ChevronRight size={18} />
@@ -809,9 +805,8 @@ export default function GuidedTour() {
                   <button
                     key={idx}
                     onClick={() => setTourWallpaperStep(idx)}
-                    className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                      idx === tourWallpaperStep ? 'w-5 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'w-1.5 bg-white/20 hover:bg-white/40'
-                    }`}
+                    className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${idx === tourWallpaperStep ? 'w-5 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'w-1.5 bg-white/20 hover:bg-white/40'
+                      }`}
                   />
                 ))}
               </div>
@@ -825,7 +820,7 @@ export default function GuidedTour() {
             ) : (
               <button
                 onClick={() => setFinishModalStep(1)}
-                className="flex items-center gap-1 px-3 py-2 text-xs font-semibold rounded-xl border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-xl border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
               >
                 <ChevronLeft size={14} />
                 <span>Back</span>
@@ -843,10 +838,10 @@ export default function GuidedTour() {
             ) : (
               <button
                 onClick={() => setShowFinishModal(false)}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-500/30 active:scale-95 transition-all cursor-pointer ml-auto"
+                className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-500/30 active:scale-95 transition-all cursor-pointer ml-auto"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>Awesome, Let's Grind! 🚀</span>
+                <span><pre>Awesome, Let's Grind! 🚀</pre></span>
               </button>
             )}
           </div>
@@ -893,9 +888,8 @@ export default function GuidedTour() {
       {/* Tour Card Box with Smart Compact Positioning */}
       <div
         style={getCardStyle()}
-        className={`z-10 w-[calc(100vw-32px)] sm:w-[380px] p-3.5 sm:p-4 bg-slate-900/95 border rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl text-white flex flex-col gap-2.5 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] pointer-events-auto ${
-          (hasPracticedPanic || hasPracticedFocus) ? 'border-emerald-500/60 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'border-indigo-500/40'
-        }`}
+        className={`z-10 w-[calc(100vw-32px)] sm:w-[380px] p-3.5 sm:p-4 bg-slate-900/95 border rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl text-white flex flex-col gap-2.5 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] pointer-events-auto ${(hasPracticedPanic || hasPracticedFocus) ? 'border-emerald-500/60 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'border-indigo-500/40'
+          }`}
       >
         {isFirstStep ? (
           /* Animated Glassy Welcome Step */
@@ -940,11 +934,10 @@ export default function GuidedTour() {
           <>
             <div className="flex items-center justify-between border-b border-white/10 pb-2 gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <div className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
-                  (hasPracticedPanic || hasPracticedFocus)
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                    : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.3)]'
-                }`}>
+                <div className={`p-1.5 rounded-lg border transition-colors shrink-0 ${(hasPracticedPanic || hasPracticedFocus)
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                  : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.3)]'
+                  }`}>
                   <StepIcon className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
@@ -973,11 +966,10 @@ export default function GuidedTour() {
                 ensureWorkspaceVisible();
                 setCurrentStepIndex(idx);
               }}
-              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                idx === currentStepIndex
-                  ? 'w-6 bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.8)]'
-                  : 'w-1.5 bg-white/20 hover:bg-white/40'
-              }`}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${idx === currentStepIndex
+                ? 'w-6 bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.8)]'
+                : 'w-1.5 bg-white/20 hover:bg-white/40'
+                }`}
             />
           ))}
         </div>
@@ -988,11 +980,10 @@ export default function GuidedTour() {
           <button
             onClick={handlePrev}
             disabled={isFirstStep}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-white/10 transition-all ${
-              isFirstStep
-                ? 'opacity-40 cursor-not-allowed text-white/40'
-                : 'text-white hover:bg-white/10 active:scale-95 cursor-pointer'
-            }`}
+            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-white/10 transition-all ${isFirstStep
+              ? 'opacity-40 cursor-not-allowed text-white/40'
+              : 'text-white hover:bg-white/10 active:scale-95 cursor-pointer'
+              }`}
           >
             <ChevronLeft size={14} />
             Back
@@ -1012,27 +1003,26 @@ export default function GuidedTour() {
           <button
             onClick={handleNext}
             disabled={isStepLocked}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 ${
-              isStepLocked
-                ? 'bg-slate-800 text-white/40 border border-white/10 cursor-not-allowed opacity-75'
-                : (hasPracticedPanic || hasPracticedFocus)
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 ${isStepLocked
+              ? 'bg-slate-800 text-white/40 border border-white/10 cursor-not-allowed opacity-75'
+              : (hasPracticedPanic || hasPracticedFocus)
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/40 ring-2 ring-emerald-400/50 animate-pulse cursor-pointer'
                 : isFirstStep
-                ? 'bg-gradient-to-r from-amber-400 via-indigo-500 to-purple-600 hover:from-amber-300 hover:to-purple-500 text-white shadow-lg shadow-amber-500/30 animate-pulse cursor-pointer'
-                : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30 cursor-pointer'
-            }`}
+                  ? 'bg-gradient-to-r from-amber-400 via-indigo-500 to-purple-600 hover:from-amber-300 hover:to-purple-500 text-white shadow-lg shadow-amber-500/30 animate-pulse cursor-pointer'
+                  : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30 cursor-pointer'
+              }`}
           >
             {isPanicLocked ? (
               <>
-                🔒 {hasHiddenPeek || isPanicHidden 
-                      ? (isDesktopScreen ? 'Do Ctrl+Z to Unhide' : 'Tap Eye to Unhide')
-                      : (isDesktopScreen ? 'Do Ctrl+Z to Hide' : 'Tap Eye to Hide')}
+                🔒 {hasHiddenPeek || isPanicHidden
+                  ? (isDesktopScreen ? 'Do Ctrl+Z to Unhide' : 'Tap Eye to Unhide')
+                  : (isDesktopScreen ? 'Do Ctrl+Z to Hide' : 'Tap Eye to Hide')}
               </>
             ) : isFocusLocked ? (
               <>
-                🔒 {hasHiddenFocus || isHidden 
-                      ? (isDesktopScreen ? 'Do Ctrl+H to Restore' : 'Tap Pill to Restore')
-                      : (isDesktopScreen ? 'Do Ctrl+H to Focus' : 'Tap Pill to Focus')}
+                🔒 {hasHiddenFocus || isHidden
+                  ? (isDesktopScreen ? 'Do Ctrl+H to Restore' : 'Tap Pill to Restore')
+                  : (isDesktopScreen ? 'Do Ctrl+H to Focus' : 'Tap Pill to Focus')}
               </>
             ) : isFirstStep ? (
               <>

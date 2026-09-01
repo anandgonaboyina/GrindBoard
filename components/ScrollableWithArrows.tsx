@@ -11,7 +11,7 @@ interface ScrollableWithArrowsProps {
   persistKey?: string;
 }
 
-export default function ScrollableWithArrows({ children, className = '', hideArrows = false, downArrowOffset = 'bottom-2', persistKey }: ScrollableWithArrowsProps) {
+export default function ScrollableWithArrows({ children, className = '', hideArrows = false, downArrowOffset = 'bottom-0', persistKey }: ScrollableWithArrowsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
@@ -66,7 +66,7 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
     e.stopPropagation();
     stopArrowScroll();
     scrollBy(direction);
-    
+
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (err) { }
@@ -154,7 +154,7 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging.current || !scrollRef.current) return;
-    
+
     e.stopPropagation();
     e.preventDefault(); // Stop native drag/selection immediately
 
@@ -224,7 +224,7 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
           onPointerUp={handleArrowPointerUpOrLeave}
           onPointerLeave={handleArrowPointerUpOrLeave}
           onPointerCancel={handleArrowPointerUpOrLeave}
-          className="absolute top-2 right-0 z-10 flex items-center justify-center w-7 h-7 md:w-8 md:h-8 bg-black/50 hover:bg-black/80 text-white rounded-l-xl opacity-80 hover:opacity-100 md:opacity-0 md:group-hover/scrollable:opacity-100 transition-all backdrop-blur-md border border-r-0 border-white/15 shadow-lg select-none"
+          className="absolute top-0 right-0 z-10 flex items-center justify-center w-7 h-7 md:w-8 md:h-8 bg-black/50 hover:bg-black/80 text-white rounded-l-xl opacity-80 hover:opacity-100 md:opacity-0 md:group-hover/scrollable:opacity-100 transition-all backdrop-blur-md border border-r-0 border-white/15 shadow-lg select-none"
         >
           <ChevronUp className="w-4 h-4 md:w-5 md:h-5" />
         </button>

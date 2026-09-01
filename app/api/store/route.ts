@@ -511,6 +511,7 @@ export async function POST(request: Request) {
     }
     
     if (!body.data) {
+      console.error('400 Error - No data provided. Body keys:', Object.keys(body));
       return NextResponse.json({ error: 'No data provided' }, { status: 400 });
     }
 

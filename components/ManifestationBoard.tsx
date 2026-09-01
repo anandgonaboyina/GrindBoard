@@ -270,7 +270,7 @@ export default function ManifestationBoard() {
                         </div>
                         <div className="relative group min-w-0 flex items-center">
                             <span
-                                className="text-xs font-semibold italic text-amber-200/90 tracking-wide truncate max-w-[240px] sm:max-w-[400px] md:max-w-[500px] cursor-pointer hover:text-amber-100 transition-colors"
+                                className="text-xs font-semibold italic text-amber-200/90 tracking-wide max-w-[240px] sm:max-w-[400px] md:max-w-[500px] cursor-pointer hover:text-amber-100 transition-colors"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     const next = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];

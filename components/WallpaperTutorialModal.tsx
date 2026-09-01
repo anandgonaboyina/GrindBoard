@@ -17,7 +17,7 @@ export const WALLPAPER_TUTORIAL_STEPS: WallpaperTutorialStep[] = [
     title: '1. Open Lively & Click "+"',
     image: '/wallpaper-tutorial/step-1.png',
     badge: 'Step 1 of 6',
-    description: 'After installing Lively Wallpaper, click the "+" (Add Wallpaper) button. Note the Settings gear icon (⚙️) in the top right—you will configure crucial performance settings there in Step 4-6.',
+    description: 'click below download lively App and download it, After installing Lively Wallpaper, click the "+" (Add Wallpaper) button. Note the Settings gear icon (⚙️) in the top right—you will configure crucial performance settings there in Step 4-6.',
   },
   {
     step: 2,
