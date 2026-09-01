@@ -8,6 +8,8 @@ import { Sparkles, ChevronLeft, ChevronRight, X, Plus, Trash2, Flame, Link as Li
 
 export default function ManifestationBoard() {
     const {
+        showManifestationBoard,
+        setShowManifestationBoard,
         isManifestationOpen,
         setIsManifestationOpen,
         manifestationDesktopPhotos,
@@ -21,8 +23,9 @@ export default function ManifestationBoard() {
     } = useDashboardStore();
 
     const [isMobile, setIsMobile] = useState(false);
-    const [isAddingUrl, setIsAddingUrl] = useState(false);
+    const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
     const [urlInput, setUrlInput] = useState('');
+    const [activeTab, setActiveTab] = useState<'upload' | 'url'>('url');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -33,7 +36,16 @@ export default function ManifestationBoard() {
         return () => media.removeEventListener('change', listener);
     }, []);
 
-    const photoList = isMobile ? manifestationMobilePhotos : manifestationDesktopPhotos;
+    // Combine photos so URLs are shared seamlessly between mobile & desktop
+    const currentDeviceList = isMobile ? manifestationMobilePhotos : manifestationDesktopPhotos;
+    const otherDeviceList = isMobile ? manifestationDesktopPhotos : manifestationMobilePhotos;
+
+    // Extract web URLs from other device list if not already present
+    const sharedUrls = otherDeviceList.filter(url => 
+        (url.startsWith('http://') || url.startsWith('https://')) && !currentDeviceList.includes(url)
+    );
+
+    const photoList = Array.from(new Set([...currentDeviceList, ...sharedUrls]));
     const setPhotoList = isMobile ? setManifestationMobilePhotos : setManifestationDesktopPhotos;
     const activeIndex = isMobile ? activeManifestationMobileIndex : activeManifestationDesktopIndex;
     const setActiveIndex = isMobile ? setActiveManifestationMobileIndex : setActiveManifestationDesktopIndex;
@@ -74,19 +86,18 @@ export default function ManifestationBoard() {
             const prefix = isMobile ? 'custom-manifest-mobile-' : 'custom-manifest-desktop-';
             const id = `${prefix}${Date.now()}`;
             
-            // Try saving to IndexedDB for offline persistence
             try {
                 await saveWallpaperToDB(id, file);
                 const updated = [...photoList, id];
                 setPhotoList(updated);
                 setActiveIndex(updated.length - 1);
             } catch (err) {
-                // Fallback to dataUrl directly if IndexedDB encounters issues
                 const updated = [...photoList, dataUrl];
                 setPhotoList(updated);
                 setActiveIndex(updated.length - 1);
             }
 
+            setIsAddMenuOpen(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         };
         reader.readAsDataURL(file);
@@ -96,11 +107,15 @@ export default function ManifestationBoard() {
         e.preventDefault();
         const trimmed = urlInput.trim();
         if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
-            const updated = [...photoList, trimmed];
-            setPhotoList(updated);
-            setActiveIndex(updated.length - 1);
+            // Save URL to BOTH desktop and mobile lists so it works across all devices
+            const newDesktop = Array.from(new Set([...manifestationDesktopPhotos, trimmed]));
+            const newMobile = Array.from(new Set([...manifestationMobilePhotos, trimmed]));
+            setManifestationDesktopPhotos(newDesktop);
+            setManifestationMobilePhotos(newMobile);
+
+            setActiveIndex(photoList.length);
             setUrlInput('');
-            setIsAddingUrl(false);
+            setIsAddMenuOpen(false);
         } else {
             alert('Please enter a valid image URL starting with http:// or https://');
         }
@@ -109,8 +124,13 @@ export default function ManifestationBoard() {
     const handleDeleteCurrent = async () => {
         if (effectiveIndex === null) return;
         const urlToDelete = photoList[effectiveIndex];
+        
+        const newDesktop = manifestationDesktopPhotos.filter(u => u !== urlToDelete);
+        const newMobile = manifestationMobilePhotos.filter(u => u !== urlToDelete);
+        setManifestationDesktopPhotos(newDesktop);
+        setManifestationMobilePhotos(newMobile);
+
         const updated = photoList.filter((_, idx) => idx !== effectiveIndex);
-        setPhotoList(updated);
 
         if (updated.length === 0) {
             setActiveIndex(null);
@@ -143,7 +163,7 @@ export default function ManifestationBoard() {
 
     return (
         <div
-            className="fixed inset-0 z-[99999] bg-black flex flex-col justify-between p-3 sm:p-6 animate-in fade-in duration-300 select-none w-screen h-screen overflow-hidden"
+            className="fixed inset-0 z-[99999] bg-black flex flex-col justify-between p-2 sm:p-4 animate-in fade-in duration-300 select-none w-screen h-screen overflow-hidden"
             onClick={() => setIsManifestationOpen(false)}
         >
             {/* Hidden File Input element for upload */}
@@ -163,138 +183,199 @@ export default function ManifestationBoard() {
                         alt="Manifestation Goal Background"
                         className="w-full h-full object-cover animate-in fade-in zoom-in-105 duration-700"
                     />
-                    {/* Vignette gradients for text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/20 to-black/90" />
+                    {/* Subtle vignette gradient so header & controls are always legible */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/10 to-black/90" />
                 </div>
             )}
 
-            {/* TOP HEADER CONTROLS (Z-20) */}
+            {/* ULTRA NARROW TOP HEADER (Z-30) */}
             <div
-                className="w-full max-w-6xl mx-auto flex items-center justify-between px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-black/50 backdrop-blur-xl border border-white/20 shadow-2xl z-20 shrink-0"
+                className="w-full max-w-6xl mx-auto flex items-center justify-between px-3 py-1 sm:py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-xl z-30 shrink-0"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Left Title */}
+                {/* Left Side: Sparkles + Title + Board ON/OFF Toggle Switch */}
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
+                    <div className="p-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                        <Sparkles className="w-3.5 h-3.5 animate-pulse" />
                     </div>
-                    <div className="min-w-0">
-                        <h3 className="text-xs sm:text-base font-bold text-white tracking-wide flex items-center gap-1.5 sm:gap-2 truncate">
-                            <span className="truncate">Manifestation Board</span>
-                            <span className="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded-full font-mono font-normal shrink-0">
-                                {isMobile ? 'Mobile' : 'Desktop'}
-                            </span>
-                        </h3>
-                        <p className="text-[9px] sm:text-xs text-amber-200/80 truncate">
-                            Offline Vision Board • Goal Focus
-                        </p>
-                    </div>
+                    <span className="text-xs font-bold text-white tracking-wide truncate">
+                        Manifestation Board
+                    </span>
+
+                    {/* Board ON/OFF Toggle Switch */}
+                    <button
+                        onClick={() => {
+                            const nextState = !showManifestationBoard;
+                            setShowManifestationBoard(nextState);
+                            if (!nextState) setIsManifestationOpen(false);
+                        }}
+                        className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer shrink-0 ${
+                            showManifestationBoard
+                                ? 'bg-amber-500/30 text-amber-300 border-amber-500/50 hover:bg-amber-500/40'
+                                : 'bg-white/10 text-white/50 border-white/15 hover:bg-white/20'
+                        }`}
+                        title="Toggle Manifestation Board ON/OFF"
+                    >
+                        <span className={`w-2 h-2 rounded-full ${showManifestationBoard ? 'bg-amber-400 animate-pulse' : 'bg-white/40'}`} />
+                        <span>{showManifestationBoard ? 'ON' : 'OFF'}</span>
+                    </button>
                 </div>
 
-                {/* Right Action Corner: Add Image (+), Delete, Close (X) */}
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    {/* Add Photo (+) Button */}
+                {/* Right Side: Simple + Icon Button, Delete, and Close X */}
+                <div className="relative flex items-center gap-1.5 shrink-0">
+                    {/* Simple + Icon Button */}
                     <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500/30 hover:bg-amber-500/50 border border-amber-500/50 text-amber-200 hover:text-white text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-lg backdrop-blur-md"
-                        title="Upload Local Photo (+)"
+                        onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
+                        className={`p-1.5 rounded-full border transition-all active:scale-95 cursor-pointer ${
+                            isAddMenuOpen
+                                ? 'bg-amber-500 text-black border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+                                : 'bg-white/10 hover:bg-amber-500/30 text-amber-300 border-white/15'
+                        }`}
+                        title="Add Image (+)"
                     >
                         <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">Add Photo</span>
-                    </button>
-
-                    {/* Add URL Button */}
-                    <button
-                        onClick={() => setIsAddingUrl(!isAddingUrl)}
-                        className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white/90 hover:text-white text-xs font-medium transition-all active:scale-95 cursor-pointer backdrop-blur-md"
-                        title="Add Image URL"
-                    >
-                        <LinkIcon className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Add URL</span>
                     </button>
 
                     {/* Delete Current Photo Button */}
                     {photoList.length > 0 && effectiveIndex !== null && (
                         <button
                             onClick={handleDeleteCurrent}
-                            className="p-1.5 sm:p-2 rounded-xl bg-red-500/20 hover:bg-red-500/80 border border-red-500/40 text-red-300 hover:text-white transition-all cursor-pointer backdrop-blur-md"
+                            className="p-1.5 rounded-full bg-red-500/20 hover:bg-red-500/80 border border-red-500/40 text-red-300 hover:text-white transition-all cursor-pointer"
                             title="Delete Current Photo"
                         >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                         </button>
                     )}
 
-                    {/* Close Button */}
+                    {/* Close (X) Button */}
                     <button
                         onClick={() => setIsManifestationOpen(false)}
-                        className="p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-red-500/80 text-white transition-colors cursor-pointer ml-1 backdrop-blur-md"
-                        title="Close Full Screen (ESC)"
+                        className="p-1.5 rounded-full bg-white/10 hover:bg-red-500/80 text-white transition-colors cursor-pointer ml-1"
+                        title="Close (ESC)"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4" />
                     </button>
+
+                    {/* Floating Add Menu Popover (Triggered by + icon) */}
+                    {isAddMenuOpen && (
+                        <div
+                            className="absolute top-9 right-0 w-72 p-3 rounded-2xl bg-black/90 backdrop-blur-2xl border border-amber-500/40 shadow-2xl z-40 animate-in slide-in-from-top-2 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
+                                <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                                    <Sparkles className="w-3.5 h-3.5" /> Add Vision Photo
+                                </span>
+                                <button
+                                    onClick={() => setIsAddMenuOpen(false)}
+                                    className="p-1 text-white/50 hover:text-white"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                {/* Option 1: Upload Local Image */}
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 hover:text-white font-bold transition-all text-left cursor-pointer"
+                                >
+                                    <Upload className="w-4 h-4 text-amber-400" />
+                                    <span>Upload Local Image</span>
+                                </button>
+
+                                {/* Option 2: Paste Image URL */}
+                                <form onSubmit={handleAddUrlSubmit} className="flex flex-col gap-1.5 mt-1">
+                                    <label className="text-[10px] text-white/60 font-medium">Or Paste Direct Image URL:</label>
+                                    <div className="flex gap-1.5">
+                                        <input
+                                            type="url"
+                                            value={urlInput}
+                                            onChange={(e) => setUrlInput(e.target.value)}
+                                            placeholder="https://example.com/image.jpg"
+                                            className="flex-1 px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/15 text-xs text-white placeholder-white/40 focus:outline-none focus:border-amber-400"
+                                        />
+                                        <button
+                                            type="submit"
+                                            className="px-3 py-1.5 rounded-xl bg-amber-500 text-black font-bold text-xs hover:bg-amber-400 transition-colors shrink-0 cursor-pointer"
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                    <p className="text-[9px] text-white/40 leading-tight">
+                                        URLs work across both mobile & desktop devices automatically.
+                                    </p>
+                                </form>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Add URL Drawer Input */}
-            {isAddingUrl && (
-                <div
-                    className="w-full max-w-xl mx-auto my-2 p-3 rounded-2xl bg-black/90 backdrop-blur-2xl border border-amber-500/40 shadow-2xl z-30 animate-in slide-in-from-top-4 shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <form onSubmit={handleAddUrlSubmit} className="flex gap-2">
-                        <input
-                            type="url"
-                            value={urlInput}
-                            onChange={(e) => setUrlInput(e.target.value)}
-                            placeholder="Enter direct image URL (https://...)"
-                            className="flex-1 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-xs text-white placeholder-white/40 focus:outline-none focus:border-amber-400"
-                            autoFocus
-                        />
-                        <button
-                            type="submit"
-                            className="px-4 py-2 rounded-xl bg-amber-500 text-black font-bold text-xs hover:bg-amber-400 transition-colors cursor-pointer"
-                        >
-                            Add
-                        </button>
-                    </form>
-                </div>
-            )}
-
-            {/* CENTER / FULL SCREEN CONTENT LAYER (Z-10) */}
+            {/* CENTER LAYER (Z-10) */}
             <div
-                className="relative flex-1 w-full max-w-6xl mx-auto flex items-center justify-center my-2 sm:my-4 z-10 min-h-0"
+                className="relative flex-1 w-full max-w-6xl mx-auto flex items-center justify-center my-2 z-10 min-h-0"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* CASE 1: NO PHOTOS ADDED YET */}
+                {/* DEFAULT OPEN STATE WHEN NO PHOTOS EXIST */}
                 {photoList.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-6 sm:p-12 rounded-3xl border border-dashed border-amber-500/40 bg-black/70 backdrop-blur-2xl text-center max-w-lg shadow-[0_0_60px_rgba(245,158,11,0.25)] animate-in zoom-in-95 my-auto">
-                        <div className="p-3.5 sm:p-4 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 mb-3 sm:mb-4 animate-bounce">
-                            <Sparkles className="w-8 h-8 sm:w-10 sm:h-10" />
+                    <div className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-3xl border border-dashed border-amber-500/40 bg-black/80 backdrop-blur-2xl text-center max-w-md shadow-[0_0_60px_rgba(245,158,11,0.25)] animate-in zoom-in-95 my-auto">
+                        <div className="p-3 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 mb-3 animate-bounce">
+                            <Sparkles className="w-8 h-8" />
                         </div>
-                        <h2 className="text-lg sm:text-2xl font-extrabold text-white mb-2 tracking-wide">
-                            No Manifestation Photos Added Yet
+                        <h2 className="text-base sm:text-xl font-extrabold text-white mb-1.5 tracking-wide">
+                            Manifest Your Target Goals
                         </h2>
-                        <p className="text-xs sm:text-sm text-amber-200/80 mb-5 leading-relaxed max-w-sm">
-                            Upload photos of your dream goals, dream car, home, or vision board. Images fill this entire full screen background!
+                        <p className="text-xs text-amber-200/80 mb-4 leading-relaxed">
+                            No vision images set yet. Upload a local file or paste an image URL to set your vision board background.
                         </p>
 
-                        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+                        {/* Tabs for Upload vs URL (Open by default) */}
+                        <div className="w-full flex bg-white/10 p-1 rounded-xl mb-3 border border-white/10">
                             <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-full sm:w-auto px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-xs sm:text-sm shadow-xl shadow-amber-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                onClick={() => setActiveTab('url')}
+                                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    activeTab === 'url' ? 'bg-amber-500 text-black shadow' : 'text-white/60 hover:text-white'
+                                }`}
                             >
-                                <Upload className="w-4 h-4" />
-                                <span>+ Upload Local Photo</span>
+                                <LinkIcon className="w-3.5 h-3.5" /> Paste URL
                             </button>
-
                             <button
-                                onClick={() => setIsAddingUrl(true)}
-                                className="w-full sm:w-auto px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                onClick={() => setActiveTab('upload')}
+                                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    activeTab === 'upload' ? 'bg-amber-500 text-black shadow' : 'text-white/60 hover:text-white'
+                                }`}
                             >
-                                <LinkIcon className="w-4 h-4 text-amber-300" />
-                                <span>Add Image URL</span>
+                                <Upload className="w-3.5 h-3.5" /> Upload File
                             </button>
                         </div>
+
+                        {activeTab === 'url' ? (
+                            <form onSubmit={handleAddUrlSubmit} className="w-full flex flex-col gap-2">
+                                <input
+                                    type="url"
+                                    value={urlInput}
+                                    onChange={(e) => setUrlInput(e.target.value)}
+                                    placeholder="Paste direct image URL (https://...)"
+                                    className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-xs text-white placeholder-white/40 focus:outline-none focus:border-amber-400"
+                                    autoFocus
+                                />
+                                <button
+                                    type="submit"
+                                    className="w-full py-2.5 rounded-xl bg-amber-500 text-black font-extrabold text-xs hover:bg-amber-400 transition-colors shadow-lg cursor-pointer"
+                                >
+                                    Set Vision Board URL
+                                </button>
+                            </form>
+                        ) : (
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-xs shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                                <Upload className="w-4 h-4" />
+                                <span>Choose Local Photo File</span>
+                            </button>
+                        )}
                     </div>
                 ) : (
                     /* CASE 2: IMAGES EXIST - FLOATING NAVIGATION OVER FULL SCREEN BACKGROUND */
@@ -303,10 +384,10 @@ export default function ManifestationBoard() {
                         {photoList.length > 1 && (
                             <button
                                 onClick={handlePrev}
-                                className="p-3 sm:p-4 rounded-full bg-black/60 backdrop-blur-xl hover:bg-amber-500/80 border border-white/20 text-white hover:text-black hover:scale-110 transition-all cursor-pointer shadow-2xl pointer-events-auto ml-2 sm:ml-4"
+                                className="p-2.5 sm:p-3.5 rounded-full bg-black/60 backdrop-blur-xl hover:bg-amber-500/80 border border-white/20 text-white hover:text-black hover:scale-110 transition-all cursor-pointer shadow-2xl pointer-events-auto ml-1 sm:ml-3"
                                 title="Previous Photo"
                             >
-                                <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
+                                <ChevronLeft className="w-5 h-5 sm:w-7 sm:h-7" />
                             </button>
                         )}
 
@@ -316,34 +397,34 @@ export default function ManifestationBoard() {
                         {photoList.length > 1 && (
                             <button
                                 onClick={handleNext}
-                                className="p-3 sm:p-4 rounded-full bg-black/60 backdrop-blur-xl hover:bg-amber-500/80 border border-white/20 text-white hover:text-black hover:scale-110 transition-all cursor-pointer shadow-2xl pointer-events-auto mr-2 sm:mr-4"
+                                className="p-2.5 sm:p-3.5 rounded-full bg-black/60 backdrop-blur-xl hover:bg-amber-500/80 border border-white/20 text-white hover:text-black hover:scale-110 transition-all cursor-pointer shadow-2xl pointer-events-auto mr-1 sm:mr-3"
                                 title="Next Photo"
                             >
-                                <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
+                                <ChevronRight className="w-5 h-5 sm:w-7 sm:h-7" />
                             </button>
                         )}
 
                         {/* Corner Navigation Counter Pill (Bottom Right) */}
                         {photoList.length > 1 && (
-                            <div className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 flex items-center gap-1.5 p-1.5 sm:p-2 rounded-2xl bg-black/80 backdrop-blur-2xl border border-white/20 shadow-2xl pointer-events-auto z-30">
+                            <div className="absolute bottom-1.5 right-1.5 sm:bottom-3 sm:right-3 flex items-center gap-1.5 p-1 sm:p-1.5 rounded-full bg-black/80 backdrop-blur-2xl border border-white/20 shadow-2xl pointer-events-auto z-30">
                                 <button
                                     onClick={handlePrev}
-                                    className="p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95"
+                                    className="p-1 sm:p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95"
                                     title="Previous Photo"
                                 >
-                                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </button>
 
-                                <div className="px-2.5 py-0.5 text-xs font-mono font-bold text-amber-300">
+                                <div className="px-2 py-0.5 text-[10px] sm:text-xs font-mono font-bold text-amber-300">
                                     {(effectiveIndex ?? 0) + 1} / {photoList.length}
                                 </div>
 
                                 <button
                                     onClick={handleNext}
-                                    className="p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95"
+                                    className="p-1 sm:p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95"
                                     title="Next Photo"
                                 >
-                                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </button>
                             </div>
                         )}
@@ -353,10 +434,10 @@ export default function ManifestationBoard() {
 
             {/* BOTTOM INSPIRATION BAR (Z-20) */}
             <div
-                className="w-full max-w-fit mx-auto flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 text-[10px] sm:text-xs text-white/90 z-20 shrink-0 shadow-2xl"
+                className="w-full max-w-fit mx-auto flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full bg-black/60 backdrop-blur-xl border border-white/15 text-[9px] sm:text-xs text-white/90 z-20 shrink-0 shadow-xl"
                 onClick={(e) => e.stopPropagation()}
             >
-                <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 animate-bounce" />
+                <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 animate-bounce" />
                 <span>Visualize daily to manifest your target goals into reality.</span>
             </div>
         </div>
