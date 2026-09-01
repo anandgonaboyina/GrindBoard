@@ -9,6 +9,7 @@ export function useWallpaperUrl(url: string | null | undefined) {
 
   useEffect(() => {
     let objectUrl = '';
+    let isSubscribed = true;
     
     if (!url) {
       setResolvedUrl('');
@@ -27,23 +28,34 @@ export function useWallpaperUrl(url: string | null | undefined) {
     setIsVideo(url.match(/\.(mp4|webm)$/i) ? true : false);
 
     if (url.startsWith('custom-')) {
-      getWallpaperFromDB(url).then(blob => {
+      const loadCustomBlob = async () => {
+        let blob = await getWallpaperFromDB(url);
+        if (!blob) {
+          // Retry once after 200ms in case IndexedDB transaction is finishing
+          await new Promise((r) => setTimeout(r, 200));
+          blob = await getWallpaperFromDB(url);
+        }
+        
+        if (!isSubscribed) return;
+
         if (blob) {
           objectUrl = URL.createObjectURL(blob);
           setResolvedUrl(objectUrl);
           setIsVideo(blob.type.startsWith('video/'));
-        } else {
-          // If a custom local file is synced from another device but doesn't exist here, use fallback
+        } else if (!url.startsWith('custom-manifest-')) {
+          // Fallback for desktop wallpapers only
           const isMobile = window.innerWidth <= 768;
           setResolvedUrl(isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : "/wallpapers/naruto.webp");
           setIsVideo(false);
         }
-      });
+      };
+      loadCustomBlob();
     } else {
       setResolvedUrl(url);
     }
 
     return () => {
+      isSubscribed = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [url]);

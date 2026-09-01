@@ -36,19 +36,19 @@ export default function ManifestationBoard() {
         return () => media.removeEventListener('change', listener);
     }, []);
 
-    // Combine photos so URLs are shared seamlessly between mobile & desktop
+    // Combine photos so URLs & Data URLs are shared seamlessly between mobile & desktop
     const currentDeviceList = isMobile ? manifestationMobilePhotos : manifestationDesktopPhotos;
     const otherDeviceList = isMobile ? manifestationDesktopPhotos : manifestationMobilePhotos;
 
-    // Extract web URLs from other device list if not already present
-    const sharedUrls = otherDeviceList.filter(url => 
-        (url.startsWith('http://') || url.startsWith('https://')) && !currentDeviceList.includes(url)
-    );
+    // Extract non-duplicate items from other device list
+    const sharedItems = otherDeviceList.filter(item => !currentDeviceList.includes(item));
+    const photoList = Array.from(new Set([...currentDeviceList, ...sharedItems]));
 
-    const photoList = Array.from(new Set([...currentDeviceList, ...sharedUrls]));
-    const setPhotoList = isMobile ? setManifestationMobilePhotos : setManifestationDesktopPhotos;
     const activeIndex = isMobile ? activeManifestationMobileIndex : activeManifestationDesktopIndex;
-    const setActiveIndex = isMobile ? setActiveManifestationMobileIndex : setActiveManifestationDesktopIndex;
+    const setActiveIndex = (idx: number | null) => {
+        setActiveManifestationDesktopIndex(idx);
+        setActiveManifestationMobileIndex(idx);
+    };
 
     const effectiveIndex = (activeIndex !== null && activeIndex >= 0 && activeIndex < photoList.length)
         ? activeIndex
@@ -61,15 +61,16 @@ export default function ManifestationBoard() {
         if (photoList.length <= 1) return;
         const next = effectiveIndex === null ? 0 : (effectiveIndex + 1) % photoList.length;
         setActiveIndex(next);
-    }, [photoList.length, effectiveIndex, setActiveIndex]);
+    }, [photoList.length, effectiveIndex]);
 
     const handlePrev = useCallback(() => {
         if (photoList.length <= 1) return;
         const prev = effectiveIndex === null ? 0 : (effectiveIndex - 1 + photoList.length) % photoList.length;
         setActiveIndex(prev);
-    }, [photoList.length, effectiveIndex, setActiveIndex]);
+    }, [photoList.length, effectiveIndex]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        e.stopPropagation();
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -86,16 +87,22 @@ export default function ManifestationBoard() {
             const prefix = isMobile ? 'custom-manifest-mobile-' : 'custom-manifest-desktop-';
             const id = `${prefix}${Date.now()}`;
             
+            // Save to IndexedDB as backup
             try {
                 await saveWallpaperToDB(id, file);
-                const updated = [...photoList, id];
-                setPhotoList(updated);
-                setActiveIndex(updated.length - 1);
             } catch (err) {
-                const updated = [...photoList, dataUrl];
-                setPhotoList(updated);
-                setActiveIndex(updated.length - 1);
+                console.warn('IndexedDB save warning:', err);
             }
+
+            // Save dataUrl to store so it displays 100% reliably & instantly
+            const newDesktop = Array.from(new Set([...manifestationDesktopPhotos, dataUrl]));
+            const newMobile = Array.from(new Set([...manifestationMobilePhotos, dataUrl]));
+
+            setManifestationDesktopPhotos(newDesktop);
+            setManifestationMobilePhotos(newMobile);
+
+            const newIndex = newDesktop.length - 1;
+            setActiveIndex(newIndex);
 
             setIsAddMenuOpen(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -103,17 +110,25 @@ export default function ManifestationBoard() {
         reader.readAsDataURL(file);
     };
 
+    const triggerFileInput = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
     const handleAddUrlSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        e.stopPropagation();
         const trimmed = urlInput.trim();
         if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
-            // Save URL to BOTH desktop and mobile lists so it works across all devices
             const newDesktop = Array.from(new Set([...manifestationDesktopPhotos, trimmed]));
             const newMobile = Array.from(new Set([...manifestationMobilePhotos, trimmed]));
             setManifestationDesktopPhotos(newDesktop);
             setManifestationMobilePhotos(newMobile);
 
-            setActiveIndex(photoList.length);
+            setActiveIndex(newDesktop.length - 1);
             setUrlInput('');
             setIsAddMenuOpen(false);
         } else {
@@ -121,7 +136,9 @@ export default function ManifestationBoard() {
         }
     };
 
-    const handleDeleteCurrent = async () => {
+    const handleDeleteCurrent = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (effectiveIndex === null) return;
         const urlToDelete = photoList[effectiveIndex];
         
@@ -173,6 +190,7 @@ export default function ManifestationBoard() {
                 accept="image/*"
                 className="hidden"
                 onChange={handleFileUpload}
+                onClick={(e) => e.stopPropagation()}
             />
 
             {/* FULL SCREEN BACKGROUND IMAGE LAYER */}
@@ -204,7 +222,8 @@ export default function ManifestationBoard() {
 
                     {/* Board ON/OFF Toggle Switch */}
                     <button
-                        onClick={() => {
+                        onClick={(e) => {
+                            e.stopPropagation();
                             const nextState = !showManifestationBoard;
                             setShowManifestationBoard(nextState);
                             if (!nextState) setIsManifestationOpen(false);
@@ -225,7 +244,10 @@ export default function ManifestationBoard() {
                 <div className="relative flex items-center gap-1.5 shrink-0">
                     {/* Simple + Icon Button */}
                     <button
-                        onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAddMenuOpen(!isAddMenuOpen);
+                        }}
                         className={`p-1.5 rounded-full border transition-all active:scale-95 cursor-pointer ${
                             isAddMenuOpen
                                 ? 'bg-amber-500 text-black border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
@@ -249,7 +271,10 @@ export default function ManifestationBoard() {
 
                     {/* Close (X) Button */}
                     <button
-                        onClick={() => setIsManifestationOpen(false)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsManifestationOpen(false);
+                        }}
                         className="p-1.5 rounded-full bg-white/10 hover:bg-red-500/80 text-white transition-colors cursor-pointer ml-1"
                         title="Close (ESC)"
                     >
@@ -267,7 +292,10 @@ export default function ManifestationBoard() {
                                     <Sparkles className="w-3.5 h-3.5" /> Add Vision Photo
                                 </span>
                                 <button
-                                    onClick={() => setIsAddMenuOpen(false)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsAddMenuOpen(false);
+                                    }}
                                     className="p-1 text-white/50 hover:text-white"
                                 >
                                     <X className="w-3.5 h-3.5" />
@@ -277,7 +305,7 @@ export default function ManifestationBoard() {
                             <div className="flex flex-col gap-2">
                                 {/* Option 1: Upload Local Image */}
                                 <button
-                                    onClick={() => fileInputRef.current?.click()}
+                                    onClick={triggerFileInput}
                                     className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 hover:text-white font-bold transition-all text-left cursor-pointer"
                                 >
                                     <Upload className="w-4 h-4 text-amber-400" />
@@ -333,7 +361,10 @@ export default function ManifestationBoard() {
                         {/* Tabs for Upload vs URL (Open by default) */}
                         <div className="w-full flex bg-white/10 p-1 rounded-xl mb-3 border border-white/10">
                             <button
-                                onClick={() => setActiveTab('url')}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveTab('url');
+                                }}
                                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                     activeTab === 'url' ? 'bg-amber-500 text-black shadow' : 'text-white/60 hover:text-white'
                                 }`}
@@ -341,7 +372,10 @@ export default function ManifestationBoard() {
                                 <LinkIcon className="w-3.5 h-3.5" /> Paste URL
                             </button>
                             <button
-                                onClick={() => setActiveTab('upload')}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveTab('upload');
+                                }}
                                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                     activeTab === 'upload' ? 'bg-amber-500 text-black shadow' : 'text-white/60 hover:text-white'
                                 }`}
@@ -369,7 +403,7 @@ export default function ManifestationBoard() {
                             </form>
                         ) : (
                             <button
-                                onClick={() => fileInputRef.current?.click()}
+                                onClick={triggerFileInput}
                                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-extrabold text-xs shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 <Upload className="w-4 h-4" />
@@ -383,7 +417,10 @@ export default function ManifestationBoard() {
                         {/* Side Left Navigation Arrow */}
                         {photoList.length > 1 && (
                             <button
-                                onClick={handlePrev}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePrev();
+                                }}
                                 className="p-2.5 sm:p-3.5 rounded-full bg-black/60 backdrop-blur-xl hover:bg-amber-500/80 border border-white/20 text-white hover:text-black hover:scale-110 transition-all cursor-pointer shadow-2xl pointer-events-auto ml-1 sm:ml-3"
                                 title="Previous Photo"
                             >
@@ -396,7 +433,10 @@ export default function ManifestationBoard() {
                         {/* Side Right Navigation Arrow */}
                         {photoList.length > 1 && (
                             <button
-                                onClick={handleNext}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleNext();
+                                }}
                                 className="p-2.5 sm:p-3.5 rounded-full bg-black/60 backdrop-blur-xl hover:bg-amber-500/80 border border-white/20 text-white hover:text-black hover:scale-110 transition-all cursor-pointer shadow-2xl pointer-events-auto mr-1 sm:mr-3"
                                 title="Next Photo"
                             >
@@ -408,7 +448,10 @@ export default function ManifestationBoard() {
                         {photoList.length > 1 && (
                             <div className="absolute bottom-1.5 right-1.5 sm:bottom-3 sm:right-3 flex items-center gap-1.5 p-1 sm:p-1.5 rounded-full bg-black/80 backdrop-blur-2xl border border-white/20 shadow-2xl pointer-events-auto z-30">
                                 <button
-                                    onClick={handlePrev}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePrev();
+                                    }}
                                     className="p-1 sm:p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95"
                                     title="Previous Photo"
                                 >
@@ -420,7 +463,10 @@ export default function ManifestationBoard() {
                                 </div>
 
                                 <button
-                                    onClick={handleNext}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleNext();
+                                    }}
                                     className="p-1 sm:p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer active:scale-95"
                                     title="Next Photo"
                                 >
