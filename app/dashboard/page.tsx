@@ -31,7 +31,7 @@ import GuidedTour from "@/components/GuidedTour";
 import ManifestationBoard from "@/components/ManifestationBoard";
 
 import { useEffect, useState, useRef } from "react";
-import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users, Hourglass } from "lucide-react";
+import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users, Hourglass, Sparkles } from "lucide-react";
 import { useDashboardStore, hasUnsavedChanges } from "@/store/dashboardStore";
 import { fetchQuote } from "@/utils/quoteEngine";
 
@@ -72,6 +72,8 @@ export default function Dashboard() {
   const customMobileWallpapers = useDashboardStore((state) => state.customMobileWallpapers);
   const activeMobileCustomIndex = useDashboardStore((state) => state.activeMobileCustomIndex);
   const setActiveMobileCustomIndex = useDashboardStore((state) => state.setActiveMobileCustomIndex);
+  const showManifestationBoard = useDashboardStore((state) => state.showManifestationBoard);
+  const setShowManifestationBoard = useDashboardStore((state) => state.setShowManifestationBoard);
 
 
   const isMobileCountdownsVisible = useDashboardStore((state) => state.isMobileCountdownsVisible);
@@ -256,16 +258,30 @@ export default function Dashboard() {
 
       <VideoBackground />
 
-      {/* Background Switcher */}
+      {/* Background Switcher & Manifestation Board Controls */}
       {!isPanicHidden && (!isHidden || !hideConfig.bgSwitcher) && showBgSwitcher && (
-        <button
-          data-tour="wallpaper-btn"
-          onClick={cycleWallpaper}
-          className="fixed top-10 left-3 z-[40] p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/20 shadow-xl transition-all glass-btn hidden md:block group"
-        >
-          <ImageIcon className="w-1 h-1 sm:w-4 sm:h-4" />
-          <Tooltip text="Next Wallpaper" position="right" />
-        </button>
+        <div className="fixed top-10 left-3 z-[40] flex items-center gap-2">
+          <button
+            data-tour="wallpaper-btn"
+            onClick={cycleWallpaper}
+            className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/20 shadow-xl transition-all glass-btn hidden md:flex items-center justify-center group"
+          >
+            <ImageIcon className="w-4 h-4" />
+            <Tooltip text="Next Wallpaper" position="right" />
+          </button>
+
+          <button
+            onClick={() => setShowManifestationBoard(!showManifestationBoard)}
+            className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border shadow-xl transition-all flex items-center justify-center group cursor-pointer ${
+              showManifestationBoard
+                ? 'bg-amber-500/30 text-amber-300 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
+                : 'glass-btn border-white/20 text-white/70 hover:text-white'
+            }`}
+          >
+            <Sparkles className={`w-4 h-4 ${showManifestationBoard ? 'animate-pulse text-amber-300' : ''}`} />
+            <Tooltip text={showManifestationBoard ? "Hide Manifestation Board" : "Show Manifestation Board"} position="right" />
+          </button>
+        </div>
       )}
 
       {!isPanicHidden && (
