@@ -576,7 +576,7 @@ export async function POST(request: Request) {
     const coreData: Record<string, any> = {};
 
     Object.keys(state || {}).forEach(key => {
-      if (key.startsWith('show') || key.startsWith('hide') || key.startsWith('is')) {
+      if ((key.startsWith('show') || key.startsWith('hide') || key.startsWith('is')) && key !== 'hideConfig' && key !== 'mobileHideConfig') {
         displaySettings[key] = state[key];
       } else if (typeof state[key] === 'string' || typeof state[key] === 'number') {
         generalSettings[key] = state[key];
