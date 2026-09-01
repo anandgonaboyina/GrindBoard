@@ -754,6 +754,17 @@ const performSave = async () => {
         customMobileWallpapers: mergeStringArrays(parsedLocal.state.customMobileWallpapers, parsedCloud.state.customMobileWallpapers),
         customQuotes: mergeStringArrays(parsedLocal.state.customQuotes, parsedCloud.state.customQuotes),
         manifestationCustomQuotes: mergeStringArrays(parsedLocal.state.manifestationCustomQuotes, parsedCloud.state.manifestationCustomQuotes),
+
+        // Active wallpaper/manifestation index: LOCAL always wins — it's a per-device UI selection.
+        // Cloud only fills in when local is null (fresh device).
+        activeDesktopCustomIndex: (parsedLocal.state.activeDesktopCustomIndex !== undefined && parsedLocal.state.activeDesktopCustomIndex !== null)
+          ? parsedLocal.state.activeDesktopCustomIndex : parsedCloud.state.activeDesktopCustomIndex,
+        activeMobileCustomIndex: (parsedLocal.state.activeMobileCustomIndex !== undefined && parsedLocal.state.activeMobileCustomIndex !== null)
+          ? parsedLocal.state.activeMobileCustomIndex : parsedCloud.state.activeMobileCustomIndex,
+        activeManifestationDesktopIndex: (parsedLocal.state.activeManifestationDesktopIndex !== undefined && parsedLocal.state.activeManifestationDesktopIndex !== null)
+          ? parsedLocal.state.activeManifestationDesktopIndex : parsedCloud.state.activeManifestationDesktopIndex,
+        activeManifestationMobileIndex: (parsedLocal.state.activeManifestationMobileIndex !== undefined && parsedLocal.state.activeManifestationMobileIndex !== null)
+          ? parsedLocal.state.activeManifestationMobileIndex : parsedCloud.state.activeManifestationMobileIndex,
       };
 
       const mergedData = { version: 2, state: mergedState };
@@ -946,18 +957,21 @@ const fileStorage = createJSONStorage(() => ({
               const mergedHideConfig = { ...(localState.hideConfig || {}), ...(cloudState.hideConfig || {}) };
               const mergedMobileHideConfig = { ...(localState.mobileHideConfig || {}), ...(cloudState.mobileHideConfig || {}) };
 
-              const activeDesktopCustomIndex = (cloudState.activeDesktopCustomIndex !== undefined && cloudState.activeDesktopCustomIndex !== null)
-                ? cloudState.activeDesktopCustomIndex
-                : localState.activeDesktopCustomIndex;
-              const activeMobileCustomIndex = (cloudState.activeMobileCustomIndex !== undefined && cloudState.activeMobileCustomIndex !== null)
-                ? cloudState.activeMobileCustomIndex
-                : localState.activeMobileCustomIndex;
-              const activeManifestationDesktopIndex = (cloudState.activeManifestationDesktopIndex !== undefined && cloudState.activeManifestationDesktopIndex !== null)
-                ? cloudState.activeManifestationDesktopIndex
-                : localState.activeManifestationDesktopIndex;
-              const activeManifestationMobileIndex = (cloudState.activeManifestationMobileIndex !== undefined && cloudState.activeManifestationMobileIndex !== null)
-                ? cloudState.activeManifestationMobileIndex
-                : localState.activeManifestationMobileIndex;
+              // Active index: LOCAL wins — the user's current selection on this device takes priority.
+              // Cloud only fills in when local is null (fresh device / no selection yet).
+              // This prevents the debounced cloud save from reverting the user's just-made selection on refresh.
+              const activeDesktopCustomIndex = (localState.activeDesktopCustomIndex !== undefined && localState.activeDesktopCustomIndex !== null)
+                ? localState.activeDesktopCustomIndex
+                : cloudState.activeDesktopCustomIndex;
+              const activeMobileCustomIndex = (localState.activeMobileCustomIndex !== undefined && localState.activeMobileCustomIndex !== null)
+                ? localState.activeMobileCustomIndex
+                : cloudState.activeMobileCustomIndex;
+              const activeManifestationDesktopIndex = (localState.activeManifestationDesktopIndex !== undefined && localState.activeManifestationDesktopIndex !== null)
+                ? localState.activeManifestationDesktopIndex
+                : cloudState.activeManifestationDesktopIndex;
+              const activeManifestationMobileIndex = (localState.activeManifestationMobileIndex !== undefined && localState.activeManifestationMobileIndex !== null)
+                ? localState.activeManifestationMobileIndex
+                : cloudState.activeManifestationMobileIndex;
 
               // 4. Construct Merged State
               //    Cloud wins for settings/data, but LOCAL ALWAYS WINS for timer state.

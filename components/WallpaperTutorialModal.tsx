@@ -83,7 +83,7 @@ export default function WallpaperTutorialModal({ isOpen, onClose, initialStep = 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[99995] flex items-center justify-center p-3 sm:p-5 select-none animate-in fade-in duration-200">
       <div className="relative z-[100000] bg-[#10131d] border border-blue-500/30 rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-[0_0_60px_rgba(59,130,246,0.25)] flex flex-col gap-3.5 max-h-[92vh] overflow-y-auto custom-scrollbar text-white">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-3 gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -138,9 +138,8 @@ export default function WallpaperTutorialModal({ isOpen, onClose, initialStep = 
           <button
             onClick={handlePrev}
             disabled={isFirst}
-            className={`absolute left-2.5 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-2xl bg-black/75 hover:bg-blue-600 text-white border border-white/20 shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer ${
-              isFirst ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100 hover:scale-105'
-            }`}
+            className={`absolute left-2.5 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-2xl bg-black/75 hover:bg-blue-600 text-white border border-white/20 shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer ${isFirst ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100 hover:scale-105'
+              }`}
             title="Previous Step"
           >
             <ChevronLeft size={22} />
@@ -150,9 +149,8 @@ export default function WallpaperTutorialModal({ isOpen, onClose, initialStep = 
           <button
             onClick={handleNext}
             disabled={isLast}
-            className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-2xl bg-black/75 hover:bg-blue-600 text-white border border-white/20 shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer ${
-              isLast ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100 hover:scale-105'
-            }`}
+            className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-2xl bg-black/75 hover:bg-blue-600 text-white border border-white/20 shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer ${isLast ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100 hover:scale-105'
+              }`}
             title="Next Step"
           >
             <ChevronRight size={22} />
@@ -181,11 +179,10 @@ export default function WallpaperTutorialModal({ isOpen, onClose, initialStep = 
             <button
               key={idx}
               onClick={() => setActiveStepIndex(idx)}
-              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                idx === activeStepIndex
-                  ? 'w-7 bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]'
-                  : 'w-2 bg-white/20 hover:bg-white/50'
-              }`}
+              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${idx === activeStepIndex
+                ? 'w-7 bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]'
+                : 'w-2 bg-white/20 hover:bg-white/50'
+                }`}
               title={`Jump to Step ${idx + 1}`}
             />
           ))}
@@ -197,19 +194,18 @@ export default function WallpaperTutorialModal({ isOpen, onClose, initialStep = 
             href="https://drive.google.com/file/d/1TJWAWPTtTbKNMaNVAwz2GwbSb04NO-J5/view?usp=drivesdk"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-1 py-2 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 hover:text-white rounded-xl text-[8px] sm:text-xs font-bold transition-all cursor-pointer"
           >
             <Download size={13} />
-            <span>Download Lively App</span>
+            <span><pre>Download Lively App</pre></span>
           </a>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrev}
               disabled={isFirst}
-              className={`flex items-center gap-1 px-3 py-2 text-xs font-bold rounded-xl border border-white/10 transition-all ${
-                isFirst ? 'opacity-40 cursor-not-allowed text-white/40' : 'text-white hover:bg-white/10 cursor-pointer'
-              }`}
+              className={`flex items-center gap-1 px-3 py-2 text-xs font-bold rounded-xl border border-white/10 transition-all ${isFirst ? 'opacity-40 cursor-not-allowed text-white/40' : 'text-white hover:bg-white/10 cursor-pointer'
+                }`}
             >
               <ChevronLeft size={14} />
               <span>Back</span>
@@ -226,9 +222,9 @@ export default function WallpaperTutorialModal({ isOpen, onClose, initialStep = 
             ) : (
               <button
                 onClick={handleNext}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-500/30 active:scale-95 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-2 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-500/30 active:scale-95 transition-all cursor-pointer"
               >
-                <span>Next Step</span>
+                <span><pre>Next Step</pre></span>
                 <ChevronRight size={14} />
               </button>
             )}
