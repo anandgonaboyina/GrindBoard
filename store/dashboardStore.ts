@@ -488,6 +488,7 @@ let pendingValue: string | null = null;
 let lastSavedValue: string | null = null;
 let isSaving = false;
 export let isSyncingFromCloud = false;
+export const setSyncingFromCloud = (val: boolean) => { isSyncingFromCloud = val; };
 export let isAuthTransition = false;
 export const setAuthTransition = (val: boolean) => { isAuthTransition = val; };
 export let bypassCloudSync = false;
@@ -644,12 +645,16 @@ const performSave = async () => {
       const DAILY_ROUTINE_KEYS = ['dailyTimes'];
       const NOTES_KEYS = ['notes'];
       const ROADMAPS_KEYS = ['roadmaps'];
+      const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes'];
+      const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
 
       const TRANSIENT_KEYS = [
         'isSaving', 'hasUnsavedChanges', '_hasHydrated', 'isTaskManagerOpen', 'isCalendarOpen',
         'isTimetableOpen', 'isPlansOpen', 'isNotesOpen', 'isSettingsOpen', 'isNewsOpen',
         'isStatsOpen', 'isMobileCountdownsVisible', 'isCalendarBusy', 'expandedLeaderboardUserId',
-        'pendingValue', 'saveTimeout', 'activeNoteId', 'activeCountdownIndex'
+        'pendingValue', 'saveTimeout', 'activeNoteId', 'activeCountdownIndex',
+        ...TIMETABLE_KEYS, // Timetable sync is handled entirely by its own real-time endpoint
+        ...DEADLINE_KEYS   // Deadlines sync is handled entirely by its own real-time endpoint
       ];
 
       Object.keys(newState).forEach(key => {
@@ -717,22 +722,22 @@ const performSave = async () => {
         history: mergedHistory,
         dailyTimes: mergedDailyTimes,
         hasSeenOnboarding: mergedHasSeenOnboarding,
-        timetableGrid: (() => {
-          const isLocalGridDefault = parsedLocal.state.timetableGrid ? JSON.stringify(parsedLocal.state.timetableGrid) === JSON.stringify(DEFAULT_TIMETABLE_GRID) : true;
-          const isCloudGridDefault = parsedCloud.state.timetableGrid ? JSON.stringify(parsedCloud.state.timetableGrid) === JSON.stringify(DEFAULT_TIMETABLE_GRID) : true;
-          return (isLocalGridDefault && !isCloudGridDefault && parsedCloud.state.timetableGrid) ? parsedCloud.state.timetableGrid : (parsedLocal.state.timetableGrid || parsedCloud.state.timetableGrid);
-        })(),
-        timetableColors: (() => {
-          const isLocalColorsEmpty = !parsedLocal.state.timetableColors || Object.keys(parsedLocal.state.timetableColors).length === 0;
-          const isCloudColorsEmpty = !parsedCloud.state.timetableColors || Object.keys(parsedCloud.state.timetableColors).length === 0;
-          return (isLocalColorsEmpty && !isCloudColorsEmpty && parsedCloud.state.timetableColors) ? parsedCloud.state.timetableColors : (parsedLocal.state.timetableColors || parsedCloud.state.timetableColors);
-        })(),
+        // Timetable is completely decoupled and always takes the cloud truth (like Group Tasks)
+        timetableGrid: parsedCloud.state.timetableGrid || parsedLocal.state.timetableGrid,
+        timetableColors: parsedCloud.state.timetableColors || parsedLocal.state.timetableColors,
+        weekdayTimes: parsedCloud.state.weekdayTimes || parsedLocal.state.weekdayTimes,
+        weekendTimes: parsedCloud.state.weekendTimes || parsedLocal.state.weekendTimes,
+        
+        // Deadlines are completely decoupled and always take the cloud truth
+        deadlines: parsedCloud.state.deadlines || parsedLocal.state.deadlines,
+        syntheticDeadlines: parsedCloud.state.syntheticDeadlines || parsedLocal.state.syntheticDeadlines,
+        deadlineAlertDays: parsedCloud.state.deadlineAlertDays || parsedLocal.state.deadlineAlertDays,
+        dismissedDeadlineAlerts: parsedCloud.state.dismissedDeadlineAlerts || parsedLocal.state.dismissedDeadlineAlerts,
 
         // Intelligently merge arrays to prevent data loss, prioritizing local changes
         tasks: mergeArraysById(parsedLocal.state.tasks, parsedCloud.state.tasks),
         tomorrowTasks: mergeArraysById(parsedLocal.state.tomorrowTasks, parsedCloud.state.tomorrowTasks),
         countdowns: mergeArraysById(parsedLocal.state.countdowns, parsedCloud.state.countdowns),
-        deadlines: filterActiveDeadlines(mergeArraysById(parsedLocal.state.deadlines, parsedCloud.state.deadlines)),
         notes: mergeNotes(parsedLocal.state.notes, parsedCloud.state.notes),
         roadmaps: mergeArraysById(parsedLocal.state.roadmaps, parsedCloud.state.roadmaps),
         plans: mergeArraysById(parsedLocal.state.plans, parsedCloud.state.plans),
@@ -961,7 +966,6 @@ const fileStorage = createJSONStorage(() => ({
                 hasSeenOnboarding: mergedHasSeenOnboarding,
                 tasks: mergedTasks,
                 tomorrowTasks: mergedTomorrowTasks,
-                deadlines: mergedDeadlines,
                 countdowns: mergedCountdowns,
                 notes: mergedNotes,
                 roadmaps: mergedRoadmaps,
@@ -978,20 +982,15 @@ const fileStorage = createJSONStorage(() => ({
                 weekendTimes: mergedWeekendTimes,
                 clockOffsets: mergedClockOffsets,
                 widgetOffsets: mergedWidgetOffsets,
-                timetableGrid: (() => {
-                  const isLocalGridDefault = localState.timetableGrid ? JSON.stringify(localState.timetableGrid) === JSON.stringify(DEFAULT_TIMETABLE_GRID) : true;
-                  const isCloudGridDefault = cloudState.timetableGrid ? JSON.stringify(cloudState.timetableGrid) === JSON.stringify(DEFAULT_TIMETABLE_GRID) : true;
-                  return isCloudNewer 
-                    ? cloudState.timetableGrid 
-                    : (isLocalGridDefault && !isCloudGridDefault && cloudState.timetableGrid) ? cloudState.timetableGrid : (localState.timetableGrid || cloudState.timetableGrid);
-                })(),
-                timetableColors: (() => {
-                  const isLocalColorsEmpty = !localState.timetableColors || Object.keys(localState.timetableColors).length === 0;
-                  const isCloudColorsEmpty = !cloudState.timetableColors || Object.keys(cloudState.timetableColors).length === 0;
-                  return isCloudNewer
-                    ? cloudState.timetableColors
-                    : (isLocalColorsEmpty && !isCloudColorsEmpty && cloudState.timetableColors) ? cloudState.timetableColors : (localState.timetableColors || cloudState.timetableColors);
-                })(),
+                // Timetable is completely decoupled and always takes the cloud truth (like Group Tasks)
+                timetableGrid: cloudState.timetableGrid || localState.timetableGrid,
+                timetableColors: cloudState.timetableColors || localState.timetableColors,
+                
+                // Deadlines are completely decoupled and always take the cloud truth
+                deadlines: cloudState.deadlines || localState.deadlines,
+                syntheticDeadlines: cloudState.syntheticDeadlines || localState.syntheticDeadlines,
+                deadlineAlertDays: cloudState.deadlineAlertDays || localState.deadlineAlertDays,
+                dismissedDeadlineAlerts: cloudState.dismissedDeadlineAlerts || localState.dismissedDeadlineAlerts,
                 // 5. Timer: LOCAL ALWAYS WINS. If user stopped/paused on this device,
                 //    that state is in localStorage. Cloud must never resurrect a ghost timer.
                 timerEndAt: localState.timerEndAt ?? null,
@@ -1140,6 +1139,60 @@ const fileStorage = createJSONStorage(() => ({
     localStorage.removeItem('dashboard-storage');
   },
 }));
+
+export const pushTimetableToDB = async (payload: any) => {
+  if (typeof window === 'undefined') return;
+  const token = localStorage.getItem('dashboard_sync_token');
+  if (!token) return;
+  try {
+    await fetch('/api/timetable', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.error("Failed to push timetable to DB", e);
+  }
+};
+
+export const pushSettingsToDB = async (payload: any) => {
+  if (typeof window === 'undefined') return;
+  const token = localStorage.getItem('dashboard_sync_token');
+  if (!token) return;
+  try {
+    await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.error('Failed to push settings to DB', e);
+  }
+};
+
+export const pushDeadlinesToDB = async (payload: any) => {
+  if (typeof window === 'undefined') return;
+  const token = localStorage.getItem('dashboard_sync_token');
+  if (!token) return;
+  try {
+    await fetch('/api/deadlines', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.error("Failed to push deadlines to DB", e);
+  }
+};
 
 export const useDashboardStore = create<DashboardState>()(
   persist(
@@ -1693,16 +1746,24 @@ export const useDashboardStore = create<DashboardState>()(
       useCustomQuotes: false,
       setUseCustomQuotes: (useCustom) => set({ useCustomQuotes: useCustom }),
       manifestationCustomQuotes: [],
-      setManifestationCustomQuotes: (quotes) => set({ manifestationCustomQuotes: (quotes || []).slice(0, 30) }),
+      setManifestationCustomQuotes: (quotes) => set((state) => {
+        const payload = { manifestationCustomQuotes: (quotes || []).slice(0, 30) };
+        pushSettingsToDB(payload);
+        return payload;
+      }),
       addManifestationCustomQuote: (quote) => set((state) => {
         const trimmed = quote.trim();
         const current = state.manifestationCustomQuotes || [];
         if (!trimmed || current.length >= 30) return state;
-        return { manifestationCustomQuotes: [...current, trimmed] };
+        const payload = { manifestationCustomQuotes: [...current, trimmed] };
+        pushSettingsToDB(payload);
+        return payload;
       }),
-      deleteManifestationCustomQuote: (index) => set((state) => ({
-        manifestationCustomQuotes: (state.manifestationCustomQuotes || []).filter((_, i) => i !== index)
-      })),
+      deleteManifestationCustomQuote: (index) => set((state) => {
+        const payload = { manifestationCustomQuotes: (state.manifestationCustomQuotes || []).filter((_, i) => i !== index) };
+        pushSettingsToDB(payload);
+        return payload;
+      }),
 
       // Notes State
       notes: [{ id: 'default', title: 'Daily Journal', entries: {} }],
@@ -1808,9 +1869,11 @@ export const useDashboardStore = create<DashboardState>()(
       ],
       setRoadmaps: (roadmaps) => set({ roadmaps }),
       syntheticDeadlines: {},
-      setSyntheticDeadline: (status, date) => set((state) => ({
-        syntheticDeadlines: { ...state.syntheticDeadlines, [status]: date }
-      })),
+      setSyntheticDeadline: (status, date) => set((state) => {
+        const payload = { syntheticDeadlines: { ...state.syntheticDeadlines, [status]: date } };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
       isPlansOpen: false,
       togglePlans: () => set((state) => ({ isPlansOpen: !state.isPlansOpen })),
 
@@ -1854,34 +1917,56 @@ export const useDashboardStore = create<DashboardState>()(
       deadlines: [],
       addDeadline: (date, text) => {
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-        set((state) => ({
-          deadlines: [...filterActiveDeadlines(state.deadlines), { id, date, text }]
-        }));
+        set((state) => {
+          const payload = { deadlines: [...filterActiveDeadlines(state.deadlines), { id, date, text }] };
+          pushDeadlinesToDB(payload);
+          return payload;
+        });
         return id;
       },
-      updateDeadline: (id, text) => set((state) => ({
-        deadlines: state.deadlines.map(d => d.id === id ? { ...d, text } : d)
-      })),
-      deleteDeadline: (id) => set((state) => ({
-        deadlines: state.deadlines.filter(d => d.id !== id)
-      })),
-      toggleDeadlineDone: (id) => set((state) => ({
-        deadlines: state.deadlines.map(d => d.id === id ? { ...d, isDone: !d.isDone } : d)
-      })),
-      deleteAllDeadlinesForDay: (date) => set((state) => ({
-        deadlines: state.deadlines.filter(d => d.date !== date)
-      })),
-      deleteAllDeadlines: () => set({ deadlines: [] }),
-      cleanOldDeadlines: () => set((state) => ({
-        deadlines: filterActiveDeadlines(state.deadlines)
-      })),
+      updateDeadline: (id, text) => set((state) => {
+        const payload = { deadlines: state.deadlines.map(d => d.id === id ? { ...d, text } : d) };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
+      deleteDeadline: (id) => set((state) => {
+        const payload = { deadlines: state.deadlines.filter(d => d.id !== id) };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
+      toggleDeadlineDone: (id) => set((state) => {
+        const payload = { deadlines: state.deadlines.map(d => d.id === id ? { ...d, isDone: !d.isDone } : d) };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
+      deleteAllDeadlinesForDay: (date) => set((state) => {
+        const payload = { deadlines: state.deadlines.filter(d => d.date !== date) };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
+      deleteAllDeadlines: () => set(() => {
+        const payload = { deadlines: [] };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
+      cleanOldDeadlines: () => set((state) => {
+        const payload = { deadlines: filterActiveDeadlines(state.deadlines) };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
 
       deadlineAlertDays: 0,
-      setDeadlineAlertDays: (days) => set({ deadlineAlertDays: Math.max(0, days) }),
+      setDeadlineAlertDays: (days) => set(() => {
+        const payload = { deadlineAlertDays: Math.max(0, days) };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
       dismissedDeadlineAlerts: [],
-      dismissDeadlineAlert: (id) => set((state) => ({
-        dismissedDeadlineAlerts: Array.from(new Set([...(state.dismissedDeadlineAlerts || []), id]))
-      })),
+      dismissDeadlineAlert: (id) => set((state) => {
+        const payload = { dismissedDeadlineAlerts: Array.from(new Set([...(state.dismissedDeadlineAlerts || []), id])) };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
 
       isDeadlinesCollapsed: false,
       setIsDeadlinesCollapsed: (collapsed) => set({ isDeadlinesCollapsed: collapsed }),
@@ -1889,24 +1974,28 @@ export const useDashboardStore = create<DashboardState>()(
       // Timetable
       timetableGrid: JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID)),
       timetableColors: {},
-      updateTimetableCell: (day, time, subject) => set((state) => ({
-        timetableGrid: {
+      updateTimetableCell: (day, time, subject) => set((state) => {
+        const newGrid = {
           ...state.timetableGrid,
           [day]: {
             ...state.timetableGrid[day],
             [time]: subject
           }
-        }
-      })),
-      updateTimetableColor: (day, time, color) => set((state) => ({
-        timetableColors: {
+        };
+        pushTimetableToDB({ timetableGrid: newGrid });
+        return { timetableGrid: newGrid };
+      }),
+      updateTimetableColor: (day, time, color) => set((state) => {
+        const newColors = {
           ...state.timetableColors,
           [day]: {
             ...(state.timetableColors[day] || {}),
             [time]: color
           }
-        }
-      })),
+        };
+        pushTimetableToDB({ timetableColors: newColors });
+        return { timetableColors: newColors };
+      }),
       weekdayTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
       weekendTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
       timetableStartTime: 540, // Default 9:00 AM
@@ -1962,9 +2051,12 @@ export const useDashboardStore = create<DashboardState>()(
           });
         }
 
-        return isWeekend
+        const payload = isWeekend
           ? { weekendTimes: newTimes, timetableGrid: newGrid, timetableColors: newColors }
           : { weekdayTimes: newTimes, timetableGrid: newGrid, timetableColors: newColors };
+        
+        pushTimetableToDB(payload);
+        return payload as any;
       }),
       renameTimetableKeys: (isWeekend, keyMap) => set((state) => {
         const newGrid = { ...state.timetableGrid };
@@ -1994,19 +2086,27 @@ export const useDashboardStore = create<DashboardState>()(
           }
         });
 
-        return { timetableGrid: newGrid, timetableColors: newColors };
+        const payload = { timetableGrid: newGrid, timetableColors: newColors };
+        pushTimetableToDB(payload);
+        return payload;
       }),
-      resetTimetable: () => set(() => ({
-        timetableGrid: JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID)),
-        timetableColors: {},
-        weekdayTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
-        weekendTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
-      })),
+      resetTimetable: () => set(() => {
+        const payload = {
+          timetableGrid: JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID)),
+          timetableColors: {},
+          weekdayTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
+          weekendTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
+        };
+        pushTimetableToDB(payload);
+        return payload;
+      }),
       addTimetableRow: (isWeekend, prepend = false) => set((state) => {
         const targetArray = isWeekend ? state.weekendTimes : state.weekdayTimes;
         const timesList = targetArray || [];
         const newTimes = prepend ? ["60", ...timesList] : [...timesList, "60"];
-        return isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
+        const payload = isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
+        pushTimetableToDB(payload);
+        return payload as any;
       }),
       deleteTimetableRow: (isWeekend, index) => set((state) => {
         const targetArray = isWeekend ? state.weekendTimes : state.weekdayTimes;
@@ -2015,7 +2115,9 @@ export const useDashboardStore = create<DashboardState>()(
         // Do not aggressively delete keys from timetableGrid here.
         // It relies on legacy string times and can accidentally delete shifted rows.
         // Orphaned keys are harmless and prevent data loss.
-        return isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
+        const payload = isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
+        pushTimetableToDB(payload);
+        return payload as any;
       }),
       useTimetableRange: true,
       toggleTimetableRange: () => set((state) => ({ useTimetableRange: !state.useTimetableRange })),

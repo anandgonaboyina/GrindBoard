@@ -1,6 +1,6 @@
 "use client";
 
-import { useDashboardStore } from "@/store/dashboardStore";
+import { useDashboardStore, pushTimetableToDB } from "@/store/dashboardStore";
 import { CalendarDays, Edit2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Check, Settings, Plus, Trash, Clock, ArrowUp, ArrowDown, X, Sun, Moon, Copy, ClipboardPaste, Download, Upload } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import ConfirmationModal from './ConfirmationModal';
@@ -124,6 +124,33 @@ export default function Timetable() {
     });
   };
 
+  useEffect(() => {
+    if (viewingFriend) return;
+    const fetchLiveTimetable = async () => {
+      const token = localStorage.getItem('dashboard_sync_token');
+      if (!token) return;
+      try {
+        const res = await fetch('/api/timetable', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.data) {
+          useDashboardStore.setState((state) => ({
+            timetableGrid: data.data.timetableGrid || state.timetableGrid,
+            timetableColors: data.data.timetableColors || state.timetableColors,
+            weekdayTimes: data.data.weekdayTimes || state.weekdayTimes,
+            weekendTimes: data.data.weekendTimes || state.weekendTimes,
+          }));
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchLiveTimetable();
+    const interval = setInterval(fetchLiveTimetable, 15000);
+    return () => clearInterval(interval);
+  }, [viewingFriend]);
+
   // Scroll logic
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -208,6 +235,7 @@ export default function Timetable() {
       timetableGrid: newGrid,
       timetableColors: newColors
     });
+    pushTimetableToDB({ timetableGrid: newGrid, timetableColors: newColors });
   };
 
   const isWeekendMode = viewMode === "weekends";
@@ -400,7 +428,13 @@ export default function Timetable() {
             timetableStartTime: parsed.timetableStartTime || 540,
             timetableWeekendStartTime: parsed.timetableWeekendStartTime || 540,
           });
-          showToast("Timetable restored successfully!");
+          pushTimetableToDB({
+            timetableGrid: parsed.timetableGrid || {},
+            timetableColors: parsed.timetableColors || {},
+            weekdayTimes: parsed.weekdayTimes || [],
+            weekendTimes: parsed.weekendTimes || []
+          });
+          showToast('Timetable imported successfully!');
         } else {
           showToast("Invalid backup file.");
         }

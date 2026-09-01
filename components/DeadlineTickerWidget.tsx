@@ -6,7 +6,7 @@ import { Flame, Calendar, ChevronDown, ChevronUp, X, AlertTriangle, Clock, Info,
 import Tooltip from './Tooltip';
 
 export default function DeadlineTickerWidget() {
-  const { deadlines, deadlineAlertDays, dismissedDeadlineAlerts, deleteDeadline, toggleDeadlineDone, dockOffset, widgetZIndices } = useDashboardStore();
+  const { deadlines, deadlineAlertDays, dismissedDeadlineAlerts, deleteDeadline, toggleDeadlineDone, dockOffset, widgetZIndices, viewingFriend } = useDashboardStore();
   const [mounted, setMounted] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false); // Always expand on app open
   const [showEmptyInfo, setShowEmptyInfo] = useState(false);
@@ -32,6 +32,34 @@ export default function DeadlineTickerWidget() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Live polling for deadlines
+  useEffect(() => {
+    if (viewingFriend) return;
+    const fetchLiveDeadlines = async () => {
+      const token = localStorage.getItem('dashboard_sync_token');
+      if (!token) return;
+      try {
+        const res = await fetch('/api/deadlines', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.data) {
+          useDashboardStore.setState((state) => ({
+            deadlines: data.data.deadlines || state.deadlines,
+            syntheticDeadlines: data.data.syntheticDeadlines || state.syntheticDeadlines,
+            deadlineAlertDays: data.data.deadlineAlertDays !== undefined ? data.data.deadlineAlertDays : state.deadlineAlertDays,
+            dismissedDeadlineAlerts: data.data.dismissedDeadlineAlerts || state.dismissedDeadlineAlerts,
+          }));
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchLiveDeadlines();
+    const interval = setInterval(fetchLiveDeadlines, 15000);
+    return () => clearInterval(interval);
+  }, [viewingFriend]);
 
   if (!mounted) return null;
 

@@ -119,9 +119,8 @@ function mergeStringArraysServer(incoming: any[] = [], existing: any[] = []): an
 const SETTING_ARRAY_KEYS = [
   'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
   'activeDesktopCustomIndex', 'activeMobileCustomIndex', 'customLocalWallpaperName',
-  'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
+  'widgetOffsets', 'clockOffsets', 'lockedWidgets',
   'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton',
-  'weekdayTimes', 'weekendTimes',
   'manifestationDesktopPhotos', 'manifestationMobilePhotos',
   'activeManifestationDesktopIndex', 'activeManifestationMobileIndex',
   'manifestationCustomQuotes', 'customQuotes', 'customAlarmSounds',
@@ -133,9 +132,11 @@ const SETTING_ARRAY_KEYS = [
   'selectedLocalWallpaperName'
 ];
 
-const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
+const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'plans'];
+const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
 const STATS_KEYS = ['history', 'stopwatchSessions'];
 const DAILY_ROUTINE_KEYS = ['dailyTimes'];
+const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes'];
 
 export async function GET(request: Request) {
   try {
@@ -154,9 +155,10 @@ export async function GET(request: Request) {
     const roadmapsRecord = await db.collection('Roadmaps').findOne({ userId: user.userId });
     const statsRecord = await db.collection('Stats').findOne({ userId: user.userId });
     const dailyRoutineRecord = await db.collection('DailyRoutine').findOne({ userId: user.userId });
+    const timetableRecord = await db.collection('Timetable').findOne({ userId: user.userId });
     
     let maxLastModified = existing ? (existing.lastModified || 0) : 0;
-    const collections = [notesRecord, settingsRecord, tasksRecord, roadmapsRecord, statsRecord, dailyRoutineRecord];
+    const collections = [notesRecord, settingsRecord, tasksRecord, roadmapsRecord, statsRecord, dailyRoutineRecord, timetableRecord];
     for (const record of collections) {
       if (record && record.lastModified && record.lastModified > maxLastModified) {
         maxLastModified = record.lastModified;
@@ -164,7 +166,7 @@ export async function GET(request: Request) {
     }
     const cloudLastModified = maxLastModified || Date.now();
 
-    if (!existing && !notesRecord && !settingsRecord && !tasksRecord && !roadmapsRecord && !statsRecord && !dailyRoutineRecord) {
+    if (!existing && !notesRecord && !settingsRecord && !tasksRecord && !roadmapsRecord && !statsRecord && !dailyRoutineRecord && !timetableRecord) {
       return NextResponse.json({ data: null, lastModified: cloudLastModified });
     }
 
@@ -212,7 +214,12 @@ export async function GET(request: Request) {
       if (statsRecord && statsRecord.dailyTimes !== undefined && returnedData.state.dailyTimes === undefined) {
         returnedData.state.dailyTimes = statsRecord.dailyTimes;
       }
-    } else if (existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord) {
+      if (timetableRecord) {
+        TIMETABLE_KEYS.forEach(key => {
+          if (timetableRecord[key] !== undefined) returnedData.state[key] = timetableRecord[key];
+        });
+      }
+    } else if (existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord || timetableRecord) {
       const { _id, userId, lastModified, updatedAt, version, displaySettings: legacyDS, generalSettings: legacyGS, ...coreData } = (existing || {}) as any;
       const reconstructedState = {
         ...coreData,
@@ -248,6 +255,11 @@ export async function GET(request: Request) {
         reconstructedState.dailyTimes = statsRecord.dailyTimes;
       }
       
+      TIMETABLE_KEYS.forEach(key => {
+        if (timetableRecord && timetableRecord[key] !== undefined) {
+          reconstructedState[key] = timetableRecord[key];
+        }
+      });
       if (notesRecord && notesRecord.notes) {
         reconstructedState.notes = notesRecord.notes;
       }
@@ -301,9 +313,11 @@ export async function POST(request: Request) {
     const existingRoadmaps = await db.collection('Roadmaps').findOne({ userId: user.userId });
     const existingStats = await db.collection('Stats').findOne({ userId: user.userId });
     const existingDailyRoutine = await db.collection('DailyRoutine').findOne({ userId: user.userId });
+    const existingTimetable = await db.collection('Timetable').findOne({ userId: user.userId });
+    const existingDeadlines = await db.collection('Deadlines').findOne({ userId: user.userId });
 
     let existingCloudData: any = null;
-    if (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine) {
+    if (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine || existingTimetable || existingDeadlines) {
       if (existing && existing.data && typeof existing.data === 'string') {
         try {
           existingCloudData = JSON.parse(existing.data);
@@ -382,6 +396,16 @@ export async function POST(request: Request) {
         if (existingRoadmaps && existingRoadmaps.roadmaps) {
           reconstructedState.roadmaps = existingRoadmaps.roadmaps;
         }
+        TIMETABLE_KEYS.forEach(key => {
+          if (existingTimetable && existingTimetable[key] !== undefined) {
+            reconstructedState[key] = existingTimetable[key];
+          }
+        });
+        DEADLINE_KEYS.forEach(key => {
+          if (existingDeadlines && existingDeadlines[key] !== undefined) {
+            reconstructedState[key] = existingDeadlines[key];
+          }
+        });
         existingCloudData = { state: reconstructedState, version: version || 2 };
       }
     }
@@ -393,13 +417,15 @@ export async function POST(request: Request) {
       existingTasks?.lastModified ? Number(existingTasks.lastModified) : 0,
       existingRoadmaps?.lastModified ? Number(existingRoadmaps.lastModified) : 0,
       existingStats?.lastModified ? Number(existingStats.lastModified) : 0,
-      existingDailyRoutine?.lastModified ? Number(existingDailyRoutine.lastModified) : 0
+      existingDailyRoutine?.lastModified ? Number(existingDailyRoutine.lastModified) : 0,
+      existingTimetable?.lastModified ? Number(existingTimetable.lastModified) : 0,
+      existingDeadlines?.lastModified ? Number(existingDeadlines.lastModified) : 0
     );
 
     let hasConflict = false;
     if (!body.forceSync) {
       if (isFullSync) {
-        if (cloudLastModified > incomingLastModified && (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine)) {
+        if (cloudLastModified > incomingLastModified && (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine || existingTimetable || existingDeadlines)) {
           hasConflict = true;
         }
       } else {
@@ -409,6 +435,8 @@ export async function POST(request: Request) {
         if (modifiedCollections.includes('Stats') && existingStats?.lastModified > incomingLastModified) hasConflict = true;
         if (modifiedCollections.includes('Settings') && existingSettings?.lastModified > incomingLastModified) hasConflict = true;
         if (modifiedCollections.includes('DailyRoutine') && existingDailyRoutine?.lastModified > incomingLastModified) hasConflict = true;
+        if (modifiedCollections.includes('Timetable') && existingTimetable?.lastModified > incomingLastModified) hasConflict = true;
+        if (modifiedCollections.includes('Deadlines') && existingDeadlines?.lastModified > incomingLastModified) hasConflict = true;
       }
     }
 
@@ -428,7 +456,9 @@ export async function POST(request: Request) {
         db.collection('Tasks').deleteOne({ userId: user.userId }),
         db.collection('Roadmaps').deleteOne({ userId: user.userId }),
         db.collection('Stats').deleteOne({ userId: user.userId }),
-        db.collection('DailyRoutine').deleteOne({ userId: user.userId })
+        db.collection('DailyRoutine').deleteOne({ userId: user.userId }),
+        db.collection('Timetable').deleteOne({ userId: user.userId }),
+        db.collection('Deadlines').deleteOne({ userId: user.userId })
       ]);
       return NextResponse.json({ success: true, message: 'All data cleared' });
     }
@@ -472,6 +502,28 @@ export async function POST(request: Request) {
       unsetDailyRoutineKeys[key] = "";
     });
 
+    const timetableSpecificData: Record<string, any> = {};
+    const unsetTimetableKeys: Record<string, string> = {};
+
+    TIMETABLE_KEYS.forEach(key => {
+      if (state && state[key] !== undefined) {
+        timetableSpecificData[key] = state[key];
+        delete state[key];
+      }
+      unsetTimetableKeys[key] = "";
+    });
+
+    const deadlineSpecificData: Record<string, any> = {};
+    const unsetDeadlineKeys: Record<string, string> = {};
+
+    DEADLINE_KEYS.forEach(key => {
+      if (state && state[key] !== undefined) {
+        deadlineSpecificData[key] = state[key];
+        delete state[key];
+      }
+      unsetDeadlineKeys[key] = "";
+    });
+
     const displaySettings: Record<string, any> = {};
     const generalSettings: Record<string, any> = {};
     const coreData: Record<string, any> = {};
@@ -507,9 +559,39 @@ export async function POST(request: Request) {
       );
     } catch (e) {}
 
-    const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys, ...unsetDailyRoutineKeys };
+    const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys, ...unsetDailyRoutineKeys, ...unsetTimetableKeys, ...unsetDeadlineKeys };
 
     const newLastModified = Date.now();
+
+    if (isFullSync || modifiedCollections.includes('Timetable')) {
+      const timetableDoc = {
+        ...timetableSpecificData,
+        lastModified: newLastModified
+      };
+      await db.collection('Timetable').updateOne(
+        { userId: user.userId },
+        { 
+          $set: timetableDoc,
+          $setOnInsert: { userId: user.userId }
+        },
+        { upsert: true }
+      );
+    }
+
+    if (isFullSync || modifiedCollections.includes('Deadlines')) {
+      const deadlinesDoc = {
+        ...deadlineSpecificData,
+        lastModified: newLastModified
+      };
+      await db.collection('Deadlines').updateOne(
+        { userId: user.userId },
+        { 
+          $set: deadlinesDoc,
+          $setOnInsert: { userId: user.userId }
+        },
+        { upsert: true }
+      );
+    }
     
     if (isFullSync || modifiedCollections.includes('DashboardStorage') || modifiedCollections.includes('Settings')) {
       const updateDoc = {

@@ -39,6 +39,33 @@ export default function MiniCalendar() {
     setIsCalendarBusy(!!selectedDate || showAllDeadlines || !!editingDeadlineId);
   }, [selectedDate, showAllDeadlines, editingDeadlineId, setIsCalendarBusy]);
 
+  // Live polling for deadlines
+  useEffect(() => {
+    const fetchLiveDeadlines = async () => {
+      const token = localStorage.getItem('dashboard_sync_token');
+      if (!token) return;
+      try {
+        const res = await fetch('/api/deadlines', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.data) {
+          useDashboardStore.setState((state) => ({
+            deadlines: data.data.deadlines || state.deadlines,
+            syntheticDeadlines: data.data.syntheticDeadlines || state.syntheticDeadlines,
+            deadlineAlertDays: data.data.deadlineAlertDays !== undefined ? data.data.deadlineAlertDays : state.deadlineAlertDays,
+            dismissedDeadlineAlerts: data.data.dismissedDeadlineAlerts || state.dismissedDeadlineAlerts,
+          }));
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchLiveDeadlines();
+    const interval = setInterval(fetchLiveDeadlines, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleCloseDate = () => {
     if (selectedDate) {
       deadlines.forEach(d => {

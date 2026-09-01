@@ -32,7 +32,7 @@ import ManifestationBoard from "@/components/ManifestationBoard";
 
 import { useEffect, useState, useRef } from "react";
 import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users, Hourglass, Sparkles } from "lucide-react";
-import { useDashboardStore, hasUnsavedChanges } from "@/store/dashboardStore";
+import { useDashboardStore, hasUnsavedChanges, setSyncingFromCloud } from "@/store/dashboardStore";
 import { fetchQuote } from "@/utils/quoteEngine";
 
 export default function Dashboard() {
@@ -238,6 +238,53 @@ export default function Dashboard() {
       useDashboardStore.getState().setIsMobileCountdownsVisible(true);
     }
   }, [_hasHydrated]);
+
+  // Live polling for Settings (Wallpapers, Preferences, URLs, etc)
+  useEffect(() => {
+    if (!_hasHydrated) return;
+    const fetchLiveSettings = async () => {
+      const state = useDashboardStore.getState();
+      
+      // Pause syncing if user is actively modifying settings or if there are local unsaved changes waiting for debounce
+      if (state.isSettingsOpen || state.showBgSwitcher || state.isManifestationOpen || hasUnsavedChanges) return;
+      
+      const token = localStorage.getItem('dashboard_sync_token');
+      if (!token) return;
+      try {
+        const res = await fetch('/api/settings', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.data) {
+          const updates: any = {};
+          Object.keys(data.data).forEach(key => {
+            // Only update if cloud value differs from local
+            if (JSON.stringify(state[key as keyof typeof state]) !== JSON.stringify(data.data[key])) {
+              updates[key] = data.data[key];
+            }
+          });
+          
+          if (Object.keys(updates).length > 0) {
+            setSyncingFromCloud(true);
+            useDashboardStore.setState(updates);
+            setTimeout(() => setSyncingFromCloud(false), 100);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    
+    // Initial fetch after 2 seconds to not block main thread
+    const initialTimeout = setTimeout(fetchLiveSettings, 2000);
+    const interval = setInterval(fetchLiveSettings, 15000);
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, [_hasHydrated]);
+
+
 
   useEffect(() => {
     const token = localStorage.getItem('dashboard_sync_token');
