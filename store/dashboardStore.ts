@@ -495,6 +495,8 @@ export let bypassCloudSync = false;
 export const setBypassCloudSync = (bypass: boolean = true) => {
   bypassCloudSync = bypass;
 };
+export let abortInstantLoad = false;
+export const setAbortInstantLoad = (val: boolean) => { abortInstantLoad = val; };
 
 const mergeDailyTimes = (localDailyTimes: Record<string, any> = {}, cloudDailyTimes: Record<string, any> = {}) => {
   const merged: Record<string, any> = { ...cloudDailyTimes };
@@ -549,11 +551,11 @@ const mergeStringArrays = (localArr: any, cloudArr: any, cloudIsNewer: boolean =
   if (!Array.isArray(localArr)) localArr = [];
   if (!Array.isArray(cloudArr)) cloudArr = [];
 
-  if (cloudIsNewer) {
-    return cloudArr.length > 0 ? cloudArr : localArr;
-  }
+  // When cloud is newer (i.e. on pull/refresh), ALWAYS trust cloud — even if it's empty.
+  // An empty cloudArr means the user deleted all items on another device — respect that.
+  if (cloudIsNewer) return cloudArr;
   
-  // If we don't know who is newer, or if cloud is not newer, we should still take cloud data if local is completely empty (e.g. initial load / clear)
+  // If we don't know who is newer, take cloud data if local is completely empty (initial load)
   if (localArr.length === 0 && cloudArr.length > 0) return cloudArr;
 
   // Otherwise stick to local (it might be newly added unsynced items, or intentionally empty)
@@ -842,6 +844,12 @@ const fileStorage = createJSONStorage(() => ({
     bypassCloudSync = false; // Always consume bypass flag for current load so future syncs operate normally!
 
     while (retries < maxRetries && token) {
+      // Check if user clicked "Load Offline Instantly" — bail out immediately
+      if (abortInstantLoad) {
+        abortInstantLoad = false;
+        console.warn("Instant load requested — aborting cloud fetch.");
+        break;
+      }
       if (isBypassed || (typeof navigator !== 'undefined' && !navigator.onLine)) {
         console.warn("Bypassing cloud sync and loading local data instantly.");
         break;

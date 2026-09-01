@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, Wifi, WifiOff, Zap, ExternalLink, Quote } from 'lucide-react';
-import { setBypassCloudSync, useDashboardStore } from '@/store/dashboardStore';
+import { setBypassCloudSync, setAbortInstantLoad, useDashboardStore } from '@/store/dashboardStore';
 
 interface LoadingScreenProps {
   onFinished?: () => void;
@@ -95,10 +95,15 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
   }, [_hasHydrated, onFinished]);
 
   const handleLoadOffline = () => {
+    // Signal the in-flight getItem to abort the cloud fetch immediately
+    setAbortInstantLoad(true);
+    setBypassCloudSync(true);
     setProgress(100);
     setStatusText('Loading Offline Instantly...');
-    setBypassCloudSync(true);
-    useDashboardStore.getState().setHasHydrated(true);
+    // Give one tick for abortInstantLoad to be read, then force hydration
+    setTimeout(() => {
+      useDashboardStore.getState().setHasHydrated(true);
+    }, 50);
   };
 
   if (isDone) return null;

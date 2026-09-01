@@ -7,6 +7,7 @@ import { CustomWallpaperPreview } from './CustomWallpaperPreview';
 import { Sparkles, Flame, Trash2, Upload, Plus, X } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 
+
 interface ManifestationSettingsModalProps {
   onClose: () => void;
 }
@@ -94,11 +95,11 @@ export default function ManifestationSettingsModal({ onClose }: ManifestationSet
     <>
       <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4">
         {/* Backdrop overlay */}
-        <div 
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" 
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
           onClick={onClose}
         />
-        
+
         {/* Modal Container */}
         <div className="relative w-full max-w-3xl max-h-[85vh] bg-black/90 border border-amber-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
           {/* Header */}
@@ -106,17 +107,17 @@ export default function ManifestationSettingsModal({ onClose }: ManifestationSet
             <h3 className="text-sm md:text-base font-semibold text-amber-300 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" /> Manifestation Board Settings
             </h3>
-            <button 
+            <button
               onClick={onClose}
               className="p-1.5 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          
+
           {/* Content */}
           <div className="overflow-y-auto p-4 md:p-6 flex flex-col gap-5 md:gap-6">
-            
+
             {/* 1. Dashboard Launcher Visibility Toggle */}
             <div className="flex items-center justify-between p-3 md:p-4 rounded-xl bg-white/5 border border-amber-500/20">
               <div className="flex items-center gap-3">

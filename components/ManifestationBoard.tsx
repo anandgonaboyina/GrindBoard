@@ -233,9 +233,34 @@ export default function ManifestationBoard() {
 
 
             {/* SMALL WIDTH PILL SIZE TOP HEADER (Z-30) */}
-            <div className="w-full flex justify-center z-30 shrink-0 pt-1 pointer-events-none">
+            <div className="w-full flex flex-col items-center justify-center gap-2 z-30 shrink-0 pt-2 sm:pt-1 pointer-events-none">
+                {/* MOBILE ONLY: SETTINGS & CLOSE ON TOP LINE */}
+                <div className="md:hidden flex items-center justify-center gap-2 z-50 pointer-events-none">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsSettingsOpen(true);
+                        }}
+                        className="pointer-events-auto p-2 rounded-full bg-white/20 backdrop-blur-xl border border-white/50 text-white/90 hover:bg-white/40 hover:border-white/70 hover:text-amber-500 shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs uppercase tracking-wider active:scale-95 group relative"
+                    >
+                        <Settings className="w-4 h-4" />
+                        <span>Settings</span>
+                    </button>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsManifestationOpen(false);
+                        }}
+                        className="pointer-events-auto p-2 rounded-full bg-white/20 backdrop-blur-xl border border-white/50 text-white/90 hover:bg-white/40 hover:border-white/70 hover:text-red-500 shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs uppercase tracking-wider active:scale-95 group relative"
+                    >
+                        <X className="w-4 h-4" />
+                        <span>Close</span>
+                    </button>
+                </div>
+
+                {/* QUOTE PILL (SECOND LINE ON MOBILE, ONLY LINE ON DESKTOP) */}
                 <div
-                    className="pointer-events-auto relative flex items-center gap-2 sm:gap-3 px-3.5 py-1.5 sm:px-4 sm:py-1.5 rounded-full bg-black/60 backdrop-blur-xl border border-amber-500/30 shadow-2xl max-w-fit"
+                    className="pointer-events-auto relative flex items-center gap-2 sm:gap-3 px-3.5 py-1.5 sm:px-4 sm:py-1.5 rounded-full bg-black/60 backdrop-blur-xl border border-amber-500/30 shadow-2xl max-w-[95%] sm:max-w-fit"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Left Side: Sparkles + Title + Board ON/OFF Toggle Switch */}
@@ -245,7 +270,7 @@ export default function ManifestationBoard() {
                         </div>
                         <div className="relative group min-w-0 flex items-center">
                             <span
-                                className="text-xs font-semibold italic text-amber-200/90 tracking-wide truncate max-w-[160px] sm:max-w-[280px] cursor-pointer hover:text-amber-100 transition-colors"
+                                className="text-xs font-semibold italic text-amber-200/90 tracking-wide truncate max-w-[240px] sm:max-w-[400px] md:max-w-[500px] cursor-pointer hover:text-amber-100 transition-colors"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     const next = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];
@@ -257,29 +282,6 @@ export default function ManifestationBoard() {
                             <Tooltip text="Click for another quote" position="bottom" />
                         </div>
                     </div>
-
-
-                </div>
-                <div className="ml-2 mt-2 md:hidden flex items-center gap-2 z-50 pointer-events-none">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsSettingsOpen(true);
-                        }}
-                        className="pointer-events-auto p-2 sm:px-3 sm:py-1.5 rounded-full bg-white/20 backdrop-blur-xl border border-white/50 text-gray-800 dark:text-white/90 hover:bg-white/40 hover:border-white/70 hover:text-amber-500 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] transition-all cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs uppercase tracking-wider active:scale-95 group relative"
-                    >
-                        <Settings className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                    </button>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsManifestationOpen(false);
-                        }}
-                        className="pointer-events-auto p-2 sm:px-3 sm:py-1.5 rounded-full bg-white/20 backdrop-blur-xl border border-white/50 text-gray-800 dark:text-white/90 hover:bg-white/40 hover:border-white/70 hover:text-red-500 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] transition-all cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs uppercase tracking-wider active:scale-95 group relative"
-                    >
-                        <X className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                        <Tooltip text="Close (ESC)" position="left" />
-                    </button>
                 </div>
             </div>
 
