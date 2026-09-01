@@ -57,7 +57,26 @@ export async function PATCH(request: Request) {
 
     const newLastModified = Date.now();
     
-    const updatePayload = { ...body, lastModified: newLastModified };
+    const displaySettings: Record<string, any> = {};
+    const generalSettings: Record<string, any> = {};
+    const rootSettings: Record<string, any> = {};
+
+    Object.keys(body).forEach(key => {
+      if ((key.startsWith('show') || key.startsWith('hide') || key.startsWith('is')) && key !== 'hideConfig' && key !== 'mobileHideConfig') {
+        displaySettings[`displaySettings.${key}`] = body[key];
+      } else if (typeof body[key] === 'string' || typeof body[key] === 'number') {
+        generalSettings[`generalSettings.${key}`] = body[key];
+      } else {
+        rootSettings[key] = body[key];
+      }
+    });
+
+    const updatePayload = { 
+      ...displaySettings, 
+      ...generalSettings, 
+      ...rootSettings, 
+      lastModified: newLastModified 
+    };
 
     await db.collection('Settings').updateOne(
       { userId: user.userId },

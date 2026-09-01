@@ -2318,22 +2318,31 @@ export const useDashboardStore = create<DashboardState>()(
       showBgSwitcher: true,
       showSettingsBtn: true,
       showStopwatch: true,
-      toggleVisibility: (key) => set((state) => ({ [key]: !state[key] })),
-
+      toggleVisibility: (key) => set((state) => {
+        const newValue = !state[key];
+        const payload = { [key]: newValue };
+        pushSettingsToDB(payload);
+        return payload;
+      }),
       hideConfig: {
         quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
       },
-      setHideConfig: (key, value) => {
-        set((state) => ({ hideConfig: { ...state.hideConfig, [key]: value } }));
-      },
+      setHideConfig: (key, value) => set((state) => {
+        const newHideConfig = { ...state.hideConfig, [key]: value };
+        pushSettingsToDB({ hideConfig: newHideConfig });
+        return { hideConfig: newHideConfig };
+      }),
       setHideAll: (hide) => {
         if (hide) {
-          set({
+          const payload = {
             hideConfig: {
               quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
             }
-          });
+          };
+          pushSettingsToDB(payload);
+          set(payload);
         } else {
+          pushSettingsToDB({ hideConfig: {} });
           set({ hideConfig: {} });
         }
       },
@@ -2341,17 +2350,22 @@ export const useDashboardStore = create<DashboardState>()(
       mobileHideConfig: {
         quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
       },
-      setMobileHideConfig: (key, value) => {
-        set((state) => ({ mobileHideConfig: { ...state.mobileHideConfig, [key]: value } }));
-      },
+      setMobileHideConfig: (key, value) => set((state) => {
+        const newMobileHideConfig = { ...state.mobileHideConfig, [key]: value };
+        pushSettingsToDB({ mobileHideConfig: newMobileHideConfig });
+        return { mobileHideConfig: newMobileHideConfig };
+      }),
       setMobileHideAll: (hide) => {
         if (hide) {
-          set({
+          const payload = {
             mobileHideConfig: {
               quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
             }
-          });
+          };
+          pushSettingsToDB(payload);
+          set(payload);
         } else {
+          pushSettingsToDB({ mobileHideConfig: {} });
           set({ mobileHideConfig: {} });
         }
       },
