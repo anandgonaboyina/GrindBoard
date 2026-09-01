@@ -866,12 +866,12 @@ export default function GuidedTour() {
   if (!isTourOpen || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] pointer-events-auto select-none animate-in fade-in duration-300">
+    <div className={`fixed inset-0 z-[99999] select-none animate-in fade-in duration-300 ${isPanicStep || isFocusStep ? 'pointer-events-none' : 'pointer-events-auto'}`}>
       {/* Floating Exit Button ONLY for Tour Replay Mode (Positioned Top-Right of Screen) */}
       {isReplaying && (
         <button
           onClick={handleCloseTour}
-          className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[100001] px-3 sm:px-3.5 py-1.5 sm:py-2 bg-slate-900/90 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl font-bold flex items-center gap-1.5 text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer hover:shadow-red-500/20"
+          className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[100001] px-3 sm:px-3.5 py-1.5 sm:py-2 bg-slate-900/90 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl font-bold flex items-center gap-1.5 text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer hover:shadow-red-500/20 pointer-events-auto"
           title="Close & Exit Tour"
         >
           <X className="w-4 h-4 text-red-400" />
@@ -893,7 +893,7 @@ export default function GuidedTour() {
       {/* Tour Card Box with Smart Compact Positioning */}
       <div
         style={getCardStyle()}
-        className={`z-10 w-[calc(100vw-32px)] sm:w-[380px] p-3.5 sm:p-4 bg-slate-900/95 border rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl text-white flex flex-col gap-2.5 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+        className={`z-10 w-[calc(100vw-32px)] sm:w-[380px] p-3.5 sm:p-4 bg-slate-900/95 border rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl text-white flex flex-col gap-2.5 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] pointer-events-auto ${
           (hasPracticedPanic || hasPracticedFocus) ? 'border-emerald-500/60 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'border-indigo-500/40'
         }`}
       >
