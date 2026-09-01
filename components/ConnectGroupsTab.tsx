@@ -202,18 +202,7 @@ export default function ConnectGroupsTab() {
   }, [viewingGroup?._id]);
 
   useEffect(() => {
-    if (viewingGroup) {
-      const members = viewingGroup.members || [];
-      const meMember = members.find((m: any) => m.isMe || (myUsername && m.username === myUsername));
-      const isMember = Boolean(meMember) || groups.some((g: any) => String(g._id) === String(viewingGroup._id));
-      if (isMember) {
-        const welcomeKey = `group_welcome_seen_${viewingGroup._id}`;
-        const hasSeen = typeof window !== 'undefined' ? localStorage.getItem(welcomeKey) : 'true';
-        if (!hasSeen) {
-          setShowWelcomeModal(true);
-        }
-      }
-    } else {
+    if (!viewingGroup) {
       setShowWelcomeModal(false);
     }
   }, [viewingGroup?._id]);
@@ -2602,24 +2591,24 @@ export default function ConnectGroupsTab() {
       {/* Member Onboarding & Controls Guide Modal */}
       {showWelcomeModal && viewingGroup && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[110] p-4 animate-in fade-in"
+          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[110] p-2.5 sm:p-4 overflow-y-auto animate-in fade-in"
           onClick={dismissWelcomeModal}
         >
           <div
-            className="bg-[#121216] border border-blue-500/35 rounded-2xl w-full max-w-md overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.25)] flex flex-col animate-in zoom-in-95 duration-200"
+            className="bg-[#121216] border border-blue-500/35 rounded-2xl w-full max-w-md max-h-[85vh] sm:max-h-[80vh] overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.25)] flex flex-col my-auto animate-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
             {/* Header Banner */}
-            <div className="relative p-4 bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border-b border-white/10 flex items-center justify-between">
+            <div className="relative p-3 sm:p-4 bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border-b border-white/10 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0 shadow-inner">
-                  <Sparkles className="w-5 h-5 animate-pulse text-blue-400" />
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0 shadow-inner">
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse text-blue-400" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <h3 className="text-sm font-bold text-white tracking-wide truncate">
+                  <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide truncate">
                     Welcome to {viewingGroup.title}!
                   </h3>
-                  <span className="text-[10px] text-blue-300/80 font-medium">
+                  <span className="text-[9px] sm:text-[10px] text-blue-300/80 font-medium truncate">
                     Member Quick Guide & Task Controls
                   </span>
                 </div>
@@ -2633,58 +2622,58 @@ export default function ConnectGroupsTab() {
             </div>
 
             {/* Guide Content */}
-            <div className="p-4 flex flex-col gap-3 max-h-[70vh] overflow-y-auto">
-              <p className="text-[11px] text-white/70 leading-relaxed">
+            <div className="p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+              <p className="text-[10px] sm:text-[11px] text-white/70 leading-relaxed">
                 Here is what you can do in <strong className="text-white">{viewingGroup.title}</strong> to track your focus & rank up on the leaderboard:
               </p>
 
               {/* Feature 1: Add & Edit Tasks */}
-              <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0 mt-0.5">
-                  <Plus size={14} />
+              <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0 mt-0.5">
+                  <Plus size={13} className="sm:w-3.5 sm:h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-emerald-300">1. Add & Edit Your Tasks</span>
-                  <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                  <span className="text-[11px] sm:text-xs font-bold text-emerald-300">1. Add & Edit Your Tasks</span>
+                  <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
                     Use the input box at the bottom of your member card to add tasks with custom target durations (minutes). Double-click task titles or duration tags anytime to edit them.
                   </span>
                 </div>
               </div>
 
               {/* Feature 2: Run Timers & Track Time */}
-              <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0 mt-0.5">
-                  <Clock size={14} />
+              <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0 mt-0.5">
+                  <Clock size={13} className="sm:w-3.5 sm:h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-sky-300">2. Run Timers & Track Time</span>
-                  <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                  <span className="text-[11px] sm:text-xs font-bold text-sky-300">2. Run Timers & Track Time</span>
+                  <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
                     Click the Play ▶ button on your tasks to start live timing. As you work, your logged time automatically updates your stats!
                   </span>
                 </div>
               </div>
 
               {/* Feature 3: Delete & Manage */}
-              <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
-                  <Trash2 size={14} />
+              <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
+                  <Trash2 size={13} className="sm:w-3.5 sm:h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-purple-300">3. Complete, Restart & Delete</span>
-                  <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                  <span className="text-[11px] sm:text-xs font-bold text-purple-300">3. Complete, Restart & Delete</span>
+                  <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
                     Check off tasks as done, click restart ↺ to clear elapsed time, or click the trash 🗑 icon to delete a task.
                   </span>
                 </div>
               </div>
 
               {/* Feature 4: Leaderboard Rank */}
-              <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
-                  <Flame size={14} />
+              <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
+                  <Flame size={13} className="sm:w-3.5 sm:h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-amber-300">4. Leaderboard Ranking</span>
-                  <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                  <span className="text-[11px] sm:text-xs font-bold text-amber-300">4. Leaderboard Ranking</span>
+                  <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
                     Your member card rank badge (#1, #2, #3...) updates live based on your total completed focus time in this group!
                   </span>
                 </div>
@@ -2692,7 +2681,7 @@ export default function ConnectGroupsTab() {
             </div>
 
             {/* Footer */}
-            <div className="p-3 bg-white/5 border-t border-white/10 flex justify-end">
+            <div className="p-2.5 sm:p-3 bg-white/5 border-t border-white/10 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={dismissWelcomeModal}

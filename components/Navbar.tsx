@@ -7,8 +7,13 @@ interface DockProps {
 }
 
 export default function Dock({ onOpenNotes }: DockProps) {
+    const openLink = (url: string) => {
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
     return (
-        <div id="nav-dock" className="relative flex items-center justify-between sm:justify-center gap-2 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3 rounded-2xl sm:rounded-3xl glass-panel before:absolute before:inset-0 before:-z-10 before:rounded-2xl sm:before:rounded-3xl before:bg-gradient-to-b before:from-white/10 before:to-transparent pointer-events-auto w-[calc(100vw-24px)] sm:w-auto max-w-full sm:max-w-none">
+        <div id="nav-dock" className="relative flex items-center justify-between sm:justify-center gap-2 sm:gap-4 px-3.5 sm:px-5 py-2 sm:py-3 rounded-2xl sm:rounded-3xl glass-panel before:absolute before:inset-0 before:-z-10 before:rounded-2xl sm:before:rounded-3xl before:bg-gradient-to-b before:from-white/10 before:to-transparent pointer-events-auto w-full sm:w-auto max-w-full sm:max-w-none shadow-2xl">
+
             {/* Google Translate */}
             <Tooltip text="Google Translate" position="top">
                 <button
@@ -25,12 +30,19 @@ export default function Dock({ onOpenNotes }: DockProps) {
             <Tooltip text="Google Keep" position="top">
                 <button
                     onClick={() => {
+
                         const isAndroid = /Android/i.test(navigator.userAgent);
+
                         if (isAndroid) {
+
                             window.location.href = 'intent://keep.google.com#Intent;scheme=https;package=com.google.android.keep;S.browser_fallback_url=https%3A%2F%2Fkeep.google.com;end';
+
                         } else {
+
                             window.open('https://keep.google.com', '_blank');
+
                         }
+
                     }}
                     className="group relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-[#FFBB00] to-[#E5A800] text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
                 >
@@ -40,56 +52,82 @@ export default function Dock({ onOpenNotes }: DockProps) {
                 </button>
             </Tooltip>
 
-            {/* Dialer (Mobile Only) */}
-            <Tooltip text="Phone / Dialer" position="top">
-                <button
-                    onClick={() => {
-                        window.location.href = 'tel:';
-                    }}
-                    className="group relative flex sm:hidden items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-[#34A853] to-[#2E7D32] text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
-                >
-                    <svg className="group-hover:scale-125 transition-transform duration-300 w-5 h-5 sm:w-7 sm:h-7 fill-current drop-shadow-sm" viewBox="0 0 24 24">
-                        <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
-                    </svg>
-                </button>
-            </Tooltip>
+            {/* Dialer (Mobile Only Wrapper) */}
+            <div className="flex sm:hidden">
+                <Tooltip text="Phone / Dialer" position="top">
+                    <button
+                        onClick={() => {
 
-            {/* Gemini (Desktop Only) */}
-            <Tooltip text="Google Gemini" position="top">
-                <button
-                    onClick={() => {
-                        const isAndroid = /Android/i.test(navigator.userAgent);
-                        if (isAndroid) {
-                            window.location.href = 'intent://gemini.google.com#Intent;scheme=https;package=com.google.android.apps.bard;S.browser_fallback_url=https%3A%2F%2Fgemini.google.com;end';
-                        } else {
-                            window.open('https://gemini.google.com', '_blank');
-                        }
-                    }}
-                    className="group relative hidden sm:flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-[white] text-transparent shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl border border-white/15 cursor-pointer"
-                >
-                    <img
-                        src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png"
-                        alt="Google Gemini"
-                        className="rounded-full group-hover:scale-125 transition-transform duration-300  drop-shadow-sm object-contain"
-                    />
-                </button>
-            </Tooltip>
+                            window.location.href = 'tel:';
+
+                        }}
+                        className="group relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-[#34A853] to-[#2E7D32] text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
+                    >
+                        <svg className="group-hover:scale-125 transition-transform duration-300 w-5 h-5 sm:w-7 sm:h-7 fill-current drop-shadow-sm" viewBox="0 0 24 24">
+                            <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+                        </svg>
+                    </button>
+                </Tooltip>
+            </div>
+
+            {/* Gemini (Desktop Only Wrapper) */}
+            <div className="hidden sm:flex">
+                <Tooltip text="Google Gemini" position="top">
+                    <button
+
+                        onClick={() => {
+
+                            const isAndroid = /Android/i.test(navigator.userAgent);
+
+                            if (isAndroid) {
+
+                                window.location.href = 'intent://gemini.google.com#Intent;scheme=https;package=com.google.android.apps.bard;S.browser_fallback_url=https%3A%2F%2Fgemini.google.com;end';
+
+                            } else {
+
+                                window.open('https://gemini.google.com', '_blank');
+
+                            }
+
+                        }}
+                        className="group relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-[white] text-transparent shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl border border-white/15 cursor-pointer"
+                    >
+                        <img
+                            src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png"
+                            alt="Google Gemini"
+                            className="rounded-full group-hover:scale-125 transition-transform duration-300 drop-shadow-sm object-contain"
+                        />
+                    </button>
+                </Tooltip>
+            </div>
 
             {/* WhatsApp */}
             <Tooltip text="WhatsApp" position="top">
                 <button
                     onClick={() => {
+
                         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
                         if (isMobile) {
+
                             const isAndroid = /Android/i.test(navigator.userAgent);
+
                             if (isAndroid) {
+
                                 window.location.href = 'whatsapp://send?text=%20';
+
                             } else {
+
                                 window.location.href = 'whatsapp://app';
+
                             }
+
                         } else {
+
                             window.open('whatsapp://', '_blank');
+
                         }
+
                     }}
                     className="group relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-[#25D366] to-[#128C7E] text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
                 >
@@ -111,32 +149,36 @@ export default function Dock({ onOpenNotes }: DockProps) {
                 </button>
             </Tooltip>
 
-            {/* VS Code */}
-            <Tooltip text="VS Code" position="top">
-                <button
-                    onClick={() => window.open('vscode://', '_blank')}
-                    className="group p-1 relative hidden sm:flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl  bg-[white] text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
-                >
-                    <img
-                        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsJd3F4VZHrGgTPVcvtT9jlIZMAMYGTpUlsSZC2tmyRxXHiFf0WGX1OSqx&s=10"
-                        alt="VS Code Logo"
-                        className="rounded-full group-hover:scale-125 transition-transform duration-300  drop-shadow-sm object-contain"
-                    />
-                </button>
-            </Tooltip>
+            {/* VS Code (Desktop Only Wrapper) */}
+            <div className="hidden sm:flex">
+                <Tooltip text="VS Code" position="top">
+                    <button
+                        onClick={() => openLink('vscode://')}
+                        className="group p-1 relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-[white] text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
+                    >
+                        <img
+                            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSsJd3F4VZHrGgTPVcvtT9jlIZMAMYGTpUlsSZC2tmyRxXHiFf0WGX1OSqx&s=10"
+                            alt="VS Code Logo"
+                            className="rounded-full group-hover:scale-125 transition-transform duration-300 drop-shadow-sm object-contain"
+                        />
+                    </button>
+                </Tooltip>
+            </div>
 
-            {/* Antigravity */}
-            <Tooltip text="Antigravity" position="top">
-                <button
-                    onClick={() => window.open('antigravity://', '_blank')}
-                    className="group relative hidden sm:flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-gray-800 to-black text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl border border-white/10 cursor-pointer"
-                >
-                    <svg className="group-hover:scale-125 transition-transform duration-300 w-6 h-6 sm:w-8 sm:h-8" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L3 21H7.5L9.5 16H14.5L16.5 21H21L12 2ZM10.5 13L12 9L13.5 13H10.5Z" fill="currentColor" />
-                        <circle cx="12" cy="7" r="2" fill="#F5A623" />
-                    </svg>
-                </button>
-            </Tooltip>
+            {/* Antigravity (Desktop Only Wrapper) */}
+            <div className="hidden sm:flex">
+                <Tooltip text="Antigravity" position="top">
+                    <button
+                        onClick={() => openLink('antigravity://')}
+                        className="group relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-gray-800 to-black text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl border border-white/10 cursor-pointer"
+                    >
+                        <svg className="group-hover:scale-125 transition-transform duration-300 w-6 h-6 sm:w-8 sm:h-8" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2L3 21H7.5L9.5 16H14.5L16.5 21H21L12 2ZM10.5 13L12 9L13.5 13H10.5Z" fill="currentColor" />
+                            <circle cx="12" cy="7" r="2" fill="#F5A623" />
+                        </svg>
+                    </button>
+                </Tooltip>
+            </div>
         </div>
     );
 }

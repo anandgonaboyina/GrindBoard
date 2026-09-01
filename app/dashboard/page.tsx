@@ -532,10 +532,10 @@ export default function Dashboard() {
             <div
               style={{
                 bottom: isMobile ? `${8 + dockOffset}px` : `${72 + dockOffset}px`,
-                transform: `translateX(-50%) scale(${dockScale * (isMobile ? 0.85 : 1)})`,
+                transform: `translateX(-50%) scale(${isMobile ? mobileDashboardScale : dockScale})`,
                 transformOrigin: 'bottom center',
               }}
-              className="absolute left-1/2 z-50 transition-all duration-300"
+              className="absolute left-1/2 z-50 transition-all duration-300 w-[calc(100vw-16px)] max-w-md sm:w-auto sm:max-w-none flex justify-center"
             >
               <Dock onOpenNotes={() => console.log('Open Notes clicked')} />
             </div>

@@ -485,13 +485,13 @@ export default function GroupTaskManager({
                         >
                             <Info size={14} />
                         </button>
-                        <button
+                        {/* <button
                             onClick={handleExitGroup}
                             className="px-2 py-0.5 text-[9px] font-bold bg-rose-500/20 text-rose-300 hover:bg-rose-500 hover:text-white rounded-md transition-colors cursor-pointer border border-rose-500/30 shrink-0 self-center"
                             title="Exit this group"
                         >
                             Exit
-                        </button>
+                        </button> */}
                     </>
                 )}
             </div>
@@ -553,7 +553,7 @@ export default function GroupTaskManager({
                                                     e.stopPropagation();
                                                     try {
                                                         (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-                                                     } catch { }
+                                                    } catch { }
                                                     draggedIndexRef.current = index;
                                                     setDraggedIndex(index);
                                                 }}
@@ -667,9 +667,9 @@ export default function GroupTaskManager({
                                                                 onBlur={(e) => {
                                                                     const dur = parseInt(e.target.value);
                                                                     if (!isNaN(dur) && dur >= 0) {
-                                                                         const newComps = { ...myCompletions, [task.id]: { completed: false, timeSpent: dur } };
-                                                                         const finalCompletions = { ...completions, [effectiveUserId]: { ...(completions[effectiveUserId] || {}), [todayStr]: newComps } };
-                                                                         setCompletions(finalCompletions);
+                                                                        const newComps = { ...myCompletions, [task.id]: { completed: false, timeSpent: dur } };
+                                                                        const finalCompletions = { ...completions, [effectiveUserId]: { ...(completions[effectiveUserId] || {}), [todayStr]: newComps } };
+                                                                        setCompletions(finalCompletions);
 
                                                                         const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, completions: finalCompletions } : g);
                                                                         setUserGroups(updatedGroups);
@@ -708,26 +708,26 @@ export default function GroupTaskManager({
 
                                     <div className="flex flex-col items-end justify-center shrink-0 ml-1">
                                         {canEdit && (
-                                            <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                 {!isTaskDone && (
                                                     <button
                                                         onClick={() => {
                                                             const timeLeft = Math.max(0, task.duration - timeSpent);
                                                             triggerTimer(timeLeft, task.id, task.title);
                                                         }}
-                                                        className="p-0.5 bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white rounded transition-all active:scale-95"
+                                                        className="p-1 bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white rounded-md transition-all active:scale-95"
                                                         title={`Start ${Math.max(0, task.duration - timeSpent)}m timer`}
                                                     >
-                                                        <Play className="w-2.5 h-2.5 fill-current" />
+                                                        <Play className="w-3 h-3 fill-current" />
                                                     </button>
                                                 )}
                                                 {(isTaskDone || timeSpent > 0) && (
                                                     <button
                                                         onClick={() => handleRestartTask(task.id)}
-                                                        className="p-0.5 bg-orange-500/10 text-orange-300 hover:bg-orange-500 hover:text-white rounded transition-all active:scale-95 border border-orange-500/20 hover:border-transparent"
+                                                        className="p-1 bg-orange-500/10 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-all active:scale-95 border border-orange-500/20 hover:border-transparent"
                                                         title="Restart task"
                                                     >
-                                                        <RotateCcw className="w-2.5 h-2.5" />
+                                                        <RotateCcw className="w-3 h-3" />
                                                     </button>
                                                 )}
                                                 <button
@@ -740,15 +740,15 @@ export default function GroupTaskManager({
                                                             onConfirm: () => {
                                                                 const newTasks = tasks.filter(t => t.id !== task.id);
                                                                 setTasks(newTasks);
-                                                                 const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, memberTasks: { ...(g.memberTasks || {}), [effectiveUserId]: newTasks } } : g);
-                                                                 setUserGroups(updatedGroups);
+                                                                const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, memberTasks: { ...(g.memberTasks || {}), [effectiveUserId]: newTasks } } : g);
+                                                                setUserGroups(updatedGroups);
                                                                 updateTasksInDB(newTasks);
                                                             }
                                                         });
                                                     }}
-                                                    className="p-0.5 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-all active:scale-95 border border-transparent hover:border-rose-500/20"
+                                                    className="p-1 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all active:scale-95 border border-transparent hover:border-rose-500/20"
                                                 >
-                                                    <Trash2 className="w-2.5 h-2.5" />
+                                                    <Trash2 className="w-3 h-3" />
                                                 </button>
                                             </div>
                                         )}
