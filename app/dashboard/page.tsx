@@ -74,6 +74,7 @@ export default function Dashboard() {
   const setActiveMobileCustomIndex = useDashboardStore((state) => state.setActiveMobileCustomIndex);
   const showManifestationBoard = useDashboardStore((state) => state.showManifestationBoard);
   const setShowManifestationBoard = useDashboardStore((state) => state.setShowManifestationBoard);
+  const toggleManifestationOpen = useDashboardStore((state) => state.toggleManifestationOpen);
 
 
   const isMobileCountdownsVisible = useDashboardStore((state) => state.isMobileCountdownsVisible);
@@ -271,15 +272,11 @@ export default function Dashboard() {
           </button>
 
           <button
-            onClick={() => setShowManifestationBoard(!showManifestationBoard)}
-            className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border shadow-xl transition-all flex items-center justify-center group cursor-pointer ${
-              showManifestationBoard
-                ? 'bg-amber-500/30 text-amber-300 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
-                : 'glass-btn border-white/20 text-white/70 hover:text-white'
-            }`}
+            onClick={toggleManifestationOpen}
+            className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border shadow-xl transition-all flex items-center justify-center group cursor-pointer glass-btn border-amber-500/40 text-amber-300 hover:bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
           >
-            <Sparkles className={`w-4 h-4 ${showManifestationBoard ? 'animate-pulse text-amber-300' : ''}`} />
-            <Tooltip text={showManifestationBoard ? "Hide Manifestation Board" : "Show Manifestation Board"} position="right" />
+            <Sparkles className="w-4 h-4 animate-pulse text-amber-300" />
+            <Tooltip text="Open Full-Screen Manifestation Board" position="right" />
           </button>
         </div>
       )}

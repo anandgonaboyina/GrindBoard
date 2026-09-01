@@ -102,6 +102,9 @@ interface DashboardState {
 
   showManifestationBoard: boolean;
   setShowManifestationBoard: (show: boolean) => void;
+  isManifestationOpen: boolean;
+  setIsManifestationOpen: (open: boolean) => void;
+  toggleManifestationOpen: () => void;
 
   manifestationDesktopPhotos: string[];
   setManifestationDesktopPhotos: (urls: string[]) => void;
@@ -881,8 +884,11 @@ export const useDashboardStore = create<DashboardState>()(
       activeMobileCustomIndex: null,
       setActiveMobileCustomIndex: (index) => set({ activeMobileCustomIndex: index }),
 
-      showManifestationBoard: false,
+      showManifestationBoard: true,
       setShowManifestationBoard: (show) => set({ showManifestationBoard: show }),
+      isManifestationOpen: false,
+      setIsManifestationOpen: (open) => set({ isManifestationOpen: open }),
+      toggleManifestationOpen: () => set((state) => ({ isManifestationOpen: !state.isManifestationOpen })),
 
       manifestationDesktopPhotos: [],
       setManifestationDesktopPhotos: (urls) => set({ manifestationDesktopPhotos: urls }),
