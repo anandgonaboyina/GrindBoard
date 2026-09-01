@@ -430,6 +430,8 @@ interface DashboardState {
   setMobileHideConfig: (key: string, value: boolean) => void;
   setMobileHideAll: (hide: boolean) => void;
 
+  forceInstantSave: () => void;
+
   isPanicHidden: boolean;
   togglePanicHide: () => void;
   panicShortcutKey: string;
@@ -1508,7 +1510,15 @@ export const useDashboardStore = create<DashboardState>()(
       setHasUnreadNews: (val: boolean) => set(() => ({ hasUnreadNews: val })),
       settingsActiveTab: 'preferences',
       connectInitialTab: undefined,
-      toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false })),
+      toggleSettings: () => set((state) => {
+        const willClose = state.isSettingsOpen;
+        if (willClose && typeof window !== 'undefined') {
+          // Force an instant save of any pending changes made while settings were open (like media uploads/deletes)
+          if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
+          saveTimeout = setTimeout(performSave, 0);
+        }
+        return { isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false };
+      }),
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
       setConnectInitialTab: (tab) => set({ connectInitialTab: tab }),
       hasSeenOnboarding: false,
@@ -2446,6 +2456,13 @@ export const useDashboardStore = create<DashboardState>()(
           window.location.reload();
         } catch (err) {
           console.error("Failed to clear all data", err);
+        }
+      },
+
+      forceInstantSave: () => {
+        if (typeof window !== 'undefined') {
+          if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
+          saveTimeout = setTimeout(performSave, 0);
         }
       },
     }),
