@@ -311,16 +311,24 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Manifestation Board Toggle Control (Top Right) */}
+        {/* Manifestation Board Toggle Control (Top Right on PC, Left Edge on Mobile) */}
         {!isPanicHidden && (!isHidden || !hideConfig.manifestation) && showManifestationBoard && (
-          <div className="fixed top-10 right-3 z-[40] flex flex-col items-center gap-2">
-            <button
-              onClick={toggleManifestationOpen}
-              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border shadow-xl transition-all flex items-center justify-center group cursor-pointer glass-btn border-amber-500/40 text-amber-300 hover:bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
-            >
-              <Sparkles className="w-4 h-4 animate-pulse text-amber-300" />
-              <Tooltip text="Open Full-Screen Manifestation Board" position="left" />
-            </button>
+          <div 
+            data-tour="manifestation-toggle"
+            className={`fixed z-[90] sm:z-[40] 
+                       left-0 top-[calc(26vh-46px)] sm:left-auto sm:top-10 sm:right-3 
+                       glass-btn sm:bg-transparent sm:glass-btn-none border-l-0 sm:border-l sm:border sm:border-amber-500/40 
+                       rounded-l-none rounded-r-xl sm:rounded-xl 
+                       p-1.5 py-2 sm:p-2 
+                       cursor-pointer flex flex-col items-center justify-center transition-all duration-700
+                       text-amber-300 hover:bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.2)] group
+                       ${isCalendarOpen ? 'max-sm:-translate-x-[120%]' : 'translate-x-0'}
+            `}
+            onClick={toggleManifestationOpen}
+          >
+            <Sparkles className="w-5 h-5 sm:w-4 sm:h-4 animate-pulse text-amber-300" />
+            <div className="hidden sm:block w-0 h-0"><Tooltip text="Open Vision Board" position="left" /></div>
+            <div className="block sm:hidden w-0 h-0"><Tooltip text="Open Vision Board" position="right" /></div>
           </div>
         )}
 

@@ -49,6 +49,14 @@ const TOUR_STEPS: TourStep[] = [
     positionHint: 'right',
   },
   {
+    id: 'manifestation-toggle',
+    selector: '[data-tour="manifestation-toggle"]',
+    title: 'Your Vision & Manifestation Board ✨',
+    description: 'Immerse yourself in your goals! Open this full-screen vision board to view your dream images, motivational videos, and custom quotes. Pin your ultimate desires here to stay laser-focused on your "Why"!',
+    icon: Sparkles,
+    positionHint: 'left',
+  },
+  {
     id: 'calendar-drawer',
     selector: '[data-tour="calendar-drawer"]',
     title: 'Interactive Calendar & Deadlines',
