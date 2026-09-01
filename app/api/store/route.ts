@@ -132,7 +132,8 @@ const SETTING_ARRAY_KEYS = [
   'selectedLocalWallpaperName'
 ];
 
-const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'plans'];
+const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'plans'];
+const COUNTDOWN_KEYS = ['countdowns'];
 const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
 const STATS_KEYS = ['history', 'stopwatchSessions'];
 const DAILY_ROUTINE_KEYS = ['dailyTimes'];
@@ -156,9 +157,11 @@ export async function GET(request: Request) {
     const statsRecord = await db.collection('Stats').findOne({ userId: user.userId });
     const dailyRoutineRecord = await db.collection('DailyRoutine').findOne({ userId: user.userId });
     const timetableRecord = await db.collection('Timetable').findOne({ userId: user.userId });
+    const deadlinesRecord = await db.collection('Deadlines').findOne({ userId: user.userId });
+    const countdownsRecord = await db.collection('Countdowns').findOne({ userId: user.userId });
     
     let maxLastModified = existing ? (existing.lastModified || 0) : 0;
-    const collections = [notesRecord, settingsRecord, tasksRecord, roadmapsRecord, statsRecord, dailyRoutineRecord, timetableRecord];
+    const collections = [notesRecord, settingsRecord, tasksRecord, roadmapsRecord, statsRecord, dailyRoutineRecord, timetableRecord, deadlinesRecord, countdownsRecord];
     for (const record of collections) {
       if (record && record.lastModified && record.lastModified > maxLastModified) {
         maxLastModified = record.lastModified;
@@ -219,7 +222,17 @@ export async function GET(request: Request) {
           if (timetableRecord[key] !== undefined) returnedData.state[key] = timetableRecord[key];
         });
       }
-    } else if (existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord || timetableRecord) {
+      if (deadlinesRecord) {
+        DEADLINE_KEYS.forEach(key => {
+          if (deadlinesRecord[key] !== undefined) returnedData.state[key] = deadlinesRecord[key];
+        });
+      }
+      if (countdownsRecord) {
+        COUNTDOWN_KEYS.forEach(key => {
+          if (countdownsRecord[key] !== undefined) returnedData.state[key] = countdownsRecord[key];
+        });
+      }
+    } else if (existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord || timetableRecord || deadlinesRecord || countdownsRecord) {
       const { _id, userId, lastModified, updatedAt, version, displaySettings: legacyDS, generalSettings: legacyGS, ...coreData } = (existing || {}) as any;
       const reconstructedState = {
         ...coreData,
@@ -260,6 +273,19 @@ export async function GET(request: Request) {
           reconstructedState[key] = timetableRecord[key];
         }
       });
+
+      DEADLINE_KEYS.forEach(key => {
+        if (deadlinesRecord && deadlinesRecord[key] !== undefined) {
+          reconstructedState[key] = deadlinesRecord[key];
+        }
+      });
+
+      COUNTDOWN_KEYS.forEach(key => {
+        if (countdownsRecord && countdownsRecord[key] !== undefined) {
+          reconstructedState[key] = countdownsRecord[key];
+        }
+      });
+
       if (notesRecord && notesRecord.notes) {
         reconstructedState.notes = notesRecord.notes;
       }
@@ -315,9 +341,10 @@ export async function POST(request: Request) {
     const existingDailyRoutine = await db.collection('DailyRoutine').findOne({ userId: user.userId });
     const existingTimetable = await db.collection('Timetable').findOne({ userId: user.userId });
     const existingDeadlines = await db.collection('Deadlines').findOne({ userId: user.userId });
+    const existingCountdowns = await db.collection('Countdowns').findOne({ userId: user.userId });
 
     let existingCloudData: any = null;
-    if (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine || existingTimetable || existingDeadlines) {
+    if (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine || existingTimetable || existingDeadlines || existingCountdowns) {
       if (existing && existing.data && typeof existing.data === 'string') {
         try {
           existingCloudData = JSON.parse(existing.data);
@@ -353,6 +380,21 @@ export async function POST(request: Request) {
         }
         if (existingStats && existingStats.dailyTimes !== undefined && existingCloudData.state.dailyTimes === undefined) {
           existingCloudData.state.dailyTimes = existingStats.dailyTimes;
+        }
+        if (existingTimetable) {
+          TIMETABLE_KEYS.forEach(key => {
+            if (existingTimetable[key] !== undefined) existingCloudData.state[key] = existingTimetable[key];
+          });
+        }
+        if (existingDeadlines) {
+          DEADLINE_KEYS.forEach(key => {
+            if (existingDeadlines[key] !== undefined) existingCloudData.state[key] = existingDeadlines[key];
+          });
+        }
+        if (existingCountdowns) {
+          COUNTDOWN_KEYS.forEach(key => {
+            if (existingCountdowns[key] !== undefined) existingCloudData.state[key] = existingCountdowns[key];
+          });
         }
       } else {
         const { _id, userId, lastModified, updatedAt, version, displaySettings: legacyDS, generalSettings: legacyGS, ...coreData } = (existing || {}) as any;
@@ -404,6 +446,11 @@ export async function POST(request: Request) {
         DEADLINE_KEYS.forEach(key => {
           if (existingDeadlines && existingDeadlines[key] !== undefined) {
             reconstructedState[key] = existingDeadlines[key];
+          }
+        });
+        COUNTDOWN_KEYS.forEach(key => {
+          if (existingCountdowns && existingCountdowns[key] !== undefined) {
+            reconstructedState[key] = existingCountdowns[key];
           }
         });
         existingCloudData = { state: reconstructedState, version: version || 2 };

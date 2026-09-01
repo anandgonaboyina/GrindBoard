@@ -57,8 +57,6 @@ export default function DeadlineTickerWidget() {
       }
     };
     fetchLiveDeadlines();
-    const interval = setInterval(fetchLiveDeadlines, 15000);
-    return () => clearInterval(interval);
   }, [viewingFriend]);
 
   if (!mounted) return null;

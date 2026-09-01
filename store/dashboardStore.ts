@@ -640,13 +640,14 @@ const performSave = async () => {
       const oldState = JSON.parse(lastSavedValue).state || {};
       const newState = JSON.parse(valueToSave).state || {};
 
-      const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
+      const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
       const STATS_KEYS = ['history'];
       const DAILY_ROUTINE_KEYS = ['dailyTimes'];
       const NOTES_KEYS = ['notes'];
       const ROADMAPS_KEYS = ['roadmaps'];
       const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes'];
       const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
+      const COUNTDOWN_KEYS = ['countdowns'];
 
       const TRANSIENT_KEYS = [
         'isSaving', 'hasUnsavedChanges', '_hasHydrated', 'isTaskManagerOpen', 'isCalendarOpen',
@@ -654,7 +655,8 @@ const performSave = async () => {
         'isStatsOpen', 'isMobileCountdownsVisible', 'isCalendarBusy', 'expandedLeaderboardUserId',
         'pendingValue', 'saveTimeout', 'activeNoteId', 'activeCountdownIndex',
         ...TIMETABLE_KEYS, // Timetable sync is handled entirely by its own real-time endpoint
-        ...DEADLINE_KEYS   // Deadlines sync is handled entirely by its own real-time endpoint
+        ...DEADLINE_KEYS,  // Deadlines sync is handled entirely by its own real-time endpoint
+        ...COUNTDOWN_KEYS  // Countdowns sync is handled entirely by its own real-time endpoint
       ];
 
       Object.keys(newState).forEach(key => {
@@ -737,7 +739,8 @@ const performSave = async () => {
         // Intelligently merge arrays to prevent data loss, prioritizing local changes
         tasks: mergeArraysById(parsedLocal.state.tasks, parsedCloud.state.tasks),
         tomorrowTasks: mergeArraysById(parsedLocal.state.tomorrowTasks, parsedCloud.state.tomorrowTasks),
-        countdowns: mergeArraysById(parsedLocal.state.countdowns, parsedCloud.state.countdowns),
+        // Countdowns are decoupled and always take cloud truth
+        countdowns: parsedCloud.state.countdowns || parsedLocal.state.countdowns,
         notes: mergeNotes(parsedLocal.state.notes, parsedCloud.state.notes),
         roadmaps: mergeArraysById(parsedLocal.state.roadmaps, parsedCloud.state.roadmaps),
         plans: mergeArraysById(parsedLocal.state.plans, parsedCloud.state.plans),
@@ -906,7 +909,7 @@ const fileStorage = createJSONStorage(() => ({
               const mergedTasks = mergeArraysById(localState.tasks, cloudState.tasks);
               const mergedTomorrowTasks = mergeArraysById(localState.tomorrowTasks, cloudState.tomorrowTasks);
               const mergedDeadlines = filterActiveDeadlines(mergeArraysById(localState.deadlines, cloudState.deadlines));
-              const mergedCountdowns = mergeArraysById(localState.countdowns, cloudState.countdowns);
+
               const mergedNotes = mergeNotes(localState.notes, cloudState.notes);
               const mergedRoadmaps = mergeArraysById(localState.roadmaps, cloudState.roadmaps);
               const mergedPlans = mergeArraysById(localState.plans, cloudState.plans);
@@ -966,7 +969,7 @@ const fileStorage = createJSONStorage(() => ({
                 hasSeenOnboarding: mergedHasSeenOnboarding,
                 tasks: mergedTasks,
                 tomorrowTasks: mergedTomorrowTasks,
-                countdowns: mergedCountdowns,
+                countdowns: cloudState.countdowns || localState.countdowns,
                 notes: mergedNotes,
                 roadmaps: mergedRoadmaps,
                 plans: mergedPlans,
@@ -1155,6 +1158,24 @@ export const pushTimetableToDB = async (payload: any) => {
     });
   } catch (e) {
     console.error("Failed to push timetable to DB", e);
+  }
+};
+
+export const pushCountdownsToDB = async (payload: any) => {
+  if (typeof window === 'undefined') return;
+  const token = localStorage.getItem('dashboard_sync_token');
+  if (!token) return;
+  try {
+    await fetch('/api/countdowns', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.error('Failed to push countdowns to DB', e);
   }
 };
 
@@ -1900,18 +1921,22 @@ export const useDashboardStore = create<DashboardState>()(
         set((state) => {
           if (state.countdowns.length >= 5) return state;
           newId = Date.now().toString();
-          return {
-            countdowns: [...state.countdowns, { id: newId, title, endDate }]
-          };
+          const newArr = [...state.countdowns, { id: newId, title, endDate }];
+          pushCountdownsToDB({ countdowns: newArr });
+          return { countdowns: newArr };
         });
         return newId;
       },
-      updateCountdown: (id, title, endDate) => set((state) => ({
-        countdowns: state.countdowns.map(c => c.id === id ? { ...c, title, endDate } : c)
-      })),
-      deleteCountdown: (id) => set((state) => ({
-        countdowns: state.countdowns.filter(c => c.id !== id)
-      })),
+      updateCountdown: (id, title, endDate) => set((state) => {
+        const newArr = state.countdowns.map(c => c.id === id ? { ...c, title, endDate } : c);
+        pushCountdownsToDB({ countdowns: newArr });
+        return { countdowns: newArr };
+      }),
+      deleteCountdown: (id) => set((state) => {
+        const newArr = state.countdowns.filter(c => c.id !== id);
+        pushCountdownsToDB({ countdowns: newArr });
+        return { countdowns: newArr };
+      }),
 
       // Deadlines
       deadlines: [],

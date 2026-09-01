@@ -39,10 +39,6 @@ export default function GroupRequestPopup() {
 
     // Check on load
     checkRequests();
-
-    // Check every 10 seconds
-    const interval = setInterval(checkRequests, 10 * 1000);
-    return () => clearInterval(interval);
   }, []);
 
   if (!isVisible || pendingCount === 0) return null;

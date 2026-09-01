@@ -62,8 +62,6 @@ export default function MiniCalendar() {
       }
     };
     fetchLiveDeadlines();
-    const interval = setInterval(fetchLiveDeadlines, 15000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleCloseDate = () => {

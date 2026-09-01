@@ -295,8 +295,6 @@ export default function ConnectTab() {
   useEffect(() => {
     if (isLoggedIn && activeTab === 'friends') {
       fetchFriendsData();
-      const interval = setInterval(fetchFriendsData, 10000);
-      return () => clearInterval(interval);
     }
   }, [isLoggedIn, activeTab]);
 

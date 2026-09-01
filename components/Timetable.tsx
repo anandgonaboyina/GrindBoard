@@ -147,8 +147,6 @@ export default function Timetable() {
       }
     };
     fetchLiveTimetable();
-    const interval = setInterval(fetchLiveTimetable, 15000);
-    return () => clearInterval(interval);
   }, [viewingFriend]);
 
   // Scroll logic

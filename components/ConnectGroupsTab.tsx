@@ -255,32 +255,7 @@ export default function ConnectGroupsTab() {
     }
   }, [userGroups, viewingGroup]);
 
-  // Centralized background polling for active viewing group
-  useEffect(() => {
-    if (!viewingGroup?._id) return;
 
-    const interval = setInterval(async () => {
-      const token = localStorage.getItem('dashboard_sync_token');
-      if (!token) return;
-      try {
-        const res = await fetch(`/api/groups/${viewingGroup._id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.group) {
-            const currentGroups = useDashboardStore.getState().userGroups;
-            const updatedGroups = currentGroups.map((g: any) =>
-              g._id === viewingGroup._id ? data.group : g
-            );
-            setUserGroups(updatedGroups);
-          }
-        }
-      } catch (e) { }
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, [viewingGroup?._id]);
 
   const fetchData = async (showLoading = false) => {
     if (showLoading && groups.length === 0) setLoading(true);

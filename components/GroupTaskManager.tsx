@@ -245,8 +245,6 @@ export default function GroupTaskManager({
         if (!group) {
             fetchGroupData();
         }
-        const interval = setInterval(fetchGroupData, 15000);
-        return () => clearInterval(interval);
     }, [groupId, targetUserId, hideHeader]);
 
     useEffect(() => {

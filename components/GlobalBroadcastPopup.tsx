@@ -35,11 +35,7 @@ export default function GlobalBroadcastPopup() {
         console.error('Failed to fetch broadcasts:', err);
       }
     };
-
     fetchLatestBroadcast();
-    
-    const interval = setInterval(fetchLatestBroadcast, 10 * 60 * 1000);
-    return () => clearInterval(interval);
   }, [dismissedBroadcasts]); // Re-run if dismissed list changes
 
   const handleDismiss = () => {

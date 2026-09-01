@@ -176,21 +176,46 @@ export default function Dashboard() {
     }, 8000);
   };
 
-  const cycleWallpaper = () => {
-    if (isMobile) {
-      if (!customMobileWallpapers || customMobileWallpapers.length === 0) {
-        cycleBackground();
-        return;
+  const cycleWallpaper = async () => {
+    const list = isMobile ? customMobileWallpapers : customDesktopWallpapers;
+    const activeIndex = isMobile ? activeMobileCustomIndex : activeDesktopCustomIndex;
+    const setIndex = isMobile ? setActiveMobileCustomIndex : setActiveDesktopCustomIndex;
+
+    if (!list || list.length === 0) {
+      cycleBackground();
+      return;
+    }
+
+    let nextIndex = activeIndex === null ? 0 : (activeIndex + 1) % list.length;
+    let foundValid = false;
+    let attempts = 0;
+    
+    while (attempts < list.length) {
+      const url = list[nextIndex];
+      if (url.startsWith('custom-')) {
+        const { getWallpaperFromDB } = await import('@/lib/indexedDB');
+        let blob = await getWallpaperFromDB(url);
+        if (!blob) {
+            await new Promise(r => setTimeout(r, 200));
+            blob = await getWallpaperFromDB(url);
+        }
+        if (blob) {
+          foundValid = true;
+          break;
+        }
+      } else {
+        foundValid = true;
+        break;
       }
-      const nextIndex = activeMobileCustomIndex === null ? 0 : (activeMobileCustomIndex + 1) % customMobileWallpapers.length;
-      setActiveMobileCustomIndex(nextIndex);
+      nextIndex = (nextIndex + 1) % list.length;
+      attempts++;
+    }
+
+    if (foundValid) {
+      setIndex(nextIndex);
     } else {
-      if (!customDesktopWallpapers || customDesktopWallpapers.length === 0) {
-        cycleBackground();
-        return;
-      }
-      const nextIndex = activeDesktopCustomIndex === null ? 0 : (activeDesktopCustomIndex + 1) % customDesktopWallpapers.length;
-      setActiveDesktopCustomIndex(nextIndex);
+      setIndex(null);
+      cycleBackground();
     }
   };
 
@@ -239,50 +264,7 @@ export default function Dashboard() {
     }
   }, [_hasHydrated]);
 
-  // Live polling for Settings (Wallpapers, Preferences, URLs, etc)
-  useEffect(() => {
-    if (!_hasHydrated) return;
-    const fetchLiveSettings = async () => {
-      const state = useDashboardStore.getState();
-      
-      // Pause syncing if user is actively modifying settings or if there are local unsaved changes waiting for debounce
-      if (state.isSettingsOpen || state.showBgSwitcher || state.isManifestationOpen || hasUnsavedChanges) return;
-      
-      const token = localStorage.getItem('dashboard_sync_token');
-      if (!token) return;
-      try {
-        const res = await fetch('/api/settings', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.data) {
-          const updates: any = {};
-          Object.keys(data.data).forEach(key => {
-            // Only update if cloud value differs from local
-            if (JSON.stringify(state[key as keyof typeof state]) !== JSON.stringify(data.data[key])) {
-              updates[key] = data.data[key];
-            }
-          });
-          
-          if (Object.keys(updates).length > 0) {
-            setSyncingFromCloud(true);
-            useDashboardStore.setState(updates);
-            setTimeout(() => setSyncingFromCloud(false), 100);
-          }
-        }
-      } catch (e) {
-        // ignore
-      }
-    };
-    
-    // Initial fetch after 2 seconds to not block main thread
-    const initialTimeout = setTimeout(fetchLiveSettings, 2000);
-    const interval = setInterval(fetchLiveSettings, 15000);
-    return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(interval);
-    };
-  }, [_hasHydrated]);
+
 
 
 
