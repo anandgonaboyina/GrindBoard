@@ -342,11 +342,6 @@ export default function Dashboard() {
 
           {/* Draggable Widgets */}
           <div className="absolute inset-0 pointer-events-none z-50">
-            {(!isHidden || !hideConfig.manifestation) && (
-              <DraggableWidget id="manifestation">
-                <ManifestationBoard />
-              </DraggableWidget>
-            )}
           </div>
 
           {/* Left Side Drawer: Calendar */}
@@ -592,6 +587,9 @@ export default function Dashboard() {
 
       {/* Auto Update Checker */}
       <StartupUpdateChecker />
+
+      {/* Full Screen Manifestation Vision Overlay */}
+      <ManifestationBoard />
 
       {/* Global Friend Request Notification */}
       <FriendRequestPopup />
