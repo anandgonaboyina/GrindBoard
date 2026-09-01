@@ -431,6 +431,7 @@ interface DashboardState {
   setMobileHideAll: (hide: boolean) => void;
 
   forceInstantSave: () => void;
+  pushMediaToDB: () => void;
 
   isPanicHidden: boolean;
   togglePanicHide: () => void;
@@ -1513,9 +1514,8 @@ export const useDashboardStore = create<DashboardState>()(
       toggleSettings: () => set((state) => {
         const willClose = state.isSettingsOpen;
         if (willClose && typeof window !== 'undefined') {
-          // Force an instant save of any pending changes made while settings were open (like media uploads/deletes)
-          if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
-          saveTimeout = setTimeout(performSave, 0);
+          // Push media explicitly to bypass performSave concurrency issues
+          useDashboardStore.getState().pushMediaToDB();
         }
         return { isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false };
       }),
@@ -2464,6 +2464,18 @@ export const useDashboardStore = create<DashboardState>()(
           if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
           saveTimeout = setTimeout(performSave, 0);
         }
+      },
+
+      pushMediaToDB: () => {
+        const state = get();
+        pushSettingsToDB({
+          manifestationDesktopPhotos: state.manifestationDesktopPhotos,
+          manifestationMobilePhotos: state.manifestationMobilePhotos,
+          manifestationCustomQuotes: state.manifestationCustomQuotes,
+          customDesktopWallpapers: state.customDesktopWallpapers,
+          customMobileWallpapers: state.customMobileWallpapers,
+          hiddenWallpapers: state.hiddenWallpapers
+        });
       },
     }),
     {
