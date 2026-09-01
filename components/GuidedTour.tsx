@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { ChevronLeft, ChevronRight, Clock, Flame, Calendar, ListTodo, Sparkles, Settings, CheckCircle2, Map, BarChart2, StickyNote, Timer as TimerIcon, Newspaper, Trophy, Users, Image as ImageIcon, EyeOff, Target, CalendarDays, MonitorPlay, Download, Sliders, ExternalLink, PartyPopper, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Flame, Calendar, ListTodo, Sparkles, Settings, CheckCircle2, Map, BarChart2, StickyNote, Timer as TimerIcon, Newspaper, Trophy, Users, Image as ImageIcon, EyeOff, Target, CalendarDays, MonitorPlay, Download, Sliders, ExternalLink, PartyPopper, Check, X, Eye } from 'lucide-react';
+import WallpaperTutorialModal, { WALLPAPER_TUTORIAL_STEPS } from './WallpaperTutorialModal';
 
 interface TourStep {
   id: string;
@@ -226,6 +227,30 @@ export default function GuidedTour() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const activeSteps = React.useMemo(() => {
+    if (isMobile) {
+      return TOUR_STEPS.filter((step) => step.id !== 'hide-peek');
+    }
+    return TOUR_STEPS;
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (currentStepIndex >= activeSteps.length) {
+      setCurrentStepIndex(Math.max(0, activeSteps.length - 1));
+    }
+  }, [activeSteps.length, currentStepIndex]);
+
   // Mandatory 2-step practice tracking for Peek Mode (Hide -> Unhide)
   const [hasHiddenPeek, setHasHiddenPeek] = useState(false);
   const [hasRestoredPeek, setHasRestoredPeek] = useState(false);
@@ -237,10 +262,36 @@ export default function GuidedTour() {
   // Completion modal state
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [finishModalStep, setFinishModalStep] = useState<1 | 2>(1);
+  const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
+  const [tourWallpaperStep, setTourWallpaperStep] = useState(0);
 
-  // Auto-start tour for new users on initial load
+  // Auto-start tour for new users on initial load (checking cloud DB & local cache)
+  const [isReplaying, setIsReplaying] = useState(false);
+
   useEffect(() => {
-    if (_hasHydrated && !hasSeenOnboarding && !isTourOpen) {
+    if (isTourOpen) {
+      const hasSeenLocal = typeof window !== 'undefined' && localStorage.getItem('grindboard_has_seen_onboarding') === 'true';
+      const hasSeenCloudOrStore = hasSeenOnboarding || Boolean(useDashboardStore.getState().hasSeenOnboarding);
+      if (hasSeenLocal || hasSeenCloudOrStore) {
+        setIsReplaying(true);
+      } else {
+        setIsReplaying(false);
+      }
+    }
+  }, [isTourOpen, hasSeenOnboarding]);
+
+  useEffect(() => {
+    if (!_hasHydrated) return;
+
+    const hasSeenLocal = typeof window !== 'undefined' && localStorage.getItem('grindboard_has_seen_onboarding') === 'true';
+    const hasSeenCloudOrStore = hasSeenOnboarding || Boolean(useDashboardStore.getState().hasSeenOnboarding);
+
+    if (hasSeenLocal || hasSeenCloudOrStore) {
+      // If user has already seen onboarding in DB or local cache, ensure tour does not auto-start
+      return;
+    }
+
+    if (!isTourOpen) {
       const timer = setTimeout(() => {
         setIsTourOpen(true);
       }, 1500);
@@ -259,7 +310,7 @@ export default function GuidedTour() {
   // Ensure workspace starts UNHIDDEN when user enters practice steps
   useEffect(() => {
     if (!isTourOpen) return;
-    const currentStepId = TOUR_STEPS[currentStepIndex]?.id;
+    const currentStepId = activeSteps[currentStepIndex]?.id;
     if (currentStepId === 'hide-peek') {
       if (useDashboardStore.getState().isPanicHidden) {
         useDashboardStore.getState().togglePanicHide();
@@ -269,36 +320,36 @@ export default function GuidedTour() {
         useDashboardStore.getState().toggleHide();
       }
     }
-  }, [currentStepIndex, isTourOpen]);
+  }, [currentStepIndex, isTourOpen, activeSteps]);
 
   // Monitor changes to isPanicHidden during hide-peek step
   useEffect(() => {
-    if (!isTourOpen || TOUR_STEPS[currentStepIndex]?.id !== 'hide-peek') return;
+    if (!isTourOpen || activeSteps[currentStepIndex]?.id !== 'hide-peek') return;
 
     if (isPanicHidden) {
       setHasHiddenPeek(true);
     } else if (!isPanicHidden && hasHiddenPeek) {
       setHasRestoredPeek(true);
     }
-  }, [isPanicHidden, isTourOpen, currentStepIndex, hasHiddenPeek]);
+  }, [isPanicHidden, isTourOpen, currentStepIndex, hasHiddenPeek, activeSteps]);
 
   // Monitor changes to isHidden during focus-mode step
   useEffect(() => {
-    if (!isTourOpen || TOUR_STEPS[currentStepIndex]?.id !== 'focus-mode') return;
+    if (!isTourOpen || activeSteps[currentStepIndex]?.id !== 'focus-mode') return;
 
     if (isHidden) {
       setHasHiddenFocus(true);
     } else if (!isHidden && hasHiddenFocus) {
       setHasRestoredFocus(true);
     }
-  }, [isHidden, isTourOpen, currentStepIndex, hasHiddenFocus]);
+  }, [isHidden, isTourOpen, currentStepIndex, hasHiddenFocus, activeSteps]);
 
   // Track combined bounding rect using offsetWidth/offsetHeight to ignore absolute Tooltips
   useEffect(() => {
     if (!isTourOpen) return;
 
     const updateRect = () => {
-      const step = TOUR_STEPS[currentStepIndex];
+      const step = activeSteps[currentStepIndex];
       if (!step || !step.selector) {
         setTargetRect(null);
         return;
@@ -372,10 +423,10 @@ export default function GuidedTour() {
     };
   }, [isTourOpen, currentStepIndex]);
 
-  const currentStep = TOUR_STEPS[currentStepIndex];
+  const currentStep = activeSteps[currentStepIndex];
   const StepIcon = currentStep?.icon || Sparkles;
   const isFirstStep = currentStepIndex === 0;
-  const isLastStep = currentStepIndex === TOUR_STEPS.length - 1;
+  const isLastStep = currentStepIndex === activeSteps.length - 1;
 
   const isDesktopScreen = typeof window !== 'undefined' && window.innerWidth >= 1024;
   const currentStepId = currentStep?.id;
@@ -475,6 +526,13 @@ export default function GuidedTour() {
     setCurrentStepIndex(0);
     setFinishModalStep(1);
     setShowFinishModal(true);
+  };
+
+  const handleCloseTour = () => {
+    ensureWorkspaceVisible();
+    setIsTourOpen(false);
+    setHasSeenOnboarding(true);
+    setCurrentStepIndex(0);
   };
 
   // Compute spotlight cutout style cleanly wrapping element bounds
@@ -668,42 +726,87 @@ export default function GuidedTour() {
             </div>
           )}
 
-          {/* Step 2 Content: PC Wallpaper Setup */}
+          {/* Step 2 Content: PC Wallpaper Setup with Interactive Screenshot Carousel */}
           {finishModalStep === 2 && (
-            <div className="flex flex-col gap-3 bg-white/5 p-4 rounded-2xl border border-white/10 text-xs text-white/80 max-h-[35vh] overflow-y-auto custom-scrollbar animate-in fade-in duration-200">
-              <div className="flex items-center gap-2 text-blue-300 font-bold border-b border-white/10 pb-2">
-                <MonitorPlay className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>Run GrindBoard as Windows Interactive Desktop</span>
+            <div className="flex flex-col gap-2.5 bg-white/5 p-3 sm:p-4 rounded-2xl border border-white/10 text-xs text-white/80 max-h-[48vh] overflow-y-auto custom-scrollbar animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2 gap-2">
+                <div className="flex items-center gap-1.5 text-blue-300 font-bold min-w-0">
+                  <MonitorPlay className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span className="truncate">Windows Interactive Desktop Setup</span>
+                </div>
+                <span className="text-[9px] font-black tracking-widest text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 rounded-full shrink-0">
+                  {WALLPAPER_TUTORIAL_STEPS[tourWallpaperStep].badge}
+                </span>
               </div>
-              <p className="text-[11px] text-white/70 leading-relaxed">
-                You can run GrindBoard directly as your interactive Windows desktop background instead of inside a browser!
-              </p>
-              <ol className="list-decimal pl-4 space-y-2 text-[11px] text-white/80">
-                <li>
-                  Download & Install Lively Wallpaper:
-                  <div className="flex gap-2 mt-1">
-                    <a
-                      href="https://drive.google.com/file/d/1TJWAWPTtTbKNMaNVAwz2GwbSb04NO-J5/view?usp=drivesdk"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:underline font-bold bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/30 flex items-center gap-1.5"
-                    >
-                      <Download size={11} /> Direct Google Drive Download
-                    </a>
-                  </div>
-                </li>
-                <li>Open Lively Wallpaper and click <strong>"Add Wallpaper" (+ icon)</strong>.</li>
-                <li>Under <strong>"Enter URL"</strong>, type <code className="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-mono">https://wallpaper-dashboard-cloud.vercel.app/</code> and press <strong>→</strong>.</li>
-                <li>
-                  <strong>Required Lively Performance Settings:</strong>
-                  <ul className="list-disc pl-4 mt-1 space-y-1 text-white/70">
-                    <li>Settings (⚙️) ➔ <strong>Wallpaper</strong> ➔ Set Web Browser Engine to <strong>Edge (WebView2)</strong>.</li>
-                    <li>Click ⚙️ next to WebView2 and set <strong>Cache Directory</strong> to <strong>Disk</strong> (prevents data loss on restart).</li>
-                    <li>Settings (⚙️) ➔ <strong>Audio</strong> ➔ Untick <strong>"Play audio only when desktop is focused"</strong> (so timer alarms ring anytime!).</li>
-                    <li>Settings (⚙️) ➔ <strong>General</strong> ➔ Toggle <strong>"Start with Windows"</strong> ON.</li>
-                  </ul>
-                </li>
-              </ol>
+
+              {/* Interactive Screenshot Viewer with Left/Right Arrows */}
+              <div className="relative group bg-black/70 border border-white/10 rounded-xl overflow-hidden flex items-center justify-center min-h-[150px] sm:min-h-[190px] shadow-inner">
+                <img
+                  src={WALLPAPER_TUTORIAL_STEPS[tourWallpaperStep].image}
+                  alt={WALLPAPER_TUTORIAL_STEPS[tourWallpaperStep].title}
+                  className="w-full h-auto max-h-[210px] object-contain cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+                  onClick={() => setIsWallpaperModalOpen(true)}
+                />
+
+                <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[9px] font-semibold text-white/80 flex items-center gap-1 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
+                  <Eye size={10} className="text-blue-400" />
+                  <span>Click to Expand</span>
+                </div>
+
+                {/* Left Arrow Navigation Button */}
+                <button
+                  onClick={() => setTourWallpaperStep((prev) => Math.max(0, prev - 1))}
+                  disabled={tourWallpaperStep === 0}
+                  className={`absolute left-1.5 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-xl bg-black/80 hover:bg-blue-600 text-white border border-white/20 transition-all cursor-pointer ${
+                    tourWallpaperStep === 0 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100'
+                  }`}
+                  title="Previous Step"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                {/* Right Arrow Navigation Button */}
+                <button
+                  onClick={() => setTourWallpaperStep((prev) => Math.min(WALLPAPER_TUTORIAL_STEPS.length - 1, prev + 1))}
+                  disabled={tourWallpaperStep === WALLPAPER_TUTORIAL_STEPS.length - 1}
+                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-xl bg-black/80 hover:bg-blue-600 text-white border border-white/20 transition-all cursor-pointer ${
+                    tourWallpaperStep === WALLPAPER_TUTORIAL_STEPS.length - 1 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100'
+                  }`}
+                  title="Next Step"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+
+              {/* Step Title & Description Details */}
+              <div className="bg-black/30 p-2.5 rounded-xl border border-white/5 flex flex-col gap-1 text-[11px]">
+                <div className="font-bold text-white text-xs flex items-center justify-between">
+                  <span>{WALLPAPER_TUTORIAL_STEPS[tourWallpaperStep].title}</span>
+                  <button
+                    onClick={() => setIsWallpaperModalOpen(true)}
+                    className="text-[10px] text-blue-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <span>Full View</span>
+                    <ExternalLink size={10} />
+                  </button>
+                </div>
+                <p className="text-white/75 leading-relaxed">
+                  {WALLPAPER_TUTORIAL_STEPS[tourWallpaperStep].description}
+                </p>
+              </div>
+
+              {/* Dots Indicator */}
+              <div className="flex items-center justify-center gap-1 py-0.5">
+                {WALLPAPER_TUTORIAL_STEPS.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setTourWallpaperStep(idx)}
+                    className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                      idx === tourWallpaperStep ? 'w-5 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'w-1.5 bg-white/20 hover:bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
@@ -740,6 +843,13 @@ export default function GuidedTour() {
             )}
           </div>
         </div>
+
+        {/* Full Interactive Wallpaper Tutorial Modal */}
+        <WallpaperTutorialModal
+          isOpen={isWallpaperModalOpen}
+          onClose={() => setIsWallpaperModalOpen(false)}
+          initialStep={tourWallpaperStep}
+        />
       </div>,
       document.body
     );
@@ -749,6 +859,18 @@ export default function GuidedTour() {
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] pointer-events-auto select-none animate-in fade-in duration-300">
+      {/* Floating Exit Button ONLY for Tour Replay Mode (Positioned Top-Right of Screen) */}
+      {isReplaying && (
+        <button
+          onClick={handleCloseTour}
+          className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[100001] px-3 sm:px-3.5 py-1.5 sm:py-2 bg-slate-900/90 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl font-bold flex items-center gap-1.5 text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer hover:shadow-red-500/20"
+          title="Close & Exit Tour"
+        >
+          <X className="w-4 h-4 text-red-400" />
+          <span>Exit Tour</span>
+        </button>
+      )}
+
       {/* Tour overlay backdrop - Glassy dark blur for Welcome Step 0 */}
       <div className={`absolute inset-0 transition-all duration-500 ${isFirstStep ? 'bg-slate-950/75 backdrop-blur-md' : 'bg-transparent'}`} />
 
@@ -808,28 +930,24 @@ export default function GuidedTour() {
         ) : (
           /* Standard Step Header & Description */
           <>
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <div className="flex items-center gap-2">
-                <div className={`p-1.5 rounded-lg border transition-colors ${
+            <div className="flex items-center justify-between border-b border-white/10 pb-2 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
                   (hasPracticedPanic || hasPracticedFocus)
                     ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
                     : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.3)]'
                 }`}>
                   <StepIcon className="w-4 h-4" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <span className="text-[9px] font-bold tracking-widest text-indigo-300 uppercase">
-                    Step {currentStepIndex + 1} of {TOUR_STEPS.length}
+                    Step {currentStepIndex + 1} of {activeSteps.length}
                   </span>
-                  <h3 className="text-sm sm:text-base font-bold leading-tight text-white">
+                  <h3 className="text-sm sm:text-base font-bold leading-tight text-white truncate">
                     {currentTitle}
                   </h3>
                 </div>
               </div>
-
-              <span className="text-[9px] font-semibold text-indigo-300 bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 rounded-full shadow-inner">
-                GrindBoard
-              </span>
             </div>
 
             <p className="text-xs text-white/85 leading-snug min-h-[2.5rem]">
@@ -840,7 +958,7 @@ export default function GuidedTour() {
 
         {/* Step Indicators */}
         <div className="flex items-center justify-center gap-1.5 my-0.5">
-          {TOUR_STEPS.map((_, idx) => (
+          {activeSteps.map((_, idx) => (
             <button
               key={idx}
               onClick={() => {

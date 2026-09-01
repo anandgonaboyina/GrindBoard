@@ -3,11 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
+import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
+import WallpaperTutorialModal from './WallpaperTutorialModal';
 
 const DEFAULT_WALLPAPERS = [
   'itachi-uchiha.png', 'kakashi.mp4', 'kakashi2.mp4', 'kakashi3.png',
@@ -26,14 +27,20 @@ const DEFAULT_ALARM_SOUNDS = [
 
 import { useWallpaperUrl } from '@/hooks/useWallpaperUrl';
 import { saveWallpaperToDB, deleteWallpaperFromDB, saveAudioToDB, deleteAudioFromDB } from '@/lib/indexedDB';
+import { prepareFileForStorage } from '@/lib/imageUtils';
 import { getResolvedAudioUrl } from '@/hooks/useAudioUrl';
 
 const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, onShowAlert, aspectClass = "aspect-video" }: any) => {
-  const { resolvedUrl, isVideo } = useWallpaperUrl(url);
+  const { resolvedUrl, isVideo, isMissing } = useWallpaperUrl(url);
   return (
     <div className={`relative group ${aspectClass} rounded-md border overflow-hidden transition-all ${isActive ? 'border-purple-500 ring-1 ring-purple-500/50' : 'border-white/10 hover:border-white/40'}`}>
       <div className="absolute inset-0 cursor-pointer bg-black/40" onClick={onClick}>
-        {resolvedUrl ? (
+        {isMissing ? (
+          <div className="w-full h-full flex flex-col items-center justify-center p-1.5 text-center bg-red-950/70 border border-red-500/30 text-red-200">
+            <AlertCircle className="w-4 h-4 mb-0.5 text-red-400 animate-pulse" />
+            <span className="text-[8px] font-bold leading-tight">File On Other Device/Browser</span>
+          </div>
+        ) : resolvedUrl ? (
           isVideo ? (
             <video src={resolvedUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" muted loop autoPlay playsInline />
           ) : (
@@ -48,8 +55,8 @@ const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, onSho
           {isActive && <div className="bg-purple-500/90 rounded-full p-0.5"><BadgeCheck className="text-white w-3 h-3" /></div>}
         </div>
         <div className="flex justify-between items-end w-full">
-          <div className="text-[8px] md:text-[8px] px-1 py-0.5 bg-black/70 backdrop-blur-md rounded border border-white/10 text-white/90 max-w-[70%] truncate">
-            {label}
+          <div className={`text-[8px] md:text-[8px] px-1 py-0.5 backdrop-blur-md rounded border text-white/90 max-w-[70%] truncate ${isMissing ? 'bg-red-900/80 border-red-400/50 text-red-200' : 'bg-black/70 border-white/10'}`}>
+            {isMissing ? 'Missing on Browser' : label}
           </div>
           <div className="flex gap-1 pointer-events-auto">
             {!url.startsWith('custom-') && (
@@ -79,11 +86,12 @@ const CustomWallpaperPreview = ({ url, isActive, onClick, onDelete, label, onSho
 };
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, dashboardScale, setDashboardScale, mobileDashboardScale, setMobileDashboardScale, dockScale, setDockScale, dockOffset, setDockOffset, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, autoOpenCountdowns, setAutoOpenCountdowns, showManifestationBoard, setShowManifestationBoard, manifestationDesktopPhotos, setManifestationDesktopPhotos, activeManifestationDesktopIndex, setActiveManifestationDesktopIndex, manifestationMobilePhotos, setManifestationMobilePhotos, activeManifestationMobileIndex, setActiveManifestationMobileIndex } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, dashboardScale, setDashboardScale, mobileDashboardScale, setMobileDashboardScale, dockScale, setDockScale, dockOffset, setDockOffset, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, peekModeWallpaper, setPeekModeWallpaper, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, manifestationCustomQuotes, setManifestationCustomQuotes, addManifestationCustomQuote, deleteManifestationCustomQuote, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, autoOpenCountdowns, setAutoOpenCountdowns, showManifestationBoard, setShowManifestationBoard, manifestationDesktopPhotos, setManifestationDesktopPhotos, activeManifestationDesktopIndex, setActiveManifestationDesktopIndex, manifestationMobilePhotos, setManifestationMobilePhotos, activeManifestationMobileIndex, setActiveManifestationMobileIndex } = useDashboardStore();
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
   const [showThemeNotice, setShowThemeNotice] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isWallpaperTutorialOpen, setIsWallpaperTutorialOpen] = useState(false);
 
   const handleRefreshApp = async (e?: React.MouseEvent) => {
     if (e) {
@@ -424,6 +432,56 @@ export default function SettingsModal() {
   const [newQuoteAuthor, setNewQuoteAuthor] = useState('');
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
   const [bulkQuotesJson, setBulkQuotesJson] = useState('');
+
+  const [newManifestationQuoteText, setNewManifestationQuoteText] = useState('');
+  const [showBulkAddManifestation, setShowBulkAddManifestation] = useState(false);
+  const [bulkManifestationInput, setBulkManifestationInput] = useState('');
+
+  const handleAddManifestationQuote = () => {
+    if (!newManifestationQuoteText.trim()) return;
+    const current = manifestationCustomQuotes || [];
+    if (current.length >= 30) return showAlertModal('Limit Reached', 'Maximum 30 custom manifestation quotes allowed.');
+    addManifestationCustomQuote(newManifestationQuoteText.trim());
+    setNewManifestationQuoteText('');
+  };
+
+  const handleBulkAddManifestationQuotes = () => {
+    if (!bulkManifestationInput.trim()) return;
+    let quotesToAdd: string[] = [];
+
+    const raw = bulkManifestationInput.trim();
+    if (raw.startsWith('[') && raw.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          quotesToAdd = parsed.map(q => (typeof q === 'string' ? q : q.text || '')).filter(Boolean);
+        }
+      } catch (err) {
+        quotesToAdd = raw.split('\n').map(line => line.trim()).filter(Boolean);
+      }
+    } else {
+      quotesToAdd = raw.split('\n').map(line => line.trim()).filter(Boolean);
+    }
+
+    if (quotesToAdd.length === 0) {
+      showAlertModal('Invalid Input', 'No valid quotes found in input.');
+      return;
+    }
+
+    const current = manifestationCustomQuotes || [];
+    const remaining = 30 - current.length;
+
+    if (remaining <= 0) {
+      showAlertModal('Limit Reached', 'You already have 30 custom quotes (maximum limit).');
+      return;
+    }
+
+    const newEntries = quotesToAdd.slice(0, remaining);
+    setManifestationCustomQuotes([...current, ...newEntries]);
+    setBulkManifestationInput('');
+    setShowBulkAddManifestation(false);
+    showAlertModal('Success', `Added ${newEntries.length} new quote(s) to your Manifestation Board!`);
+  };
 
   const handleAddQuote = () => {
     if (!newQuoteText.trim()) return;
@@ -867,7 +925,7 @@ export default function SettingsModal() {
             <h2 className="text-sm sm:text-base md:text-lg font-bold tracking-wide leading-tight flex items-center gap-1 md:gap-2 min-w-0 truncate">
               {isMobileDetailView ? (
                 <span className="md:hidden capitalize truncate">
-                  {settingsActiveTab === "about" ? "About Dev" : settingsActiveTab === "connect" ? "Connect & Ranks" : settingsActiveTab + " Settings"}
+                  {settingsActiveTab === "manifestation" ? "Manifestation Board" : settingsActiveTab === "about" ? "About Dev" : settingsActiveTab === "connect" ? "Connect & Ranks" : settingsActiveTab + " Settings"}
                 </span>
               ) : null}
               <span className={isMobileDetailView ? 'hidden md:inline truncate' : 'inline truncate'}>
@@ -937,6 +995,12 @@ export default function SettingsModal() {
                 className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'wallpaper' && !isMobileDetailView ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
               >
                 <ImageIcon className="w-4 h-4" /> Wallpapers
+              </button>
+              <button
+                onClick={() => handleTabClick('manifestation')}
+                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'manifestation' && !isMobileDetailView ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
+              >
+                <Sparkles className={`w-4 h-4 ${settingsActiveTab === 'manifestation' ? 'text-amber-400 animate-pulse' : ''}`} /> Manifestation Board
               </button>
               <button
                 onClick={() => handleTabClick('quotes')}
@@ -1023,32 +1087,58 @@ export default function SettingsModal() {
                     </button>
                   </div>
 
-                  {/* Top Replay Tour Banner in Preferences */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-black/40 border border-indigo-500/30 gap-3 shadow-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
-                        <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+                  {/* Top Replay Tour Banner & PC Wallpaper Banner in Preferences */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-black/40 border border-indigo-500/30 gap-2 shadow-sm overflow-hidden">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
+                          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300 animate-pulse" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-[10px] sm:text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                            <span className="truncate">Guided Tour</span>
+                            <span className="hidden sm:inline-flex items-center text-[8px] bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 px-1 py-0.5 rounded shrink-0">Interactive</span>
+                          </h4>
+                          <p className="text-[9px] sm:text-[10px] text-white/60 leading-tight mt-0.5 truncate max-w-[200px] sm:max-w-none">
+                            Need a refresher? Replay the guided tour anytime.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
-                          <span>Guided Onboarding Tour</span>
-                          <span className="text-[9px] bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 px-1.5 py-0.2 rounded-full">Interactive</span>
-                        </h4>
-                        <p className="text-[10px] sm:text-[11px] text-white/70 leading-tight mt-0.5">
-                          Need a refresher on layout tools, focus trackers, or shortcuts? Replay the guided tour anytime!
-                        </p>
-                      </div>
+                      <button
+                        onClick={() => {
+                          useDashboardStore.getState().startTour();
+                          toggleSettings();
+                        }}
+                        className="px-2 py-1.5 sm:px-3 sm:py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-md font-bold text-[9px] sm:text-[10px] shadow-sm shadow-indigo-500/20 active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-300 hidden sm:block" />
+                        <span>Replay Tour</span>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        useDashboardStore.getState().startTour();
-                        toggleSettings();
-                      }}
-                      className="px-3.5 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer self-end sm:self-auto"
-                    >
-                      <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>Replay Tour</span>
-                    </button>
+
+                    <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-black/40 border border-blue-500/30 gap-2 shadow-sm overflow-hidden">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
+                          <MonitorPlay className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-[10px] sm:text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                            <span className="truncate">PC Wallpaper</span>
+                            <span className="hidden sm:inline-flex items-center text-[8px] bg-blue-500/30 text-blue-200 border border-blue-500/40 px-1 py-0.5 rounded shrink-0">Tutorial</span>
+                          </h4>
+                          <p className="text-[9px] sm:text-[10px] text-white/60 leading-tight mt-0.5 truncate max-w-[200px] sm:max-w-none">
+                            Set up interactive desktop background via Lively.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsWallpaperTutorialOpen(true)}
+                        className="px-2 py-1.5 sm:px-3 sm:py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-md font-bold text-[9px] sm:text-[10px] shadow-sm shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
+                      >
+                        <MonitorPlay className="w-3 h-3 text-blue-300 hidden sm:block" />
+                        <span>Setup Guide</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-4">
@@ -1646,8 +1736,8 @@ export default function SettingsModal() {
                                   setAlarmSound(sound.url);
                                 }}
                                 className={`flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all select-none cursor-pointer ${isActive
-                                    ? 'bg-blue-600/30 border-blue-500/70 text-white shadow-md shadow-blue-500/10'
-                                    : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10 text-white/80 hover:text-white'
+                                  ? 'bg-blue-600/30 border-blue-500/70 text-white shadow-md shadow-blue-500/10'
+                                  : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10 text-white/80 hover:text-white'
                                   }`}
                               >
                                 <div className="flex items-center gap-2.5 min-w-0 pr-2 flex-1">
@@ -1969,6 +2059,117 @@ export default function SettingsModal() {
                     </div>
                   )}
 
+                  {/* MANIFESTATION BOARD CUSTOM QUOTES SECTION */}
+                  <div className="flex flex-col gap-3 mt-2 pt-3 border-t border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1 md:p-1.5 bg-amber-500/20 text-amber-300 rounded-md border border-amber-500/30">
+                          <Sparkles className="w-4 h-4 animate-pulse" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs md:text-sm text-amber-300">Manifestation Board Quotes</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50">Add custom quotes (max 30) for your manifestation overlay header.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setShowBulkAddManifestation(!showBulkAddManifestation)}
+                          className="text-[10px] md:text-xs text-amber-400 hover:text-amber-300 font-semibold underline transition-colors cursor-pointer"
+                        >
+                          {showBulkAddManifestation ? 'Hide Bulk' : 'Bulk Add'}
+                        </button>
+                        <span className="text-[10px] md:text-xs font-mono font-bold text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-500/30">
+                          {(manifestationCustomQuotes || []).length} / 30
+                        </span>
+                      </div>
+                    </div>
+
+                    {showBulkAddManifestation && (
+                      <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-2.5 flex flex-col gap-2 transition-all">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] md:text-xs font-bold text-amber-300">Bulk Add Quotes</span>
+                          <button
+                            onClick={() => setShowBulkAddManifestation(false)}
+                            className="text-[9px] text-white/50 hover:text-white cursor-pointer"
+                          >
+                            Close
+                          </button>
+                        </div>
+                        <p className="text-[9px] text-white/60 leading-tight">
+                          Paste multiple quotes line-by-line OR as a JSON array <code>["Quote 1", "Quote 2"]</code>. Max 30 quotes.
+                        </p>
+                        <textarea
+                          value={bulkManifestationInput}
+                          onChange={(e) => setBulkManifestationInput(e.target.value)}
+                          rows={4}
+                          placeholder="Line 1: I am focused and determined&#10;Line 2: Every small step counts&#10;Line 3: Success is a daily habit"
+                          className="w-full bg-black/60 border border-amber-500/30 rounded-md p-2 text-[10px] md:text-xs font-mono text-amber-100 outline-none focus:border-amber-500/60 resize-none placeholder:text-white/30"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={handleBulkAddManifestationQuotes}
+                            className="bg-amber-500 hover:bg-amber-400 text-black px-3 py-1 rounded text-[10px] md:text-xs font-bold transition-colors cursor-pointer"
+                          >
+                            Import Quotes
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="bg-black/30 border border-white/10 rounded-lg p-2.5 md:p-3 flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Type manifestation quote..."
+                          value={newManifestationQuoteText}
+                          onChange={(e) => setNewManifestationQuoteText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddManifestationQuote();
+                            }
+                          }}
+                          className="flex-1 bg-black/40 border border-white/10 rounded-md px-2.5 py-1.5 text-[10px] md:text-xs outline-none focus:border-amber-500/50 placeholder:text-white/40 text-white"
+                        />
+                        <button
+                          onClick={handleAddManifestationQuote}
+                          disabled={(manifestationCustomQuotes || []).length >= 30}
+                          className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black px-3 py-1.5 rounded-md text-[10px] md:text-xs font-bold transition-all shrink-0 cursor-pointer"
+                        >
+                          Add Quote
+                        </button>
+                      </div>
+                      {(manifestationCustomQuotes || []).length > 0 && (
+                        <p className="text-[9px] text-amber-300/80 italic">
+                          ✨ Custom quotes active! These automatically replace default quotes across all synced devices.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 max-h-[22vh] overflow-y-auto pr-1">
+                      {(manifestationCustomQuotes || []).length === 0 ? (
+                        <div className="text-center py-3 text-[10px] md:text-xs text-white/40 italic bg-black/20 rounded-lg border border-white/5">
+                          No custom manifestation quotes added yet. Default quotes will be shown.
+                        </div>
+                      ) : (
+                        (manifestationCustomQuotes || []).map((q, idx) => (
+                          <div key={idx} className="flex justify-between items-center p-2 bg-black/30 border border-amber-500/20 rounded-lg gap-2">
+                            <span className="text-[10px] md:text-[11px] text-amber-200/90 font-medium italic break-words leading-snug">
+                              "{q}"
+                            </span>
+                            <button
+                              onClick={() => deleteManifestationCustomQuote(idx)}
+                              className="p-1 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors shrink-0 cursor-pointer"
+                              title="Delete Quote"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
                   {showBulkAddModal && (
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col p-4 md:rounded-r-3xl">
                       <div className="flex justify-between items-center mb-3">
@@ -1990,56 +2191,62 @@ export default function SettingsModal() {
 
               {settingsActiveTab === 'wallpaper' && (
                 <div className="flex flex-col gap-4 md:gap-6 h-full pb-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <h3 className="text-sm md:text-base font-semibold">Custom Wallpapers</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Upload a photo/video or provide an external image URL to set your wallpaper.</p>
 
-                      <button
-                        onClick={() => setInfoModalKey('liveWallpaper')}
-                        className="mt-2 flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 rounded border border-blue-500/30 text-[10px] transition-colors"
-                      >
-                        <MonitorPlay size={12} />
-                        Set Grind Board as Desktop Wallpaper
-                      </button>
-                    </div>
-                    <button onClick={() => setInfoModalKey('wallpapers')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors shrink-0">
-                      <Info className="w-4 h-4" />
-                    </button>
-                  </div>
 
-                  {/* Replay Tour Banner in Wallpaper Settings */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-black/40 border border-emerald-500/30 gap-3 shadow-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                        <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+                  <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-black/40 border border-blue-500/30 gap-2 shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                      <div className="p-1.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
+                        <MonitorPlay className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
                       </div>
-                      <div>
-                        <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
-                          <span>Wallpaper & Layout Refresher</span>
-                          <span className="text-[9px] bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 px-1.5 py-0.2 rounded-full">Guided Tour</span>
+                      <div className="min-w-0">
+                        <h4 className="text-[10px] sm:text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                          <span className="truncate">PC Wallpaper</span>
+                          <span className="hidden sm:inline-flex items-center text-[8px] bg-blue-500/30 text-blue-200 border border-blue-500/40 px-1 py-0.5 rounded shrink-0">Tutorial</span>
                         </h4>
-                        <p className="text-[10px] sm:text-[11px] text-white/70 leading-tight mt-0.5">
-                          Need a refresher on switching wallpapers, cycling backgrounds, or workspace hotkeys? Replay the 1-minute guided tour!
+                        <p className="text-[9px] sm:text-[10px] text-white/60 leading-tight mt-0.5 truncate max-w-[200px] sm:max-w-none">
+                          Set up interactive desktop background via Lively.
                         </p>
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        useDashboardStore.getState().startTour();
-                        toggleSettings();
-                      }}
-                      className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer self-end sm:self-auto"
+                      onClick={() => setIsWallpaperTutorialOpen(true)}
+                      className="px-2 py-1.5 sm:px-3 sm:py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-md font-bold text-[9px] sm:text-[10px] shadow-sm shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
                     >
-                      <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>Replay Tour</span>
+                      <MonitorPlay className="w-3 h-3 text-blue-300 hidden sm:block" />
+                      <span>Setup Guide</span>
                     </button>
                   </div>
 
                   <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4">
                     {/* Desktop Wallpapers */}
                     <div className="bg-white/5 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 flex flex-col gap-2.5 md:gap-3">
-                      <h4 className="font-medium text-[10px] md:text-[11px] text-blue-300 border-b border-white/10 pb-1.5">Desktop Wallpapers</h4>
+                      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                        <h4 className="font-medium text-[10px] md:text-[11px] text-blue-300">Desktop Wallpapers</h4>
+                        {customDesktopWallpapers.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Delete All Desktop Wallpapers',
+                                message: 'Are you sure you want to delete all custom desktop wallpapers?',
+                                isDestructive: true,
+                                onConfirm: async () => {
+                                  for (const url of customDesktopWallpapers) {
+                                    if (url.startsWith('custom-')) await deleteWallpaperFromDB(url).catch(() => { });
+                                  }
+                                  setCustomDesktopWallpapers([]);
+                                  setActiveDesktopCustomIndex(null);
+                                }
+                              });
+                            }}
+                            className="flex items-center gap-1 text-[9px] md:text-[10px] px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-100 transition-colors border border-red-500/30 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Delete All</span>
+                          </button>
+                        )}
+                      </div>
 
                       <div className="grid grid-cols-2 gap-2 md:gap-2.5">
                         {customDesktopWallpapers.map((url, i) => (
@@ -2087,9 +2294,10 @@ export default function SettingsModal() {
                                   showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }
-                                const id = `custom-desktop-${Date.now()}`;
-                                await saveWallpaperToDB(id, file);
-                                setCustomDesktopWallpapers([...customDesktopWallpapers, id]);
+                                const storageItem = await prepareFileForStorage(file, 'custom-desktop');
+                                const storeVal = storageItem.isDataUrl ? storageItem.dataUrl! : storageItem.id;
+                                await saveWallpaperToDB(storageItem.id, file);
+                                setCustomDesktopWallpapers([...customDesktopWallpapers, storeVal]);
                                 if (activeDesktopCustomIndex === null) setActiveDesktopCustomIndex(customDesktopWallpapers.length);
                                 e.target.value = '';
                               }}
@@ -2121,7 +2329,33 @@ export default function SettingsModal() {
 
                     {/* Mobile Wallpapers */}
                     <div className="bg-white/5 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 flex flex-col gap-2.5 md:gap-3">
-                      <h4 className="font-medium text-[10px] md:text-[11px] text-pink-300 border-b border-white/10 pb-1.5">Mobile Wallpapers</h4>
+                      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                        <h4 className="font-medium text-[10px] md:text-[11px] text-pink-300">Mobile Wallpapers</h4>
+                        {customMobileWallpapers.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Delete All Mobile Wallpapers',
+                                message: 'Are you sure you want to delete all custom mobile wallpapers?',
+                                isDestructive: true,
+                                onConfirm: async () => {
+                                  for (const url of customMobileWallpapers) {
+                                    if (url.startsWith('custom-')) await deleteWallpaperFromDB(url).catch(() => { });
+                                  }
+                                  setCustomMobileWallpapers([]);
+                                  setActiveMobileCustomIndex(null);
+                                }
+                              });
+                            }}
+                            className="flex items-center gap-1 text-[9px] md:text-[10px] px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-100 transition-colors border border-red-500/30 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Delete All</span>
+                          </button>
+                        )}
+                      </div>
 
                       <div className="grid grid-cols-2 gap-2 md:gap-2.5">
                         {customMobileWallpapers.map((url, i) => (
@@ -2169,9 +2403,10 @@ export default function SettingsModal() {
                                   showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }
-                                const id = `custom-mobile-${Date.now()}`;
-                                await saveWallpaperToDB(id, file);
-                                setCustomMobileWallpapers([...customMobileWallpapers, id]);
+                                const storageItem = await prepareFileForStorage(file, 'custom-mobile');
+                                const storeVal = storageItem.isDataUrl ? storageItem.dataUrl! : storageItem.id;
+                                await saveWallpaperToDB(storageItem.id, file);
+                                setCustomMobileWallpapers([...customMobileWallpapers, storeVal]);
                                 if (activeMobileCustomIndex === null) setActiveMobileCustomIndex(customMobileWallpapers.length);
                                 e.target.value = '';
                               }}
@@ -2217,212 +2452,369 @@ export default function SettingsModal() {
                     </div>
                   )}
 
-                  {/* MANIFESTATION BOARD SECTION */}
-                  <div className="mt-4 flex flex-col gap-3 p-3.5 sm:p-4 rounded-xl bg-gradient-to-r from-amber-950/30 via-black/40 to-purple-950/30 border border-amber-500/30 shadow-lg">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+
+                </div>
+              )}
+
+              {settingsActiveTab === 'manifestation' && (
+                <div className="flex flex-col gap-3 md:gap-4 min-h-[60vh]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm md:text-base font-semibold text-amber-300 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" /> Manifestation Board Settings
+                      </h3>
+                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">
+                        Configure dashboard launcher visibility, custom quotes, and background vision media.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 1. Dashboard Launcher Visibility Toggle */}
+                  <div className="flex items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-amber-500/30 shadow-md">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-amber-500/20 text-amber-300 rounded-md border border-amber-500/30">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-xs md:text-sm text-amber-200">Show Manifestation Button on Dashboard</span>
+                        <span className="text-[9px] md:text-[10px] text-white/50">Toggle visibility of the Manifestation Board launcher button</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowManifestationBoard(!showManifestationBoard)}
+                      className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${showManifestationBoard ? 'bg-amber-500' : 'bg-white/20'}`}
+                    >
+                      <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${showManifestationBoard ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+
+                  {/* 2. Custom Manifestation Quotes Options */}
+                  <div className="flex flex-col gap-3 p-3 rounded-lg md:rounded-xl bg-black/30 border border-white/10">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                          <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                        <div className="p-1 md:p-1.5 bg-amber-500/20 text-amber-300 rounded-md border border-amber-500/30">
+                          <Flame className="w-4 h-4 text-amber-400 animate-pulse" />
                         </div>
                         <div>
-                          <h4 className="text-xs md:text-sm font-bold text-white flex items-center gap-2">
-                            <span>Manifestation Board (Dream & Goal Vision)</span>
-                            <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded-full font-mono">Offline Only</span>
-                          </h4>
-                          <p className="text-[10px] md:text-[11px] text-white/60 leading-tight mt-0.5">
-                            Upload photos of your goals, dreams & luxury targets saved 100% locally offline. Separate lists for Desktop & Mobile.
-                          </p>
+                          <h4 className="font-bold text-xs md:text-sm text-amber-300">Custom Manifestation Quotes</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50">Add custom quotes (max 30, max 50 chars) for your manifestation overlay header.</p>
                         </div>
                       </div>
-
-                      {/* Enable Toggle Button */}
-                      <button
-                        type="button"
-                        onClick={() => setShowManifestationBoard(!showManifestationBoard)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 border cursor-pointer ${
-                          showManifestationBoard
-                            ? 'bg-amber-500/30 text-amber-200 border-amber-500/50 hover:bg-amber-500/40'
-                            : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white'
-                        }`}
-                      >
-                        <Flame className={`w-3.5 h-3.5 ${showManifestationBoard ? 'text-amber-400 animate-pulse' : ''}`} />
-                        <span>{showManifestationBoard ? 'Board ON' : 'Board OFF'}</span>
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setShowBulkAddManifestation(!showBulkAddManifestation)}
+                          className="text-[10px] md:text-xs text-amber-400 hover:text-amber-300 font-semibold underline transition-colors cursor-pointer"
+                        >
+                          {showBulkAddManifestation ? 'Hide Bulk' : 'Bulk Add'}
+                        </button>
+                        <span className="text-[10px] md:text-xs font-mono font-bold text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-500/30">
+                          {(manifestationCustomQuotes || []).length} / 30
+                        </span>
+                      </div>
                     </div>
 
-                    {showManifestationBoard && (
-                      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4 mt-1">
-                        {/* Desktop Manifestation Photos */}
-                        <div className="bg-black/30 border border-white/10 rounded-lg md:rounded-xl p-3 flex flex-col gap-2.5">
-                          <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-                            <h5 className="font-medium text-[10px] md:text-[11px] text-amber-300">Desktop Manifestation Photos ({manifestationDesktopPhotos.length}/6)</h5>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            {manifestationDesktopPhotos.map((url, i) => (
-                              <CustomWallpaperPreview
-                                key={`desktop-manif-${i}`}
-                                url={url}
-                                isActive={activeManifestationDesktopIndex === i}
-                                onClick={() => setActiveManifestationDesktopIndex(i)}
-                                onShowAlert={showAlertModal}
-                                onDelete={async (e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  setConfirmModal({
-                                    isOpen: true,
-                                    title: 'Remove Photo',
-                                    message: 'Are you sure you want to remove this manifestation photo?',
-                                    isDestructive: true,
-                                    onConfirm: async () => {
-                                      const newUrls = [...manifestationDesktopPhotos];
-                                      newUrls.splice(i, 1);
-                                      setManifestationDesktopPhotos(newUrls);
-                                      if (activeManifestationDesktopIndex === i) setActiveManifestationDesktopIndex(null);
-                                      else if (activeManifestationDesktopIndex !== null && activeManifestationDesktopIndex > i) setActiveManifestationDesktopIndex(activeManifestationDesktopIndex - 1);
-                                      if (url.startsWith('custom-')) await deleteWallpaperFromDB(url);
-                                    }
-                                  });
-                                }}
-                                label={url.startsWith('custom-') ? 'Local File' : (url.split('/').pop() || 'image')}
-                                aspectClass="aspect-video"
-                              />
-                            ))}
-                          </div>
-
-                          {manifestationDesktopPhotos.length < 6 && (
-                            <div className="flex gap-2 w-full mt-1">
-                              <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 border-dashed rounded text-[9px] md:text-[10px] text-amber-200 cursor-pointer transition-colors">
-                                <Plus className="w-3 h-3" /> Upload File
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    if (file.size > 25 * 1024 * 1024) {
-                                      showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
-                                      return;
-                                    }
-                                    const id = `custom-manifest-desktop-${Date.now()}`;
-                                    await saveWallpaperToDB(id, file);
-                                    setManifestationDesktopPhotos([...manifestationDesktopPhotos, id]);
-                                    if (activeManifestationDesktopIndex === null) setActiveManifestationDesktopIndex(manifestationDesktopPhotos.length);
-                                    e.target.value = '';
-                                  }}
-                                />
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setConfirmModal({
-                                    isOpen: true,
-                                    title: 'Add Photo URL',
-                                    message: 'Enter direct image URL (https://...):',
-                                    isPrompt: true,
-                                    promptPlaceholder: 'https://...',
-                                    onConfirm: (url?: string) => {
-                                      if (url && url.trim().startsWith('http')) {
-                                        setManifestationDesktopPhotos([...manifestationDesktopPhotos, url.trim()]);
-                                        if (activeManifestationDesktopIndex === null) setActiveManifestationDesktopIndex(manifestationDesktopPhotos.length);
-                                      }
-                                    }
-                                  });
-                                }}
-                                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
-                              >
-                                Add URL
-                              </button>
-                            </div>
-                          )}
+                    {showBulkAddManifestation && (
+                      <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-2.5 flex flex-col gap-2 transition-all">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] md:text-xs font-bold text-amber-300">Bulk Add Quotes</span>
+                          <span className="text-[9px] text-white/50">Paste array of strings or one quote per line</span>
                         </div>
-
-                        {/* Mobile Manifestation Photos */}
-                        <div className="bg-black/30 border border-white/10 rounded-lg md:rounded-xl p-3 flex flex-col gap-2.5">
-                          <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-                            <h5 className="font-medium text-[10px] md:text-[11px] text-pink-300">Mobile Manifestation Photos ({manifestationMobilePhotos.length}/6)</h5>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            {manifestationMobilePhotos.map((url, i) => (
-                              <CustomWallpaperPreview
-                                key={`mobile-manif-${i}`}
-                                url={url}
-                                isActive={activeManifestationMobileIndex === i}
-                                onClick={() => setActiveManifestationMobileIndex(i)}
-                                onShowAlert={showAlertModal}
-                                onDelete={async (e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  setConfirmModal({
-                                    isOpen: true,
-                                    title: 'Remove Photo',
-                                    message: 'Are you sure you want to remove this manifestation photo?',
-                                    isDestructive: true,
-                                    onConfirm: async () => {
-                                      const newUrls = [...manifestationMobilePhotos];
-                                      newUrls.splice(i, 1);
-                                      setManifestationMobilePhotos(newUrls);
-                                      if (activeManifestationMobileIndex === i) setActiveManifestationMobileIndex(null);
-                                      else if (activeManifestationMobileIndex !== null && activeManifestationMobileIndex > i) setActiveManifestationMobileIndex(activeManifestationMobileIndex - 1);
-                                      if (url.startsWith('custom-')) await deleteWallpaperFromDB(url);
-                                    }
-                                  });
-                                }}
-                                label={url.startsWith('custom-') ? 'Local File' : (url.split('/').pop() || 'image')}
-                                aspectClass="aspect-[9/16]"
-                              />
-                            ))}
-                          </div>
-
-                          {manifestationMobilePhotos.length < 6 && (
-                            <div className="flex gap-2 w-full mt-1">
-                              <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 border-dashed rounded text-[9px] md:text-[10px] text-pink-200 cursor-pointer transition-colors">
-                                <Plus className="w-3 h-3" /> Upload File
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    if (file.size > 25 * 1024 * 1024) {
-                                      showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
-                                      return;
-                                    }
-                                    const id = `custom-manifest-mobile-${Date.now()}`;
-                                    await saveWallpaperToDB(id, file);
-                                    setManifestationMobilePhotos([...manifestationMobilePhotos, id]);
-                                    if (activeManifestationMobileIndex === null) setActiveManifestationMobileIndex(manifestationMobilePhotos.length);
-                                    e.target.value = '';
-                                  }}
-                                />
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setConfirmModal({
-                                    isOpen: true,
-                                    title: 'Add Photo URL',
-                                    message: 'Enter direct image URL (https://...):',
-                                    isPrompt: true,
-                                    promptPlaceholder: 'https://...',
-                                    onConfirm: (url?: string) => {
-                                      if (url && url.trim().startsWith('http')) {
-                                        setManifestationMobilePhotos([...manifestationMobilePhotos, url.trim()]);
-                                        if (activeManifestationMobileIndex === null) setActiveManifestationMobileIndex(manifestationMobilePhotos.length);
-                                      }
-                                    }
-                                  });
-                                }}
-                                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
-                              >
-                                Add URL
-                              </button>
-                            </div>
-                          )}
+                        <textarea
+                          rows={3}
+                          value={bulkManifestationInput}
+                          onChange={(e) => setBulkManifestationInput(e.target.value)}
+                          placeholder={'["Believe in yourself", "Focus creates reality"] OR one quote per line...'}
+                          className="w-full bg-black/50 border border-white/10 rounded-md p-2 text-[10px] md:text-xs text-amber-100 placeholder-white/30 font-mono outline-none focus:border-amber-400/60 resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setShowBulkAddManifestation(false)}
+                            className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold rounded"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleBulkAddManifestationQuotes}
+                            className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-bold rounded transition-colors"
+                          >
+                            Import Quotes
+                          </button>
                         </div>
                       </div>
                     )}
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Add new custom manifestation quote..."
+                        value={newManifestationQuoteText}
+                        maxLength={50}
+                        onChange={(e) => setNewManifestationQuoteText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddManifestationQuote();
+                          }
+                        }}
+                        className="flex-1 bg-black/40 border border-white/10 rounded-md px-2.5 py-1.5 text-[10px] md:text-xs outline-none focus:border-amber-400/60 placeholder:text-white/40 text-amber-100 font-medium"
+                      />
+                      <button
+                        onClick={handleAddManifestationQuote}
+                        className="bg-amber-500/80 hover:bg-amber-500 text-black px-3 py-1.5 rounded text-[10px] md:text-xs font-bold transition-colors shrink-0 cursor-pointer"
+                      >
+                        Add Quote
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 max-h-[160px] overflow-y-auto pr-1">
+                      {(!manifestationCustomQuotes || manifestationCustomQuotes.length === 0) ? (
+                        <div className="text-center py-3 text-[10px] text-white/40 italic bg-black/20 rounded-lg border border-white/5">
+                          No custom manifestation quotes added yet. Default motivational quotes will be used.
+                        </div>
+                      ) : (
+                        manifestationCustomQuotes.map((q, idx) => (
+                          <div key={`m-quote-${idx}`} className="flex justify-between items-center p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg gap-2">
+                            <span className="text-[10.5px] text-amber-100 font-medium truncate">&quot;{q}&quot;</span>
+                            <button
+                              onClick={() => deleteManifestationCustomQuote(idx)}
+                              className="p-1 text-amber-300/60 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors shrink-0"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3. Vision Board Media (Photos & Videos) */}
+                  <div className="flex flex-col gap-3 p-3 rounded-lg md:rounded-xl bg-black/30 border border-white/10">
+                    <h4 className="font-bold text-xs md:text-sm text-amber-300 flex items-center gap-1.5">
+                      <Upload className="w-4 h-4 text-amber-400" /> Vision Board Media (Photos & Videos)
+                    </h4>
+                    <p className="text-[10px] text-amber-200/80 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 leading-relaxed">
+                      💡 <strong>Pro Tip for Multi-Browser / Dev Users:</strong> Local file uploads stay saved in your specific browser&apos;s storage (e.g. Chrome vs Lively or Dev vs Prod). For seamless automatic sync across all browsers and devices, use <strong>Direct URLs</strong>!
+                    </p>
+
+                    <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4">
+                      {/* Desktop Vision Media */}
+                      <div className="bg-black/30 border border-white/10 rounded-lg md:rounded-xl p-3 flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                          <h5 className="font-medium text-[10px] md:text-[11px] text-amber-300">Desktop Vision Media ({manifestationDesktopPhotos.length}/6)</h5>
+                          {manifestationDesktopPhotos.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Delete All Desktop Vision Media',
+                                  message: 'Are you sure you want to delete all desktop manifestation media?',
+                                  isDestructive: true,
+                                  onConfirm: async () => {
+                                    for (const url of manifestationDesktopPhotos) {
+                                      if (url.startsWith('custom-')) await deleteWallpaperFromDB(url).catch(() => { });
+                                    }
+                                    setManifestationDesktopPhotos([]);
+                                    setActiveManifestationDesktopIndex(null);
+                                  }
+                                });
+                              }}
+                              className="flex items-center gap-1 text-[9px] md:text-[10px] px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-100 transition-colors border border-red-500/30 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete All</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {manifestationDesktopPhotos.map((url, i) => (
+                            <CustomWallpaperPreview
+                              key={`desktop-manif-${i}`}
+                              url={url}
+                              isActive={activeManifestationDesktopIndex === i}
+                              onClick={() => setActiveManifestationDesktopIndex(i)}
+                              onShowAlert={showAlertModal}
+                              onDelete={async (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Remove Media',
+                                  message: 'Are you sure you want to remove this manifestation media item?',
+                                  isDestructive: true,
+                                  onConfirm: async () => {
+                                    const newUrls = [...manifestationDesktopPhotos];
+                                    newUrls.splice(i, 1);
+                                    setManifestationDesktopPhotos(newUrls);
+                                    if (activeManifestationDesktopIndex === i) setActiveManifestationDesktopIndex(null);
+                                    else if (activeManifestationDesktopIndex !== null && activeManifestationDesktopIndex > i) setActiveManifestationDesktopIndex(activeManifestationDesktopIndex - 1);
+                                    if (url.startsWith('custom-')) await deleteWallpaperFromDB(url);
+                                  }
+                                });
+                              }}
+                              label={url.startsWith('custom-') ? 'Local File' : (url.split('/').pop() || 'media')}
+                              aspectClass="aspect-video"
+                            />
+                          ))}
+                        </div>
+
+                        {manifestationDesktopPhotos.length < 6 && (
+                          <div className="flex gap-2 w-full mt-1">
+                            <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 border-dashed rounded text-[9px] md:text-[10px] text-amber-200 cursor-pointer transition-colors">
+                              <Plus className="w-3 h-3" /> Upload Photo / Video
+                              <input
+                                type="file"
+                                accept="image/*,video/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  if (file.size > 50 * 1024 * 1024) {
+                                    showAlertModal('File Too Large', 'Maximum allowed file size is 50MB.');
+                                    return;
+                                  }
+                                  const id = `custom-manifest-desktop-${Date.now()}`;
+                                  await saveWallpaperToDB(id, file);
+                                  setManifestationDesktopPhotos([...manifestationDesktopPhotos, id]);
+                                  if (activeManifestationDesktopIndex === null) setActiveManifestationDesktopIndex(manifestationDesktopPhotos.length);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Add Media URL',
+                                  message: 'Enter direct image or video URL (https://...):',
+                                  isPrompt: true,
+                                  promptPlaceholder: 'https://...',
+                                  onConfirm: (url?: string) => {
+                                    if (url && url.trim().startsWith('http')) {
+                                      setManifestationDesktopPhotos([...manifestationDesktopPhotos, url.trim()]);
+                                      if (activeManifestationDesktopIndex === null) setActiveManifestationDesktopIndex(manifestationDesktopPhotos.length);
+                                    }
+                                  }
+                                });
+                              }}
+                              className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                            >
+                              Add URL
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Mobile Vision Media */}
+                      <div className="bg-black/30 border border-white/10 rounded-lg md:rounded-xl p-3 flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                          <h5 className="font-medium text-[10px] md:text-[11px] text-pink-300">Mobile Vision Media ({manifestationMobilePhotos.length}/6)</h5>
+                          {manifestationMobilePhotos.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Delete All Mobile Vision Media',
+                                  message: 'Are you sure you want to delete all mobile manifestation media?',
+                                  isDestructive: true,
+                                  onConfirm: async () => {
+                                    for (const url of manifestationMobilePhotos) {
+                                      if (url.startsWith('custom-')) await deleteWallpaperFromDB(url).catch(() => { });
+                                    }
+                                    setManifestationMobilePhotos([]);
+                                    setActiveManifestationMobileIndex(null);
+                                  }
+                                });
+                              }}
+                              className="flex items-center gap-1 text-[9px] md:text-[10px] px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-100 transition-colors border border-red-500/30 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete All</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {manifestationMobilePhotos.map((url, i) => (
+                            <CustomWallpaperPreview
+                              key={`mobile-manif-${i}`}
+                              url={url}
+                              isActive={activeManifestationMobileIndex === i}
+                              onClick={() => setActiveManifestationMobileIndex(i)}
+                              onShowAlert={showAlertModal}
+                              onDelete={async (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Remove Media',
+                                  message: 'Are you sure you want to remove this manifestation media item?',
+                                  isDestructive: true,
+                                  onConfirm: async () => {
+                                    const newUrls = [...manifestationMobilePhotos];
+                                    newUrls.splice(i, 1);
+                                    setManifestationMobilePhotos(newUrls);
+                                    if (activeManifestationMobileIndex === i) setActiveManifestationMobileIndex(null);
+                                    else if (activeManifestationMobileIndex !== null && activeManifestationMobileIndex > i) setActiveManifestationMobileIndex(activeManifestationMobileIndex - 1);
+                                    if (url.startsWith('custom-')) await deleteWallpaperFromDB(url);
+                                  }
+                                });
+                              }}
+                              label={url.startsWith('custom-') ? 'Local File' : (url.split('/').pop() || 'media')}
+                              aspectClass="aspect-[9/16]"
+                            />
+                          ))}
+                        </div>
+
+                        {manifestationMobilePhotos.length < 6 && (
+                          <div className="flex gap-2 w-full mt-1">
+                            <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 border-dashed rounded text-[9px] md:text-[10px] text-pink-200 cursor-pointer transition-colors">
+                              <Plus className="w-3 h-3" /> Upload Photo / Video
+                              <input
+                                type="file"
+                                accept="image/*,video/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  if (file.size > 50 * 1024 * 1024) {
+                                    showAlertModal('File Too Large', 'Maximum allowed file size is 50MB.');
+                                    return;
+                                  }
+                                  const id = `custom-manifest-mobile-${Date.now()}`;
+                                  await saveWallpaperToDB(id, file);
+                                  setManifestationMobilePhotos([...manifestationMobilePhotos, id]);
+                                  if (activeManifestationMobileIndex === null) setActiveManifestationMobileIndex(manifestationMobilePhotos.length);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Add Media URL',
+                                  message: 'Enter direct image or video URL (https://...):',
+                                  isPrompt: true,
+                                  promptPlaceholder: 'https://...',
+                                  onConfirm: (url?: string) => {
+                                    if (url && url.trim().startsWith('http')) {
+                                      setManifestationMobilePhotos([...manifestationMobilePhotos, url.trim()]);
+                                      if (activeManifestationMobileIndex === null) setActiveManifestationMobileIndex(manifestationMobilePhotos.length);
+                                    }
+                                  }
+                                });
+                              }}
+                              className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                            >
+                              Add URL
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2504,6 +2896,90 @@ export default function SettingsModal() {
                       <button onClick={() => setPanicWallpaperSwitch(!panicWallpaperSwitch)} className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0 ${panicWallpaperSwitch ? 'bg-red-500' : 'bg-white/20'}`}>
                         <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${panicWallpaperSwitch ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                       </button>
+                    </div>
+
+                    {/* Custom Peek Mode Background Setting */}
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-md bg-white/5 border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <ImageIcon className="text-red-400 w-3.5 h-3.5 shrink-0" />
+                          <div>
+                            <span className="text-[10px] md:text-[11px] font-bold text-red-300 block">Peek Mode Custom Image</span>
+                            <p className="text-[8px] md:text-[9px] text-white/50">Custom image to show when Peek Mode is active.</p>
+                          </div>
+                        </div>
+                        {peekModeWallpaper && (
+                          <button
+                            type="button"
+                            onClick={() => setPeekModeWallpaper(null)}
+                            className="px-2 py-0.5 bg-red-500/20 text-red-300 hover:bg-red-500/40 rounded text-[9px] font-semibold border border-red-500/30 transition-colors cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+
+                      {peekModeWallpaper ? (
+                        <div className="relative aspect-video w-full max-w-[200px] rounded-lg overflow-hidden border border-white/20 shadow-md group mt-1">
+                          <img src={peekModeWallpaper} alt="Peek Mode Background" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => setPeekModeWallpaper(null)}
+                              className="p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors cursor-pointer"
+                              title="Remove image"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 w-full mt-1">
+                          <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 border-dashed rounded text-[9px] md:text-[10px] text-red-200 cursor-pointer transition-colors">
+                            <Upload className="w-3 h-3" /> Upload Image
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 25 * 1024 * 1024) {
+                                  showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  const dataUrl = event.target?.result as string;
+                                  if (dataUrl) setPeekModeWallpaper(dataUrl);
+                                };
+                                reader.readAsDataURL(file);
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Add Peek Mode Image URL',
+                                message: 'Enter direct image URL (https://...):',
+                                isPrompt: true,
+                                promptPlaceholder: 'https://...',
+                                onConfirm: (url?: string) => {
+                                  if (url && url.trim().startsWith('http')) {
+                                    setPeekModeWallpaper(url.trim());
+                                  }
+                                }
+                              });
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                          >
+                            Add URL
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 bg-white/5 p-2 md:p-2.5 rounded-md">
@@ -3015,6 +3491,12 @@ export default function SettingsModal() {
         confirmText={(confirmModal as any).confirmText}
         cancelText={(confirmModal as any).cancelText}
         hideCancel={confirmModal.hideCancel}
+      />
+
+      {/* PC Desktop Wallpaper Tutorial Modal */}
+      <WallpaperTutorialModal
+        isOpen={isWallpaperTutorialOpen}
+        onClose={() => setIsWallpaperTutorialOpen(false)}
       />
     </div>
   );

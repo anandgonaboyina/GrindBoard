@@ -6,6 +6,7 @@ import { getWallpaperFromDB } from '@/lib/indexedDB';
 export function useWallpaperUrl(url: string | null | undefined) {
   const [resolvedUrl, setResolvedUrl] = useState<string>('');
   const [isVideo, setIsVideo] = useState<boolean>(false);
+  const [isMissing, setIsMissing] = useState<boolean>(false);
 
   useEffect(() => {
     let objectUrl = '';
@@ -14,6 +15,7 @@ export function useWallpaperUrl(url: string | null | undefined) {
     if (!url) {
       setResolvedUrl('');
       setIsVideo(false);
+      setIsMissing(false);
       return;
     }
 
@@ -21,6 +23,7 @@ export function useWallpaperUrl(url: string | null | undefined) {
     if (url.startsWith('data:') || url.startsWith('blob:')) {
       setResolvedUrl(url);
       setIsVideo(url.startsWith('data:video/') ? true : false);
+      setIsMissing(false);
       return;
     }
 
@@ -42,16 +45,17 @@ export function useWallpaperUrl(url: string | null | undefined) {
           objectUrl = URL.createObjectURL(blob);
           setResolvedUrl(objectUrl);
           setIsVideo(blob.type.startsWith('video/'));
-        } else if (!url.startsWith('custom-manifest-')) {
-          // Fallback for desktop wallpapers only
-          const isMobile = window.innerWidth <= 768;
-          setResolvedUrl(isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : "/wallpapers/naruto.webp");
+          setIsMissing(false);
+        } else {
+          setResolvedUrl('');
           setIsVideo(false);
+          setIsMissing(true);
         }
       };
       loadCustomBlob();
     } else {
       setResolvedUrl(url);
+      setIsMissing(false);
     }
 
     return () => {
@@ -60,5 +64,5 @@ export function useWallpaperUrl(url: string | null | undefined) {
     };
   }, [url]);
 
-  return { resolvedUrl, isVideo };
+  return { resolvedUrl, isVideo, isMissing };
 }

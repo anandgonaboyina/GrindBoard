@@ -26,13 +26,63 @@ export default function NewsModal() {
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
+  // Helper to retrieve cached local read news IDs
+  const getLocalReadIds = (): string[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem('grindboard_read_news_ids');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Helper to persist read news IDs locally
+  const saveLocalReadIds = (ids: string[]) => {
+    if (typeof window === 'undefined' || !ids || ids.length === 0) return;
+    try {
+      const existing = getLocalReadIds();
+      const merged = Array.from(new Set([...existing, ...ids]));
+      localStorage.setItem('grindboard_read_news_ids', JSON.stringify(merged));
+    } catch (e) {
+      console.warn('Failed to save read news IDs to local storage:', e);
+    }
+  };
+
+  const markNewsAsRead = async (idsToMark: string[]) => {
+    if (!idsToMark || idsToMark.length === 0) return;
+
+    // 1. Save locally immediately
+    saveLocalReadIds(idsToMark);
+
+    // 2. Sync to cloud DB
+    try {
+      const token = localStorage.getItem('dashboard_sync_token');
+      if (token) {
+        await fetch('/api/users', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ readNewsIds: idsToMark })
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to sync read news IDs to cloud DB:', e);
+    }
+  };
+
   useEffect(() => {
     async function initNews() {
       try {
         const token = localStorage.getItem('dashboard_sync_token');
         const username = localStorage.getItem('dashboard_username');
 
-        let readIds: string[] = [];
+        // Load local read IDs first
+        const localReadIds = getLocalReadIds();
+        let cloudReadIds: string[] = [];
+
         if (token && username) {
           try {
             const userRes = await fetch('/api/users', {
@@ -41,7 +91,7 @@ export default function NewsModal() {
             if (userRes.ok) {
               const userData = await userRes.json();
               const me = userData.users?.find((u: any) => u.username === username);
-              readIds = me?.readNewsIds || [];
+              cloudReadIds = me?.readNewsIds || [];
               if (me?.isAdmin === true || me?.isAdmin === 'true') {
                 setIsAdmin(true);
               }
@@ -51,6 +101,10 @@ export default function NewsModal() {
           }
         }
 
+        // Merge local + cloud DB read news IDs
+        const combinedReadIds = Array.from(new Set([...localReadIds, ...cloudReadIds]));
+        saveLocalReadIds(combinedReadIds);
+
         try {
           const newsRes = await fetch('/api/news');
           if (newsRes.ok) {
@@ -58,11 +112,12 @@ export default function NewsModal() {
             if (newsData.news) {
               const now = Date.now();
               const broadcasted = newsData.news.filter((n: NewsPost) => new Date(n.broadcastDate).getTime() <= now);
-              const unread = broadcasted.filter((n: NewsPost) => n._id && !readIds.includes(n._id));
+              const unread = broadcasted.filter((n: NewsPost) => n._id && !combinedReadIds.includes(n._id));
 
               setNews(broadcasted);
-              setUnreadIds(unread.map((n: NewsPost) => n._id!));
-              setHasUnreadNews(unread.length > 0);
+              const unreadList = unread.map((n: NewsPost) => n._id!);
+              setUnreadIds(unreadList);
+              setHasUnreadNews(unreadList.length > 0);
               syncNewsMediaCache(broadcasted);
             }
           }
@@ -119,6 +174,12 @@ export default function NewsModal() {
       setTimeout(() => setShowWarning(false), 3500);
       return;
     }
+    // When closing after viewing, mark current unread news as read so it doesn't pop up again
+    if (unreadIds.length > 0) {
+      markNewsAsRead(unreadIds);
+      setHasUnreadNews(false);
+      setUnreadIds([]);
+    }
     onCanClose();
   };
 
@@ -130,23 +191,13 @@ export default function NewsModal() {
 
     setMarking(true);
     try {
-      const token = localStorage.getItem('dashboard_sync_token');
-      if (token) {
-        await fetch('/api/users', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ readNewsIds: unreadIds })
-        });
-      }
+      await markNewsAsRead(unreadIds);
       setHasUnreadNews(false);
       setUnreadIds([]);
       toggleNews();
     } catch (e) {
       console.error(e);
-      toggleNews(); // still close it 
+      toggleNews();
     } finally {
       setMarking(false);
     }

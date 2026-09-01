@@ -54,33 +54,58 @@ export default function DayStartModal() {
   const [celebrationQuote, setCelebrationQuote] = useState<{ text: string; author: string } | null>(null);
   const [celebrationTimer, setCelebrationTimer] = useState(5);
 
-  // Auto-open if missing wakeup time for today (only once per page load)
+  // Auto-open if missing wakeup time for today (checking DB hydration & local cache)
   useEffect(() => {
-    if (hasPrompted || !_hasHydrated) return;
+    if (!_hasHydrated) return;
 
-    let hasWakeupLogged = !!todayTimes.wakeupTime;
+    const storeState = useDashboardStore.getState();
+    const currentDailyTimes = storeState.dailyTimes?.[today] || dailyTimes[today] || {};
+
+    // Robust check for ANY logged daily time for today (wakeupTime, workStartedTime, sleepTime, etc.)
+    let hasWakeupLogged = !!todayTimes?.wakeupTime ||
+                          !!currentDailyTimes?.wakeupTime ||
+                          !!currentDailyTimes?.workStartedTime ||
+                          !!currentDailyTimes?.sleepTime ||
+                          !!(currentDailyTimes as any)?.bedTime ||
+                          (Object.keys(currentDailyTimes).length > 0);
+
+    // Multi-layer fallback check: local storage key & raw local cache dump
     if (!hasWakeupLogged && typeof window !== 'undefined') {
-      try {
-        const rawLocal = localStorage.getItem('dashboard-storage');
-        if (rawLocal) {
-          const parsed = JSON.parse(rawLocal);
-          const cachedToday = parsed?.state?.dailyTimes?.[today];
-          if (cachedToday?.wakeupTime) {
-            hasWakeupLogged = true;
+      if (localStorage.getItem(`grindboard_wakeup_logged_${today}`) === 'true') {
+        hasWakeupLogged = true;
+      } else {
+        try {
+          const rawLocal = localStorage.getItem('dashboard-storage');
+          if (rawLocal) {
+            const parsed = JSON.parse(rawLocal);
+            const cachedToday = parsed?.state?.dailyTimes?.[today];
+            if (cachedToday && (cachedToday.wakeupTime || Object.keys(cachedToday).length > 0)) {
+              hasWakeupLogged = true;
+            }
           }
+        } catch (e) {
+          // ignore fallback parse error
         }
-      } catch (e) {
-        // ignore fallback parse error
       }
     }
 
-    if (!hasWakeupLogged) {
-      if (!isDayStartModalOpen) {
+    if (hasWakeupLogged) {
+      // Mark local storage anchor for fast sync
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`grindboard_wakeup_logged_${today}`, 'true');
+      }
+      // If already logged in DB or local cache, guarantee modal stays CLOSED
+      if (storeState.isDayStartModalOpen || isDayStartModalOpen) {
+        useDashboardStore.setState({ isDayStartModalOpen: false });
+      }
+    } else {
+      // Only show modal if NOT logged in DB and NOT logged in local cache, and hasn't been prompted yet
+      if (!hasPrompted && !storeState.isDayStartModalOpen && !isDayStartModalOpen) {
         useDashboardStore.setState({ isDayStartModalOpen: true });
+        setHasPrompted(true);
       }
     }
-    setHasPrompted(true);
-  }, [hasPrompted, _hasHydrated, todayTimes.wakeupTime, isDayStartModalOpen, today]);
+  }, [_hasHydrated, todayTimes, dailyTimes, isDayStartModalOpen, today, hasPrompted]);
 
   // Load fresh inspirational/fire-burning quote online (API first with keyword filter, local fallback if offline)
   useEffect(() => {
@@ -209,6 +234,11 @@ export default function DayStartModal() {
   const confirmAction = () => {
     if (confirming && pendingTime) {
       updateDailyTime(today, confirming, pendingTime);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`grindboard_wakeup_logged_${today}`, 'true');
+        window.dispatchEvent(new Event('app_sync_now'));
+      }
 
       // Select a fresh, distinct victory/fire quote for celebration view
       const remainingQuotes = MORNING_HARDWORK_QUOTES.filter(q => q.text !== quote?.text);

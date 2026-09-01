@@ -7,6 +7,7 @@ export default function VideoBackground() {
   const isPanicHidden = useDashboardStore((state) => state.isPanicHidden);
   const isHidden = useDashboardStore((state) => state.isHidden);
   const panicWallpaperSwitch = useDashboardStore((state) => state.panicWallpaperSwitch);
+  const peekModeWallpaper = useDashboardStore((state) => state.peekModeWallpaper);
   const { 
     customDesktopWallpapers, 
     activeDesktopCustomIndex, 
@@ -26,7 +27,7 @@ export default function VideoBackground() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Determine active source
+  // Determine standard active source
   let bgSrc = isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : (wallpaper || "/wallpapers/naruto.webp");
   
   if (isMobile && activeMobileCustomIndex !== null && customMobileWallpapers[activeMobileCustomIndex]) {
@@ -35,18 +36,31 @@ export default function VideoBackground() {
     bgSrc = customDesktopWallpapers[activeDesktopCustomIndex];
   }
 
-  const { resolvedUrl, isVideo } = useWallpaperUrl(bgSrc);
+  // Handle Peek / Panic Mode Wallpaper Fallback
+  const isPeekActive = isHidden || isPanicHidden;
+  let activePeekWallpaper: string | null = null;
 
-  const showFallbackImage = isVideo && panicWallpaperSwitch && (isHidden || isPanicHidden);
+  if (isPeekActive) {
+    if (peekModeWallpaper && peekModeWallpaper.trim() !== '') {
+      activePeekWallpaper = peekModeWallpaper;
+    } else if (panicWallpaperSwitch) {
+      activePeekWallpaper = isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : "/wallpapers/naruto.webp";
+    }
+  }
 
-  if (!resolvedUrl) return null;
+  const effectiveBgSrc = activePeekWallpaper || bgSrc;
+  const { resolvedUrl, isVideo, isMissing } = useWallpaperUrl(effectiveBgSrc);
+  const fallbackUrl = isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : (wallpaper || "/wallpapers/naruto.webp");
+
+  const finalUrl = (isMissing || !resolvedUrl) ? fallbackUrl : resolvedUrl;
+  const finalIsVideo = (isMissing || !resolvedUrl) ? Boolean(fallbackUrl.match(/\.(mp4|webm)$/i)) : isVideo;
 
   return (
     <>
-      {isVideo && !showFallbackImage ? (
+      {finalIsVideo ? (
         <video
-          key={resolvedUrl}
-          src={resolvedUrl}
+          key={finalUrl}
+          src={finalUrl}
           autoPlay
           muted
           loop
@@ -55,8 +69,8 @@ export default function VideoBackground() {
         />
       ) : (
         <img
-          key={showFallbackImage ? (isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : "/wallpapers/naruto.webp") : resolvedUrl}
-          src={showFallbackImage ? (isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : "/wallpapers/naruto.webp") : resolvedUrl}
+          key={finalUrl}
+          src={finalUrl}
           alt="Wallpaper"
           className="fixed inset-0 w-full h-full object-cover -z-20 transition-opacity duration-1000 opacity-100"
         />

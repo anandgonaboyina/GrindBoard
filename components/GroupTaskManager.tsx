@@ -241,17 +241,24 @@ export default function GroupTaskManager({
     };
 
     useEffect(() => {
-        fetchGroupData();
-        const interval = setInterval(fetchGroupData, 10000); // Polling every 10s for sync
+        if (hideHeader) return;
+        if (!group) {
+            fetchGroupData();
+        }
+        const interval = setInterval(fetchGroupData, 15000);
         return () => clearInterval(interval);
-    }, [groupId, targetUserId]);
+    }, [groupId, targetUserId, hideHeader]);
 
     useEffect(() => {
         if (group && effectiveUserId) {
-            setTasks(getUserTasks(group, effectiveUserId));
-            setCompletions(group.completions || {});
+            const newTasks = getUserTasks(group, effectiveUserId);
+            const newCompletions = group.completions || {};
             const rawNames = group.memberTabNames?.[effectiveUserId] || group.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
-            setTabNames([0, 1, 2].map(i => formatTabName(rawNames[i], i)));
+            const newTabNames = [0, 1, 2].map(i => formatTabName(rawNames[i], i));
+
+            setTasks((prev: any[]) => JSON.stringify(prev) !== JSON.stringify(newTasks) ? newTasks : prev);
+            setCompletions((prev: any) => JSON.stringify(prev) !== JSON.stringify(newCompletions) ? newCompletions : prev);
+            setTabNames((prev: string[]) => JSON.stringify(prev) !== JSON.stringify(newTabNames) ? newTabNames : prev);
         }
     }, [group, effectiveUserId]);
 

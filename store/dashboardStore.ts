@@ -2,6 +2,16 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { getLocalDateString } from '@/utils/date';
 
+const DEFAULT_TIMETABLE_GRID = {
+  "Mon": { "09:00 AM": "DSA", "10:00 AM": "Web Dev", "11:00 AM": "OS", "12:00 PM": "Lunch", "01:00 PM": "Math", "02:00 PM": "Physics", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
+  "Tue": { "09:00 AM": "Math", "10:00 AM": "DSA", "11:00 AM": "Web Dev", "12:00 PM": "Lunch", "01:00 PM": "OS", "02:00 PM": "DB", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
+  "Wed": { "09:00 AM": "OS", "10:00 AM": "Math", "11:00 AM": "DSA", "12:00 PM": "Lunch", "01:00 PM": "Web Dev", "02:00 PM": "Physics", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
+  "Thu": { "09:00 AM": "DB", "10:00 AM": "OS", "11:00 AM": "Math", "12:00 PM": "Lunch", "01:00 PM": "DSA", "02:00 PM": "Web Dev", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
+  "Fri": { "09:00 AM": "Web Dev", "10:00 AM": "DB", "11:00 AM": "OS", "12:00 PM": "Lunch", "01:00 PM": "Math", "02:00 PM": "DSA", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
+  "Sat": { "09:00 AM": "Free", "10:00 AM": "Free", "11:00 AM": "Free", "12:00 PM": "Free", "01:00 PM": "Free", "02:00 PM": "Free", "03:00 PM": "Free", "04:00 PM": "Free", "05:00 PM": "Free" },
+  "Sun": { "09:00 AM": "Free", "10:00 AM": "Free", "11:00 AM": "Free", "12:00 PM": "Free", "01:00 PM": "Free", "02:00 PM": "Free", "03:00 PM": "Free", "04:00 PM": "Free", "05:00 PM": "Free" },
+};
+
 export interface CustomAlarmSound {
   id: string;
   name: string;
@@ -153,9 +163,9 @@ interface DashboardState {
   hasUnreadNews: boolean;
   toggleNews: () => void;
   setHasUnreadNews: (val: boolean) => void;
-  settingsActiveTab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'update' | 'wallpaper' | 'quotes';
+  settingsActiveTab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'update' | 'wallpaper' | 'quotes' | 'manifestation';
   toggleSettings: () => void;
-  setSettingsActiveTab: (tab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'update' | 'wallpaper' | 'quotes') => void;
+  setSettingsActiveTab: (tab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'update' | 'wallpaper' | 'quotes' | 'manifestation') => void;
   connectInitialTab?: 'profile' | 'friends' | 'leaderboard' | 'groups';
   setConnectInitialTab: (tab?: 'profile' | 'friends' | 'leaderboard' | 'groups') => void;
   
@@ -210,6 +220,8 @@ interface DashboardState {
   setTimerPausedLeft: (time: number | null) => void;
   setTimerInitialMins: (mins: number | null) => void;
   setTimerDeviceId: (id: string | null) => void;
+  /** Atomically clear ALL timer state and immediately push to cloud so other devices don't see a ghost timer. */
+  clearTimerState: () => void;
   setTimerLastSavedChunks: (chunks: number) => void;
   setTimerLastAlertedChunks: (chunks: number) => void;
   setIsAlarmPlaying: (playing: boolean) => void;
@@ -241,6 +253,10 @@ interface DashboardState {
   setCustomQuotes: (quotes: { text: string; author: string }[]) => void;
   useCustomQuotes: boolean;
   setUseCustomQuotes: (useCustom: boolean) => void;
+  manifestationCustomQuotes: string[];
+  setManifestationCustomQuotes: (quotes: string[]) => void;
+  addManifestationCustomQuote: (quote: string) => void;
+  deleteManifestationCustomQuote: (index: number) => void;
 
 
   // Notes State
@@ -422,6 +438,8 @@ interface DashboardState {
   setFocusShortcutKey: (key: string) => void;
   panicWallpaperSwitch: boolean;
   setPanicWallpaperSwitch: (val: boolean) => void;
+  peekModeWallpaper: string | null;
+  setPeekModeWallpaper: (url: string | null) => void;
 
 
   // Custom Placement
@@ -477,6 +495,121 @@ export const setBypassCloudSync = (bypass: boolean = true) => {
   bypassCloudSync = bypass;
 };
 
+const mergeDailyTimes = (localDailyTimes: Record<string, any> = {}, cloudDailyTimes: Record<string, any> = {}) => {
+  const merged: Record<string, any> = { ...cloudDailyTimes };
+  for (const date in localDailyTimes) {
+    if (!merged[date]) {
+      merged[date] = localDailyTimes[date];
+    } else {
+      merged[date] = {
+        ...cloudDailyTimes[date],
+        ...localDailyTimes[date],
+      };
+      // Non-destructive preservation of logged timestamps: wake up, work start, sleep/bed time
+      ['wakeupTime', 'workStartedTime', 'sleepTime', 'bedTime'].forEach((field) => {
+        const localVal = localDailyTimes[date]?.[field];
+        const cloudVal = cloudDailyTimes[date]?.[field];
+        if (localVal && !cloudVal) {
+          merged[date][field] = localVal;
+        } else if (cloudVal && !localVal) {
+          merged[date][field] = cloudVal;
+        } else if (localVal && cloudVal) {
+          merged[date][field] = localVal;
+        }
+      });
+    }
+  }
+  return merged;
+};
+
+const mergeArraysById = (localArr: any[] = [], cloudArr: any[] = []) => {
+  if (!Array.isArray(localArr)) localArr = [];
+  if (!Array.isArray(cloudArr)) cloudArr = [];
+  if (localArr.length === 0 && cloudArr.length > 0) return cloudArr;
+  if (cloudArr.length === 0 && localArr.length > 0) return localArr;
+  const map = new Map();
+  cloudArr.forEach((item) => {
+    if (item && item.id !== undefined) map.set(item.id, item);
+  });
+  localArr.forEach((item) => {
+    if (item && item.id !== undefined) {
+      const existing = map.get(item.id);
+      if (existing) {
+        map.set(item.id, { ...existing, ...item });
+      } else {
+        map.set(item.id, item);
+      }
+    }
+  });
+  return Array.from(map.values());
+};
+
+const mergeStringArrays = (localArr: any, cloudArr: any, cloudIsNewer: boolean = false) => {
+  if (!Array.isArray(localArr)) localArr = [];
+  if (!Array.isArray(cloudArr)) cloudArr = [];
+
+  if (cloudIsNewer) {
+    return cloudArr.length > 0 ? cloudArr : localArr;
+  }
+  
+  // If we don't know who is newer, or if cloud is not newer, we should still take cloud data if local is completely empty (e.g. initial load / clear)
+  if (localArr.length === 0 && cloudArr.length > 0) return cloudArr;
+
+  // Otherwise stick to local (it might be newly added unsynced items, or intentionally empty)
+  return localArr;
+};
+
+const mergeNotes = (localNotes: any[] = [], cloudNotes: any[] = []): any[] => {
+  if (!Array.isArray(localNotes)) localNotes = [];
+  if (!Array.isArray(cloudNotes)) cloudNotes = [];
+
+  if (localNotes.length === 0 && cloudNotes.length > 0) return cloudNotes;
+  if (cloudNotes.length === 0 && localNotes.length > 0) return localNotes;
+
+  const map = new Map<string, any>();
+
+  cloudNotes.forEach((cNote) => {
+    if (cNote && cNote.id) {
+      map.set(cNote.id, { ...cNote, entries: { ...(cNote.entries || {}) } });
+    }
+  });
+
+  localNotes.forEach((lNote) => {
+    if (lNote && lNote.id) {
+      const existing = map.get(lNote.id);
+      if (!existing) {
+        map.set(lNote.id, { ...lNote, entries: { ...(lNote.entries || {}) } });
+      } else {
+        // Deep merge entries per date so journal entries are NEVER lost!
+        const mergedEntries = { ...(existing.entries || {}) };
+        const localEntries = lNote.entries || {};
+        for (const date in localEntries) {
+          const lText = localEntries[date];
+          const cText = mergedEntries[date];
+          if (lText && !cText) {
+            mergedEntries[date] = lText;
+          } else if (cText && !lText) {
+            mergedEntries[date] = cText;
+          } else if (lText && cText) {
+            mergedEntries[date] = lText.length >= cText.length ? lText : cText;
+          }
+        }
+
+        map.set(lNote.id, {
+          ...existing,
+          ...lNote,
+          title: (lNote.title && lNote.title !== 'New Note') ? lNote.title : (existing.title || lNote.title),
+          entries: mergedEntries,
+        });
+      }
+    }
+  });
+
+  return Array.from(map.values());
+};
+
+
+
 const performSave = async () => {
   if (!pendingValue || isSyncingFromCloud || isAuthTransition) {
     saveTimeout = null;
@@ -501,6 +634,7 @@ const performSave = async () => {
   try {
     const lastModified = getSyncLastModified();
     let modifiedCollections: string[] = [];
+    let modifiedKeys: string[] = [];
     if (lastSavedValue) {
       const oldState = JSON.parse(lastSavedValue).state || {};
       const newState = JSON.parse(valueToSave).state || {};
@@ -511,14 +645,22 @@ const performSave = async () => {
       const NOTES_KEYS = ['notes'];
       const ROADMAPS_KEYS = ['roadmaps'];
 
+      const TRANSIENT_KEYS = [
+        'isSaving', 'hasUnsavedChanges', '_hasHydrated', 'isTaskManagerOpen', 'isCalendarOpen',
+        'isTimetableOpen', 'isPlansOpen', 'isNotesOpen', 'isSettingsOpen', 'isNewsOpen',
+        'isStatsOpen', 'isMobileCountdownsVisible', 'isCalendarBusy', 'expandedLeaderboardUserId',
+        'pendingValue', 'saveTimeout', 'activeNoteId', 'activeCountdownIndex'
+      ];
+
       Object.keys(newState).forEach(key => {
         if (JSON.stringify(newState[key]) !== JSON.stringify(oldState[key])) {
+          modifiedKeys.push(key);
           if (TASK_KEYS.includes(key)) modifiedCollections.push('Tasks');
           else if (STATS_KEYS.includes(key)) modifiedCollections.push('Stats');
           else if (DAILY_ROUTINE_KEYS.includes(key)) modifiedCollections.push('DailyRoutine');
           else if (NOTES_KEYS.includes(key)) modifiedCollections.push('Notes');
           else if (ROADMAPS_KEYS.includes(key)) modifiedCollections.push('Roadmaps');
-          else if (!key.startsWith('is') && !key.startsWith('show')) modifiedCollections.push('Settings');
+          else if (!TRANSIENT_KEYS.includes(key)) modifiedCollections.push('Settings');
         }
       });
       modifiedCollections = [...new Set(modifiedCollections)];
@@ -539,7 +681,7 @@ const performSave = async () => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${getSyncToken()}`
       },
-      body: JSON.stringify({ data: JSON.parse(valueToSave), lastModified, modifiedCollections }),
+      body: JSON.stringify({ data: JSON.parse(valueToSave), lastModified, modifiedCollections, modifiedKeys }),
     });
 
     if (res.status === 409) {
@@ -561,17 +703,11 @@ const performSave = async () => {
 
       const localDailyTimes = parsedLocal.state.dailyTimes || {};
       const cloudDailyTimes = parsedCloud.state.dailyTimes || {};
-      const mergedDailyTimes = { ...localDailyTimes };
-      for (const date in cloudDailyTimes) {
-        if (mergedDailyTimes[date]) {
-          mergedDailyTimes[date] = {
-            ...cloudDailyTimes[date],
-            ...mergedDailyTimes[date], // Local wins for daily times if conflict
-          };
-        } else {
-          mergedDailyTimes[date] = cloudDailyTimes[date];
-        }
-      }
+      const mergedDailyTimes = mergeDailyTimes(localDailyTimes, cloudDailyTimes);
+
+      const localHasSeen = parsedLocal.state?.hasSeenOnboarding || (typeof window !== 'undefined' && localStorage.getItem('grindboard_has_seen_onboarding') === 'true');
+      const cloudHasSeen = parsedCloud.state?.hasSeenOnboarding;
+      const mergedHasSeenOnboarding = Boolean(localHasSeen || cloudHasSeen);
 
       const mergedState = {
         ...parsedLocal.state,
@@ -580,15 +716,34 @@ const performSave = async () => {
         // Deep merge tracking data to prevent data loss
         history: mergedHistory,
         dailyTimes: mergedDailyTimes,
-        timetableGrid: { ...(parsedLocal.state.timetableGrid || {}), ...(parsedCloud.state.timetableGrid || {}) },
-        timetableColors: { ...(parsedLocal.state.timetableColors || {}), ...(parsedCloud.state.timetableColors || {}) },
+        hasSeenOnboarding: mergedHasSeenOnboarding,
+        timetableGrid: (() => {
+          const isLocalGridDefault = parsedLocal.state.timetableGrid ? JSON.stringify(parsedLocal.state.timetableGrid) === JSON.stringify(DEFAULT_TIMETABLE_GRID) : true;
+          const isCloudGridDefault = parsedCloud.state.timetableGrid ? JSON.stringify(parsedCloud.state.timetableGrid) === JSON.stringify(DEFAULT_TIMETABLE_GRID) : true;
+          return (isLocalGridDefault && !isCloudGridDefault && parsedCloud.state.timetableGrid) ? parsedCloud.state.timetableGrid : (parsedLocal.state.timetableGrid || parsedCloud.state.timetableGrid);
+        })(),
+        timetableColors: (() => {
+          const isLocalColorsEmpty = !parsedLocal.state.timetableColors || Object.keys(parsedLocal.state.timetableColors).length === 0;
+          const isCloudColorsEmpty = !parsedCloud.state.timetableColors || Object.keys(parsedCloud.state.timetableColors).length === 0;
+          return (isLocalColorsEmpty && !isCloudColorsEmpty && parsedCloud.state.timetableColors) ? parsedCloud.state.timetableColors : (parsedLocal.state.timetableColors || parsedCloud.state.timetableColors);
+        })(),
 
         // Intelligently merge arrays to prevent data loss, prioritizing local changes
-        tasks: [...(parsedLocal.state.tasks || []), ...(parsedCloud.state.tasks || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
-        countdowns: [...(parsedLocal.state.countdowns || []), ...(parsedCloud.state.countdowns || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
-        deadlines: [...(parsedLocal.state.deadlines || []), ...(parsedCloud.state.deadlines || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
-        notes: [...(parsedLocal.state.notes || []), ...(parsedCloud.state.notes || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
-        roadmaps: [...(parsedLocal.state.roadmaps || []), ...(parsedCloud.state.roadmaps || [])].filter((t: any, i: number, a: any[]) => a.findIndex(x => x.id === t.id) === i),
+        tasks: mergeArraysById(parsedLocal.state.tasks, parsedCloud.state.tasks),
+        tomorrowTasks: mergeArraysById(parsedLocal.state.tomorrowTasks, parsedCloud.state.tomorrowTasks),
+        countdowns: mergeArraysById(parsedLocal.state.countdowns, parsedCloud.state.countdowns),
+        deadlines: filterActiveDeadlines(mergeArraysById(parsedLocal.state.deadlines, parsedCloud.state.deadlines)),
+        notes: mergeNotes(parsedLocal.state.notes, parsedCloud.state.notes),
+        roadmaps: mergeArraysById(parsedLocal.state.roadmaps, parsedCloud.state.roadmaps),
+        plans: mergeArraysById(parsedLocal.state.plans, parsedCloud.state.plans),
+        customAlarmSounds: mergeArraysById(parsedLocal.state.customAlarmSounds, parsedCloud.state.customAlarmSounds),
+
+        manifestationDesktopPhotos: mergeStringArrays(parsedLocal.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos),
+        manifestationMobilePhotos: mergeStringArrays(parsedLocal.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos),
+        customDesktopWallpapers: mergeStringArrays(parsedLocal.state.customDesktopWallpapers, parsedCloud.state.customDesktopWallpapers),
+        customMobileWallpapers: mergeStringArrays(parsedLocal.state.customMobileWallpapers, parsedCloud.state.customMobileWallpapers),
+        customQuotes: mergeStringArrays(parsedLocal.state.customQuotes, parsedCloud.state.customQuotes),
+        manifestationCustomQuotes: mergeStringArrays(parsedLocal.state.manifestationCustomQuotes, parsedCloud.state.manifestationCustomQuotes),
       };
 
       const mergedData = { version: 2, state: mergedState };
@@ -602,13 +757,14 @@ const performSave = async () => {
         console.warn("Failed to set mergedStr in localStorage:", e);
       }
       useDashboardStore.setState(mergedState);
-      setTimeout(() => { isSyncingFromCloud = false; }, 500);
 
-      // Re-queue the merged data to save to cloud
+      // CRITICAL: We must push the merged result back to the cloud!
       pendingValue = mergedStr;
       hasUnsavedChanges = true;
+      if (saveTimeout) clearTimeout(saveTimeout);
       saveTimeout = setTimeout(performSave, 500);
 
+      setTimeout(() => { isSyncingFromCloud = false; }, 500);
       isSaving = false;
       return;
     }
@@ -635,14 +791,12 @@ const performSave = async () => {
         saveTimeout = setTimeout(performSave, 500);
       }
     } else {
-      // If we failed to save to the DB, we already saved to localStorage as fallback.
-      // We should NOT retry infinitely, otherwise it spams the server.
-      if (pendingValue === valueToSave) {
-        pendingValue = null;
-        hasUnsavedChanges = false;
-        saveTimeout = null;
-      } else {
-        saveTimeout = setTimeout(performSave, 500);
+      // If we failed to save to the DB (network disconnect/throttling), preserve pendingValue and local timestamp.
+      // Do NOT discard unsaved offline changes! Keep hasUnsavedChanges = true so it syncs when network is restored.
+      setSyncLastModified(Date.now());
+      hasUnsavedChanges = true;
+      if (!saveTimeout) {
+        saveTimeout = setTimeout(performSave, 5000);
       }
     }
   }
@@ -652,14 +806,13 @@ if (typeof window !== 'undefined') {
   const triggerAutoSyncOnOnline = () => {
     try {
       const stateObj = useDashboardStore.getState();
-      if (stateObj && typeof stateObj === 'object') {
-        const str = JSON.stringify({ state: stateObj });
-        pendingValue = str;
-        hasUnsavedChanges = true;
-        failedToLoadDB = false;
-        if (!saveTimeout) {
-          saveTimeout = setTimeout(performSave, 500);
-        }
+      if (!stateObj || typeof stateObj !== 'object' || !stateObj._hasHydrated) return;
+      const str = JSON.stringify({ state: stateObj });
+      pendingValue = str;
+      hasUnsavedChanges = true;
+      failedToLoadDB = false;
+      if (!saveTimeout) {
+        saveTimeout = setTimeout(performSave, 500);
       }
     } catch (e) {
       console.warn("Auto sync trigger failed:", e);
@@ -675,98 +828,261 @@ const fileStorage = createJSONStorage(() => ({
     if (typeof window === 'undefined') return null;
 
     let retries = 0;
+    const maxRetries = 2; // Fast initial load: max 2 retries (prevents 15s loading screen hangs)
     const token = getSyncToken();
     const isBypassed = bypassCloudSync;
     bypassCloudSync = false; // Always consume bypass flag for current load so future syncs operate normally!
 
-    while (retries < 15 && token) {
+    while (retries < maxRetries && token) {
       if (isBypassed || (typeof navigator !== 'undefined' && !navigator.onLine)) {
         console.warn("Bypassing cloud sync and loading local data instantly.");
         break;
       }
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s max request timeout
+
         const res = await fetch(`/api/store?t=${Date.now()}`, {
           headers: { 'Authorization': `Bearer ${token}` },
-          cache: 'no-store'
+          cache: 'no-store',
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
+
         if (res.ok) {
           failedToLoadDB = false;
           const json = await res.json();
           const localDataStr = localStorage.getItem('dashboard-storage');
-          const localTimestampStr = localStorage.getItem('dashboard_last_modified');
 
-          // If cloud data is null (new account), we MUST return localData so they don't lose progress!
-          // We return "{}" instead of null if localDataStr is empty, to guarantee Zustand parses it cleanly.
+          // If cloud data is null (new account), return localData so user progress isn't lost
           if (json.data === null) {
             lastSavedValue = localDataStr || "{}";
             return lastSavedValue;
           }
 
           if (json.data) {
-            let useLocal = false;
-            if (localDataStr && localTimestampStr) {
-              const localTime = parseInt(localTimestampStr);
-              // If local is newer than cloud (offline changes), we keep local and force sync to cloud!
-              if (localTime > json.lastModified) {
-                useLocal = true;
-                pendingValue = localDataStr;
-                hasUnsavedChanges = true;
-                saveTimeout = setTimeout(performSave, 500);
-                console.log("Local offline data is newer! Pushing to cloud.");
+            let localState: any = null;
+            if (localDataStr) {
+              try {
+                localState = JSON.parse(localDataStr).state || {};
+              } catch (e) {
+                console.warn("Failed to parse local storage in getItem", e);
               }
             }
 
-            if (useLocal) {
-              lastSavedValue = localDataStr;
-              return localDataStr;
-            } else {
-              setSyncLastModified(json.lastModified);
-              
-              // SMART MERGE local history into cloud before overwriting
-              let hasLocalHigher = false;
-              if (localDataStr) {
-                try {
-                  const parsedLocal = JSON.parse(localDataStr);
-                  const localHistory = parsedLocal.state?.history || {};
-                  const cloudHistory = json.data.state?.history || {};
-                  
-                  for (const date in localHistory) {
-                    const lVal = localHistory[date] || 0;
-                    const cVal = cloudHistory[date] || 0;
-                    if (lVal > cVal) {
-                      json.data.state.history = json.data.state.history || {};
-                      json.data.state.history[date] = lVal;
-                      hasLocalHigher = true;
-                    }
-                  }
-                } catch (e) {
-                  console.warn("Failed to merge local history during cloud sync", e);
+            const cloudState = json.data.state || {};
+
+            // Perform deep smart merge to guarantee NO LOCAL DATA (tasks, deadlines, sleep logs, settings) IS EVER WIPED
+            if (localState) {
+              // 1. History (stats)
+              const localHistory = localState.history || {};
+              const cloudHistory = cloudState.history || {};
+              const mergedHistory = { ...cloudHistory };
+              for (const date in localHistory) {
+                mergedHistory[date] = Math.max(localHistory[date] || 0, cloudHistory[date] || 0);
+              }
+
+              // 2. Daily Times (sleep & wake-up logs) - Merge per date, local wins for conflict
+              const localDailyTimes = localState.dailyTimes || {};
+              const cloudDailyTimes = cloudState.dailyTimes || {};
+              const mergedDailyTimes = mergeDailyTimes(localDailyTimes, cloudDailyTimes);
+
+              const todayStr = getLocalDateString();
+              if (mergedDailyTimes && mergedDailyTimes[todayStr] && Object.keys(mergedDailyTimes[todayStr]).length > 0) {
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem(`grindboard_wakeup_logged_${todayStr}`, 'true');
                 }
               }
 
-              const str = JSON.stringify(json.data);
-              
-              isSyncingFromCloud = !hasLocalHigher; // If local had higher, we don't treat it fully as sync from cloud, we want it to trigger save!
-              setTimeout(() => { isSyncingFromCloud = false; }, 1000);
-              
-              // ensure local cache perfectly matches cloud
+              const localHasSeen = localState?.hasSeenOnboarding || (typeof window !== 'undefined' && localStorage.getItem('grindboard_has_seen_onboarding') === 'true');
+              const cloudHasSeen = cloudState?.hasSeenOnboarding;
+              const mergedHasSeenOnboarding = Boolean(localHasSeen || cloudHasSeen);
+
+              const mergedTasks = mergeArraysById(localState.tasks, cloudState.tasks);
+              const mergedTomorrowTasks = mergeArraysById(localState.tomorrowTasks, cloudState.tomorrowTasks);
+              const mergedDeadlines = filterActiveDeadlines(mergeArraysById(localState.deadlines, cloudState.deadlines));
+              const mergedCountdowns = mergeArraysById(localState.countdowns, cloudState.countdowns);
+              const mergedNotes = mergeNotes(localState.notes, cloudState.notes);
+              const mergedRoadmaps = mergeArraysById(localState.roadmaps, cloudState.roadmaps);
+              const mergedPlans = mergeArraysById(localState.plans, cloudState.plans);
+              const mergedCustomAlarmSounds = mergeArraysById(localState.customAlarmSounds, cloudState.customAlarmSounds);
+
+              const cloudLastMod = json.data.lastModified ? Number(json.data.lastModified) : 0;
+              const isCloudNewer = cloudLastMod > getSyncLastModified();
+
+              const mergedManifestationDesktopPhotos = mergeStringArrays(localState.manifestationDesktopPhotos, cloudState.manifestationDesktopPhotos, isCloudNewer);
+              const mergedManifestationMobilePhotos = mergeStringArrays(localState.manifestationMobilePhotos, cloudState.manifestationMobilePhotos, isCloudNewer);
+              const mergedCustomDesktopWallpapers = mergeStringArrays(localState.customDesktopWallpapers, cloudState.customDesktopWallpapers, isCloudNewer);
+              const mergedCustomMobileWallpapers = mergeStringArrays(localState.customMobileWallpapers, cloudState.customMobileWallpapers, isCloudNewer);
+              const mergedCustomQuotes = mergeStringArrays(localState.customQuotes, cloudState.customQuotes, isCloudNewer);
+              const mergedManifestationCustomQuotes = mergeStringArrays(localState.manifestationCustomQuotes, cloudState.manifestationCustomQuotes, isCloudNewer);
+              const mergedLockedWidgets = mergeStringArrays(localState.lockedWidgets, cloudState.lockedWidgets, isCloudNewer);
+
+              const mergedWeekdayTimes = (Array.isArray(cloudState.weekdayTimes) && cloudState.weekdayTimes.length > 0)
+                ? cloudState.weekdayTimes
+                : (Array.isArray(localState.weekdayTimes) ? localState.weekdayTimes : []);
+              const mergedWeekendTimes = (Array.isArray(cloudState.weekendTimes) && cloudState.weekendTimes.length > 0)
+                ? cloudState.weekendTimes
+                : (Array.isArray(localState.weekendTimes) ? localState.weekendTimes : []);
+
+              const mergedClockOffsets = { ...(localState.clockOffsets || {}), ...(cloudState.clockOffsets || {}) };
+              const mergedWidgetOffsets = { ...(localState.widgetOffsets || {}), ...(cloudState.widgetOffsets || {}) };
+              const mergedHideConfig = { ...(localState.hideConfig || {}), ...(cloudState.hideConfig || {}) };
+              const mergedMobileHideConfig = { ...(localState.mobileHideConfig || {}), ...(cloudState.mobileHideConfig || {}) };
+
+              const activeDesktopCustomIndex = (cloudState.activeDesktopCustomIndex !== undefined && cloudState.activeDesktopCustomIndex !== null)
+                ? cloudState.activeDesktopCustomIndex
+                : localState.activeDesktopCustomIndex;
+              const activeMobileCustomIndex = (cloudState.activeMobileCustomIndex !== undefined && cloudState.activeMobileCustomIndex !== null)
+                ? cloudState.activeMobileCustomIndex
+                : localState.activeMobileCustomIndex;
+              const activeManifestationDesktopIndex = (cloudState.activeManifestationDesktopIndex !== undefined && cloudState.activeManifestationDesktopIndex !== null)
+                ? cloudState.activeManifestationDesktopIndex
+                : localState.activeManifestationDesktopIndex;
+              const activeManifestationMobileIndex = (cloudState.activeManifestationMobileIndex !== undefined && cloudState.activeManifestationMobileIndex !== null)
+                ? cloudState.activeManifestationMobileIndex
+                : localState.activeManifestationMobileIndex;
+
+              // 4. Construct Merged State
+              //    Cloud wins for settings/data, but LOCAL ALWAYS WINS for timer state.
+              //    Timer is fundamentally device-local — cloud must never override what
+              //    this browser's timer shows (stopped, paused, or running).
+              const mergedState = {
+                ...localState,
+                ...cloudState,
+                activeDesktopCustomIndex,
+                activeMobileCustomIndex,
+                activeManifestationDesktopIndex,
+                activeManifestationMobileIndex,
+                hideConfig: mergedHideConfig,
+                mobileHideConfig: mergedMobileHideConfig,
+                history: mergedHistory,
+                dailyTimes: mergedDailyTimes,
+                hasSeenOnboarding: mergedHasSeenOnboarding,
+                tasks: mergedTasks,
+                tomorrowTasks: mergedTomorrowTasks,
+                deadlines: mergedDeadlines,
+                countdowns: mergedCountdowns,
+                notes: mergedNotes,
+                roadmaps: mergedRoadmaps,
+                plans: mergedPlans,
+                manifestationDesktopPhotos: mergedManifestationDesktopPhotos,
+                manifestationMobilePhotos: mergedManifestationMobilePhotos,
+                customDesktopWallpapers: mergedCustomDesktopWallpapers,
+                customMobileWallpapers: mergedCustomMobileWallpapers,
+                customQuotes: mergedCustomQuotes,
+                manifestationCustomQuotes: mergedManifestationCustomQuotes,
+                customAlarmSounds: mergedCustomAlarmSounds,
+                lockedWidgets: mergedLockedWidgets,
+                weekdayTimes: mergedWeekdayTimes,
+                weekendTimes: mergedWeekendTimes,
+                clockOffsets: mergedClockOffsets,
+                widgetOffsets: mergedWidgetOffsets,
+                timetableGrid: (() => {
+                  const isLocalGridDefault = localState.timetableGrid ? JSON.stringify(localState.timetableGrid) === JSON.stringify(DEFAULT_TIMETABLE_GRID) : true;
+                  const isCloudGridDefault = cloudState.timetableGrid ? JSON.stringify(cloudState.timetableGrid) === JSON.stringify(DEFAULT_TIMETABLE_GRID) : true;
+                  return isCloudNewer 
+                    ? cloudState.timetableGrid 
+                    : (isLocalGridDefault && !isCloudGridDefault && cloudState.timetableGrid) ? cloudState.timetableGrid : (localState.timetableGrid || cloudState.timetableGrid);
+                })(),
+                timetableColors: (() => {
+                  const isLocalColorsEmpty = !localState.timetableColors || Object.keys(localState.timetableColors).length === 0;
+                  const isCloudColorsEmpty = !cloudState.timetableColors || Object.keys(cloudState.timetableColors).length === 0;
+                  return isCloudNewer
+                    ? cloudState.timetableColors
+                    : (isLocalColorsEmpty && !isCloudColorsEmpty && cloudState.timetableColors) ? cloudState.timetableColors : (localState.timetableColors || cloudState.timetableColors);
+                })(),
+                // 5. Timer: LOCAL ALWAYS WINS. If user stopped/paused on this device,
+                //    that state is in localStorage. Cloud must never resurrect a ghost timer.
+                timerEndAt: localState.timerEndAt ?? null,
+                timerPausedLeft: localState.timerPausedLeft ?? null,
+                timerInitialMins: localState.timerInitialMins ?? null,
+                timerDeviceId: localState.timerDeviceId ?? null,
+                timerLastUpdated: localState.timerLastUpdated || 0,
+                timerLastSavedChunks: localState.timerLastSavedChunks || 0,
+                timerLastAlertedChunks: localState.timerLastAlertedChunks || 0,
+                activeTaskId: localState.activeTaskId ?? null,
+                activeTaskTitle: localState.activeTaskTitle ?? null,
+              };
+
+              // Safety: clear any expired timer
+              if (mergedState.timerEndAt && mergedState.timerEndAt < Date.now()) {
+                mergedState.timerEndAt = null;
+                mergedState.timerPausedLeft = null;
+                mergedState.timerInitialMins = null;
+                mergedState.timerDeviceId = null;
+                mergedState.timerLastSavedChunks = 0;
+                mergedState.timerLastAlertedChunks = 0;
+                mergedState.activeTaskId = null;
+                mergedState.activeTaskTitle = null;
+              }
+
+              const mergedData = { version: 2, state: mergedState };
+              const mergedStr = JSON.stringify(mergedData);
+
+              const isDifferentFromCloud = JSON.stringify(cloudState) !== JSON.stringify(mergedState);
+              if (isDifferentFromCloud) {
+                pendingValue = mergedStr;
+                hasUnsavedChanges = true;
+                setSyncLastModified(Date.now());
+                if (!saveTimeout) {
+                  saveTimeout = setTimeout(performSave, 500);
+                }
+              } else {
+                setSyncLastModified(json.lastModified);
+              }
+
+              try {
+                localStorage.setItem('dashboard-storage', mergedStr);
+              } catch (e) {
+                console.warn("Failed to update localStorage with merged data:", e);
+              }
+
+              lastSavedValue = mergedStr;
+              return mergedStr;
+            } else {
+              // No local state (fresh device/browser) — use cloud as-is but validate timer
+              setSyncLastModified(json.lastModified);
+              const cloudOnlyState = json.data?.state || {};
+              // Safety: never carry a foreign-device timer to a fresh device.
+              // The receiving device is NOT the owner, so the timer should not tick here.
+              // We only keep a cloud timer if it's genuinely still running AND not expired.
+              if (cloudOnlyState.timerEndAt) {
+                if (cloudOnlyState.timerEndAt < Date.now()) {
+                  // Already expired — wipe it
+                  cloudOnlyState.timerEndAt = null;
+                  cloudOnlyState.timerPausedLeft = null;
+                  cloudOnlyState.timerInitialMins = null;
+                  cloudOnlyState.timerDeviceId = null;
+                  cloudOnlyState.timerLastSavedChunks = 0;
+                  cloudOnlyState.timerLastAlertedChunks = 0;
+                  cloudOnlyState.activeTaskId = null;
+                  cloudOnlyState.activeTaskTitle = null;
+                }
+                // Note: if timerEndAt is in the future we DO show it — the user may have
+                // started it on another tab in the same browser and opened this one intentionally.
+                // The timerDeviceId guard in Timer.tsx ensures only the owner saves focus minutes.
+              } else if (cloudOnlyState.timerPausedLeft !== null && cloudOnlyState.timerPausedLeft !== undefined) {
+                // Paused timer from another device — a fresh device should NOT inherit paused state
+                // because the owner device is the only one that can resume it correctly.
+                // Clear it so this fresh device shows a clean slate.
+                cloudOnlyState.timerEndAt = null;
+                cloudOnlyState.timerPausedLeft = null;
+                cloudOnlyState.timerInitialMins = null;
+                cloudOnlyState.timerDeviceId = null;
+                cloudOnlyState.timerLastSavedChunks = 0;
+                cloudOnlyState.timerLastAlertedChunks = 0;
+                cloudOnlyState.activeTaskId = null;
+                cloudOnlyState.activeTaskTitle = null;
+              }
+              const cleaned = { ...json.data, state: cloudOnlyState };
+              const str = JSON.stringify(cleaned);
               try {
                 localStorage.setItem('dashboard-storage', str);
               } catch (e) {
                 console.warn("Failed to update localStorage with cloud data:", e);
               }
-              
               lastSavedValue = str;
-              
-              // If we salvaged higher offline stats, queue a save to push them to the cloud!
-              if (hasLocalHigher) {
-                pendingValue = str;
-                hasUnsavedChanges = true;
-                if (!saveTimeout) {
-                   saveTimeout = setTimeout(performSave, 500);
-                }
-              }
-              
               return str;
             }
           }
@@ -775,10 +1091,10 @@ const fileStorage = createJSONStorage(() => ({
           break; // Stop retrying on server/auth errors!
         }
       } catch (e) {
-        console.warn(`Database API error, retrying... (${retries + 1}/15)`, e);
+        console.warn(`Database API error, retrying... (${retries + 1}/${maxRetries})`, e);
       }
       retries++;
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 350));
     }
 
     console.warn("Failed to fetch store from DB after retries or no token, falling back to localStorage.");
@@ -862,7 +1178,7 @@ export const useDashboardStore = create<DashboardState>()(
       setLockedWallpaper: (filename) => set({ lockedWallpaper: filename }),
       setWallpaper: (url) => set({ wallpaper: url }),
       cycleBackground: () => set((state) => {
-        const BUILT_IN = ["/wallpapers/naruto.webp", "/wallpapers/defaultWallpaper2.jpeg"];
+        const BUILT_IN = ["/wallpapers/naruto.webp"];
         const nextIndex = (state.bgIndex + 1) % BUILT_IN.length;
         return { lockedWallpaper: null, bgIndex: nextIndex, wallpaper: BUILT_IN[nextIndex] };
       }),
@@ -1084,7 +1400,12 @@ export const useDashboardStore = create<DashboardState>()(
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
       setConnectInitialTab: (tab) => set({ connectInitialTab: tab }),
       hasSeenOnboarding: false,
-      setHasSeenOnboarding: (seen: boolean) => set({ hasSeenOnboarding: seen }),
+      setHasSeenOnboarding: (seen: boolean) => {
+        if (typeof window !== 'undefined' && seen) {
+          localStorage.setItem('grindboard_has_seen_onboarding', 'true');
+        }
+        set({ hasSeenOnboarding: seen });
+      },
       isTourOpen: false,
       setIsTourOpen: (open: boolean) => set({ isTourOpen: open }),
       startTour: () => set({ isTourOpen: true }),
@@ -1308,6 +1629,29 @@ export const useDashboardStore = create<DashboardState>()(
       setTimerPausedLeft: (time) => set({ timerPausedLeft: time, timerLastUpdated: Date.now() }),
       setTimerInitialMins: (mins) => set({ timerInitialMins: mins, timerLastUpdated: Date.now() }),
       setTimerDeviceId: (id) => set({ timerDeviceId: id, timerLastUpdated: Date.now() }),
+      clearTimerState: () => {
+        // Atomically clear every timer field in one set()
+        set({
+          timerEndAt: null,
+          timerPausedLeft: null,
+          timerInitialMins: null,
+          timerDeviceId: null,
+          timerLastSavedChunks: 0,
+          timerLastAlertedChunks: 0,
+          timerLastUpdated: Date.now(),
+          activeTaskId: null,
+          activeTaskTitle: null,
+        });
+        // The set() above triggers Zustand persist’s setItem which:
+        //   1. Saves the cleared state to localStorage synchronously
+        //   2. Queues a cloud save via the normal 500ms debounce
+        // We accelerate the cloud save by cancelling the debounce and running immediately.
+        // We use the pendingValue that Zustand's setItem already prepared (correct partialized format).
+        if (typeof window !== 'undefined') {
+          if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
+          if (!isSaving && pendingValue) { saveTimeout = setTimeout(performSave, 0); }
+        }
+      },
       setTimerLastSavedChunks: (chunks) => set({ timerLastSavedChunks: chunks }),
       setTimerLastAlertedChunks: (chunks) => set({ timerLastAlertedChunks: chunks }),
       setIsAlarmPlaying: (playing) => set({ isAlarmPlaying: playing }),
@@ -1348,6 +1692,17 @@ export const useDashboardStore = create<DashboardState>()(
       setCustomQuotes: (quotes) => set({ customQuotes: quotes }),
       useCustomQuotes: false,
       setUseCustomQuotes: (useCustom) => set({ useCustomQuotes: useCustom }),
+      manifestationCustomQuotes: [],
+      setManifestationCustomQuotes: (quotes) => set({ manifestationCustomQuotes: (quotes || []).slice(0, 30) }),
+      addManifestationCustomQuote: (quote) => set((state) => {
+        const trimmed = quote.trim();
+        const current = state.manifestationCustomQuotes || [];
+        if (!trimmed || current.length >= 30) return state;
+        return { manifestationCustomQuotes: [...current, trimmed] };
+      }),
+      deleteManifestationCustomQuote: (index) => set((state) => ({
+        manifestationCustomQuotes: (state.manifestationCustomQuotes || []).filter((_, i) => i !== index)
+      })),
 
       // Notes State
       notes: [{ id: 'default', title: 'Daily Journal', entries: {} }],
@@ -1532,15 +1887,7 @@ export const useDashboardStore = create<DashboardState>()(
       setIsDeadlinesCollapsed: (collapsed) => set({ isDeadlinesCollapsed: collapsed }),
 
       // Timetable
-      timetableGrid: {
-        "Mon": { "09:00 AM": "DSA", "10:00 AM": "Web Dev", "11:00 AM": "OS", "12:00 PM": "Lunch", "01:00 PM": "Math", "02:00 PM": "Physics", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-        "Tue": { "09:00 AM": "Math", "10:00 AM": "DSA", "11:00 AM": "Web Dev", "12:00 PM": "Lunch", "01:00 PM": "OS", "02:00 PM": "DB", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-        "Wed": { "09:00 AM": "OS", "10:00 AM": "Math", "11:00 AM": "DSA", "12:00 PM": "Lunch", "01:00 PM": "Web Dev", "02:00 PM": "Physics", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-        "Thu": { "09:00 AM": "DB", "10:00 AM": "OS", "11:00 AM": "Math", "12:00 PM": "Lunch", "01:00 PM": "DSA", "02:00 PM": "Web Dev", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-        "Fri": { "09:00 AM": "Web Dev", "10:00 AM": "DB", "11:00 AM": "OS", "12:00 PM": "Lunch", "01:00 PM": "Math", "02:00 PM": "DSA", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-        "Sat": { "09:00 AM": "Free", "10:00 AM": "Free", "11:00 AM": "Free", "12:00 PM": "Free", "01:00 PM": "Free", "02:00 PM": "Free", "03:00 PM": "Free", "04:00 PM": "Free", "05:00 PM": "Free" },
-        "Sun": { "09:00 AM": "Free", "10:00 AM": "Free", "11:00 AM": "Free", "12:00 PM": "Free", "01:00 PM": "Free", "02:00 PM": "Free", "03:00 PM": "Free", "04:00 PM": "Free", "05:00 PM": "Free" },
-      },
+      timetableGrid: JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID)),
       timetableColors: {},
       updateTimetableCell: (day, time, subject) => set((state) => ({
         timetableGrid: {
@@ -1650,15 +1997,7 @@ export const useDashboardStore = create<DashboardState>()(
         return { timetableGrid: newGrid, timetableColors: newColors };
       }),
       resetTimetable: () => set(() => ({
-        timetableGrid: {
-          "Mon": { "09:00 AM": "DSA", "10:00 AM": "Web Dev", "11:00 AM": "OS", "12:00 PM": "Lunch", "01:00 PM": "Math", "02:00 PM": "Physics", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-          "Tue": { "09:00 AM": "Math", "10:00 AM": "DSA", "11:00 AM": "Web Dev", "12:00 PM": "Lunch", "01:00 PM": "OS", "02:00 PM": "DB", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-          "Wed": { "09:00 AM": "OS", "10:00 AM": "Math", "11:00 AM": "DSA", "12:00 PM": "Lunch", "01:00 PM": "Web Dev", "02:00 PM": "Physics", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-          "Thu": { "09:00 AM": "DB", "10:00 AM": "OS", "11:00 AM": "Math", "12:00 PM": "Lunch", "01:00 PM": "DSA", "02:00 PM": "Web Dev", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-          "Fri": { "09:00 AM": "Web Dev", "10:00 AM": "DB", "11:00 AM": "OS", "12:00 PM": "Lunch", "01:00 PM": "Math", "02:00 PM": "DSA", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-          "Sat": { "09:00 AM": "Free", "10:00 AM": "Free", "11:00 AM": "Free", "12:00 PM": "Free", "01:00 PM": "Free", "02:00 PM": "Free", "03:00 PM": "Free", "04:00 PM": "Free", "05:00 PM": "Free" },
-          "Sun": { "09:00 AM": "Free", "10:00 AM": "Free", "11:00 AM": "Free", "12:00 PM": "Free", "01:00 PM": "Free", "02:00 PM": "Free", "03:00 PM": "Free", "04:00 PM": "Free", "05:00 PM": "Free" },
-        },
+        timetableGrid: JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID)),
         timetableColors: {},
         weekdayTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
         weekendTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
@@ -1860,6 +2199,8 @@ export const useDashboardStore = create<DashboardState>()(
       setFocusShortcutKey: (key) => set({ focusShortcutKey: key.toLowerCase() }),
       panicWallpaperSwitch: false,
       setPanicWallpaperSwitch: (val) => set({ panicWallpaperSwitch: val }),
+      peekModeWallpaper: null,
+      setPeekModeWallpaper: (url) => set({ peekModeWallpaper: url }),
 
       rightWidgetsOffset: 48, // Default corresponds to bottom-12 (48px)
       setRightWidgetsOffset: (offset) => set({ rightWidgetsOffset: Math.max(0, offset) }),
@@ -1961,17 +2302,25 @@ export const useDashboardStore = create<DashboardState>()(
       ),
       merge: (persistedState: any, currentState: DashboardState) => {
         if (!persistedState) return currentState;
+        // Fix for PC users stuck with the mobile default wallpaper from old cycleBackground logic
+        if (persistedState.wallpaper === "/wallpapers/defaultWallpaper2.jpeg") {
+          persistedState.wallpaper = "/wallpapers/naruto.webp";
+        }
         // Clean up expired or inactive timers from past sessions to prevent ghost minutes
         if (persistedState.timerEndAt && persistedState.timerEndAt < Date.now()) {
+          // Timer expired while device was closed — clear it completely
           persistedState.timerEndAt = null;
           persistedState.timerPausedLeft = null;
           persistedState.timerInitialMins = null;
+          persistedState.timerDeviceId = null;
           persistedState.timerLastSavedChunks = 0;
           persistedState.timerLastAlertedChunks = 0;
           persistedState.activeTaskId = null;
           persistedState.activeTaskTitle = null;
-        } else if (!persistedState.timerEndAt && persistedState.timerPausedLeft === null) {
+        } else if (!persistedState.timerEndAt && (persistedState.timerPausedLeft === null || persistedState.timerPausedLeft === undefined)) {
+          // Timer is in a fully stopped state — sanitise all dependent fields
           persistedState.timerInitialMins = null;
+          persistedState.timerDeviceId = null;
           persistedState.timerLastSavedChunks = 0;
           persistedState.timerLastAlertedChunks = 0;
           persistedState.activeTaskId = null;
@@ -1980,23 +2329,6 @@ export const useDashboardStore = create<DashboardState>()(
 
         // Prevent alarm from persisting and triggering continuously on reload/focus
         persistedState.isAlarmPlaying = false;
-
-        // Conflict resolution: The most recently updated timer state always wins.
-        // This prevents a polling tab from reviving a stopped timer from its own stale state.
-        const currentUpdated = currentState.timerLastUpdated || 0;
-        const persistedUpdated = persistedState.timerLastUpdated || 0;
-
-        if (currentUpdated > persistedUpdated) {
-          persistedState.timerEndAt = currentState.timerEndAt;
-          persistedState.timerPausedLeft = currentState.timerPausedLeft;
-          persistedState.timerInitialMins = currentState.timerInitialMins;
-          persistedState.timerDeviceId = currentState.timerDeviceId;
-          persistedState.activeTaskId = currentState.activeTaskId;
-          persistedState.activeTaskTitle = currentState.activeTaskTitle;
-          persistedState.timerLastSavedChunks = currentState.timerLastSavedChunks;
-          persistedState.timerLastAlertedChunks = currentState.timerLastAlertedChunks;
-          persistedState.timerLastUpdated = currentState.timerLastUpdated;
-        }
 
         // Deep merge nested configurations to prevent schema drift from old backups
         if (persistedState.hideConfig && currentState.hideConfig) {
@@ -2045,7 +2377,13 @@ export const useDashboardStore = create<DashboardState>()(
         // due to schema mismatches, and always retain their expected types.
         safeState.tasks = Array.isArray(persistedState.tasks) ? persistedState.tasks : currentState.tasks;
         safeState.tomorrowTasks = Array.isArray(persistedState.tomorrowTasks) ? persistedState.tomorrowTasks : currentState.tomorrowTasks;
-        safeState.notes = Array.isArray(persistedState.notes) ? persistedState.notes : currentState.notes;
+        safeState.notes = mergeNotes(currentState.notes || [], persistedState.notes || []);
+        if (safeState.notes && safeState.notes.length > 0) {
+          const activeExists = safeState.notes.some((n: any) => n.id === safeState.activeNoteId);
+          if (!activeExists) {
+            safeState.activeNoteId = safeState.notes[0].id;
+          }
+        }
         safeState.roadmaps = Array.isArray(persistedState.roadmaps) ? persistedState.roadmaps : currentState.roadmaps;
         safeState.deadlines = filterActiveDeadlines(persistedState.deadlines || []);
 
@@ -2054,19 +2392,27 @@ export const useDashboardStore = create<DashboardState>()(
           safeState.history = { ...currentState.history, ...persistedState.history };
         }
         if (persistedState.timetableGrid && typeof persistedState.timetableGrid === 'object') {
-          safeState.timetableGrid = persistedState.timetableGrid; // Do not merge with defaults, or deleted entries will come back
+          safeState.timetableGrid = persistedState.timetableGrid;
         }
         if (persistedState.timetableColors && typeof persistedState.timetableColors === 'object') {
           safeState.timetableColors = persistedState.timetableColors;
         }
         if (persistedState.dailyTimes && typeof persistedState.dailyTimes === 'object') {
-          safeState.dailyTimes = { ...currentState.dailyTimes, ...persistedState.dailyTimes };
+          safeState.dailyTimes = mergeDailyTimes(currentState.dailyTimes || {}, persistedState.dailyTimes || {});
         }
+        const hasSeenLocal = (typeof window !== 'undefined' && localStorage.getItem('grindboard_has_seen_onboarding') === 'true');
+        safeState.hasSeenOnboarding = Boolean(persistedState?.hasSeenOnboarding || currentState?.hasSeenOnboarding || hasSeenLocal);
         if (persistedState.clockOffsets && typeof persistedState.clockOffsets === 'object') {
           safeState.clockOffsets = { ...currentState.clockOffsets, ...persistedState.clockOffsets };
         }
         if (persistedState.widgetOffsets && typeof persistedState.widgetOffsets === 'object') {
           safeState.widgetOffsets = { ...currentState.widgetOffsets, ...persistedState.widgetOffsets };
+        }
+        if (persistedState.hideConfig && typeof persistedState.hideConfig === 'object') {
+          safeState.hideConfig = { ...(currentState.hideConfig || {}), ...persistedState.hideConfig };
+        }
+        if (persistedState.mobileHideConfig && typeof persistedState.mobileHideConfig === 'object') {
+          safeState.mobileHideConfig = { ...(currentState.mobileHideConfig || {}), ...persistedState.mobileHideConfig };
         }
 
         return safeState;
@@ -2078,12 +2424,20 @@ export const useDashboardStore = create<DashboardState>()(
         if (state && typeof state.cleanOldDeadlines === 'function') {
           state.cleanOldDeadlines();
         }
-        // Guarantee hydration completion so UI never gets stuck
-        if (state && typeof state.setHasHydrated === 'function') {
-          state.setHasHydrated(true);
-        } else {
-          useDashboardStore.getState().setHasHydrated(true);
-        }
+        // Defer setHasHydrated by one microtask tick so any synchronous setState
+        // calls from the storage merge (cloud data, conflict resolution, etc.) can
+        // settle into the store BEFORE the loading screen lifts and the dashboard renders.
+        // This eliminates the "empty data flash" caused by the loading screen lifting
+        // before merged state is applied.
+        const markHydrated = () => {
+          if (state && typeof state.setHasHydrated === 'function') {
+            state.setHasHydrated(true);
+          } else {
+            useDashboardStore.getState().setHasHydrated(true);
+          }
+        };
+        // Use Promise.resolve() to push to end of microtask queue
+        Promise.resolve().then(markHydrated);
       },
     }
   )

@@ -241,22 +241,54 @@ export default function ConnectGroupsTab() {
   const userId = localStorage.getItem('dashboard_username'); // Need user ID or just use username to identify
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, []);
 
   useEffect(() => {
     if (viewingGroup && userGroups && userGroups.length > 0) {
       const updated = userGroups.find((g: any) => g._id === viewingGroup._id);
-      if (updated && updated !== viewingGroup) {
-        setViewingGroup(updated);
+      if (updated) {
+        if (JSON.stringify(updated) !== JSON.stringify(viewingGroup)) {
+          setViewingGroup(updated);
+        }
       }
     }
-  }, [userGroups]);
+  }, [userGroups, viewingGroup]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  // Centralized background polling for active viewing group
+  useEffect(() => {
+    if (!viewingGroup?._id) return;
+
+    const interval = setInterval(async () => {
+      const token = localStorage.getItem('dashboard_sync_token');
+      if (!token) return;
+      try {
+        const res = await fetch(`/api/groups/${viewingGroup._id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.group) {
+            const currentGroups = useDashboardStore.getState().userGroups;
+            const updatedGroups = currentGroups.map((g: any) =>
+              g._id === viewingGroup._id ? data.group : g
+            );
+            setUserGroups(updatedGroups);
+          }
+        }
+      } catch (e) { }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [viewingGroup?._id]);
+
+  const fetchData = async (showLoading = false) => {
+    if (showLoading && groups.length === 0) setLoading(true);
     const token = localStorage.getItem('dashboard_sync_token');
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const [groupsRes, requestsRes] = await Promise.all([
@@ -279,8 +311,9 @@ export default function ConnectGroupsTab() {
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {

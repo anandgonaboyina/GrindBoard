@@ -4,12 +4,19 @@ import React, { useEffect, useState } from 'react';
 import { ShieldCheck, Wifi, WifiOff, Zap, ExternalLink, Quote } from 'lucide-react';
 import { setBypassCloudSync, useDashboardStore } from '@/store/dashboardStore';
 
-export default function LoadingScreen() {
+interface LoadingScreenProps {
+  onFinished?: () => void;
+}
+
+export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
   const [progress, setProgress] = useState(15);
   const [statusText, setStatusText] = useState('Connecting to Workspace...');
   const [isOnline, setIsOnline] = useState(true);
+  const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isDone, setIsDone] = useState(false);
 
   const _hasHydrated = useDashboardStore((state) => state._hasHydrated);
+  const initialHydratedRef = React.useRef(useDashboardStore.getState()._hasHydrated);
 
   useEffect(() => {
     const checkOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -40,35 +47,68 @@ export default function LoadingScreen() {
 
     // If network is slow and sync takes longer than 2.2 seconds, inform user
     const timerSlow = setTimeout(() => {
-      if (!_hasHydrated) {
+      if (!useDashboardStore.getState()._hasHydrated) {
         setStatusText('Slow Connection — Synchronizing Cloud Data...');
       }
     }, 2200);
+
+    // Guaranteed fallback: If sync/hydration is stalled after 3.5s, load local workspace automatically
+    const timerSafety = setTimeout(() => {
+      if (!useDashboardStore.getState()._hasHydrated) {
+        console.warn("Hydration safety trigger activated: bypassing cloud hang.");
+        setBypassCloudSync(true);
+        useDashboardStore.getState().setHasHydrated(true);
+      }
+    }, 3500);
 
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
       clearTimeout(timer3);
       clearTimeout(timerSlow);
+      clearTimeout(timerSafety);
     };
   }, []);
 
-  // When store hydration succeeds, complete progress bar
+  // When store hydration succeeds, complete progress bar & trigger smooth fade-out after settlement
   useEffect(() => {
     if (_hasHydrated) {
       setProgress(100);
       setStatusText('Workspace Ready!');
+
+      const settlementDelay = initialHydratedRef.current ? 50 : 150;
+
+      const timerFade = setTimeout(() => {
+        setIsFadingOut(true);
+      }, settlementDelay);
+
+      const timerUnmount = setTimeout(() => {
+        setIsDone(true);
+        if (onFinished) onFinished();
+      }, settlementDelay + 300);
+
+      return () => {
+        clearTimeout(timerFade);
+        clearTimeout(timerUnmount);
+      };
     }
-  }, [_hasHydrated]);
+  }, [_hasHydrated, onFinished]);
 
   const handleLoadOffline = () => {
     setProgress(100);
     setStatusText('Loading Offline Instantly...');
     setBypassCloudSync(true);
+    useDashboardStore.getState().setHasHydrated(true);
   };
 
+  if (isDone) return null;
+
   return (
-    <div className="fixed inset-0 h-[100dvh] w-screen bg-[#06060e] z-[99999] flex flex-col justify-between p-5 sm:p-8 md:p-12 text-white font-sans overflow-hidden opacity-100 pointer-events-auto select-none">
+    <div
+      className={`fixed inset-0 h-[100dvh] w-screen bg-[#06060e] z-[99999] flex flex-col justify-between p-5 sm:p-8 md:p-12 text-white font-sans overflow-hidden select-none transition-opacity duration-300 ${
+        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
+      }`}
+    >
       <style>{`
         @keyframes flip3D {
           0% { transform: perspective(400px) rotateY(0deg); }

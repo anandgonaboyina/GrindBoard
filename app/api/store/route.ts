@@ -21,6 +21,122 @@ const authenticate = (request: Request) => {
   }
 };
 
+function mergeArraysByIdServer(incoming: any[] = [], existing: any[] = []) {
+  if (!Array.isArray(incoming)) incoming = [];
+  if (!Array.isArray(existing)) existing = [];
+  if (incoming.length === 0) return existing;
+  if (existing.length === 0) return incoming;
+
+  const map = new Map();
+  existing.forEach(item => {
+    if (item && item.id !== undefined) map.set(item.id, item);
+  });
+  incoming.forEach(item => {
+    if (item && item.id !== undefined) {
+      const prev = map.get(item.id);
+      map.set(item.id, prev ? { ...prev, ...item } : item);
+    }
+  });
+  return Array.from(map.values());
+}
+
+function mergeNotesServer(incomingNotes: any[] = [], existingNotes: any[] = []): any[] {
+  if (!Array.isArray(incomingNotes)) incomingNotes = [];
+  if (!Array.isArray(existingNotes)) existingNotes = [];
+  if (incomingNotes.length === 0) return existingNotes;
+  if (existingNotes.length === 0) return incomingNotes;
+
+  const map = new Map<string, any>();
+  existingNotes.forEach(eNote => {
+    if (eNote && eNote.id) {
+      map.set(eNote.id, { ...eNote, entries: { ...(eNote.entries || {}) } });
+    }
+  });
+
+  incomingNotes.forEach(iNote => {
+    if (iNote && iNote.id) {
+      const prev = map.get(iNote.id);
+      if (!prev) {
+        map.set(iNote.id, { ...iNote, entries: { ...(iNote.entries || {}) } });
+      } else {
+        const mergedEntries = { ...(prev.entries || {}) };
+        const incEntries = iNote.entries || {};
+        for (const date in incEntries) {
+          const incText = incEntries[date];
+          const prevText = mergedEntries[date];
+          if (incText && !prevText) {
+            mergedEntries[date] = incText;
+          } else if (prevText && !incText) {
+            mergedEntries[date] = prevText;
+          } else if (incText && prevText) {
+            mergedEntries[date] = incText.length >= prevText.length ? incText : prevText;
+          }
+        }
+        map.set(iNote.id, {
+          ...prev,
+          ...iNote,
+          title: (iNote.title && iNote.title !== 'New Note') ? iNote.title : (prev.title || iNote.title),
+          entries: mergedEntries,
+        });
+      }
+    }
+  });
+
+  return Array.from(map.values());
+}
+
+
+
+function mergeStringArraysServer(incoming: any[] = [], existing: any[] = []): any[] {
+  if (!Array.isArray(incoming)) incoming = [];
+  if (!Array.isArray(existing)) existing = [];
+  if (incoming.length === 0) return existing;
+  if (existing.length === 0) return incoming;
+
+  const set = new Set<any>();
+  existing.forEach(item => {
+    if (item !== undefined && item !== null) {
+      set.add(typeof item === 'string' ? item.trim() : JSON.stringify(item));
+    }
+  });
+  incoming.forEach(item => {
+    if (item !== undefined && item !== null) {
+      set.add(typeof item === 'string' ? item.trim() : JSON.stringify(item));
+    }
+  });
+  return Array.from(set).map(item => {
+    if (typeof item === 'string' && (item.startsWith('{') || item.startsWith('['))) {
+      try {
+        return JSON.parse(item);
+      } catch {
+        return item;
+      }
+    }
+    return item;
+  });
+}
+
+const SETTING_ARRAY_KEYS = [
+  'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
+  'activeDesktopCustomIndex', 'activeMobileCustomIndex', 'customLocalWallpaperName',
+  'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
+  'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton',
+  'weekdayTimes', 'weekendTimes',
+  'manifestationDesktopPhotos', 'manifestationMobilePhotos',
+  'activeManifestationDesktopIndex', 'activeManifestationMobileIndex',
+  'manifestationCustomQuotes', 'customQuotes', 'customAlarmSounds',
+  'showManifestationBoard', 'hasSeenOnboarding',
+  'hideConfig', 'mobileHideConfig', 'panicButtonMode', 'panicShortcutKey', 'focusShortcutKey',
+  'selectedSound', 'alarmVolume', 'dashboardScale', 'mobileDashboardScale', 'dockScale',
+  'dockOffset', 'rightWidgetsOffset', 'enableRightToolbarPeek', 'autoOpenCountdowns',
+  'activeTheme', 'clockStyle', 'fontFamily', 'soundEffectVolume', 'currentBgType',
+  'selectedLocalWallpaperName'
+];
+
+const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
+const STATS_KEYS = ['history', 'stopwatchSessions'];
+const DAILY_ROUTINE_KEYS = ['dailyTimes'];
+
 export async function GET(request: Request) {
   try {
     const user = authenticate(request);
@@ -51,17 +167,6 @@ export async function GET(request: Request) {
     if (!existing && !notesRecord && !settingsRecord && !tasksRecord && !roadmapsRecord && !statsRecord && !dailyRoutineRecord) {
       return NextResponse.json({ data: null, lastModified: cloudLastModified });
     }
-
-    const SETTING_ARRAY_KEYS = [
-      'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
-      'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
-      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton',
-      'weekdayTimes', 'weekendTimes'
-    ];
-    
-    const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
-    const STATS_KEYS = ['history', 'stopwatchSessions'];
-    const DAILY_ROUTINE_KEYS = ['dailyTimes'];
 
     let returnedData: any = null;
     // Backwards compatibility for old stringified format
@@ -184,8 +289,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const incomingLastModified = body.lastModified || Date.now();
+    const { data: body, lastModified: incomingLastModified, modifiedCollections = [], modifiedKeys = [], isFullSync = false } = await request.json();
 
     const client = await clientPromise;
     const db = client.db();
@@ -197,17 +301,6 @@ export async function POST(request: Request) {
     const existingRoadmaps = await db.collection('Roadmaps').findOne({ userId: user.userId });
     const existingStats = await db.collection('Stats').findOne({ userId: user.userId });
     const existingDailyRoutine = await db.collection('DailyRoutine').findOne({ userId: user.userId });
-
-    const SETTING_ARRAY_KEYS = [
-      'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
-      'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
-      'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton',
-      'weekdayTimes', 'weekendTimes'
-    ];
-    
-    const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'countdowns', 'plans', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
-    const STATS_KEYS = ['history', 'stopwatchSessions'];
-    const DAILY_ROUTINE_KEYS = ['dailyTimes'];
 
     let existingCloudData: any = null;
     if (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine) {
@@ -303,9 +396,6 @@ export async function POST(request: Request) {
       existingDailyRoutine?.lastModified ? Number(existingDailyRoutine.lastModified) : 0
     );
 
-    const modifiedCollections = body.modifiedCollections;
-    const isFullSync = !modifiedCollections || modifiedCollections.length === 0;
-
     let hasConflict = false;
     if (!body.forceSync) {
       if (isFullSync) {
@@ -331,7 +421,6 @@ export async function POST(request: Request) {
     }
     
     if (body.clearAll === true) {
-      // Complete account reset requested (clearAllData)
       await Promise.all([
         db.collection('DashboardStorage').deleteOne({ userId: user.userId }),
         db.collection('Settings').deleteOne({ userId: user.userId }),
@@ -348,7 +437,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No data provided' }, { status: 400 });
     }
 
-    // Group settings efficiently
     const { state, version } = body.data;
     
     const tasksSpecificData: Record<string, any> = {};
@@ -357,9 +445,9 @@ export async function POST(request: Request) {
     TASK_KEYS.forEach(key => {
       if (state && state[key] !== undefined) {
         tasksSpecificData[key] = state[key];
-        delete state[key]; // Extract from state BEFORE it hits generalSettings/coreData
+        delete state[key];
       }
-      unsetTasksKeys[key] = ""; // Ensure removed from monolithic
+      unsetTasksKeys[key] = "";
     });
 
     const statsSpecificData: Record<string, any> = {};
@@ -368,9 +456,9 @@ export async function POST(request: Request) {
     STATS_KEYS.forEach(key => {
       if (state && state[key] !== undefined) {
         statsSpecificData[key] = state[key];
-        delete state[key]; // Extract from state BEFORE it hits generalSettings/coreData
+        delete state[key];
       }
-      unsetStatsKeys[key] = ""; // Ensure removed from monolithic
+      unsetStatsKeys[key] = "";
     });
 
     const dailyRoutineSpecificData: Record<string, any> = {};
@@ -379,9 +467,9 @@ export async function POST(request: Request) {
     DAILY_ROUTINE_KEYS.forEach(key => {
       if (state && state[key] !== undefined) {
         dailyRoutineSpecificData[key] = state[key];
-        delete state[key]; // Extract from state BEFORE it hits generalSettings/coreData
+        delete state[key];
       }
-      unsetDailyRoutineKeys[key] = ""; // Ensure removed from monolithic
+      unsetDailyRoutineKeys[key] = "";
     });
 
     const displaySettings: Record<string, any> = {};
@@ -394,27 +482,35 @@ export async function POST(request: Request) {
       } else if (typeof state[key] === 'string' || typeof state[key] === 'number') {
         generalSettings[key] = state[key];
       } else {
-        coreData[key] = state[key]; // Arrays and nested objects
+        coreData[key] = state[key];
       }
     });
 
-
     const { notes, roadmaps, ...restCoreData } = coreData;
-
     const settingsSpecificData: Record<string, any> = {};
-    const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys, ...unsetDailyRoutineKeys };
 
     SETTING_ARRAY_KEYS.forEach(key => {
       if (restCoreData[key] !== undefined) {
-        settingsSpecificData[key] = restCoreData[key];
-        delete restCoreData[key]; // Extract from monolithic doc
+        if (isFullSync || modifiedKeys.includes(key)) {
+          settingsSpecificData[key] = restCoreData[key];
+        }
+        delete restCoreData[key];
       }
-      unsetLegacyKeys[key] = ""; // Ensure removed from monolithic doc during migration
     });
+
+    try {
+      require('fs').appendFileSync('D:/productivedashborad/dashboard-cloud/debug-store.txt', 
+        `[${new Date().toISOString()}] POST\n` +
+        `modifiedKeys: ${modifiedKeys.join(', ')}\n` +
+        `isFullSync: ${isFullSync}\n` +
+        `settingsSpecificData has timetableGrid: ${!!settingsSpecificData.timetableGrid}\n\n`
+      );
+    } catch (e) {}
+
+    const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys, ...unsetDailyRoutineKeys };
 
     const newLastModified = Date.now();
     
-    // 1. Update Monolithic Document (Now much lighter)
     if (isFullSync || modifiedCollections.includes('DashboardStorage') || modifiedCollections.includes('Settings')) {
       const updateDoc = {
         version: version || 2,
@@ -437,12 +533,64 @@ export async function POST(request: Request) {
 
     // 2. Save Settings to the isolated Settings collection
     if (isFullSync || modifiedCollections.includes('Settings')) {
-      const settingsDoc = {
+      let settingsDoc: any = {
         displaySettings,
         generalSettings,
         ...settingsSpecificData,
         lastModified: newLastModified
       };
+
+      if (existingSettings) {
+        // Non-destructive preservation for Settings array collections in DB
+        const SETTING_PRESERVE_ARRAY_KEYS = [
+          'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers',
+          'manifestationDesktopPhotos', 'manifestationMobilePhotos',
+          'manifestationCustomQuotes', 'customQuotes', 'customAlarmSounds',
+          'lockedWidgets', 'weekdayTimes', 'weekendTimes'
+        ];
+
+        SETTING_PRESERVE_ARRAY_KEYS.forEach(key => {
+          const srvArr = existingSettings[key];
+          const incArr = settingsDoc[key];
+
+          if (Array.isArray(incArr)) {
+            settingsDoc[key] = incArr;
+          } else if (Array.isArray(srvArr)) {
+            settingsDoc[key] = srvArr;
+          }
+        });
+
+        // Merge displaySettings & generalSettings preserving existing DB values if incoming is missing
+        if (existingSettings.displaySettings && typeof existingSettings.displaySettings === 'object') {
+          settingsDoc.displaySettings = { ...existingSettings.displaySettings, ...(displaySettings || {}) };
+        }
+        if (existingSettings.generalSettings && typeof existingSettings.generalSettings === 'object') {
+          settingsDoc.generalSettings = { ...existingSettings.generalSettings, ...(generalSettings || {}) };
+        }
+
+        // Deep merge hideConfig & mobileHideConfig
+        if (existingSettings.hideConfig && typeof existingSettings.hideConfig === 'object') {
+          settingsDoc.hideConfig = { ...existingSettings.hideConfig, ...(settingsDoc.hideConfig || {}) };
+        }
+        if (existingSettings.mobileHideConfig && typeof existingSettings.mobileHideConfig === 'object') {
+          settingsDoc.mobileHideConfig = { ...existingSettings.mobileHideConfig, ...(settingsDoc.mobileHideConfig || {}) };
+        }
+
+        // Deep merge clockOffsets and widgetOffsets
+        if (existingSettings.clockOffsets && typeof existingSettings.clockOffsets === 'object') {
+          settingsDoc.clockOffsets = { ...existingSettings.clockOffsets, ...(settingsDoc.clockOffsets || {}) };
+        }
+        if (existingSettings.widgetOffsets && typeof existingSettings.widgetOffsets === 'object') {
+          settingsDoc.widgetOffsets = { ...existingSettings.widgetOffsets, ...(settingsDoc.widgetOffsets || {}) };
+        }
+
+        if (settingsDoc.timetableGrid === undefined && existingSettings.timetableGrid && typeof existingSettings.timetableGrid === 'object') {
+          settingsDoc.timetableGrid = existingSettings.timetableGrid;
+        }
+        if (settingsDoc.timetableColors === undefined && existingSettings.timetableColors && typeof existingSettings.timetableColors === 'object') {
+          settingsDoc.timetableColors = existingSettings.timetableColors;
+        }
+      }
 
       await db.collection('Settings').updateOne(
         { userId: user.userId },
@@ -456,7 +604,26 @@ export async function POST(request: Request) {
 
     // 3. Save Tasks to the isolated Tasks collection
     if ((isFullSync || modifiedCollections.includes('Tasks')) && Object.keys(tasksSpecificData).length > 0) {
-      const tasksDoc = { ...tasksSpecificData, lastModified: newLastModified };
+      let tasksDoc: any = { ...tasksSpecificData, lastModified: newLastModified };
+      
+      if (existingTasks) {
+        const TASK_ARRAY_KEYS = ['tasks', 'tomorrowTasks', 'deadlines', 'countdowns', 'plans'];
+        TASK_ARRAY_KEYS.forEach(key => {
+          const srvArr = existingTasks[key];
+          const incArr = tasksDoc[key];
+
+          if (Array.isArray(srvArr) && srvArr.length > 0) {
+            if (!Array.isArray(incArr) || incArr.length === 0) {
+              // Non-destructive preservation: Never wipe existing DB tasks/deadlines with empty arrays from sync glitches
+              tasksDoc[key] = srvArr;
+            } else {
+              // Intelligently merge existing server items with incoming items by ID
+              tasksDoc[key] = mergeArraysByIdServer(incArr, srvArr);
+            }
+          }
+        });
+      }
+
       await db.collection('Tasks').updateOne(
         { userId: user.userId },
         { 
@@ -469,10 +636,18 @@ export async function POST(request: Request) {
 
     // 4. Save Notes to the isolated Notes collection
     if ((isFullSync || modifiedCollections.includes('Notes')) && notes !== undefined) {
+      let notesToSave = notes;
+      if (existingNotes && Array.isArray(existingNotes.notes) && existingNotes.notes.length > 0) {
+        if (!Array.isArray(notes) || notes.length === 0) {
+          notesToSave = existingNotes.notes;
+        } else {
+          notesToSave = mergeNotesServer(notes, existingNotes.notes);
+        }
+      }
       await db.collection('Notes').updateOne(
         { userId: user.userId },
         { 
-          $set: { notes, lastModified: newLastModified },
+          $set: { notes: notesToSave, lastModified: newLastModified },
           $setOnInsert: { userId: user.userId }
         },
         { upsert: true }
@@ -481,10 +656,18 @@ export async function POST(request: Request) {
     
     // 5. Save Roadmaps to the isolated Roadmaps collection
     if ((isFullSync || modifiedCollections.includes('Roadmaps')) && roadmaps !== undefined) {
+      let roadmapsToSave = roadmaps;
+      if (existingRoadmaps && Array.isArray(existingRoadmaps.roadmaps) && existingRoadmaps.roadmaps.length > 0) {
+        if (!Array.isArray(roadmaps) || roadmaps.length === 0) {
+          roadmapsToSave = existingRoadmaps.roadmaps;
+        } else {
+          roadmapsToSave = mergeArraysByIdServer(roadmaps, existingRoadmaps.roadmaps);
+        }
+      }
       await db.collection('Roadmaps').updateOne(
         { userId: user.userId },
         { 
-          $set: { roadmaps, lastModified: newLastModified },
+          $set: { roadmaps: roadmapsToSave, lastModified: newLastModified },
           $setOnInsert: { userId: user.userId }
         },
         { upsert: true }
@@ -520,7 +703,31 @@ export async function POST(request: Request) {
     
     // 7. Save DailyRoutines to the isolated DailyRoutine collection
     if ((isFullSync || modifiedCollections.includes('DailyRoutine')) && Object.keys(dailyRoutineSpecificData).length > 0) {
-      const dailyRoutineDoc = { ...dailyRoutineSpecificData, lastModified: newLastModified };
+      let dailyRoutineDoc: any = { ...dailyRoutineSpecificData, lastModified: newLastModified };
+      const existingDailyTimes = existingDailyRoutine?.dailyTimes || existingStats?.dailyTimes || {};
+      if (existingDailyTimes && Object.keys(existingDailyTimes).length > 0) {
+        const incomingDailyTimes = dailyRoutineDoc.dailyTimes || {};
+        const mergedDailyTimes: Record<string, any> = { ...existingDailyTimes };
+
+        for (const dateKey in incomingDailyTimes) {
+          const incDate = incomingDailyTimes[dateKey] || {};
+          const srvDate = existingDailyTimes[dateKey] || {};
+
+          mergedDailyTimes[dateKey] = {
+            ...srvDate,
+            ...incDate,
+          };
+
+          // Non-destructive preservation of logged timestamps: NEVER overwrite or clear existing logged fields
+          ['wakeupTime', 'workStartedTime', 'sleepTime', 'bedTime'].forEach(field => {
+            if (srvDate[field] && !incDate[field]) {
+              mergedDailyTimes[dateKey][field] = srvDate[field];
+            }
+          });
+        }
+        dailyRoutineDoc.dailyTimes = mergedDailyTimes;
+      }
+
       await db.collection('DailyRoutine').updateOne(
         { userId: user.userId },
         { 

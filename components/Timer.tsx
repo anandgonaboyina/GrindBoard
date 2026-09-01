@@ -33,7 +33,8 @@ export default function Timer() {
     activeTaskId, activeTaskTitle, setActiveTask, updateTaskDuration,
     alarmSound, alarmVolume,
     enableAlarmSound, enableAlarmVibration,
-    isTimerOpen, timerDeviceId, setTimerDeviceId
+    isTimerOpen, timerDeviceId, setTimerDeviceId,
+    clearTimerState,
   } = useDashboardStore();
 
   const resolvedAlarmUrl = useAudioUrl(alarmSound);
@@ -762,12 +763,9 @@ export default function Timer() {
     alertedChunksRef.current = 0;
     lastIntervalAlertMinsRef.current = 0;
     lastIsIntervalEnabledRef.current = false;
-    setTimerLastSavedChunks(0);
-    setTimerLastAlertedChunks(0);
-    setTimerEndAt(null);
-    setTimerPausedLeft(null);
-    setTimerInitialMins(null);
-    setTimerDeviceId(null);
+    // Atomically clear all timer state and immediately push to cloud
+    // so other devices don't see this device's ghost timer on their next refresh
+    clearTimerState();
     stopAlarm();
     stopIntervalBeep();
   };
