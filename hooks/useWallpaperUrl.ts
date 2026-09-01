@@ -16,6 +16,13 @@ export function useWallpaperUrl(url: string | null | undefined) {
       return;
     }
 
+    // Direct support for data and blob URLs
+    if (url.startsWith('data:') || url.startsWith('blob:')) {
+      setResolvedUrl(url);
+      setIsVideo(url.startsWith('data:video/') ? true : false);
+      return;
+    }
+
     // Fallback for regular URLs
     setIsVideo(url.match(/\.(mp4|webm)$/i) ? true : false);
 
