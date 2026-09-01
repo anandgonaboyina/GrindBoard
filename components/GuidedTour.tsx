@@ -481,12 +481,12 @@ export default function GuidedTour() {
       currentTitle = '🎯 Focus Mode Active! Now Unhide It!';
       currentDescription = isDesktopScreen
         ? 'Great job! Non-essential widgets hidden for deep focus. Now press Ctrl+H AGAIN on your keyboard (or tap the Focus Pill) to unhide & restore your full layout!'
-        : 'Great job! Non-essential widgets hidden for deep focus. Now tap the Focus Pill on top AGAIN (or press Ctrl+H) to unhide & restore your full layout!';
+        : 'Great job! Non-essential widgets hidden for deep focus. Now tap the top "Today Hrs" pill AGAIN to unhide & restore your layout!';
     } else {
       currentTitle = isDesktopScreen ? 'Practice Focus Mode (Ctrl+H)' : 'Practice Focus Mode (Focus Pill)';
       currentDescription = isDesktopScreen
         ? 'Want a distraction-free study zone? Press Ctrl+H on your keyboard to enter Focus Mode! In Settings -> Focus / Peek, you can choose exactly what widgets appear or hide during focus, and customize hotkeys!'
-        : 'Want a distraction-free study zone? Tap the Focus Pill on top to enter Focus Mode! In Settings -> Focus / Peek, you can choose exactly what widgets appear or hide during focus, and customize hotkeys!';
+        : 'Want a distraction-free study zone? Tap the top "Today Hrs" pill to enter Focus Mode! (Note: The red eye button on the right toolbar toggles Peek Mode to show only wallpaper; click the same empty spot to get back). No practice required for that, but go ahead and tap the "Today Hrs" pill now to test Focus Mode!';
     }
   }
 
