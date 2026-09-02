@@ -1063,7 +1063,7 @@ const fileStorage = createJSONStorage(() => ({
               const cloudHasSeen = cloudState?.hasSeenOnboarding;
               const mergedHasSeenOnboarding = Boolean(localHasSeen || cloudHasSeen);
 
-              const cloudLastMod = json.data.lastModified ? Number(json.data.lastModified) : 0;
+              const cloudLastMod = json.lastModified ? Number(json.lastModified) : 0;
               const isCloudNewer = cloudLastMod > getSyncLastModified();
 
               // Prioritize local state if it's newer (e.g. user refreshed before 5-second debounce finished saving)

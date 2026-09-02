@@ -68,7 +68,10 @@ export default function ConfirmationModal({
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={() => {
+          if (onCancel) onCancel();
+          onClose();
+        }}
       />
 
       {/* Modal */}
@@ -88,7 +91,10 @@ export default function ConfirmationModal({
             </h3>
           </div>
           <button 
-            onClick={onClose}
+            onClick={() => {
+              if (onCancel) onCancel();
+              onClose();
+            }}
             className={`p-1 rounded-full transition-colors ${
               isDark 
                 ? "text-white/50 hover:bg-white/10 hover:text-white" 

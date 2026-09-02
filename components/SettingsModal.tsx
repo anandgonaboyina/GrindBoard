@@ -37,6 +37,7 @@ export default function SettingsModal() {
   const [showThemeNotice, setShowThemeNotice] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isWallpaperTutorialOpen, setIsWallpaperTutorialOpen] = useState(false);
+  const [isProcessingBackup, setIsProcessingBackup] = useState(false);
 
   const handleRefreshApp = async (e?: React.MouseEvent) => {
     if (e) {
@@ -494,40 +495,48 @@ export default function SettingsModal() {
   }, [setSettingsActiveTab]);
 
   const processBackupDownload = (data: any, filename: string, typeName: string) => {
-    const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
+    setIsProcessingBackup(true);
+    
+    // Defer the heavy JSON.stringify to let React paint the loading state first
+    setTimeout(() => {
+      const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
 
-    if (isWebView2) {
-      fetch('/api/download-echo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          data: JSON.stringify(data, null, 2),
-          name: filename,
-          type: typeName
-        })
-      }).then(res => res.json()).then(result => {
-        if (result.success && result.id) {
-          window.open(window.location.origin + '/download.html?apiId=' + result.id + '&type=' + encodeURIComponent(typeName), '_blank');
-        } else {
-          showAlertModal('Download Error', 'Failed to prepare download.');
-        }
-      }).catch(() => {
-        const encoded = encodeURIComponent(JSON.stringify(data, null, 2));
-        const url = new URL(window.location.origin + '/download.html');
-        url.searchParams.set('data', encoded);
-        url.searchParams.set('name', filename.replace('.json', ''));
-        url.searchParams.set('type', typeName);
-        window.open(url.toString(), '_blank');
-      });
-    } else {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", filename);
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
-    }
+      if (isWebView2) {
+        fetch('/api/download-echo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: JSON.stringify(data, null, 2),
+            name: filename,
+            type: typeName
+          })
+        }).then(res => res.json()).then(result => {
+          if (result.success && result.id) {
+            window.open(window.location.origin + '/download.html?apiId=' + result.id + '&type=' + encodeURIComponent(typeName), '_blank');
+          } else {
+            showAlertModal('Download Error', 'Failed to prepare download.');
+          }
+        }).catch(() => {
+          const encoded = encodeURIComponent(JSON.stringify(data, null, 2));
+          const url = new URL(window.location.origin + '/download.html');
+          url.searchParams.set('data', encoded);
+          url.searchParams.set('name', filename.replace('.json', ''));
+          url.searchParams.set('type', typeName);
+          window.open(url.toString(), '_blank');
+        }).finally(() => {
+          setIsProcessingBackup(false);
+        });
+      } else {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", filename);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+        setIsProcessingBackup(false);
+      }
+    }, 50);
   };
 
   const showBackupModal = (title: string, filename: string, typeName: string, itemsDesc: string, getData: () => any) => {
@@ -579,6 +588,7 @@ export default function SettingsModal() {
   const handleRestorePlanYourDay = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setIsProcessingBackup(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -595,6 +605,8 @@ export default function SettingsModal() {
         showAlertModal('Data Restored', 'Plan Your Day data restored successfully!');
       } catch (err) {
         showAlertModal('Restore Failed', 'Failed to parse backup file.');
+      } finally {
+        setIsProcessingBackup(false);
       }
     };
     reader.readAsText(file);
@@ -614,6 +626,7 @@ export default function SettingsModal() {
   const handleRestoreNotes = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setIsProcessingBackup(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -626,6 +639,8 @@ export default function SettingsModal() {
         }
       } catch (err) {
         showAlertModal('Restore Failed', 'Failed to parse backup file.');
+      } finally {
+        setIsProcessingBackup(false);
       }
     };
     reader.readAsText(file);
@@ -655,6 +670,7 @@ export default function SettingsModal() {
   const handleRestoreSettings = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setIsProcessingBackup(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -670,6 +686,8 @@ export default function SettingsModal() {
         showAlertModal('Data Restored', 'Settings restored successfully!');
       } catch (err) {
         showAlertModal('Restore Failed', 'Failed to parse backup file.');
+      } finally {
+        setIsProcessingBackup(false);
       }
     };
     reader.readAsText(file);
@@ -699,6 +717,7 @@ export default function SettingsModal() {
   const handleRestoreTimetable = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setIsProcessingBackup(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -718,6 +737,8 @@ export default function SettingsModal() {
         }
       } catch (err) {
         showAlertModal('Restore Failed', 'Failed to parse backup file.');
+      } finally {
+        setIsProcessingBackup(false);
       }
     };
     reader.readAsText(file);
@@ -804,6 +825,8 @@ export default function SettingsModal() {
         } catch (err) {
           console.error(err);
           showAlertModal('Import Failed', 'Invalid JSON file format.');
+        } finally {
+          setIsProcessingBackup(false);
         }
       };
 
@@ -820,6 +843,7 @@ export default function SettingsModal() {
     } catch (err) {
       console.error(err);
       showAlertModal('Import Failed', 'Invalid JSON file format.');
+      setIsProcessingBackup(false);
     }
     e.target.value = '';
   };
@@ -2520,18 +2544,22 @@ export default function SettingsModal() {
                       </div>
 
                       {peekModeWallpaper ? (
-                        <div className="relative aspect-video w-full max-w-[200px] rounded-lg overflow-hidden border border-white/20 shadow-md group mt-1">
-                          <img src={peekModeWallpaper} alt="Peek Mode Background" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => setPeekModeWallpaper(null)}
-                              className="p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors cursor-pointer"
-                              title="Remove image"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <div className="w-full max-w-[200px] mt-1">
+                          <CustomWallpaperPreview
+                            url={peekModeWallpaper}
+                            isActive={true}
+                            onClick={() => {}}
+                            onShowAlert={showAlertModal}
+                            onDelete={async (e) => {
+                               e.stopPropagation();
+                               if (peekModeWallpaper.startsWith('custom-')) {
+                                   await deleteWallpaperFromDB(peekModeWallpaper).catch(() => {});
+                               }
+                               setPeekModeWallpaper(null);
+                            }}
+                            label={peekModeWallpaper.startsWith('custom-') ? 'Local File' : 'URL Image'}
+                            aspectClass="aspect-video"
+                          />
                         </div>
                       ) : (
                         <div className="flex gap-2 w-full mt-1">
@@ -2541,19 +2569,16 @@ export default function SettingsModal() {
                               type="file"
                               accept="image/*"
                               className="hidden"
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
                                 if (file.size > 25 * 1024 * 1024) {
                                   showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }
-                                const reader = new FileReader();
-                                reader.onload = (event) => {
-                                  const dataUrl = event.target?.result as string;
-                                  if (dataUrl) setPeekModeWallpaper(dataUrl);
-                                };
-                                reader.readAsDataURL(file);
+                                const id = `custom-peek-${Date.now()}`;
+                                await saveWallpaperToDB(id, file);
+                                setPeekModeWallpaper(id);
                                 e.target.value = '';
                               }}
                             />
@@ -2710,13 +2735,14 @@ export default function SettingsModal() {
                       <div className="flex gap-1.5 w-full sm:w-auto">
                         <button
                           onClick={handleExportData}
-                          className="flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1"
+                          disabled={isProcessingBackup}
+                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
                         >
-                          <Download className="w-3 h-3" /> Export
+                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Export'}
                         </button>
-                        <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-blue-500/20 text-blue-300 rounded text-[9px] md:text-[10px] font-medium border border-blue-500/30 flex items-center gap-1">
-                          <Upload className="w-3 h-3" /> Import
-                          <input type="file" className="hidden" accept=".json" onChange={handleImportData} />
+                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-blue-500/20 text-blue-300 rounded text-[9px] md:text-[10px] font-medium border border-blue-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-blue-500/30'}`}>
+                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Import'}
+                          <input type="file" className="hidden" accept=".json" onChange={(e) => { setIsProcessingBackup(true); handleImportData(e); }} disabled={isProcessingBackup} />
                         </label>
                       </div>
                     </div>
@@ -2733,13 +2759,14 @@ export default function SettingsModal() {
                       <div className="flex gap-1.5 w-full sm:w-auto">
                         <button
                           onClick={handleBackupPlanYourDay}
-                          className="flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1"
+                          disabled={isProcessingBackup}
+                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
                         >
-                          <Download className="w-3 h-3" /> Backup
+                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Backup'}
                         </button>
-                        <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-pink-500/20 text-pink-300 rounded text-[9px] md:text-[10px] font-medium border border-pink-500/30 flex items-center gap-1">
-                          <Upload className="w-3 h-3" /> Restore
-                          <input type="file" className="hidden" accept=".json" onChange={handleRestorePlanYourDay} />
+                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-pink-500/20 text-pink-300 rounded text-[9px] md:text-[10px] font-medium border border-pink-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-pink-500/30'}`}>
+                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Restore'}
+                          <input type="file" className="hidden" accept=".json" onChange={handleRestorePlanYourDay} disabled={isProcessingBackup} />
                         </label>
                       </div>
                     </div>
@@ -2756,13 +2783,14 @@ export default function SettingsModal() {
                       <div className="flex gap-1.5 w-full sm:w-auto">
                         <button
                           onClick={handleBackupNotes}
-                          className="flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1"
+                          disabled={isProcessingBackup}
+                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
                         >
-                          <Download className="w-3 h-3" /> Backup
+                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Backup'}
                         </button>
-                        <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-yellow-500/20 text-yellow-300 rounded text-[9px] md:text-[10px] font-medium border border-yellow-500/30 flex items-center gap-1">
-                          <Upload className="w-3 h-3" /> Restore
-                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreNotes} />
+                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-yellow-500/20 text-yellow-300 rounded text-[9px] md:text-[10px] font-medium border border-yellow-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-yellow-500/30'}`}>
+                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Restore'}
+                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreNotes} disabled={isProcessingBackup} />
                         </label>
                       </div>
                     </div>
@@ -2779,13 +2807,14 @@ export default function SettingsModal() {
                       <div className="flex gap-1.5 w-full sm:w-auto">
                         <button
                           onClick={handleBackupSettings}
-                          className="flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1"
+                          disabled={isProcessingBackup}
+                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
                         >
-                          <Download className="w-3 h-3" /> Backup
+                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Backup'}
                         </button>
-                        <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-blue-500/20 text-blue-300 rounded text-[9px] md:text-[10px] font-medium border border-blue-500/30 flex items-center gap-1">
-                          <Upload className="w-3 h-3" /> Restore
-                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreSettings} />
+                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-blue-500/20 text-blue-300 rounded text-[9px] md:text-[10px] font-medium border border-blue-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-blue-500/30'}`}>
+                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Restore'}
+                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreSettings} disabled={isProcessingBackup} />
                         </label>
                       </div>
                     </div>
@@ -2802,13 +2831,14 @@ export default function SettingsModal() {
                       <div className="flex gap-1.5 w-full sm:w-auto">
                         <button
                           onClick={handleBackupTimetable}
-                          className="flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 text-violet-100"
+                          disabled={isProcessingBackup}
+                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 text-violet-100 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
                         >
-                          <Download className="w-3 h-3" /> Backup
+                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Backup'}
                         </button>
-                        <label className="flex-1 sm:flex-none justify-center cursor-pointer px-2 py-1 md:px-3 md:py-1.5 bg-violet-500/20 text-violet-300 rounded text-[9px] md:text-[10px] font-medium border border-violet-500/30 flex items-center gap-1">
-                          <Upload className="w-3 h-3" /> Restore
-                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreTimetable} />
+                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-violet-500/20 text-violet-300 rounded text-[9px] md:text-[10px] font-medium border border-violet-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-violet-500/30'}`}>
+                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Restore'}
+                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreTimetable} disabled={isProcessingBackup} />
                         </label>
                       </div>
                     </div>
