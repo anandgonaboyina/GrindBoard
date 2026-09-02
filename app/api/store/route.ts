@@ -528,15 +528,15 @@ export async function POST(request: Request) {
     if (state) {
       LOCAL_MEDIA_ARRAY_KEYS.forEach(key => {
         if (Array.isArray(state[key])) {
-          // Keep only http(s) URLs and local IndexedDB keys (starts with "custom-")
-          // Drop any data: base64 strings entirely
+          // Keep ONLY http(s) URLs.
+          // Drop data: base64 strings AND custom- local IndexedDB keys to prevent cross-device broken images.
           state[key] = (state[key] as string[]).filter(
-            (v: string) => typeof v === 'string' && !v.startsWith('data:')
+            (v: string) => typeof v === 'string' && !v.startsWith('data:') && !v.startsWith('custom-')
           );
         }
       });
-      // Also strip base64 from scalar fields that may carry local-only image data
-      if (typeof state.peekModeWallpaper === 'string' && state.peekModeWallpaper.startsWith('data:')) {
+      // Also strip base64 and custom- keys from scalar fields that may carry local-only image data
+      if (typeof state.peekModeWallpaper === 'string' && (state.peekModeWallpaper.startsWith('data:') || state.peekModeWallpaper.startsWith('custom-'))) {
         delete state.peekModeWallpaper;
       }
     }

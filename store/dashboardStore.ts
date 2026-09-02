@@ -556,27 +556,42 @@ const mergeStringArrays = (localArr: any, cloudArr: any, baseArr: any = null, cl
   if (!Array.isArray(cloudArr)) cloudArr = [];
   if (!Array.isArray(baseArr)) baseArr = [];
 
-  const localStr = JSON.stringify(localArr);
-  const cloudStr = JSON.stringify(cloudArr);
-  const baseStr = JSON.stringify(baseArr);
+  // Extract purely local IndexedDB references so they don't interfere with cloud diffing
+  const localCustomRefs = localArr.filter((i: any) => typeof i === 'string' && i.startsWith('custom-'));
+  
+  // Filter them out for the actual cloud merge logic
+  const pureLocal = localArr.filter((i: any) => typeof i !== 'string' || !i.startsWith('custom-'));
+  const pureCloud = cloudArr.filter((i: any) => typeof i !== 'string' || !i.startsWith('custom-'));
+  const pureBase = baseArr.filter((i: any) => typeof i !== 'string' || !i.startsWith('custom-'));
+
+  const localStr = JSON.stringify(pureLocal);
+  const cloudStr = JSON.stringify(pureCloud);
+  const baseStr = JSON.stringify(pureBase);
+
+  let merged: any[] = [];
 
   // 3-way merge if base is available
-  if (baseArr.length > 0 || localArr.length > 0 || cloudArr.length > 0) {
+  if (pureBase.length > 0 || pureLocal.length > 0 || pureCloud.length > 0) {
     const localChanged = localStr !== baseStr;
     const cloudChanged = cloudStr !== baseStr;
 
-    if (localChanged && !cloudChanged) return localArr;
-    if (cloudChanged && !localChanged) return cloudArr;
-    if (localChanged && cloudChanged) {
-      if (localStr === cloudStr) return localArr;
-      return Array.from(new Set([...localArr, ...cloudArr])); // union
+    if (localChanged && !cloudChanged) merged = pureLocal;
+    else if (cloudChanged && !localChanged) merged = pureCloud;
+    else if (localChanged && cloudChanged) {
+      if (localStr === cloudStr) merged = pureLocal;
+      else merged = Array.from(new Set([...pureLocal, ...pureCloud])); // union
+    } else {
+      merged = pureLocal;
     }
+  } else {
+    // Fallback to legacy behavior if no base difference is detectable
+    if (cloudIsNewer) merged = pureCloud;
+    else if (pureLocal.length === 0 && pureCloud.length > 0) merged = pureCloud;
+    else merged = pureLocal;
   }
 
-  // Fallback to legacy behavior if no base difference is detectable
-  if (cloudIsNewer) return cloudArr;
-  if (localArr.length === 0 && cloudArr.length > 0) return cloudArr;
-  return localArr;
+  // Re-attach the local-only references to the final array
+  return Array.from(new Set([...merged, ...localCustomRefs]));
 };
 
 const mergeNotes = (localNotes: any[] = [], cloudNotes: any[] = []): any[] => {
