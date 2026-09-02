@@ -27,7 +27,6 @@ const DEFAULT_ALARM_SOUNDS = [
 
 import { useWallpaperUrl } from '@/hooks/useWallpaperUrl';
 import { saveWallpaperToDB, deleteWallpaperFromDB, saveAudioToDB, deleteAudioFromDB } from '@/lib/indexedDB';
-import { prepareFileForStorage } from '@/lib/imageUtils';
 import { getResolvedAudioUrl } from '@/hooks/useAudioUrl';
 import { CustomWallpaperPreview } from './CustomWallpaperPreview';
 
@@ -2252,10 +2251,10 @@ export default function SettingsModal() {
                                   showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }
-                                const storageItem = await prepareFileForStorage(file, 'custom-desktop');
-                                const storeVal = storageItem.isDataUrl ? storageItem.dataUrl! : storageItem.id;
-                                await saveWallpaperToDB(storageItem.id, file);
-                                setCustomDesktopWallpapers([...customDesktopWallpapers, storeVal]);
+                                // Always use an IndexedDB key — NEVER base64/dataUrl strings
+                                const id = `custom-desktop-${Date.now()}`;
+                                await saveWallpaperToDB(id, file);
+                                setCustomDesktopWallpapers([...customDesktopWallpapers, id]);
                                 if (activeDesktopCustomIndex === null) setActiveDesktopCustomIndex(customDesktopWallpapers.length);
                                 e.target.value = '';
                               }}
@@ -2361,10 +2360,10 @@ export default function SettingsModal() {
                                   showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }
-                                const storageItem = await prepareFileForStorage(file, 'custom-mobile');
-                                const storeVal = storageItem.isDataUrl ? storageItem.dataUrl! : storageItem.id;
-                                await saveWallpaperToDB(storageItem.id, file);
-                                setCustomMobileWallpapers([...customMobileWallpapers, storeVal]);
+                                // Always use an IndexedDB key — NEVER base64/dataUrl strings
+                                const id = `custom-mobile-${Date.now()}`;
+                                await saveWallpaperToDB(id, file);
+                                setCustomMobileWallpapers([...customMobileWallpapers, id]);
                                 if (activeMobileCustomIndex === null) setActiveMobileCustomIndex(customMobileWallpapers.length);
                                 e.target.value = '';
                               }}

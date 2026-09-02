@@ -25,21 +25,14 @@ export default function MiniCalendar() {
     onConfirm: () => {},
   });
 
-  const { deadlines, addDeadline, updateDeadline, deleteDeadline, deleteAllDeadlinesForDay, deleteAllDeadlines, cleanOldDeadlines, toggleCalendar, setIsCalendarBusy } = useDashboardStore();
-
-  // Auto-clean deadlines older than 7 days when calendar mounts
-  useEffect(() => {
-    if (cleanOldDeadlines) {
-      cleanOldDeadlines();
-    }
-  }, [cleanOldDeadlines]);
+  const { deadlines, addDeadline, updateDeadline, deleteDeadline, deleteAllDeadlinesForDay, deleteAllDeadlines, cleanOldDeadlines, toggleCalendar, setIsCalendarBusy, _hasHydrated } = useDashboardStore();
 
   // Sync busy state so Dashboard doesn't auto-hide the calendar while editing
   useEffect(() => {
     setIsCalendarBusy(!!selectedDate || showAllDeadlines || !!editingDeadlineId);
   }, [selectedDate, showAllDeadlines, editingDeadlineId, setIsCalendarBusy]);
 
-  // Live polling for deadlines
+  // Live polling for deadlines — after we get real data, THEN clean stale ones
   useEffect(() => {
     const fetchLiveDeadlines = async () => {
       const token = localStorage.getItem('dashboard_sync_token');
@@ -56,13 +49,19 @@ export default function MiniCalendar() {
             deadlineAlertDays: data.data.deadlineAlertDays !== undefined ? data.data.deadlineAlertDays : state.deadlineAlertDays,
             dismissedDeadlineAlerts: data.data.dismissedDeadlineAlerts || state.dismissedDeadlineAlerts,
           }));
+          // Only clean stale deadlines AFTER we have confirmed live data from the DB.
+          // This prevents accidentally wiping the DB with an empty unhydrated state.
+          if (cleanOldDeadlines && _hasHydrated) {
+            cleanOldDeadlines();
+          }
         }
       } catch (e) {
         // ignore
       }
     };
     fetchLiveDeadlines();
-  }, []);
+  }, [_hasHydrated]);
+
 
   const handleCloseDate = () => {
     if (selectedDate) {

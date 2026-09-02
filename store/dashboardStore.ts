@@ -710,8 +710,25 @@ const performSave = async () => {
       return;
     }
 
+    // Sanitize: strip any base64/data-URL strings from local-only media arrays before sending to the cloud.
+    // Local file uploads live ONLY in IndexedDB — they must never reach MongoDB as base64 strings.
+    const LOCAL_ONLY_MEDIA_KEYS = [
+      'customDesktopWallpapers', 'customMobileWallpapers',
+      'manifestationDesktopPhotos', 'manifestationMobilePhotos',
+    ];
+    if (parsedData?.state) {
+      LOCAL_ONLY_MEDIA_KEYS.forEach(key => {
+        if (Array.isArray(parsedData.state[key])) {
+          parsedData.state[key] = parsedData.state[key].filter(
+            (v: string) => typeof v === 'string' && !v.startsWith('data:')
+          );
+        }
+      });
+    }
+
     const payload = JSON.stringify({ data: parsedData, lastModified, modifiedCollections, modifiedKeys });
     console.log(`[performSave] Payload size: ${(payload.length / 1024).toFixed(2)} KB`);
+
 
     const res = await fetch('/api/store', {
       method: 'POST',
@@ -928,7 +945,23 @@ const fileStorage = createJSONStorage(() => ({
 
             const cloudState = json.data.state || {};
 
+            // Sanitize: strip any base64/data-URL strings from local media arrays.
+            // These may have been saved to the DB by an older version of the app.
+            // They should only ever exist in IndexedDB — not in the cloud-synced state.
+            const CLOUD_LOCAL_MEDIA_KEYS = [
+              'customDesktopWallpapers', 'customMobileWallpapers',
+              'manifestationDesktopPhotos', 'manifestationMobilePhotos',
+            ];
+            CLOUD_LOCAL_MEDIA_KEYS.forEach(key => {
+              if (Array.isArray(cloudState[key])) {
+                cloudState[key] = cloudState[key].filter(
+                  (v: string) => typeof v === 'string' && !v.startsWith('data:')
+                );
+              }
+            });
+
             // Perform deep smart merge to guarantee NO LOCAL DATA (tasks, deadlines, sleep logs, settings) IS EVER WIPED
+
             if (localState) {
               // 1. History (stats)
               const localHistory = localState.history || {};
@@ -1266,6 +1299,32 @@ export const pushDeadlinesToDB = async (payload: any) => {
     });
   } catch (e) {
     console.error("Failed to push deadlines to DB", e);
+  }
+};
+
+export const pushDailyRoutineToDB = async (payload: any) => {
+  if (typeof window === 'undefined') return;
+  const token = localStorage.getItem('dashboard_sync_token');
+  if (!token) return;
+  try {
+    // Use the main /api/store endpoint with DailyRoutine as the modified collection
+    // so it goes through the proper merge logic that never wipes existing wakeup logs.
+    const statePayload = JSON.stringify({
+      data: { state: payload, version: 2 },
+      lastModified: Date.now(),
+      modifiedCollections: ['DailyRoutine'],
+      modifiedKeys: Object.keys(payload)
+    });
+    await fetch('/api/store', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: statePayload
+    });
+  } catch (e) {
+    console.error('Failed to push daily routine to DB', e);
   }
 };
 
@@ -2037,9 +2096,15 @@ export const useDashboardStore = create<DashboardState>()(
         return payload;
       }),
       cleanOldDeadlines: () => set((state) => {
-        const payload = { deadlines: filterActiveDeadlines(state.deadlines) };
-        pushDeadlinesToDB(payload);
-        return payload;
+        const filtered = filterActiveDeadlines(state.deadlines);
+        // Only push to DB if we actually removed something AND the store is hydrated.
+        // NEVER push when state.deadlines is [] (unhydrated default) — that wipes the DB!
+        const didChange = filtered.length !== state.deadlines.length;
+        const isHydrated = useDashboardStore.getState()._hasHydrated;
+        if (didChange && isHydrated && state.deadlines.length > 0) {
+          pushDeadlinesToDB({ deadlines: filtered });
+        }
+        return { deadlines: filtered };
       }),
 
       deadlineAlertDays: 0,
@@ -2238,6 +2303,9 @@ export const useDashboardStore = create<DashboardState>()(
             ...newData[dateKey],
             [field]: timestamp
           };
+          // Immediately push to DB so the wakeup log is never lost.
+          // Use a dedicated push so it isn't lost in the debounced performSave queue.
+          pushDailyRoutineToDB({ dailyTimes: newData });
           return { dailyTimes: newData };
         });
       },
@@ -2649,9 +2717,11 @@ export const useDashboardStore = create<DashboardState>()(
         if (error) {
           console.error("Hydration failed!", error);
         }
-        if (state && typeof state.cleanOldDeadlines === 'function') {
-          state.cleanOldDeadlines();
-        }
+        // NOTE: Do NOT call cleanOldDeadlines() here!
+        // At this point state.deadlines is from localStorage (which may be the default []).
+        // Cloud deadlines haven't been merged yet — calling pushDeadlinesToDB here
+        // would push deadlines:[] and WIPE the entire Deadlines collection in MongoDB.
+        // Deadline cleanup happens safely in MiniCalendar after live data is loaded.
         // Defer setHasHydrated by one microtask tick so any synchronous setState
         // calls from the storage merge (cloud data, conflict resolution, etc.) can
         // settle into the store BEFORE the loading screen lifts and the dashboard renders.

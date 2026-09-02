@@ -42,8 +42,9 @@ export default function DayStartModal() {
   const [confirming, setConfirming] = useState<'wakeupTime' | null>(null);
   const [pendingTime, setPendingTime] = useState<number | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [hasPrompted, setHasPrompted] = useState(false);
   const [quote, setQuote] = useState<{ text: string; author: string } | null>(null);
+  // Track whether we've already shown the modal this session (prevents flicker)
+  const [hasCheckedDB, setHasCheckedDB] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -54,58 +55,96 @@ export default function DayStartModal() {
   const [celebrationQuote, setCelebrationQuote] = useState<{ text: string; author: string } | null>(null);
   const [celebrationTimer, setCelebrationTimer] = useState(5);
 
-  // Auto-open if missing wakeup time for today (checking DB hydration & local cache)
+  // Auto-open if missing wakeup time for today — validates against LIVE DB data, not just local flag
   useEffect(() => {
     if (!_hasHydrated) return;
 
-    const storeState = useDashboardStore.getState();
-    const currentDailyTimes = storeState.dailyTimes?.[today] || dailyTimes[today] || {};
+    const checkAndOpenModal = async () => {
+      const storeState = useDashboardStore.getState();
+      const currentDailyTimes = storeState.dailyTimes?.[today] || dailyTimes[today] || {};
 
-    // Robust check for ANY logged daily time for today (wakeupTime, workStartedTime, sleepTime, etc.)
-    let hasWakeupLogged = !!todayTimes?.wakeupTime ||
-                          !!currentDailyTimes?.wakeupTime ||
-                          !!currentDailyTimes?.workStartedTime ||
-                          !!currentDailyTimes?.sleepTime ||
-                          !!(currentDailyTimes as any)?.bedTime ||
-                          (Object.keys(currentDailyTimes).length > 0);
+      // 1. Initial local check (optimistic)
+      let isLoggedLocally = !!currentDailyTimes?.wakeupTime ||
+                            !!currentDailyTimes?.workStartedTime ||
+                            !!currentDailyTimes?.sleepTime ||
+                            !!(currentDailyTimes as any)?.bedTime ||
+                            (Object.keys(currentDailyTimes).length > 0);
 
-    // Multi-layer fallback check: local storage key & raw local cache dump
-    if (!hasWakeupLogged && typeof window !== 'undefined') {
-      if (localStorage.getItem(`grindboard_wakeup_logged_${today}`) === 'true') {
-        hasWakeupLogged = true;
-      } else {
+      if (!isLoggedLocally && typeof window !== 'undefined') {
         try {
           const rawLocal = localStorage.getItem('dashboard-storage');
           if (rawLocal) {
             const parsed = JSON.parse(rawLocal);
             const cachedToday = parsed?.state?.dailyTimes?.[today];
             if (cachedToday && (cachedToday.wakeupTime || Object.keys(cachedToday).length > 0)) {
-              hasWakeupLogged = true;
+              isLoggedLocally = true;
             }
           }
-        } catch (e) {
-          // ignore fallback parse error
+        } catch (e) { /* ignore */ }
+      }
+
+      const localFlag = typeof window !== 'undefined' && localStorage.getItem(`grindboard_wakeup_logged_${today}`) === 'true';
+      if (localFlag) isLoggedLocally = true;
+
+      let isLoggedFinally = isLoggedLocally;
+
+      // 2. ALWAYS verify with the DB as the source of truth on mount
+      // This guarantees that if the DB wipe/400 error occurred, it will re-prompt!
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
+        if (token) {
+          const res = await fetch('/api/store', {
+            headers: { 'Authorization': `Bearer ${token}` },
+            cache: 'no-store',
+            signal: AbortSignal.timeout(3000)
+          });
+          
+          if (res.ok) {
+            const json = await res.json();
+            const dbDailyTimes = json.data?.state?.dailyTimes || {};
+            const dbToday = dbDailyTimes[today] || {};
+            
+            if (Object.keys(dbToday).length > 0) {
+              // DB has it! Sync local state up.
+              isLoggedFinally = true;
+              useDashboardStore.setState((state) => ({
+                dailyTimes: { ...state.dailyTimes, [today]: dbToday }
+              }));
+              if (typeof window !== 'undefined') {
+                localStorage.setItem(`grindboard_wakeup_logged_${today}`, 'true');
+              }
+            } else {
+              // DB DOES NOT HAVE IT! This means it failed to save or was wiped.
+              // We must invalidate the local flags and force the prompt again!
+              isLoggedFinally = false;
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem(`grindboard_wakeup_logged_${today}`);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Network error / offline — trust the local optimistic state
+      }
+
+      setHasCheckedDB(true);
+
+      if (isLoggedFinally) {
+        // Guarantee modal stays CLOSED
+        if (storeState.isDayStartModalOpen || isDayStartModalOpen) {
+          useDashboardStore.setState({ isDayStartModalOpen: false });
+        }
+      } else {
+        // Not logged anywhere — open the modal
+        if (!storeState.isDayStartModalOpen && !isDayStartModalOpen) {
+          useDashboardStore.setState({ isDayStartModalOpen: true });
         }
       }
-    }
+    };
 
-    if (hasWakeupLogged) {
-      // Mark local storage anchor for fast sync
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`grindboard_wakeup_logged_${today}`, 'true');
-      }
-      // If already logged in DB or local cache, guarantee modal stays CLOSED
-      if (storeState.isDayStartModalOpen || isDayStartModalOpen) {
-        useDashboardStore.setState({ isDayStartModalOpen: false });
-      }
-    } else {
-      // Only show modal if NOT logged in DB and NOT logged in local cache, and hasn't been prompted yet
-      if (!hasPrompted && !storeState.isDayStartModalOpen && !isDayStartModalOpen) {
-        useDashboardStore.setState({ isDayStartModalOpen: true });
-        setHasPrompted(true);
-      }
-    }
-  }, [_hasHydrated, todayTimes, dailyTimes, isDayStartModalOpen, today, hasPrompted]);
+    checkAndOpenModal();
+  }, [_hasHydrated, today]);
+
 
   // Load fresh inspirational/fire-burning quote online (API first with keyword filter, local fallback if offline)
   useEffect(() => {

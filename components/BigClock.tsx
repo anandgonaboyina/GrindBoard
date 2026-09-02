@@ -191,7 +191,7 @@ export default function BigClock() {
 
   return (
     <div
-      className={`flex flex-col w-fit h-fit justify-center pointer-events-none transition-all duration-700 items-center select-none`}
+      className={`bgclock flex flex-col w-fit h-fit justify-center pointer-events-none transition-all duration-700 items-center select-none mt-6 md:mt-0`}
       style={{ zoom: clockScale }}
     >
       {clockVisible && (

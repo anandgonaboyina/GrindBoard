@@ -326,8 +326,8 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const { data: body, lastModified: incomingLastModified, modifiedCollections = [], modifiedKeys = [], isFullSync = false } = await request.json();
+    const payload = await request.json();
+    const { data: body, lastModified: incomingLastModified, modifiedCollections = [], modifiedKeys = [], isFullSync = false } = payload;
 
     const client = await clientPromise;
     const db = client.db();
@@ -495,7 +495,8 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
     
-    if (body.clearAll === true) {
+    // Support both direct { clearAll: true } and wrapped versions
+    if (payload.clearAll === true || (payload.data && payload.data.clearAll === true)) {
       await Promise.all([
         db.collection('DashboardStorage').deleteOne({ userId: user.userId }),
         db.collection('Settings').deleteOne({ userId: user.userId }),
@@ -510,12 +511,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: 'All data cleared' });
     }
     
-    if (!body.data) {
-      console.error('400 Error - No data provided. Body keys:', Object.keys(body));
+    if (!body) {
+      console.error('400 Error - No data provided. Payload keys:', Object.keys(payload));
       return NextResponse.json({ error: 'No data provided' }, { status: 400 });
     }
 
-    const { state, version } = body.data;
+    const { state, version } = body;
+
+    // CRITICAL: Strip any base64/data-URL strings from local-only media arrays.
+    // Local file uploads should ONLY live in the browser's IndexedDB — never in MongoDB.
+    // Keys starting with "custom-" are local IndexedDB references; http(s) URLs are fine.
+    const LOCAL_MEDIA_ARRAY_KEYS = [
+      'customDesktopWallpapers', 'customMobileWallpapers',
+      'manifestationDesktopPhotos', 'manifestationMobilePhotos',
+    ];
+    if (state) {
+      LOCAL_MEDIA_ARRAY_KEYS.forEach(key => {
+        if (Array.isArray(state[key])) {
+          // Keep only http(s) URLs and local IndexedDB keys (starts with "custom-")
+          // Drop any data: base64 strings entirely
+          state[key] = (state[key] as string[]).filter(
+            (v: string) => typeof v === 'string' && !v.startsWith('data:')
+          );
+        }
+      });
+      // Also strip base64 from scalar fields that may carry local-only image data
+      if (typeof state.peekModeWallpaper === 'string' && state.peekModeWallpaper.startsWith('data:')) {
+        delete state.peekModeWallpaper;
+      }
+    }
+
     
     const tasksSpecificData: Record<string, any> = {};
     const unsetTasksKeys: Record<string, string> = {};

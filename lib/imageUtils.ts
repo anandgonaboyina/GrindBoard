@@ -1,5 +1,10 @@
 /**
- * Utility for compressing images for cross-device cloud sync and IndexedDB backup
+ * Utility for preparing uploaded media files for local storage.
+ *
+ * IMPORTANT: Local file uploads are stored ONLY in the browser's IndexedDB.
+ * We NEVER save base64/data-URL strings to Zustand state or the cloud DB —
+ * those payloads are too large (MBs) and would bloat MongoDB and break sync.
+ * Only remote http(s) URLs are allowed in the cloud-synced arrays.
  */
 export async function prepareFileForStorage(file: File, prefix: string = 'custom'): Promise<{
   id: string;
@@ -9,24 +14,7 @@ export async function prepareFileForStorage(file: File, prefix: string = 'custom
   const timestamp = Date.now();
   const id = `${prefix}-${timestamp}`;
 
-  // If it's an image, compress to lightweight WebP Data URL for universal cloud sync
-  if (file.type.startsWith('image/')) {
-    try {
-      const dataUrl = await compressImageToDataUrl(file, 1280, 720, 0.6);
-      // Ensure dataUrl is under 400KB to keep cloud sync fast and avoid Vercel/localStorage quota crashes
-      if (dataUrl && dataUrl.length < 400 * 1024) {
-        return {
-          id,
-          dataUrl,
-          isDataUrl: true,
-        };
-      }
-    } catch (err) {
-      console.warn('Image compression warning, falling back to local ID:', err);
-    }
-  }
-
-  // For videos or large files, return the IndexedDB key
+  // Always store as local IndexedDB key — never as a base64 data URL in the store.
   return {
     id,
     isDataUrl: false,
