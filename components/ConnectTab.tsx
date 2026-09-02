@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore, setAuthTransition } from '@/store/dashboardStore';
+import { createPortal } from 'react-dom';
 import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame, Calendar, Settings, Sparkles, UserX, WifiOff } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
@@ -667,8 +668,9 @@ export default function ConnectTab() {
     setLoadingFriendAction({ friendId, type: 'stats' });
     const token = localStorage.getItem('dashboard_sync_token');
     try {
-      const res = await fetch(`/api/friends/stats?friendId=${friendId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res = await fetch(`/api/friends/stats?friendId=${friendId}&t=${Date.now()}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       if (res.ok) {
@@ -694,8 +696,9 @@ export default function ConnectTab() {
     setLoadingFriendAction({ friendId, type: 'timetable' });
     const token = localStorage.getItem('dashboard_sync_token');
     try {
-      const res = await fetch(`/api/friends/stats?friendId=${friendId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res = await fetch(`/api/friends/stats?friendId=${friendId}&t=${Date.now()}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       if (res.ok) {
@@ -716,8 +719,9 @@ export default function ConnectTab() {
     setLoadingFriendAction({ friendId, type: 'tasks' });
     const token = localStorage.getItem('dashboard_sync_token');
     try {
-      const res = await fetch(`/api/friends/stats?friendId=${friendId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res = await fetch(`/api/friends/stats?friendId=${friendId}&t=${Date.now()}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       if (res.ok) {
@@ -1843,7 +1847,7 @@ export default function ConnectTab() {
       {activeTab === 'groups' && <ConnectGroupsTab />}
 
       {/* Friend Timetable Modal */}
-      {showFriendTimetable && useDashboardStore.getState().viewingFriend && (
+      {showFriendTimetable && useDashboardStore.getState().viewingFriend && typeof document !== 'undefined' ? createPortal(
         <div
           className="fixed inset-0 z-[10005] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-300 p-2 sm:p-4"
           onClick={() => {
@@ -1866,8 +1870,9 @@ export default function ConnectTab() {
             </button>
             <Timetable />
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+      ) : null}
 
       {/* Friend Tasks Modal */}
       {showFriendTasks && useDashboardStore.getState().viewingFriend && (() => {
@@ -1905,12 +1910,12 @@ export default function ConnectTab() {
           return m > 0 ? `${h}h ${m}m` : `${h}h`;
         };
 
-        return (
-          <div className="fixed inset-0 z-[10005] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => {
+        return typeof document !== 'undefined' ? createPortal(
+          <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => {
             setShowFriendTasks(false);
             useDashboardStore.getState().setViewingFriend(null);
           }}>
-            <div className="bg-[#0f0f13] w-full max-w-2xl max-h-[85vh] rounded-2xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#0f0f13]/95 backdrop-blur-xl w-full max-w-sm md:w-[360px] h-[80vh] md:max-h-[85vh] rounded-2xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
               <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                 <button
                   onClick={() => {
@@ -2035,8 +2040,9 @@ export default function ConnectTab() {
                 )}
               </div>
             </div>
-          </div>
-        );
+          </div>,
+          document.body
+        ) : null;
       })()}
 
       {/* Friend Settings Modal */}

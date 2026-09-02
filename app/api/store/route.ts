@@ -767,14 +767,10 @@ export async function POST(request: Request) {
           const srvArr = existingTasks[key];
           const incArr = tasksDoc[key];
 
-          if (Array.isArray(srvArr) && srvArr.length > 0) {
-            if (!Array.isArray(incArr) || incArr.length === 0) {
-              // Non-destructive preservation: Never wipe existing DB tasks/deadlines with empty arrays from sync glitches
-              tasksDoc[key] = srvArr;
-            } else {
-              // Intelligently merge existing server items with incoming items by ID
-              tasksDoc[key] = mergeArraysByIdServer(incArr, srvArr);
-            }
+          // If the client explicitly sent an array (even an empty one, meaning they deleted the last item),
+          // we must accept it as the new source of truth. Otherwise, preserve the server's array.
+          if (incArr === undefined && srvArr !== undefined) {
+            tasksDoc[key] = srvArr;
           }
         });
       }

@@ -101,13 +101,22 @@ export async function GET(request: Request) {
       friendship.taskSharing?.[friendId] !== false &&
       friendship.taskSharing?.[friendId?.toString()] !== false;
 
+    let finalTasks = isTaskSharingEnabled ? (parsedData.tasks || []) : undefined;
+    let finalTomorrowTasks = isTaskSharingEnabled ? (parsedData.tomorrowTasks || []) : undefined;
+
+    if (finalTasks && finalTomorrowTasks) {
+      // Ensure no overlap between tabs to prevent duplicate key errors (mirroring client hydration)
+      const tIds = new Set(finalTasks.map((t: any) => t.id));
+      finalTomorrowTasks = finalTomorrowTasks.filter((t: any) => !tIds.has(t.id));
+    }
+
     const publicStats = {
       username: friendAccount?.username || friendId,
       history: parsedData.history || {},
       dailyTimes: parsedData.dailyTimes || {},
-      tasksCompleted: (parsedData.tasks || []).filter((t: any) => t.completed).length,
-      tasks: isTaskSharingEnabled ? (parsedData.tasks || []) : undefined,
-      tomorrowTasks: isTaskSharingEnabled ? (parsedData.tomorrowTasks || []) : undefined,
+      tasksCompleted: finalTasks ? finalTasks.filter((t: any) => t.completed).length : 0,
+      tasks: finalTasks,
+      tomorrowTasks: finalTomorrowTasks,
       taskGroupNames: isTaskSharingEnabled ? (parsedData.taskGroupNames || ['Core Tasks', 'Daily Routine', 'Milestones']) : undefined,
       deadlines: parsedData.deadlines || [],
       timetableGrid: parsedData.timetableGrid || null,

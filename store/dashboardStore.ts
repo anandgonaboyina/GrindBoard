@@ -551,6 +551,15 @@ const mergeArraysById = (localArr: any[] = [], cloudArr: any[] = []) => {
   return Array.from(map.values());
 };
 
+const deduplicateTasks = (tasks: any[]) => {
+  if (!Array.isArray(tasks)) return [];
+  const map = new Map();
+  tasks.forEach(t => {
+    if (t && t.id) map.set(t.id, t);
+  });
+  return Array.from(map.values());
+};
+
 const mergeStringArrays = (localArr: any, cloudArr: any, baseArr: any = null, cloudIsNewer: boolean = false) => {
   if (!Array.isArray(localArr)) localArr = [];
   if (!Array.isArray(cloudArr)) cloudArr = [];
@@ -659,7 +668,7 @@ const performSave = async () => {
       hasUnsavedChanges = false;
       saveTimeout = null;
     } else {
-      saveTimeout = setTimeout(performSave, 500);
+      saveTimeout = setTimeout(performSave, 5000);
     }
     isSaving = false;
     return;
@@ -799,15 +808,35 @@ const performSave = async () => {
         deadlineAlertDays: parsedCloud.state.deadlineAlertDays || parsedLocal.state.deadlineAlertDays,
         dismissedDeadlineAlerts: parsedCloud.state.dismissedDeadlineAlerts || parsedLocal.state.dismissedDeadlineAlerts,
 
-        // Intelligently merge arrays to prevent data loss, prioritizing local changes
-        tasks: mergeArraysById(parsedLocal.state.tasks, parsedCloud.state.tasks),
-        tomorrowTasks: mergeArraysById(parsedLocal.state.tomorrowTasks, parsedCloud.state.tomorrowTasks),
+        // Tasks prioritize local state during a 409 conflict because this device is actively making edits
+        ...(() => {
+          const tTasks = deduplicateTasks(parsedLocal.state.tasks || parsedCloud.state.tasks);
+          let tomTasks = deduplicateTasks(parsedLocal.state.tomorrowTasks || parsedCloud.state.tomorrowTasks);
+          // Ensure no overlap between tabs to prevent duplicates
+          const tIds = new Set(tTasks.map((t: any) => t.id));
+          tomTasks = tomTasks.filter((t: any) => !tIds.has(t.id));
+          return { tasks: tTasks, tomorrowTasks: tomTasks };
+        })(),
+        tasksDate: (parsedLocal.state.tasksDate && parsedCloud.state.tasksDate) ? 
+          (parsedLocal.state.tasksDate > parsedCloud.state.tasksDate ? parsedLocal.state.tasksDate : parsedCloud.state.tasksDate) : 
+          (parsedLocal.state.tasksDate || parsedCloud.state.tasksDate || getLocalDateString()),
         // Countdowns are decoupled and always take cloud truth
         countdowns: parsedCloud.state.countdowns || parsedLocal.state.countdowns,
         notes: mergeNotes(parsedLocal.state.notes, parsedCloud.state.notes),
         roadmaps: mergeArraysById(parsedLocal.state.roadmaps, parsedCloud.state.roadmaps),
         plans: mergeArraysById(parsedLocal.state.plans, parsedCloud.state.plans),
         customAlarmSounds: mergeArraysById(parsedLocal.state.customAlarmSounds, parsedCloud.state.customAlarmSounds),
+
+        // Timer state is strictly LOCAL. Cloud should never overwrite the current device's timer during a conflict.
+        timerEndAt: parsedLocal.state.timerEndAt ?? null,
+        timerPausedLeft: parsedLocal.state.timerPausedLeft ?? null,
+        timerInitialMins: parsedLocal.state.timerInitialMins ?? null,
+        timerDeviceId: parsedLocal.state.timerDeviceId ?? null,
+        timerLastUpdated: parsedLocal.state.timerLastUpdated || 0,
+        timerLastSavedChunks: parsedLocal.state.timerLastSavedChunks || 0,
+        timerLastAlertedChunks: parsedLocal.state.timerLastAlertedChunks || 0,
+        activeTaskId: parsedLocal.state.activeTaskId ?? null,
+        activeTaskTitle: parsedLocal.state.activeTaskTitle ?? null,
 
         manifestationDesktopPhotos: mergeStringArrays(parsedLocal.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos), // In 409, base is cloud so local overrides if different
         manifestationMobilePhotos: mergeStringArrays(parsedLocal.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos),
@@ -827,6 +856,27 @@ const performSave = async () => {
         activeManifestationMobileIndex: (parsedLocal.state.activeManifestationMobileIndex !== undefined && parsedLocal.state.activeManifestationMobileIndex !== null)
           ? parsedLocal.state.activeManifestationMobileIndex : parsedCloud.state.activeManifestationMobileIndex,
       };
+
+      // Safety: clear any expired timer during conflict merge
+      if (mergedState.timerEndAt && mergedState.timerEndAt < Date.now()) {
+        mergedState.timerEndAt = null;
+        mergedState.timerPausedLeft = null;
+        mergedState.timerInitialMins = null;
+        mergedState.timerDeviceId = null;
+        mergedState.timerLastSavedChunks = 0;
+        mergedState.timerLastAlertedChunks = 0;
+        mergedState.activeTaskId = null;
+        mergedState.activeTaskTitle = null;
+      }
+
+      const transientKeys = [
+        'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
+        'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
+        'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
+        'widgetZIndices', 'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen',
+        'selectedGroupId'
+      ];
+      transientKeys.forEach(key => delete (mergedState as any)[key]);
 
       const mergedData = { version: 2, state: mergedState };
       const mergedStr = JSON.stringify(mergedData);
@@ -889,12 +939,23 @@ if (typeof window !== 'undefined') {
     try {
       const stateObj = useDashboardStore.getState();
       if (!stateObj || typeof stateObj !== 'object' || !stateObj._hasHydrated) return;
-      const str = JSON.stringify({ state: stateObj });
+      
+      const filteredState = { ...stateObj } as any;
+      const transientKeys = [
+        'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
+        'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
+        'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
+        'widgetZIndices', 'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen'
+      ];
+      transientKeys.forEach(key => delete filteredState[key]);
+
+      const str = JSON.stringify({ state: filteredState });
       pendingValue = str;
+      hasUnsavedChanges = true;
       hasUnsavedChanges = true;
       failedToLoadDB = false;
       if (!saveTimeout) {
-        saveTimeout = setTimeout(performSave, 500);
+        saveTimeout = setTimeout(performSave, 5000);
       }
     } catch (e) {
       console.warn("Auto sync trigger failed:", e);
@@ -1002,17 +1063,27 @@ const fileStorage = createJSONStorage(() => ({
               const cloudHasSeen = cloudState?.hasSeenOnboarding;
               const mergedHasSeenOnboarding = Boolean(localHasSeen || cloudHasSeen);
 
-              const mergedTasks = mergeArraysById(localState.tasks, cloudState.tasks);
-              const mergedTomorrowTasks = mergeArraysById(localState.tomorrowTasks, cloudState.tomorrowTasks);
+              const cloudLastMod = json.data.lastModified ? Number(json.data.lastModified) : 0;
+              const isCloudNewer = cloudLastMod > getSyncLastModified();
+
+              // Prioritize local state if it's newer (e.g. user refreshed before 5-second debounce finished saving)
+              const _mergedTasks = deduplicateTasks(isCloudNewer ? (cloudState.tasks || localState.tasks) : (localState.tasks || cloudState.tasks));
+              let _mergedTomorrowTasks = deduplicateTasks(isCloudNewer ? (cloudState.tomorrowTasks || localState.tomorrowTasks) : (localState.tomorrowTasks || cloudState.tomorrowTasks));
+              // Ensure no overlap between tabs to prevent duplicate key errors
+              const _tIds = new Set(_mergedTasks.map(t => t.id));
+              _mergedTomorrowTasks = _mergedTomorrowTasks.filter(t => !_tIds.has(t.id));
+              const mergedTasks = _mergedTasks;
+              const mergedTomorrowTasks = _mergedTomorrowTasks;
+
+              const mergedTasksDate = (localState.tasksDate && cloudState.tasksDate) ? 
+                (localState.tasksDate > cloudState.tasksDate ? localState.tasksDate : cloudState.tasksDate) : 
+                (cloudState.tasksDate || localState.tasksDate || getLocalDateString());
               const mergedDeadlines = filterActiveDeadlines(mergeArraysById(localState.deadlines, cloudState.deadlines));
 
               const mergedNotes = mergeNotes(localState.notes, cloudState.notes);
               const mergedRoadmaps = mergeArraysById(localState.roadmaps, cloudState.roadmaps);
               const mergedPlans = mergeArraysById(localState.plans, cloudState.plans);
               const mergedCustomAlarmSounds = mergeArraysById(localState.customAlarmSounds, cloudState.customAlarmSounds);
-
-              const cloudLastMod = json.data.lastModified ? Number(json.data.lastModified) : 0;
-              const isCloudNewer = cloudLastMod > getSyncLastModified();
 
               const baseState = lastSavedValue ? (JSON.parse(lastSavedValue).state || {}) : {};
               const mergedManifestationDesktopPhotos = mergeStringArrays(localState.manifestationDesktopPhotos, cloudState.manifestationDesktopPhotos, baseState.manifestationDesktopPhotos, isCloudNewer);
@@ -1067,6 +1138,7 @@ const fileStorage = createJSONStorage(() => ({
                 activeManifestationDesktopIndex,
                 activeManifestationMobileIndex,
                 peekModeWallpaper: mergedPeekModeWallpaper,
+                tasksDate: mergedTasksDate,
                 hideConfig: mergedHideConfig,
                 mobileHideConfig: mergedMobileHideConfig,
                 history: mergedHistory,
@@ -1131,9 +1203,10 @@ const fileStorage = createJSONStorage(() => ({
               if (isDifferentFromCloud) {
                 pendingValue = mergedStr;
                 hasUnsavedChanges = true;
+                hasUnsavedChanges = true;
                 setSyncLastModified(Date.now());
                 if (!saveTimeout) {
-                  saveTimeout = setTimeout(performSave, 500);
+                  saveTimeout = setTimeout(performSave, 5000);
                 }
               } else {
                 setSyncLastModified(json.lastModified);
@@ -1241,7 +1314,7 @@ const fileStorage = createJSONStorage(() => ({
     hasUnsavedChanges = true;
 
     if (!isSaving && !saveTimeout) {
-      saveTimeout = setTimeout(performSave, 500);
+      saveTimeout = setTimeout(performSave, 5000);
     }
   },
   removeItem: async (_name: string): Promise<void> => {
@@ -1459,9 +1532,11 @@ export const useDashboardStore = create<DashboardState>()(
         });
       },
 
-      setTasks: (tasks, tab = 'today') => set(tab === 'today' ? { tasks } : { tomorrowTasks: tasks }),
+      setTasks: (tasks, tab = 'today') => {
+        set(tab === 'today' ? { tasks } : { tomorrowTasks: tasks });
+      },
 
-      addTask: (title, duration, tab = 'today', groupId = 0) =>
+      addTask: (title, duration, tab = 'today', groupId = 0) => {
         set((state) => {
           const newTask = {
             id: Date.now().toString(),
@@ -1475,9 +1550,10 @@ export const useDashboardStore = create<DashboardState>()(
             return { tasks: [...state.tasks, newTask] };
           }
           return { tomorrowTasks: [...state.tomorrowTasks, newTask] };
-        }),
+        });
+      },
 
-      toggleTask: (id, tab = 'today') =>
+      toggleTask: (id, tab = 'today') => {
         set((state) => {
           if (tab === 'today') {
             return {
@@ -1491,9 +1567,10 @@ export const useDashboardStore = create<DashboardState>()(
               t.id === id ? { ...t, completed: !t.completed } : t
             ),
           };
-        }),
+        });
+      },
 
-      deleteTask: (id, tab = 'today') =>
+      deleteTask: (id, tab = 'today') => {
         set((state) => {
           const isCurrentlyActive = state.activeTaskId === id;
           if (tab === 'today') {
@@ -1506,9 +1583,10 @@ export const useDashboardStore = create<DashboardState>()(
             tomorrowTasks: state.tomorrowTasks.filter((t) => t.id !== id),
             ...(isCurrentlyActive && { activeTaskId: null, activeTaskTitle: null })
           };
-        }),
+        });
+      },
 
-      moveTaskTab: (id, fromTab) =>
+      moveTaskTab: (id, fromTab) => {
         set((state) => {
           if (fromTab === 'today') {
             const taskToMove = state.tasks.find(t => t.id === id);
@@ -1525,9 +1603,10 @@ export const useDashboardStore = create<DashboardState>()(
               tasks: [...state.tasks, taskToMove]
             };
           }
-        }),
+        });
+      },
 
-      updateTaskTitle: (id, title, tab = 'today') =>
+      updateTaskTitle: (id, title, tab = 'today') => {
         set((state) => {
           const isCurrentlyActive = state.activeTaskId === id;
           if (tab === 'today') {
@@ -1544,7 +1623,9 @@ export const useDashboardStore = create<DashboardState>()(
             ),
             ...(isCurrentlyActive && { activeTaskTitle: title }),
           };
-        }),
+        });
+        get().forceInstantSave();
+      },
 
       toggleHide: () => set((state) => ({ isHidden: !state.isHidden })),
 
@@ -1642,23 +1723,28 @@ export const useDashboardStore = create<DashboardState>()(
       activeTaskId: null,
       activeTaskTitle: null,
       setActiveTask: (id, title) => set({ activeTaskId: id, activeTaskTitle: title }),
-      updateTaskDuration: (id, decreaseMins) => set((state) => {
-        const isPersonal = state.tasks.some(t => t.id === id) || state.tomorrowTasks.some(t => t.id === id);
-        
-        if (isPersonal) {
-          return {
-            tasks: state.tasks.map(t => t.id === id ? {
-              ...t,
-              duration: Math.max(0, t.duration - decreaseMins),
-              timeSpent: (t.timeSpent || 0) + decreaseMins
-            } : t),
-            tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? {
-              ...t,
-              duration: Math.max(0, t.duration - decreaseMins),
-              timeSpent: (t.timeSpent || 0) + decreaseMins
-            } : t)
-          };
-        }
+      updateTaskDuration: (id, decreaseMins) => {
+        set((state) => {
+          const isPersonal = state.tasks.some(t => t.id === id) || state.tomorrowTasks.some(t => t.id === id);
+          
+          if (isPersonal) {
+            const mapTask = (t: any) => {
+              if (t.id === id) {
+                 const newDuration = Math.max(0, t.duration - decreaseMins);
+                 return {
+                   ...t,
+                   duration: newDuration,
+                   timeSpent: (t.timeSpent || 0) + decreaseMins,
+                   completed: t.completed || (newDuration === 0)
+                 };
+              }
+              return t;
+            };
+            return {
+              tasks: state.tasks.map(mapTask),
+              tomorrowTasks: state.tomorrowTasks.map(mapTask)
+            };
+          }
 
         let foundGroup: any = null;
         let foundTask: any = null;
@@ -1758,33 +1844,34 @@ export const useDashboardStore = create<DashboardState>()(
         }
 
         return state;
-      }),
+      });
+      },
       editTaskDuration: (id, newDuration, tab = 'today') => set((state) => {
-        if (tab === 'today') {
-          return { tasks: state.tasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
-        }
+          if (tab === 'today') {
+            return { tasks: state.tasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
+          }
         return { tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
       }),
       editTaskTimeSpent: (id, newTimeSpent, tab = 'today') => set((state) => {
-        const updateTasks = (tasks: Task[]) => tasks.map(t => {
-          if (t.id === id) {
-            const diff = newTimeSpent - (t.timeSpent || 0);
-            return {
-              ...t,
-              timeSpent: Math.max(0, newTimeSpent),
-              duration: Math.max(0, t.duration - diff)
-            };
+          const updateTasks = (tasks: Task[]) => tasks.map(t => {
+            if (t.id === id) {
+              const diff = newTimeSpent - (t.timeSpent || 0);
+              return {
+                ...t,
+                timeSpent: Math.max(0, newTimeSpent),
+                duration: Math.max(0, t.duration - diff)
+              };
+            }
+            return t;
+          });
+          
+          if (tab === 'today') {
+            return { tasks: updateTasks(state.tasks) };
           }
-          return t;
-        });
-        
-        if (tab === 'today') {
-          return { tasks: updateTasks(state.tasks) };
-        }
-        return { tomorrowTasks: updateTasks(state.tomorrowTasks) };
+          return { tomorrowTasks: updateTasks(state.tomorrowTasks) };
       }),
       reorderTasks: (tab, startIndex, endIndex) => set((state) => {
-        const list = tab === 'today' ? Array.from(state.tasks) : Array.from(state.tomorrowTasks);
+          const list = tab === 'today' ? Array.from(state.tasks) : Array.from(state.tomorrowTasks);
         const [removed] = list.splice(startIndex, 1);
         list.splice(endIndex, 0, removed);
         return tab === 'today' ? { tasks: list } : { tomorrowTasks: list };
@@ -2624,7 +2711,7 @@ export const useDashboardStore = create<DashboardState>()(
           'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
           'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
           'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
-          'isAlarmPlaying', 'isTourOpen', 'isNewsOpen'
+          'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'selectedGroupId'
         ];
         transientKeys.forEach(key => {
           if (persistedState[key] !== undefined) {
