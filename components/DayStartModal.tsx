@@ -86,7 +86,9 @@ export default function DayStartModal() {
       const localFlag = typeof window !== 'undefined' && localStorage.getItem(`grindboard_wakeup_logged_${today}`) === 'true';
       if (localFlag) isLoggedLocally = true;
 
-      let isLoggedFinally = isLoggedLocally;
+      const sessionDismissed = typeof window !== 'undefined' && sessionStorage.getItem(`grindboard_wakeup_dismissed_${today}`) === 'true';
+
+      let isLoggedFinally = isLoggedLocally || sessionDismissed;
 
       // 2. ALWAYS verify with the DB as the source of truth on mount
       // This guarantees that if the DB wipe/400 error occurred, it will re-prompt!
@@ -113,12 +115,13 @@ export default function DayStartModal() {
               if (typeof window !== 'undefined') {
                 localStorage.setItem(`grindboard_wakeup_logged_${today}`, 'true');
               }
-            } else {
-              // DB DOES NOT HAVE IT! This means it failed to save or was wiped.
-              // We must invalidate the local flags and force the prompt again!
-              isLoggedFinally = false;
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem(`grindboard_wakeup_logged_${today}`);
+            } else if (isLoggedLocally) {
+              // Local has it, but DB doesn't (sync delay or offline).
+              // Trust local state and don't aggressively wipe or re-prompt.
+              isLoggedFinally = true;
+              // Silently push to DB to repair the missing cloud data
+              if (currentDailyTimes) {
+                useDashboardStore.getState().updateDailyTime(today, 'wakeupTime', currentDailyTimes.wakeupTime || Date.now());
               }
             }
           }
@@ -309,7 +312,12 @@ export default function DayStartModal() {
       style={{ zIndex: 999999 }}
       className="fixed inset-0 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-300 pointer-events-auto"
       onClick={(e) => {
-        if (e.target === e.currentTarget) toggleDayStartModal();
+        if (e.target === e.currentTarget) {
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`grindboard_wakeup_dismissed_${today}`, 'true');
+          }
+          toggleDayStartModal();
+        }
       }}
     >
       {/* Relative wrapper centering the modal on screen */}
@@ -410,7 +418,12 @@ export default function DayStartModal() {
 
               {/* Highlighted Close Button */}
               <button
-                onClick={toggleDayStartModal}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem(`grindboard_wakeup_dismissed_${today}`, 'true');
+                  }
+                  toggleDayStartModal();
+                }}
                 className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-500/40 rounded-xl font-bold flex items-center gap-1.5 shadow-[0_0_12px_rgba(239,68,68,0.25)] transition-all cursor-pointer text-xs active:scale-95 shrink-0"
                 title="Dismiss prompt if working past 12 AM and haven't slept yet"
               >

@@ -1051,6 +1051,10 @@ const fileStorage = createJSONStorage(() => ({
                 ? localState.activeManifestationMobileIndex
                 : cloudState.activeManifestationMobileIndex;
 
+              const mergedPeekModeWallpaper = (localState.peekModeWallpaper && (localState.peekModeWallpaper.startsWith('data:') || localState.peekModeWallpaper.startsWith('custom-'))) 
+                ? localState.peekModeWallpaper 
+                : (cloudState.peekModeWallpaper !== undefined ? cloudState.peekModeWallpaper : localState.peekModeWallpaper);
+
               // 4. Construct Merged State
               //    Cloud wins for settings/data, but LOCAL ALWAYS WINS for timer state.
               //    Timer is fundamentally device-local — cloud must never override what
@@ -1062,6 +1066,7 @@ const fileStorage = createJSONStorage(() => ({
                 activeMobileCustomIndex,
                 activeManifestationDesktopIndex,
                 activeManifestationMobileIndex,
+                peekModeWallpaper: mergedPeekModeWallpaper,
                 hideConfig: mergedHideConfig,
                 mobileHideConfig: mergedMobileHideConfig,
                 history: mergedHistory,
