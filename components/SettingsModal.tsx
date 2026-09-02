@@ -1078,21 +1078,25 @@ export default function SettingsModal() {
                       </button>
                     </div>
                     {/* 1. Dashboard Launcher Visibility Toggle */}
-                    <div className="flex items-center justify-between p-1 md:p-1.5 rounded-xl bg-white/5 border border-amber-500/20">
-                      <div className="flex items-center gap-2">
-                        <div className="p-1 bg-amber-500/20 text-amber-300 rounded-lg border border-amber-500/30">
-                          <Sparkles className="w-5 h-5" />
+                    <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-amber-900/40 via-orange-900/30 to-black/40 border border-amber-500/30 gap-1 shadow-sm overflow-hidden mb-2">
+                      <div className="flex items-center gap-1 sm:gap-2.5 min-w-0">
+                        <div className="p-1 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-sm text-amber-200">Show Manifestation Button on Dashboard</span>
-                          <span className="text-[9px] md:text-[10px] text-white/50 mt-0.5">Toggle visibility of the Manifestation / Vision Board launcher button on top-right corner</span>
+                        <div className="min-w-0">
+                          <h4 className="text-[10px] sm:text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                            <span className="truncate text-amber-200">Manifestation Button</span>
+                          </h4>
+                          <p className="text-[9px] sm:text-[10px] text-white/60 leading-tight mt-0.5 max-w-[200px] sm:max-w-none">
+                            Toggle visibility of the Vision Board launcher.
+                          </p>
                         </div>
                       </div>
                       <button
                         onClick={() => setShowManifestationBoard(!showManifestationBoard)}
-                        className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors shrink-0 ${showManifestationBoard ? 'bg-amber-500' : 'bg-white/20'}`}
+                        className={`relative inline-flex h-4 w-8 sm:h-5 sm:w-10 items-center rounded-full transition-colors shrink-0 ${showManifestationBoard ? 'bg-amber-500' : 'bg-white/20'}`}
                       >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showManifestationBoard ? 'translate-x-5' : 'translate-x-1'}`} />
+                        <span className={`inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform ${showManifestationBoard ? 'translate-x-4 sm:translate-x-5' : 'translate-x-1'}`} />
                       </button>
                     </div>
 
@@ -2150,7 +2154,7 @@ export default function SettingsModal() {
                 <div className="flex flex-col gap-4 md:gap-6 h-full pb-4">
 
 
-                  <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-black/40 border border-blue-500/30 gap-2 shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-black/40 border border-blue-500/30 gap-2 shadow-sm overflow-hidden shrink-0">
                     <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                       <div className="p-1.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
                         <MonitorPlay className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
