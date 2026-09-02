@@ -2613,6 +2613,20 @@ export const useDashboardStore = create<DashboardState>()(
       ),
       merge: (persistedState: any, currentState: DashboardState) => {
         if (!persistedState) return currentState;
+
+        // Force UI transient states to remain closed on page load, overriding any stale localStorage
+        const transientKeys = [
+          'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
+          'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
+          'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
+          'isAlarmPlaying', 'isTourOpen', 'isNewsOpen'
+        ];
+        transientKeys.forEach(key => {
+          if (persistedState[key] !== undefined) {
+            delete persistedState[key];
+          }
+        });
+
         // Fix for PC users stuck with the mobile default wallpaper from old cycleBackground logic
         if (persistedState.wallpaper === "/wallpapers/defaultWallpaper2.jpeg") {
           persistedState.wallpaper = "/wallpapers/naruto.webp";
