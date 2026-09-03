@@ -57,7 +57,8 @@ export default function VideoBackground() {
   const finalIsVideo = (isMissing || !resolvedUrl) ? Boolean(fallbackUrl.match(/\.(mp4|webm)$/i)) : isVideo;
 
   // Auto-fallback: If the active custom wallpaper is missing (e.g. it's a local file from another device),
-  // automatically switch to the first available URL wallpaper, or an existing local wallpaper.
+  // automatically switch to an existing local wallpaper on this device.
+  // We do NOT fallback to a URL wallpaper automatically, to prevent unwanted defaults.
   useEffect(() => {
     if (isMissing && !isPeekActive) {
       const arr = isMobile ? customMobileWallpapers : customDesktopWallpapers;
@@ -66,15 +67,7 @@ export default function VideoBackground() {
       if (currentIndex !== null && currentIndex >= 0 && currentIndex < arr.length) {
         const findValidIndex = async () => {
           try {
-            // 1. Synchronously find a URL wallpaper first (guaranteed to be available across devices)
-            const urlIndex = arr.findIndex((url, idx) => idx !== currentIndex && url.startsWith('http'));
-            if (urlIndex !== -1) {
-              if (isMobile) useDashboardStore.getState().setActiveMobileCustomIndex(urlIndex);
-              else useDashboardStore.getState().setActiveDesktopCustomIndex(urlIndex);
-              return;
-            }
-
-            // 2. Try to find an existing local wallpaper on this device
+            // Try to find an existing local wallpaper on this device
             for (let i = 0; i < arr.length; i++) {
                if (i === currentIndex || !arr[i].startsWith('custom-')) continue;
                try {
@@ -88,14 +81,8 @@ export default function VideoBackground() {
                  console.warn("Error checking local wallpaper fallback", e);
                }
             }
-            
-            // 3. Nothing is available, clear the active selection to fall back to the default
-            if (isMobile) useDashboardStore.getState().setActiveMobileCustomIndex(null);
-            else useDashboardStore.getState().setActiveDesktopCustomIndex(null);
           } catch (err) {
             console.error("Error in wallpaper fallback", err);
-            if (isMobile) useDashboardStore.getState().setActiveMobileCustomIndex(null);
-            else useDashboardStore.getState().setActiveDesktopCustomIndex(null);
           }
         };
         
@@ -103,6 +90,39 @@ export default function VideoBackground() {
       }
     }
   }, [isMissing, isPeekActive, isMobile, activeMobileCustomIndex, activeDesktopCustomIndex, customMobileWallpapers, customDesktopWallpapers]);
+
+  // Dedicated Peek Mode Wallpaper Auto-Fallback:
+  // If Peek Mode is active and the assigned peek wallpaper is missing on this device,
+  // automatically find another available custom photo/video on this device and point peekModeWallpaper to it.
+  useEffect(() => {
+    if (isMissing && isPeekActive) {
+      const arr = isMobile ? customMobileWallpapers : customDesktopWallpapers;
+
+      const findValidPeekFallback = async () => {
+        try {
+          // Try to find any other uploaded custom wallpaper present in this device's IndexedDB
+          for (const item of arr) {
+            if (item && typeof item === 'string' && item.startsWith('custom-') && item !== peekModeWallpaper) {
+              try {
+                const exists = await getWallpaperFromDB(item);
+                if (exists) {
+                  useDashboardStore.getState().setPeekModeWallpaper(item);
+                  return;
+                }
+              } catch (e) {
+                console.warn("Error checking local peek wallpaper fallback", e);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error in peek mode wallpaper auto-fallback", err);
+        }
+      };
+
+      findValidPeekFallback();
+    }
+  }, [isMissing, isPeekActive, peekModeWallpaper, isMobile, customMobileWallpapers, customDesktopWallpapers, bgSrc]);
+
 
   return (
     <>

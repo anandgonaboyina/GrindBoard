@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useDashboardStore } from '@/store/dashboardStore';
+import { useDashboardStore, pushTimetableToDB } from '@/store/dashboardStore';
 import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
@@ -496,7 +496,7 @@ export default function SettingsModal() {
 
   const processBackupDownload = (data: any, filename: string, typeName: string) => {
     setIsProcessingBackup(true);
-    
+
     // Defer the heavy JSON.stringify to let React paint the loading state first
     setTimeout(() => {
       const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
@@ -723,14 +723,16 @@ export default function SettingsModal() {
       try {
         const data = JSON.parse(event.target?.result as string);
         if (data.timetableGrid) {
-          useDashboardStore.setState({
+          const restoredPayload = {
             timetableGrid: data.timetableGrid || {},
             timetableColors: data.timetableColors || {},
             weekdayTimes: data.weekdayTimes || [],
             weekendTimes: data.weekendTimes || [],
             timetableStartTime: data.timetableStartTime || 540,
             timetableWeekendStartTime: data.timetableWeekendStartTime || 540,
-          });
+          };
+          useDashboardStore.setState(restoredPayload);
+          pushTimetableToDB(restoredPayload);
           showAlertModal('Data Restored', 'Timetable restored successfully!');
         } else {
           showAlertModal('Restore Failed', 'Invalid backup file format for Timetable.');
@@ -2458,26 +2460,6 @@ export default function SettingsModal() {
                   <div className="flex flex-col p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
                     <h4 className="font-medium text-[11px] md:text-xs">Visibility Shortcuts</h4>
 
-                    <div className="flex items-center justify-between p-2 md:p-2.5 rounded-md bg-white/5">
-                      <div className="flex flex-col pr-1 min-w-0">
-                        <span className="text-[10px] md:text-[11px] font-medium leading-tight whitespace-nowrap">Peek Action</span>
-                        <p className="text-[8px] md:text-[9px] text-white/50 mt-0.5 leading-tight truncate">Action on clicking eye icon.</p>
-                      </div>
-                      <div className="flex bg-black/40 p-0.5 rounded border border-white/10 shrink-0">
-                        <button
-                          onClick={() => setPanicButtonMode('redirect')}
-                          className={`px-2 py-1 md:px-3 md:py-1 text-[8px] md:text-[9px] font-bold rounded-sm transition-all ${panicButtonMode === 'redirect' ? 'bg-red-500/20 text-red-400' : 'text-white/40 hover:text-white/80'}`}
-                        >
-                          Redirect
-                        </button>
-                        <button
-                          onClick={() => setPanicButtonMode('hide')}
-                          className={`px-2 py-1 md:px-3 md:py-1 text-[8px] md:text-[9px] font-bold rounded-sm transition-all ${panicButtonMode === 'hide' ? 'bg-blue-500/20 text-blue-400' : 'text-white/40 hover:text-white/80'}`}
-                        >
-                          Hide UI
-                        </button>
-                      </div>
-                    </div>
 
                     <div className="p-2 md:p-2 rounded-md bg-red-500/10 border border-red-500/20 flex flex-col gap-1">
                       <p className="text-[8px] md:text-[9px] text-red-300 leading-relaxed">
@@ -2529,7 +2511,7 @@ export default function SettingsModal() {
                           <ImageIcon className="text-red-400 w-3.5 h-3.5 shrink-0" />
                           <div>
                             <span className="text-[10px] md:text-[11px] font-bold text-red-300 block">Peek Mode Custom Image</span>
-                            <p className="text-[8px] md:text-[9px] text-white/50">Custom image to show when Peek Mode is active.</p>
+                            <p className="text-[8px] md:text-[9px] text-white/50">Upload or choose a custom background image/video for Peek Mode on this device.</p>
                           </div>
                         </div>
                         {peekModeWallpaper && (
@@ -2538,73 +2520,97 @@ export default function SettingsModal() {
                             onClick={() => setPeekModeWallpaper(null)}
                             className="px-2 py-0.5 bg-red-500/20 text-red-300 hover:bg-red-500/40 rounded text-[9px] font-semibold border border-red-500/30 transition-colors cursor-pointer"
                           >
-                            Clear
+                            Clear Selection
                           </button>
                         )}
                       </div>
 
-                      {peekModeWallpaper ? (
+                      {peekModeWallpaper && (
                         <div className="w-full max-w-[200px] mt-1">
                           <CustomWallpaperPreview
                             url={peekModeWallpaper}
                             isActive={true}
-                            onClick={() => {}}
+                            onClick={() => { }}
                             onShowAlert={showAlertModal}
                             onDelete={async (e) => {
-                               e.stopPropagation();
-                               if (peekModeWallpaper.startsWith('custom-')) {
-                                   await deleteWallpaperFromDB(peekModeWallpaper).catch(() => {});
-                               }
-                               setPeekModeWallpaper(null);
+                              e.stopPropagation();
+                              if (peekModeWallpaper.startsWith('custom-')) {
+                                await deleteWallpaperFromDB(peekModeWallpaper).catch(() => { });
+                              }
+                              setPeekModeWallpaper(null);
                             }}
                             label={peekModeWallpaper.startsWith('custom-') ? 'Local File' : 'URL Image'}
                             aspectClass="aspect-video"
                           />
                         </div>
-                      ) : (
-                        <div className="flex gap-2 w-full mt-1">
-                          <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 border-dashed rounded text-[9px] md:text-[10px] text-red-200 cursor-pointer transition-colors">
-                            <Upload className="w-3 h-3" /> Upload Image
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                if (file.size > 25 * 1024 * 1024) {
-                                  showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
-                                  return;
-                                }
-                                const id = `custom-peek-${Date.now()}`;
-                                await saveWallpaperToDB(id, file);
-                                setPeekModeWallpaper(id);
-                                e.target.value = '';
-                              }}
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setConfirmModal({
-                                isOpen: true,
-                                title: 'Add Peek Mode Image URL',
-                                message: 'Enter direct image URL (https://...):',
-                                isPrompt: true,
-                                promptPlaceholder: 'https://...',
-                                onConfirm: (url?: string) => {
-                                  if (url && url.trim().startsWith('http')) {
-                                    setPeekModeWallpaper(url.trim());
-                                  }
-                                }
-                              });
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
-                          >
-                            Add URL
-                          </button>
-                        </div>
                       )}
+
+                      {/* Action buttons: Upload new file or add URL */}
+                      <div className="flex gap-2 w-full mt-1">
+                        <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 border-dashed rounded text-[9px] md:text-[10px] text-red-200 cursor-pointer transition-colors">
+                          <Upload className="w-3 h-3" /> Upload Image/Video
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 25 * 1024 * 1024) {
+                                showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
+                                return;
+                              }
+                              const id = `custom-peek-${Date.now()}`;
+                              await saveWallpaperToDB(id, file);
+                              setPeekModeWallpaper(id);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfirmModal({
+                              isOpen: true,
+                              title: 'Add Peek Mode Image/Video URL',
+                              message: 'Enter direct image or video URL (https://...):',
+                              isPrompt: true,
+                              promptPlaceholder: 'https://...',
+                              onConfirm: (url?: string) => {
+                                if (url && url.trim().startsWith('http')) {
+                                  setPeekModeWallpaper(url.trim());
+                                }
+                              }
+                            });
+                          }}
+                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                        >
+                          Add URL
+                        </button>
+                      </div>
+
+                      {/* Quick Select from Gallery Wallpapers */}
+                      {(() => {
+                        const allWallpapers = Array.from(new Set([...(customDesktopWallpapers || []), ...(customMobileWallpapers || [])]));
+                        if (allWallpapers.length === 0) return null;
+                        return (
+                          <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-white/10">
+                            <span className="text-[9px] text-white/60 font-semibold">Or Pick from Uploaded Wallpapers:</span>
+                            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                              {allWallpapers.map((url, idx) => (
+                                <button
+                                  key={`peek-pick-${idx}`}
+                                  type="button"
+                                  onClick={() => setPeekModeWallpaper(url)}
+                                  className={`px-2 py-1 rounded text-[8px] font-mono border transition-all truncate max-w-[120px] ${peekModeWallpaper === url ? 'bg-red-500/30 text-red-200 border-red-500/60 font-bold' : 'bg-black/40 text-white/60 border-white/10 hover:text-white hover:bg-white/10'}`}
+                                >
+                                  {url.startsWith('custom-') ? `Local Photo #${idx + 1}` : (url.split('/').pop() || `URL #${idx + 1}`)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 bg-white/5 p-2 md:p-2.5 rounded-md">

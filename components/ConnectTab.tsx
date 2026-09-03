@@ -1915,7 +1915,7 @@ export default function ConnectTab() {
             setShowFriendTasks(false);
             useDashboardStore.getState().setViewingFriend(null);
           }}>
-            <div className="bg-[#0f0f13]/95 backdrop-blur-xl w-full max-w-sm md:w-[360px] h-[80vh] md:max-h-[85vh] rounded-2xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#0f0f13]/95 backdrop-blur-xl w-full max-w-sm md:w-[360px] max-h-[80vh] md:max-h-[85vh] h-auto rounded-2xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
               <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                 <button
                   onClick={() => {

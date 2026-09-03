@@ -169,10 +169,16 @@ export default function ManifestationBoard() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isManifestationOpen, setIsManifestationOpen, handleNext, handlePrev]);
 
+    const dashboardScale = useDashboardStore((state) => state.dashboardScale || 1);
+    const mobileDashboardScale = useDashboardStore((state) => state.mobileDashboardScale || 1);
+    const activeDashboardScale = isMobile ? mobileDashboardScale : dashboardScale;
+    const inverseScale = activeDashboardScale > 0 ? (1 / activeDashboardScale) : 1;
+
     if (!isManifestationOpen) return null;
 
     return (
         <div
+            style={{ zoom: inverseScale }}
             className="fixed inset-0 z-[99999] bg-black flex flex-col justify-between p-2 sm:p-4 animate-in fade-in duration-300 select-none w-screen h-screen overflow-hidden"
         >
 

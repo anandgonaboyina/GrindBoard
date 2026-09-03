@@ -116,6 +116,8 @@ function mergeStringArraysServer(incoming: any[] = [], existing: any[] = []): an
   });
 }
 
+const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime'];
+
 const SETTING_ARRAY_KEYS = [
   'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
   'activeDesktopCustomIndex', 'activeMobileCustomIndex', 'customLocalWallpaperName',
@@ -129,7 +131,8 @@ const SETTING_ARRAY_KEYS = [
   'selectedSound', 'alarmVolume', 'dashboardScale', 'mobileDashboardScale', 'dockScale',
   'dockOffset', 'rightWidgetsOffset', 'enableRightToolbarPeek', 'autoOpenCountdowns',
   'activeTheme', 'clockStyle', 'fontFamily', 'soundEffectVolume', 'currentBgType',
-  'selectedLocalWallpaperName'
+  'selectedLocalWallpaperName',
+  ...TIMETABLE_KEYS
 ];
 
 const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'plans'];
@@ -137,7 +140,6 @@ const COUNTDOWN_KEYS = ['countdowns'];
 const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
 const STATS_KEYS = ['history', 'stopwatchSessions'];
 const DAILY_ROUTINE_KEYS = ['dailyTimes'];
-const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes'];
 
 export async function GET(request: Request) {
   try {
@@ -438,11 +440,6 @@ export async function POST(request: Request) {
         if (existingRoadmaps && existingRoadmaps.roadmaps) {
           reconstructedState.roadmaps = existingRoadmaps.roadmaps;
         }
-        TIMETABLE_KEYS.forEach(key => {
-          if (existingTimetable && existingTimetable[key] !== undefined) {
-            reconstructedState[key] = existingTimetable[key];
-          }
-        });
         DEADLINE_KEYS.forEach(key => {
           if (existingDeadlines && existingDeadlines[key] !== undefined) {
             reconstructedState[key] = existingDeadlines[key];
@@ -528,15 +525,15 @@ export async function POST(request: Request) {
     if (state) {
       LOCAL_MEDIA_ARRAY_KEYS.forEach(key => {
         if (Array.isArray(state[key])) {
-          // Keep ONLY http(s) URLs.
-          // Drop data: base64 strings AND custom- local IndexedDB keys to prevent cross-device broken images.
+          // Keep ONLY http(s) URLs and custom- local IndexedDB keys.
+          // Drop data: base64 strings to prevent DB bloat.
           state[key] = (state[key] as string[]).filter(
-            (v: string) => typeof v === 'string' && !v.startsWith('data:') && !v.startsWith('custom-')
+            (v: string) => typeof v === 'string' && !v.startsWith('data:')
           );
         }
       });
-      // Also strip base64 and custom- keys from scalar fields that may carry local-only image data
-      if (typeof state.peekModeWallpaper === 'string' && (state.peekModeWallpaper.startsWith('data:') || state.peekModeWallpaper.startsWith('custom-'))) {
+      // Only strip base64 data URIs (data:image/...) from scalar fields to prevent DB bloat. Keep custom- string references.
+      if (typeof state.peekModeWallpaper === 'string' && state.peekModeWallpaper.startsWith('data:')) {
         delete state.peekModeWallpaper;
       }
     }
@@ -575,16 +572,7 @@ export async function POST(request: Request) {
       unsetDailyRoutineKeys[key] = "";
     });
 
-    const timetableSpecificData: Record<string, any> = {};
-    const unsetTimetableKeys: Record<string, string> = {};
 
-    TIMETABLE_KEYS.forEach(key => {
-      if (state && state[key] !== undefined) {
-        timetableSpecificData[key] = state[key];
-        delete state[key];
-      }
-      unsetTimetableKeys[key] = "";
-    });
 
     const deadlineSpecificData: Record<string, any> = {};
     const unsetDeadlineKeys: Record<string, string> = {};
@@ -632,24 +620,9 @@ export async function POST(request: Request) {
       );
     } catch (e) {}
 
-    const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys, ...unsetDailyRoutineKeys, ...unsetTimetableKeys, ...unsetDeadlineKeys };
+    const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys, ...unsetDailyRoutineKeys, ...unsetDeadlineKeys };
 
     const newLastModified = Date.now();
-
-    if (isFullSync || modifiedCollections.includes('Timetable')) {
-      const timetableDoc = {
-        ...timetableSpecificData,
-        lastModified: newLastModified
-      };
-      await db.collection('Timetable').updateOne(
-        { userId: user.userId },
-        { 
-          $set: timetableDoc,
-          $setOnInsert: { userId: user.userId }
-        },
-        { upsert: true }
-      );
-    }
 
     if (isFullSync || modifiedCollections.includes('Deadlines')) {
       const deadlinesDoc = {
@@ -888,7 +861,8 @@ export async function POST(request: Request) {
         { upsert: true }
       );
     }
-    
+
+
     let userQuery: any;
     try {
       userQuery = { _id: new ObjectId(user.userId) };

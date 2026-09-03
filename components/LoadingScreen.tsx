@@ -141,14 +141,14 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
       {/* 1. TOP HEADER BAR */}
       <header className="relative z-10 w-full flex items-center justify-between">
         {/* AES Encryption Badge */}
-        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-mono font-semibold text-emerald-400/90 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full backdrop-blur-md shadow-sm">
+        <div className="flex items-center gap-1.5 text-[9px] sm:text-xs font-mono font-semibold text-emerald-400/90 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full backdrop-blur-md shadow-sm">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
           <span className="tracking-wide"><pre>AES-256 Encrypted</pre></span>
         </div>
 
         {/* Sync Mode Badge */}
         {isOnline ? (
-          <div className="text-[10px] sm:text-xs font-mono font-bold text-blue-400 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 inline-flex items-center gap-2 shadow-sm backdrop-blur-md">
+          <div className="text-[9px] sm:text-xs font-mono font-bold text-blue-400 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 inline-flex items-center gap-2 shadow-sm backdrop-blur-md">
             <div className="animate-flip-3d flex items-center justify-center">
               <Wifi className="w-3.5 h-3.5 text-blue-400" />
             </div>

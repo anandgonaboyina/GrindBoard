@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import NewsCardStack from './NewsCardStack';
-import type { NewsPost } from './admin/AdminNewsManager';
+import type { NewsPost } from './admin/News/AdminNewsManager';
 import { syncNewsMediaCache } from '@/lib/newsMediaCache';
 
 export default function NewsModal() {

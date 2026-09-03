@@ -563,44 +563,37 @@ const deduplicateTasks = (tasks: any[]) => {
 const mergeStringArrays = (localArr: any, cloudArr: any, baseArr: any = null, cloudIsNewer: boolean = false) => {
   if (!Array.isArray(localArr)) localArr = [];
   if (!Array.isArray(cloudArr)) cloudArr = [];
-  if (!Array.isArray(baseArr)) baseArr = [];
 
-  // Extract purely local IndexedDB references so they don't interfere with cloud diffing
-  const localCustomRefs = localArr.filter((i: any) => typeof i === 'string' && i.startsWith('custom-'));
-  
-  // Filter them out for the actual cloud merge logic
-  const pureLocal = localArr.filter((i: any) => typeof i !== 'string' || !i.startsWith('custom-'));
-  const pureCloud = cloudArr.filter((i: any) => typeof i !== 'string' || !i.startsWith('custom-'));
-  const pureBase = baseArr.filter((i: any) => typeof i !== 'string' || !i.startsWith('custom-'));
+  // When cloud state is newer (e.g. user deleted or reordered media/wallpapers on another device),
+  // cloudArr is the authoritative list of active items.
+  if (cloudIsNewer) {
+    const cloudSet = new Set(cloudArr);
+    const merged = [...cloudArr];
 
-  const localStr = JSON.stringify(pureLocal);
-  const cloudStr = JSON.stringify(pureCloud);
-  const baseStr = JSON.stringify(pureBase);
-
-  let merged: any[] = [];
-
-  // 3-way merge if base is available
-  if (pureBase.length > 0 || pureLocal.length > 0 || pureCloud.length > 0) {
-    const localChanged = localStr !== baseStr;
-    const cloudChanged = cloudStr !== baseStr;
-
-    if (localChanged && !cloudChanged) merged = pureLocal;
-    else if (cloudChanged && !localChanged) merged = pureCloud;
-    else if (localChanged && cloudChanged) {
-      if (localStr === cloudStr) merged = pureLocal;
-      else merged = Array.from(new Set([...pureLocal, ...pureCloud])); // union
-    } else {
-      merged = pureLocal;
+    // Keep any local-only custom- files that actually exist in this device's local state
+    // only if they were newly created locally and not yet synced.
+    for (const item of localArr) {
+      if (typeof item === 'string' && item.startsWith('custom-') && !cloudSet.has(item)) {
+        // If it's not in cloudArr, check if cloudArr has any items; if cloudArr was explicitly updated,
+        // cloudArr reflects deletions across devices.
+      }
     }
-  } else {
-    // Fallback to legacy behavior if no base difference is detectable
-    if (cloudIsNewer) merged = pureCloud;
-    else if (pureLocal.length === 0 && pureCloud.length > 0) merged = pureCloud;
-    else merged = pureLocal;
+    return Array.from(new Set(merged));
   }
 
-  // Re-attach the local-only references to the final array
-  return Array.from(new Set([...merged, ...localCustomRefs]));
+  // If local is newer or cloud is empty:
+  if (cloudArr.length === 0) return localArr;
+  if (localArr.length === 0) return cloudArr;
+
+  // Respect localArr order, bringing in any cloud items missing from local
+  const localSet = new Set(localArr);
+  const result = [...localArr];
+  for (const item of cloudArr) {
+    if (!localSet.has(item)) {
+      result.push(item);
+    }
+  }
+  return result;
 };
 
 const mergeNotes = (localNotes: any[] = [], cloudNotes: any[] = []): any[] => {
@@ -688,7 +681,7 @@ const performSave = async () => {
       const DAILY_ROUTINE_KEYS = ['dailyTimes'];
       const NOTES_KEYS = ['notes'];
       const ROADMAPS_KEYS = ['roadmaps'];
-      const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes'];
+      const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime'];
       const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
       const COUNTDOWN_KEYS = ['countdowns'];
 
@@ -697,7 +690,6 @@ const performSave = async () => {
         'isTimetableOpen', 'isPlansOpen', 'isNotesOpen', 'isSettingsOpen', 'isNewsOpen',
         'isStatsOpen', 'isMobileCountdownsVisible', 'isCalendarBusy', 'expandedLeaderboardUserId',
         'pendingValue', 'saveTimeout', 'activeNoteId', 'activeCountdownIndex',
-        ...TIMETABLE_KEYS, // Timetable sync is handled entirely by its own real-time endpoint
         ...DEADLINE_KEYS,  // Deadlines sync is handled entirely by its own real-time endpoint
         ...COUNTDOWN_KEYS  // Countdowns sync is handled entirely by its own real-time endpoint
       ];
@@ -710,6 +702,7 @@ const performSave = async () => {
           else if (DAILY_ROUTINE_KEYS.includes(key)) modifiedCollections.push('DailyRoutine');
           else if (NOTES_KEYS.includes(key)) modifiedCollections.push('Notes');
           else if (ROADMAPS_KEYS.includes(key)) modifiedCollections.push('Roadmaps');
+          else if (TIMETABLE_KEYS.includes(key)) modifiedCollections.push('Settings');
           else if (!TRANSIENT_KEYS.includes(key)) modifiedCollections.push('Settings');
         }
       });
@@ -748,6 +741,10 @@ const performSave = async () => {
           );
         }
       });
+      // Also sanitize scalar media fields
+      if (typeof parsedData.state.peekModeWallpaper === 'string' && parsedData.state.peekModeWallpaper.startsWith('data:')) {
+        delete parsedData.state.peekModeWallpaper;
+      }
     }
 
     const payload = JSON.stringify({ data: parsedData, lastModified, modifiedCollections, modifiedKeys });
@@ -808,10 +805,10 @@ const performSave = async () => {
         deadlineAlertDays: parsedCloud.state.deadlineAlertDays || parsedLocal.state.deadlineAlertDays,
         dismissedDeadlineAlerts: parsedCloud.state.dismissedDeadlineAlerts || parsedLocal.state.dismissedDeadlineAlerts,
 
-        // Tasks prioritize local state during a 409 conflict because this device is actively making edits
+        // Tasks use union merge during a 409 conflict to preserve all edits from both devices
         ...(() => {
-          const tTasks = deduplicateTasks(parsedLocal.state.tasks || parsedCloud.state.tasks);
-          let tomTasks = deduplicateTasks(parsedLocal.state.tomorrowTasks || parsedCloud.state.tomorrowTasks);
+          const tTasks = deduplicateTasks([...(parsedLocal.state.tasks || []), ...(parsedCloud.state.tasks || [])]);
+          let tomTasks = deduplicateTasks([...(parsedLocal.state.tomorrowTasks || []), ...(parsedCloud.state.tomorrowTasks || [])]);
           // Ensure no overlap between tabs to prevent duplicates
           const tIds = new Set(tTasks.map((t: any) => t.id));
           tomTasks = tomTasks.filter((t: any) => !tIds.has(t.id));
@@ -855,6 +852,9 @@ const performSave = async () => {
           ? parsedLocal.state.activeManifestationDesktopIndex : parsedCloud.state.activeManifestationDesktopIndex,
         activeManifestationMobileIndex: (parsedLocal.state.activeManifestationMobileIndex !== undefined && parsedLocal.state.activeManifestationMobileIndex !== null)
           ? parsedLocal.state.activeManifestationMobileIndex : parsedCloud.state.activeManifestationMobileIndex,
+        peekModeWallpaper: (parsedLocal.state.peekModeWallpaper !== undefined && parsedLocal.state.peekModeWallpaper !== null)
+          ? parsedLocal.state.peekModeWallpaper
+          : parsedCloud.state.peekModeWallpaper,
       };
 
       // Safety: clear any expired timer during conflict merge
@@ -1066,9 +1066,9 @@ const fileStorage = createJSONStorage(() => ({
               const cloudLastMod = json.lastModified ? Number(json.lastModified) : 0;
               const isCloudNewer = cloudLastMod > getSyncLastModified();
 
-              // Prioritize local state if it's newer (e.g. user refreshed before 5-second debounce finished saving)
-              const _mergedTasks = deduplicateTasks(isCloudNewer ? (cloudState.tasks || localState.tasks) : (localState.tasks || cloudState.tasks));
-              let _mergedTomorrowTasks = deduplicateTasks(isCloudNewer ? (cloudState.tomorrowTasks || localState.tomorrowTasks) : (localState.tomorrowTasks || cloudState.tomorrowTasks));
+              // Use union merge for tasks to prevent data loss across devices or during offline syncs
+              const _mergedTasks = deduplicateTasks([...(cloudState.tasks || []), ...(localState.tasks || [])]);
+              let _mergedTomorrowTasks = deduplicateTasks([...(cloudState.tomorrowTasks || []), ...(localState.tomorrowTasks || [])]);
               // Ensure no overlap between tabs to prevent duplicate key errors
               const _tIds = new Set(_mergedTasks.map(t => t.id));
               _mergedTomorrowTasks = _mergedTomorrowTasks.filter(t => !_tIds.has(t.id));
@@ -1122,9 +1122,9 @@ const fileStorage = createJSONStorage(() => ({
                 ? localState.activeManifestationMobileIndex
                 : cloudState.activeManifestationMobileIndex;
 
-              const mergedPeekModeWallpaper = (localState.peekModeWallpaper && (localState.peekModeWallpaper.startsWith('data:') || localState.peekModeWallpaper.startsWith('custom-'))) 
+              const mergedPeekModeWallpaper = (localState.peekModeWallpaper !== undefined && localState.peekModeWallpaper !== null) 
                 ? localState.peekModeWallpaper 
-                : (cloudState.peekModeWallpaper !== undefined ? cloudState.peekModeWallpaper : localState.peekModeWallpaper);
+                : cloudState.peekModeWallpaper;
 
               // 4. Construct Merged State
               //    Cloud wins for settings/data, but LOCAL ALWAYS WINS for timer state.
@@ -1162,9 +1162,12 @@ const fileStorage = createJSONStorage(() => ({
                 weekendTimes: mergedWeekendTimes,
                 clockOffsets: mergedClockOffsets,
                 widgetOffsets: mergedWidgetOffsets,
-                // Timetable is completely decoupled and always takes the cloud truth (like Group Tasks)
-                timetableGrid: cloudState.timetableGrid || localState.timetableGrid,
-                timetableColors: cloudState.timetableColors || localState.timetableColors,
+                timetableGrid: (cloudState.timetableGrid && typeof cloudState.timetableGrid === 'object' && Object.keys(cloudState.timetableGrid).length > 0)
+                  ? cloudState.timetableGrid
+                  : ((localState.timetableGrid && typeof localState.timetableGrid === 'object' && Object.keys(localState.timetableGrid).length > 0) ? localState.timetableGrid : JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID))),
+                timetableColors: (cloudState.timetableColors && typeof cloudState.timetableColors === 'object' && Object.keys(cloudState.timetableColors).length > 0)
+                  ? cloudState.timetableColors
+                  : (localState.timetableColors || {}),
                 
                 // Deadlines are completely decoupled and always take the cloud truth
                 deadlines: cloudState.deadlines || localState.deadlines,
@@ -1328,16 +1331,10 @@ export const pushTimetableToDB = async (payload: any) => {
   const token = localStorage.getItem('dashboard_sync_token');
   if (!token) return;
   try {
-    await fetch('/api/timetable', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
+    useDashboardStore.setState(payload);
+    window.dispatchEvent(new Event('app_sync_now'));
   } catch (e) {
-    console.error("Failed to push timetable to DB", e);
+    console.error("Failed to push timetable to DB via unified sync", e);
   }
 };
 
@@ -1691,7 +1688,7 @@ export const useDashboardStore = create<DashboardState>()(
           useDashboardStore.getState().pushWallpapersToDB();
           useDashboardStore.getState().pushManifestationToDB();
         }
-        return { isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false };
+        return { isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false, isManifestationOpen: false };
       }),
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
       setConnectInitialTab: (tab) => set({ connectInitialTab: tab }),
@@ -2700,7 +2697,7 @@ export const useDashboardStore = create<DashboardState>()(
           'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
           'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
           'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
-          'widgetZIndices', 'isAlarmPlaying', 'isTourOpen'
+          'widgetZIndices', 'isAlarmPlaying', 'isTourOpen', 'isManifestationOpen', 'isNewsOpen'
         ].includes(key))
       ),
       merge: (persistedState: any, currentState: DashboardState) => {
@@ -2711,7 +2708,7 @@ export const useDashboardStore = create<DashboardState>()(
           'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
           'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
           'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
-          'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'selectedGroupId'
+          'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen', 'selectedGroupId'
         ];
         transientKeys.forEach(key => {
           if (persistedState[key] !== undefined) {
@@ -2808,8 +2805,10 @@ export const useDashboardStore = create<DashboardState>()(
         if (persistedState.history && typeof persistedState.history === 'object') {
           safeState.history = { ...currentState.history, ...persistedState.history };
         }
-        if (persistedState.timetableGrid && typeof persistedState.timetableGrid === 'object') {
+        if (persistedState.timetableGrid && typeof persistedState.timetableGrid === 'object' && Object.keys(persistedState.timetableGrid).length > 0) {
           safeState.timetableGrid = persistedState.timetableGrid;
+        } else if (!safeState.timetableGrid || Object.keys(safeState.timetableGrid).length === 0) {
+          safeState.timetableGrid = JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID));
         }
         if (persistedState.timetableColors && typeof persistedState.timetableColors === 'object') {
           safeState.timetableColors = persistedState.timetableColors;

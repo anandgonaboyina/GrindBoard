@@ -1,4 +1,4 @@
-import type { NewsPost } from '@/components/admin/AdminNewsManager';
+import type { NewsPost } from '@/components/admin/News/AdminNewsManager';
 
 const CACHE_NAME = 'grindboard-news-media-v1';
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Image as ImageIcon, Video, FileCode2, Volume2, VolumeX, Maximize2, X } from 'lucide-react';
-import type { NewsPost } from './admin/AdminNewsManager';
+import type { NewsPost } from './admin/News/AdminNewsManager';
 
 export function getEmbedVideoUrl(url: string, isMuted: boolean = true): { type: 'iframe' | 'direct'; embedUrl: string } {
   if (!url) return { type: 'direct', embedUrl: '' };

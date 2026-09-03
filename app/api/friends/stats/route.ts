@@ -43,8 +43,9 @@ export async function GET(request: Request) {
     const tasksRecord = await db.collection('Tasks').findOne({ userId: friendId });
     const statsRecord = await db.collection('Stats').findOne({ userId: friendId });
     const dailyRoutineRecord = await db.collection('DailyRoutine').findOne({ userId: friendId });
+    const timetableRecord = await db.collection('Timetable').findOne({ userId: friendId });
 
-    if (!friendDashboard && !settingsRecord && !tasksRecord && !statsRecord && !dailyRoutineRecord) {
+    if (!friendDashboard && !settingsRecord && !tasksRecord && !statsRecord && !dailyRoutineRecord && !timetableRecord) {
       return NextResponse.json({ data: null });
     }
 
@@ -59,9 +60,14 @@ export async function GET(request: Request) {
         ...(settingsRecord?.generalSettings || legacyGS || {})
       };
 
+      const TIMETABLE_KEYS = [
+        'timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes',
+        'timetableStartTime', 'timetableWeekendStartTime'
+      ];
       const SETTING_ARRAY_KEYS = [
-        'timetableGrid', 'timetableColors', 'widgetOffsets', 'clockOffsets', 'lockedWidgets',
-        'hiddenWallpapers', 'customDesktopWallpapers', 'customMobileWallpapers'
+        'widgetOffsets', 'clockOffsets', 'lockedWidgets',
+        'hiddenWallpapers', 'customDesktopWallpapers', 'customMobileWallpapers',
+        ...TIMETABLE_KEYS
       ];
       SETTING_ARRAY_KEYS.forEach(key => {
         if (settingsRecord && settingsRecord[key] !== undefined) parsedData[key] = settingsRecord[key];
@@ -87,6 +93,17 @@ export async function GET(request: Request) {
         parsedData.dailyTimes = statsRecord.dailyTimes;
       }
     }
+
+    // Always merge Timetable collection fields if present (Legacy support)
+    const LEGACY_TIMETABLE_KEYS = [
+      'timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes',
+      'timetableStartTime', 'timetableWeekendStartTime'
+    ];
+    LEGACY_TIMETABLE_KEYS.forEach(key => {
+      if (timetableRecord && timetableRecord[key] !== undefined) {
+        parsedData[key] = timetableRecord[key];
+      }
+    });
 
     const { ObjectId } = require('mongodb');
     let userQuery;
