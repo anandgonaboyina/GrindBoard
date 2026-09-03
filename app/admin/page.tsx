@@ -2,7 +2,7 @@
 import React from 'react';
 import { ShieldAlert, ArrowLeft, Settings } from 'lucide-react';
 import Link from 'next/link';
-import AdminNewsManager from '@/components/admin/AdminNewsManager';
+import AdminNewsManager from '@/components/admin/News/AdminNewsManager';
 
 export default function AdminPage() {
   return (

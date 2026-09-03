@@ -4283,3 +4283,13 @@ modifiedKeys: currentQuote
 isFullSync: false
 settingsSpecificData has timetableGrid: false
 
+[2026-09-03T14:35:10.463Z] POST
+modifiedKeys: selectedGroupId, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:35:11.860Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
