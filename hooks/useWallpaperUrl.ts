@@ -11,7 +11,7 @@ export function useWallpaperUrl(url: string | null | undefined) {
   useEffect(() => {
     let objectUrl = '';
     let isSubscribed = true;
-    
+
     if (!url) {
       setResolvedUrl('');
       setIsVideo(false);
@@ -38,7 +38,7 @@ export function useWallpaperUrl(url: string | null | undefined) {
           await new Promise((r) => setTimeout(r, 200));
           blob = await getWallpaperFromDB(url);
         }
-        
+
         if (!isSubscribed) return;
 
         if (blob) {

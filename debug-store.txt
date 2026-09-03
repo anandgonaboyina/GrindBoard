@@ -4293,3 +4293,158 @@ modifiedKeys: currentQuote
 isFullSync: false
 settingsSpecificData has timetableGrid: false
 
+[2026-09-03T14:39:18.290Z] POST
+modifiedKeys: selectedGroupId, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:39:19.859Z] POST
+modifiedKeys: settingsActiveTab, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:39:22.121Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:48:16.320Z] POST
+modifiedKeys: selectedGroupId, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:48:18.981Z] POST
+modifiedKeys: timetableGrid
+isFullSync: false
+settingsSpecificData has timetableGrid: true
+
+[2026-09-03T14:48:32.116Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:48:40.870Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:48:49.002Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:48:51.918Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:49:04.002Z] POST
+modifiedKeys: selectedGroupId, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:49:05.489Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:49:11.721Z] POST
+modifiedKeys: selectedGroupId, settingsActiveTab, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:49:31.792Z] POST
+modifiedKeys: selectedGroupId, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:49:35.086Z] POST
+modifiedKeys: selectedGroupId, activeDesktopCustomIndex, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts, isPanicHidden
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:49:35.961Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:49:49.425Z] POST
+modifiedKeys: selectedGroupId, syntheticDeadlines, dismissedDeadlineAlerts
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:49:52.360Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:49:55.535Z] POST
+modifiedKeys: settingsActiveTab, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:50:56.044Z] POST
+modifiedKeys: selectedGroupId, settingsActiveTab, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:50:57.453Z] POST
+modifiedKeys: settingsActiveTab, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:51:03.260Z] POST
+modifiedKeys: activeDesktopCustomIndex, settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:51:17.721Z] POST
+modifiedKeys: selectedGroupId, activeDesktopCustomIndex, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:51:19.102Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:51:31.300Z] POST
+modifiedKeys: isHidden, selectedGroupId, syntheticDeadlines, dismissedDeadlineAlerts
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:51:31.760Z] POST
+modifiedKeys: selectedGroupId, activeTaskId, activeTaskTitle, timerEndAt, timerPausedLeft, timerInitialMins, timerDeviceId, syntheticDeadlines, dismissedDeadlineAlerts, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:51:34.121Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:51:34.222Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:51:35.963Z] POST
+modifiedKeys: isHidden, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:52:55.263Z] POST
+modifiedKeys: settingsActiveTab, viewingFriend
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:52:57.014Z] POST
+modifiedKeys: viewingFriend
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-03T14:53:03.782Z] POST
+modifiedKeys: viewingFriend
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
