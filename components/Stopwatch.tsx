@@ -170,6 +170,18 @@ export default function Stopwatch() {
           updateInteraction();
 
           const cappedElapsed = Math.max(0, Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000));
+          
+          if (stopwatchAddToStats) {
+            const chunks = Math.floor(cappedElapsed / 300);
+            if (chunks > stopwatchLastSavedChunks) {
+              const diff = chunks - stopwatchLastSavedChunks;
+              const minsToSave = diff * 5;
+              const today = getLocalDateString();
+              addMins(today, minsToSave);
+              setStopwatchLastSavedChunks(chunks);
+            }
+          }
+
           if (typeof window !== 'undefined') {
             localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
           }
@@ -323,6 +335,7 @@ export default function Stopwatch() {
       intervalAudioRef.current.currentTime = 0;
     }
     setIsIntervalRinging(false);
+    useDashboardStore.getState().forceInstantSave();
   };
 
   const toggleStatsCheckbox = (e: React.MouseEvent) => {

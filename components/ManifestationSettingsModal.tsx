@@ -54,17 +54,38 @@ export default function ManifestationSettingsModal({ onClose }: ManifestationSet
     });
   };
 
-  const handleAddManifestationQuote = () => {
+  const handleAddManifestationQuote = async () => {
     if (!newManifestationQuoteText.trim()) return;
     if ((manifestationCustomQuotes?.length || 0) >= 30) {
       showAlertModal('Limit Reached', 'You can only add up to 30 custom quotes.');
       return;
     }
-    addManifestationCustomQuote(newManifestationQuoteText.trim());
+    
+    // Add locally immediately for fast UI response
+    const newQuotes = [...(manifestationCustomQuotes || []), newManifestationQuoteText.trim()].slice(0, 30);
+    setManifestationCustomQuotes(newQuotes);
     setNewManifestationQuoteText('');
+
+    try {
+      const token = localStorage.getItem('dashboard_sync_token');
+      if (token) {
+        const res = await fetch('/api/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ manifestationCustomQuotes: newQuotes })
+        });
+        if (res.ok) {
+          showAlertModal('Success', 'Quote saved successfully to DB!');
+        } else {
+          showAlertModal('Error', 'Quote could not be saved to DB.');
+        }
+      }
+    } catch (err) {
+      showAlertModal('Error', 'Network error. Quote not saved to DB.');
+    }
   };
 
-  const handleBulkAddManifestationQuotes = () => {
+  const handleBulkAddManifestationQuotes = async () => {
     if (!bulkManifestationInput.trim()) return;
     try {
       let quotesToAdd: string[] = [];
@@ -81,11 +102,27 @@ export default function ManifestationSettingsModal({ onClose }: ManifestationSet
         showAlertModal('Error', 'No valid quotes found.');
         return;
       }
+      
       const newQuotes = [...(manifestationCustomQuotes || []), ...quotesToAdd].slice(0, 30);
       setManifestationCustomQuotes(newQuotes);
       setBulkManifestationInput('');
       setShowBulkAddManifestation(false);
-      showAlertModal('Success', `Imported quotes. Total quotes: ${newQuotes.length}/30`);
+
+      const token = localStorage.getItem('dashboard_sync_token');
+      if (token) {
+        const res = await fetch('/api/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ manifestationCustomQuotes: newQuotes })
+        });
+        if (res.ok) {
+          showAlertModal('Success', `Imported quotes. Total quotes: ${newQuotes.length}/30. Saved successfully to DB!`);
+        } else {
+          showAlertModal('Error', 'Quotes added locally but failed to save to DB.');
+        }
+      } else {
+         showAlertModal('Success', `Imported quotes. Total quotes: ${newQuotes.length}/30`);
+      }
     } catch (err) {
       showAlertModal('Invalid Format', 'Could not parse quotes. Make sure it is a valid JSON array or one quote per line.');
     }

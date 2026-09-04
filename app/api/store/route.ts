@@ -592,7 +592,7 @@ export async function POST(request: Request) {
     Object.keys(state || {}).forEach(key => {
       if ((key.startsWith('show') || key.startsWith('hide') || key.startsWith('is')) && key !== 'hideConfig' && key !== 'mobileHideConfig') {
         displaySettings[key] = state[key];
-      } else if (typeof state[key] === 'string' || typeof state[key] === 'number') {
+      } else if (typeof state[key] === 'string' || typeof state[key] === 'number' || typeof state[key] === 'boolean' || state[key] === null) {
         generalSettings[key] = state[key];
       } else {
         coreData[key] = state[key];
@@ -765,7 +765,7 @@ export async function POST(request: Request) {
         if (!Array.isArray(notes) || notes.length === 0) {
           notesToSave = existingNotes.notes;
         } else {
-          notesToSave = mergeNotesServer(notes, existingNotes.notes);
+          notesToSave = notes; // Authoritative overwrite to preserve deletions/reordering
         }
       }
       await db.collection('Notes').updateOne(

@@ -64,7 +64,7 @@ export async function PATCH(request: Request) {
     Object.keys(body).forEach(key => {
       if ((key.startsWith('show') || key.startsWith('hide') || key.startsWith('is')) && key !== 'hideConfig' && key !== 'mobileHideConfig') {
         displaySettings[`displaySettings.${key}`] = body[key];
-      } else if (typeof body[key] === 'string' || typeof body[key] === 'number') {
+      } else if (typeof body[key] === 'string' || typeof body[key] === 'number' || typeof body[key] === 'boolean' || body[key] === null) {
         generalSettings[`generalSettings.${key}`] = body[key];
       } else {
         rootSettings[key] = body[key];

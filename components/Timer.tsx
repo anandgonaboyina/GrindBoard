@@ -317,12 +317,47 @@ export default function Timer() {
           return;
         }
 
+        const elapsedSinceInteraction = Math.floor((now - lastInteractionTime) / 1000);
+        if (elapsedSinceInteraction >= 7200 && isOwner) {
+          // Idle for 2 hours while running, auto pause! (Only owner evaluates this to avoid random cross-device pauses)
+          const intendedPauseTime = lastInteractionTime + 7200000;
+          // Only pause if the timer wouldn't have finished naturally before the pause time
+          if (intendedPauseTime < timerEndAt) {
+            const actualRemaining = Math.max(0, Math.floor((timerEndAt - intendedPauseTime) / 1000));
+            
+            // Save chunks up to the intended pause time
+            if (timerInitialMins) {
+              const elapsedAtPause = Math.max(0, (timerInitialMins * 60) - actualRemaining);
+              const chunksAtPause = Math.floor(elapsedAtPause / 300);
+              if (chunksAtPause > savedChunksRef.current) {
+                const diff = chunksAtPause - savedChunksRef.current;
+                const minsToSave = diff * 5;
+                const today = getLocalDateString();
+                addMins(today, minsToSave);
+                if (activeTaskId) {
+                  updateTaskDuration(activeTaskId, minsToSave);
+                }
+                setTimerLastSavedChunks(chunksAtPause);
+                savedChunksRef.current = chunksAtPause;
+              }
+            }
+
+            setTimerPausedLeft(actualRemaining);
+            setTimerEndAt(null);
+            if (!wasSleeping && now - intendedPauseTime < 120000) {
+              playAlarm();
+            }
+            setShowContinuePrompt(true);
+            updateInteraction();
+            return;
+          }
+        }
+
         if (timerInitialMins) {
           const elapsedSeconds = (timerInitialMins * 60) - remaining;
           if (elapsedSeconds >= 0) {
             const chunks = Math.floor(elapsedSeconds / 300); // 5 minutes = 300 seconds
             if (chunks > savedChunksRef.current) {
-              // Only owner saves chunks to prevent duplication
               if (isOwner) {
                 const diff = chunks - savedChunksRef.current;
                 const minsToSave = diff * 5;
@@ -333,11 +368,9 @@ export default function Timer() {
                 }
                 setTimerLastSavedChunks(chunks);
               }
-              // Local state updates instantly to keep UI in sync
               savedChunksRef.current = chunks;
             }
 
-            // Interval Alert Beep
             if (remaining > 5 && !wasSleeping) {
               let isIntervalActive = false;
               let activeIntervalMins = 0;
@@ -352,7 +385,6 @@ export default function Timer() {
 
               if (isIntervalActive && timerInitialMins) {
                 const alertIntervalSecs = activeIntervalMins * 60;
-                const elapsedSeconds = Math.max(0, (timerInitialMins * 60) - remaining);
                 const currentChunk = Math.floor(elapsedSeconds / alertIntervalSecs);
 
                 if (
@@ -365,11 +397,9 @@ export default function Timer() {
                 } else if (currentChunk > alertedChunksRef.current && currentChunk > 0) {
                   alertedChunksRef.current = currentChunk;
 
-                  // Only the device that started it (owner) will ring, preventing background ghosts on other laptops
                   if (isOwner) {
                     setTimerLastAlertedChunks(currentChunk);
                     if (enableAlarmSound || enableAlarmVibration) {
-                      console.log(`[AUDIO DEBUG] Interval beep triggered at chunk ${currentChunk} (${elapsedSeconds}s elapsed).`);
                       setIsIntervalRinging(true);
                       isIntervalRingingRef.current = true;
                       useDashboardStore.setState({ isTimerOpen: true });
@@ -390,24 +420,6 @@ export default function Timer() {
                 }
               }
             }
-          }
-        }
-
-        const elapsedSinceInteraction = Math.floor((now - lastInteractionTime) / 1000);
-        if (elapsedSinceInteraction >= 7200 && isOwner) {
-          // Idle for 2 hours while running, auto pause! (Only owner evaluates this to avoid random cross-device pauses)
-          const intendedPauseTime = lastInteractionTime + 7200000;
-          // Only pause if the timer wouldn't have finished naturally before the pause time
-          if (intendedPauseTime < timerEndAt) {
-            const actualRemaining = Math.max(0, Math.floor((timerEndAt - intendedPauseTime) / 1000));
-            setTimerPausedLeft(actualRemaining);
-            setTimerEndAt(null);
-            if (!wasSleeping && now - intendedPauseTime < 120000) {
-              playAlarm();
-            }
-            setShowContinuePrompt(true);
-            updateInteraction();
-            return;
           }
         }
 

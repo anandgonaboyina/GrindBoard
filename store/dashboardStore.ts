@@ -168,18 +168,18 @@ interface DashboardState {
   setSettingsActiveTab: (tab: 'preferences' | 'data' | 'about' | 'focus' | 'sound' | 'credits' | 'connect' | 'update' | 'wallpaper' | 'quotes' | 'manifestation') => void;
   connectInitialTab?: 'profile' | 'friends' | 'leaderboard' | 'groups';
   setConnectInitialTab: (tab?: 'profile' | 'friends' | 'leaderboard' | 'groups') => void;
-  
+
   hasSeenOnboarding: boolean;
   setHasSeenOnboarding: (seen: boolean) => void;
   isTourOpen: boolean;
   setIsTourOpen: (open: boolean) => void;
   startTour: () => void;
-  
+
   userGroups: any[];
   setUserGroups: (groups: any[]) => void;
   selectedGroupId: string | null;
   setSelectedGroupId: (id: string | null) => void;
-  
+
   timerTrigger: { mins: number; ts: number; taskId?: string; taskTitle?: string } | null;
   triggerTimer: (mins: number, taskId?: string, taskTitle?: string) => void;
 
@@ -488,6 +488,7 @@ const setSyncLastModified = (timestamp: number) => {
 let failedToLoadDB = false;
 export let hasUnsavedChanges = false;
 let saveTimeout: NodeJS.Timeout | null = null;
+let notesSaveTimeout: NodeJS.Timeout | null = null;
 let pendingValue: string | null = null;
 let lastSavedValue: string | null = null;
 let isSaving = false;
@@ -565,20 +566,15 @@ const mergeStringArrays = (localArr: any, cloudArr: any, baseArr: any = null, cl
   if (!Array.isArray(cloudArr)) cloudArr = [];
 
   // When cloud state is newer (e.g. user deleted or reordered media/wallpapers on another device),
-  // cloudArr is the authoritative list of active items.
-  if (cloudIsNewer) {
-    const cloudSet = new Set(cloudArr);
-    const merged = [...cloudArr];
+  // cloudArr is the authoritative list of active URL items.
+  // We sanitize any legacy 'custom-' items that might have made it to the cloud.
+  const sanitizedCloudArr = cloudArr.filter((item: any) => typeof item === 'string' && !item.startsWith('custom-'));
 
-    // Keep any local-only custom- files that actually exist in this device's local state
-    // only if they were newly created locally and not yet synced.
-    for (const item of localArr) {
-      if (typeof item === 'string' && item.startsWith('custom-') && !cloudSet.has(item)) {
-        // If it's not in cloudArr, check if cloudArr has any items; if cloudArr was explicitly updated,
-        // cloudArr reflects deletions across devices.
-      }
-    }
-    return Array.from(new Set(merged));
+  // Local files (custom-) are ALWAYS strictly local and preserved on this device.
+  const localOnlyItems = localArr.filter((item: any) => typeof item === 'string' && item.startsWith('custom-'));
+
+  if (cloudIsNewer) {
+    return Array.from(new Set([...sanitizedCloudArr, ...localOnlyItems]));
   }
 
   // If local is newer or cloud is empty:
@@ -588,7 +584,7 @@ const mergeStringArrays = (localArr: any, cloudArr: any, baseArr: any = null, cl
   // Respect localArr order, bringing in any cloud items missing from local
   const localSet = new Set(localArr);
   const result = [...localArr];
-  for (const item of cloudArr) {
+  for (const item of sanitizedCloudArr) {
     if (!localSet.has(item)) {
       result.push(item);
     }
@@ -596,7 +592,7 @@ const mergeStringArrays = (localArr: any, cloudArr: any, baseArr: any = null, cl
   return result;
 };
 
-const mergeNotes = (localNotes: any[] = [], cloudNotes: any[] = []): any[] => {
+const mergeNotes = (localNotes: any[] = [], cloudNotes: any[] = [], isCloudNewer: boolean = false): any[] => {
   if (!Array.isArray(localNotes)) localNotes = [];
   if (!Array.isArray(cloudNotes)) cloudNotes = [];
 
@@ -617,18 +613,20 @@ const mergeNotes = (localNotes: any[] = [], cloudNotes: any[] = []): any[] => {
       if (!existing) {
         map.set(lNote.id, { ...lNote, entries: { ...(lNote.entries || {}) } });
       } else {
-        // Deep merge entries per date so journal entries are NEVER lost!
+        // Deep merge entries per date
         const mergedEntries = { ...(existing.entries || {}) };
         const localEntries = lNote.entries || {};
         for (const date in localEntries) {
           const lText = localEntries[date];
           const cText = mergedEntries[date];
+
           if (lText && !cText) {
             mergedEntries[date] = lText;
           } else if (cText && !lText) {
             mergedEntries[date] = cText;
           } else if (lText && cText) {
-            mergedEntries[date] = lText.length >= cText.length ? lText : cText;
+            // Authoritative overwrite based on which state is newer, ignoring character length!
+            mergedEntries[date] = isCloudNewer ? cText : lText;
           }
         }
 
@@ -727,8 +725,8 @@ const performSave = async () => {
       return;
     }
 
-    // Sanitize: strip any base64/data-URL strings from local-only media arrays before sending to the cloud.
-    // Local file uploads live ONLY in IndexedDB — they must never reach MongoDB as base64 strings.
+    // Sanitize: strip any local IndexedDB files (custom-) or data-URLs from media arrays before sending to the cloud.
+    // Local file uploads live ONLY in IndexedDB — they must never reach MongoDB.
     const LOCAL_ONLY_MEDIA_KEYS = [
       'customDesktopWallpapers', 'customMobileWallpapers',
       'manifestationDesktopPhotos', 'manifestationMobilePhotos',
@@ -737,12 +735,12 @@ const performSave = async () => {
       LOCAL_ONLY_MEDIA_KEYS.forEach(key => {
         if (Array.isArray(parsedData.state[key])) {
           parsedData.state[key] = parsedData.state[key].filter(
-            (v: string) => typeof v === 'string' && !v.startsWith('data:')
+            (v: string) => typeof v === 'string' && !v.startsWith('data:') && !v.startsWith('custom-')
           );
         }
       });
       // Also sanitize scalar media fields
-      if (typeof parsedData.state.peekModeWallpaper === 'string' && parsedData.state.peekModeWallpaper.startsWith('data:')) {
+      if (typeof parsedData.state.peekModeWallpaper === 'string' && (parsedData.state.peekModeWallpaper.startsWith('data:') || parsedData.state.peekModeWallpaper.startsWith('custom-'))) {
         delete parsedData.state.peekModeWallpaper;
       }
     }
@@ -798,7 +796,7 @@ const performSave = async () => {
         timetableColors: parsedCloud.state.timetableColors || parsedLocal.state.timetableColors,
         weekdayTimes: parsedCloud.state.weekdayTimes || parsedLocal.state.weekdayTimes,
         weekendTimes: parsedCloud.state.weekendTimes || parsedLocal.state.weekendTimes,
-        
+
         // Deadlines are completely decoupled and always take the cloud truth
         deadlines: parsedCloud.state.deadlines || parsedLocal.state.deadlines,
         syntheticDeadlines: parsedCloud.state.syntheticDeadlines || parsedLocal.state.syntheticDeadlines,
@@ -814,8 +812,8 @@ const performSave = async () => {
           tomTasks = tomTasks.filter((t: any) => !tIds.has(t.id));
           return { tasks: tTasks, tomorrowTasks: tomTasks };
         })(),
-        tasksDate: (parsedLocal.state.tasksDate && parsedCloud.state.tasksDate) ? 
-          (parsedLocal.state.tasksDate > parsedCloud.state.tasksDate ? parsedLocal.state.tasksDate : parsedCloud.state.tasksDate) : 
+        tasksDate: (parsedLocal.state.tasksDate && parsedCloud.state.tasksDate) ?
+          (parsedLocal.state.tasksDate > parsedCloud.state.tasksDate ? parsedLocal.state.tasksDate : parsedCloud.state.tasksDate) :
           (parsedLocal.state.tasksDate || parsedCloud.state.tasksDate || getLocalDateString()),
         // Countdowns are decoupled and always take cloud truth
         countdowns: parsedCloud.state.countdowns || parsedLocal.state.countdowns,
@@ -939,7 +937,7 @@ if (typeof window !== 'undefined') {
     try {
       const stateObj = useDashboardStore.getState();
       if (!stateObj || typeof stateObj !== 'object' || !stateObj._hasHydrated) return;
-      
+
       const filteredState = { ...stateObj } as any;
       const transientKeys = [
         'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
@@ -1075,12 +1073,12 @@ const fileStorage = createJSONStorage(() => ({
               const mergedTasks = _mergedTasks;
               const mergedTomorrowTasks = _mergedTomorrowTasks;
 
-              const mergedTasksDate = (localState.tasksDate && cloudState.tasksDate) ? 
-                (localState.tasksDate > cloudState.tasksDate ? localState.tasksDate : cloudState.tasksDate) : 
+              const mergedTasksDate = (localState.tasksDate && cloudState.tasksDate) ?
+                (localState.tasksDate > cloudState.tasksDate ? localState.tasksDate : cloudState.tasksDate) :
                 (cloudState.tasksDate || localState.tasksDate || getLocalDateString());
               const mergedDeadlines = filterActiveDeadlines(mergeArraysById(localState.deadlines, cloudState.deadlines));
 
-              const mergedNotes = mergeNotes(localState.notes, cloudState.notes);
+              const mergedNotes = mergeNotes(localState.notes, cloudState.notes, isCloudNewer);
               const mergedRoadmaps = mergeArraysById(localState.roadmaps, cloudState.roadmaps);
               const mergedPlans = mergeArraysById(localState.plans, cloudState.plans);
               const mergedCustomAlarmSounds = mergeArraysById(localState.customAlarmSounds, cloudState.customAlarmSounds);
@@ -1122,8 +1120,8 @@ const fileStorage = createJSONStorage(() => ({
                 ? localState.activeManifestationMobileIndex
                 : cloudState.activeManifestationMobileIndex;
 
-              const mergedPeekModeWallpaper = (localState.peekModeWallpaper !== undefined && localState.peekModeWallpaper !== null) 
-                ? localState.peekModeWallpaper 
+              const mergedPeekModeWallpaper = (localState.peekModeWallpaper !== undefined && localState.peekModeWallpaper !== null)
+                ? localState.peekModeWallpaper
                 : cloudState.peekModeWallpaper;
 
               // 4. Construct Merged State
@@ -1168,7 +1166,7 @@ const fileStorage = createJSONStorage(() => ({
                 timetableColors: (cloudState.timetableColors && typeof cloudState.timetableColors === 'object' && Object.keys(cloudState.timetableColors).length > 0)
                   ? cloudState.timetableColors
                   : (localState.timetableColors || {}),
-                
+
                 // Deadlines are completely decoupled and always take the cloud truth
                 deadlines: cloudState.deadlines || localState.deadlines,
                 syntheticDeadlines: cloudState.syntheticDeadlines || localState.syntheticDeadlines,
@@ -1418,6 +1416,24 @@ export const pushDailyRoutineToDB = async (payload: any) => {
   }
 };
 
+export const pushNotesToDB = async (payload: any) => {
+  if (typeof window === 'undefined') return;
+  const token = localStorage.getItem('dashboard_sync_token');
+  if (!token) return;
+  try {
+    await fetch('/api/notes', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.error('Failed to push notes to DB', e);
+  }
+};
+
 export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
@@ -1497,7 +1513,7 @@ export const useDashboardStore = create<DashboardState>()(
         set((state) => {
           const oldTotal = state.history[dateKey] || 0;
           const newTotal = oldTotal + mins;
-          
+
           if (newTotal >= 60 && typeof window !== 'undefined') {
             const token = localStorage.getItem('dashboard_sync_token') || localStorage.getItem('token');
             if (token) {
@@ -1603,6 +1619,11 @@ export const useDashboardStore = create<DashboardState>()(
         });
       },
 
+      // clearAllTasksAndPlans: () => {
+      //   set({ tasks: [], tomorrowTasks: [], plans: [] });
+      //   get().forceInstantSave();
+      // },
+
       updateTaskTitle: (id, title, tab = 'today') => {
         set((state) => {
           const isCurrentlyActive = state.activeTaskId === id;
@@ -1688,7 +1709,12 @@ export const useDashboardStore = create<DashboardState>()(
           useDashboardStore.getState().pushWallpapersToDB();
           useDashboardStore.getState().pushManifestationToDB();
         }
-        return { isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false, isManifestationOpen: false };
+        return {
+          isSettingsOpen: !state.isSettingsOpen,
+          isAlarmPlaying: false,
+          isManifestationOpen: false,
+          ...(willClose && { connectInitialTab: undefined })
+        };
       }),
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
       setConnectInitialTab: (tab) => set({ connectInitialTab: tab }),
@@ -1723,17 +1749,17 @@ export const useDashboardStore = create<DashboardState>()(
       updateTaskDuration: (id, decreaseMins) => {
         set((state) => {
           const isPersonal = state.tasks.some(t => t.id === id) || state.tomorrowTasks.some(t => t.id === id);
-          
+
           if (isPersonal) {
             const mapTask = (t: any) => {
               if (t.id === id) {
-                 const newDuration = Math.max(0, t.duration - decreaseMins);
-                 return {
-                   ...t,
-                   duration: newDuration,
-                   timeSpent: (t.timeSpent || 0) + decreaseMins,
-                   completed: t.completed || (newDuration === 0)
-                 };
+                const newDuration = Math.max(0, t.duration - decreaseMins);
+                return {
+                  ...t,
+                  duration: newDuration,
+                  timeSpent: (t.timeSpent || 0) + decreaseMins,
+                  completed: t.completed || (newDuration === 0)
+                };
               }
               return t;
             };
@@ -1743,132 +1769,132 @@ export const useDashboardStore = create<DashboardState>()(
             };
           }
 
-        let foundGroup: any = null;
-        let foundTask: any = null;
-        let foundUserId: string | null = null;
+          let foundGroup: any = null;
+          let foundTask: any = null;
+          let foundUserId: string | null = null;
 
-        for (const g of state.userGroups) {
-          if (g.memberTasks) {
-            for (const uId in g.memberTasks) {
-              const t = g.memberTasks[uId]?.find((task: any) => task.id === id);
+          for (const g of state.userGroups) {
+            if (g.memberTasks) {
+              for (const uId in g.memberTasks) {
+                const t = g.memberTasks[uId]?.find((task: any) => task.id === id);
+                if (t) {
+                  foundGroup = g;
+                  foundTask = t;
+                  foundUserId = uId;
+                  break;
+                }
+              }
+            }
+            if (!foundTask) {
+              const t = g.tasks?.find((task: any) => task.id === id);
               if (t) {
                 foundGroup = g;
                 foundTask = t;
-                foundUserId = uId;
                 break;
               }
             }
+            if (foundGroup) break;
           }
-          if (!foundTask) {
-            const t = g.tasks?.find((task: any) => task.id === id);
-            if (t) {
-              foundGroup = g;
-              foundTask = t;
-              break;
-            }
-          }
-          if (foundGroup) break;
-        }
 
-        if (foundGroup) {
-          const username = typeof window !== 'undefined' ? localStorage.getItem('dashboard_username') : '';
-          const myMemberInfo = foundGroup.members?.find((m: any) => m.username === username || m.isMe);
-          const targetUId = foundUserId || myMemberInfo?.userId || myMemberInfo?.username;
+          if (foundGroup) {
+            const username = typeof window !== 'undefined' ? localStorage.getItem('dashboard_username') : '';
+            const myMemberInfo = foundGroup.members?.find((m: any) => m.username === username || m.isMe);
+            const targetUId = foundUserId || myMemberInfo?.userId || myMemberInfo?.username;
 
-          if (targetUId) {
-             const d = new Date();
-             const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-             
-             let updatedCompletionParams = null;
+            if (targetUId) {
+              const d = new Date();
+              const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-             const newUserGroups = state.userGroups.map(g => {
+              let updatedCompletionParams = null;
+
+              const newUserGroups = state.userGroups.map(g => {
                 if (g._id === foundGroup._id) {
-                   const completions = g.completions || {};
-                   const userCompletions = completions[targetUId] || {};
-                   const todayCompletions = userCompletions[todayStr] || {};
-                   const taskCompletion = todayCompletions[id] || { timeSpent: 0, completed: false };
-                   
-                   const newTimeSpent = (taskCompletion.timeSpent || 0) + decreaseMins;
-                   let newCompleted = taskCompletion.completed;
-                   
-                   // Auto-complete if time spent equals or exceeds duration
-                   if (newTimeSpent >= (foundTask.duration || 0)) {
-                       newCompleted = true;
-                   }
+                  const completions = g.completions || {};
+                  const userCompletions = completions[targetUId] || {};
+                  const todayCompletions = userCompletions[todayStr] || {};
+                  const taskCompletion = todayCompletions[id] || { timeSpent: 0, completed: false };
 
-                   const newCompletions = {
-                      ...completions,
-                      [targetUId]: {
-                         ...userCompletions,
-                         [todayStr]: {
-                            ...todayCompletions,
-                            [id]: {
-                               ...taskCompletion,
-                               timeSpent: newTimeSpent,
-                               completed: newCompleted
-                            }
-                         }
+                  const newTimeSpent = (taskCompletion.timeSpent || 0) + decreaseMins;
+                  let newCompleted = taskCompletion.completed;
+
+                  // Auto-complete if time spent equals or exceeds duration
+                  if (newTimeSpent >= (foundTask.duration || 0)) {
+                    newCompleted = true;
+                  }
+
+                  const newCompletions = {
+                    ...completions,
+                    [targetUId]: {
+                      ...userCompletions,
+                      [todayStr]: {
+                        ...todayCompletions,
+                        [id]: {
+                          ...taskCompletion,
+                          timeSpent: newTimeSpent,
+                          completed: newCompleted
+                        }
                       }
-                   };
-                   
-                   updatedCompletionParams = {
-                       dateStr: todayStr,
-                       taskId: id,
-                       completed: newCompleted,
-                       timeSpent: newTimeSpent,
-                       targetUserId: targetUId
-                   };
+                    }
+                  };
 
-                   return {
-                      ...g,
-                      completions: newCompletions
-                   };
+                  updatedCompletionParams = {
+                    dateStr: todayStr,
+                    taskId: id,
+                    completed: newCompleted,
+                    timeSpent: newTimeSpent,
+                    targetUserId: targetUId
+                  };
+
+                  return {
+                    ...g,
+                    completions: newCompletions
+                  };
                 }
                 return g;
-             });
+              });
 
-             const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
-             if (token && updatedCompletionParams) {
+              const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
+              if (token && updatedCompletionParams) {
                 fetch(`/api/groups/${foundGroup._id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ action: 'update_completion', ...((updatedCompletionParams as any) || {}) })
-                }).catch(() => {});
-             }
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify({ action: 'update_completion', ...((updatedCompletionParams as any) || {}) })
+                }).catch(() => { });
+              }
 
-             return { userGroups: newUserGroups };
+              return { userGroups: newUserGroups };
+            }
           }
-        }
 
-        return state;
-      });
+          return state;
+        });
       },
       editTaskDuration: (id, newDuration, tab = 'today') => set((state) => {
-          if (tab === 'today') {
-            return { tasks: state.tasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
-          }
+        if (tab === 'today') {
+          return { tasks: state.tasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
+        }
         return { tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
       }),
       editTaskTimeSpent: (id, newTimeSpent, tab = 'today') => set((state) => {
-          const updateTasks = (tasks: Task[]) => tasks.map(t => {
-            if (t.id === id) {
-              const diff = newTimeSpent - (t.timeSpent || 0);
-              return {
-                ...t,
-                timeSpent: Math.max(0, newTimeSpent),
-                duration: Math.max(0, t.duration - diff)
-              };
-            }
-            return t;
-          });
-          
-          if (tab === 'today') {
-            return { tasks: updateTasks(state.tasks) };
+        const updateTasks = (tasks: Task[]) => tasks.map(t => {
+          if (t.id === id) {
+            const diff = newTimeSpent - (t.timeSpent || 0);
+            return {
+              ...t,
+              timeSpent: Math.max(0, newTimeSpent),
+              duration: Math.max(0, t.duration - diff)
+            };
           }
-          return { tomorrowTasks: updateTasks(state.tomorrowTasks) };
+          return t;
+        });
+
+        if (tab === 'today') {
+          return { tasks: updateTasks(state.tasks) };
+        }
+        return { tomorrowTasks: updateTasks(state.tomorrowTasks) };
       }),
       reorderTasks: (tab, startIndex, endIndex) => set((state) => {
-          const list = tab === 'today' ? Array.from(state.tasks) : Array.from(state.tomorrowTasks);
+        const list = tab === 'today' ? Array.from(state.tasks) : Array.from(state.tomorrowTasks);
         const [removed] = list.splice(startIndex, 1);
         list.splice(endIndex, 0, removed);
         return tab === 'today' ? { tasks: list } : { tomorrowTasks: list };
@@ -2013,7 +2039,11 @@ export const useDashboardStore = create<DashboardState>()(
 
       // Notes State
       notes: [{ id: 'default', title: 'Daily Journal', entries: {} }],
-      setNotes: (notes) => set({ notes }),
+      setNotes: (notes) => {
+        set({ notes });
+        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
+        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: get().notes }), 5000);
+      },
       activeNoteId: 'default',
       isNotesOpen: false,
       addNote: () => set((state) => {
@@ -2022,32 +2052,41 @@ export const useDashboardStore = create<DashboardState>()(
           return { activeNoteId: emptyNote.id };
         }
         const newNote = { id: Date.now().toString(), title: 'New Note', entries: {} };
-        return { notes: [newNote, ...state.notes], activeNoteId: newNote.id };
+        const updatedNotes = [newNote, ...state.notes];
+        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
+        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: updatedNotes }), 5000);
+        return { notes: updatedNotes, activeNoteId: newNote.id };
       }),
-      updateNoteTitle: (id, title) => set((state) => ({
-        notes: state.notes.map(n => n.id === id ? { ...n, title } : n)
-      })),
+      updateNoteTitle: (id, title) => set((state) => {
+        const updatedNotes = state.notes.map(n => n.id === id ? { ...n, title } : n);
+        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
+        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: updatedNotes }), 5000);
+        return { notes: updatedNotes };
+      }),
       updateNoteEntry: (id, date, content) => set((state) => {
-        return {
-          notes: state.notes.map(n => {
-            if (n.id !== id) return n;
-            const newEntries = { ...n.entries };
-            const cleanText = content.replace(/<[^>]*>?/gm, '').trim();
-            if (!cleanText) {
-              delete newEntries[date];
-            } else {
-              newEntries[date] = content;
-            }
-            return { ...n, entries: newEntries };
-          })
-        };
+        const updatedNotes = state.notes.map(n => {
+          if (n.id !== id) return n;
+          const newEntries = { ...n.entries };
+          const cleanText = content.replace(/<[^>]*>?/gm, '').trim();
+          if (!cleanText) {
+            delete newEntries[date];
+          } else {
+            newEntries[date] = content;
+          }
+          return { ...n, entries: newEntries };
+        });
+        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
+        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: updatedNotes }), 5000);
+        return { notes: updatedNotes };
       }),
       deleteNote: (id) => set((state) => {
-        const newNotes = state.notes.filter(n => n.id !== id);
+        let newNotes = state.notes.filter(n => n.id !== id);
         if (newNotes.length === 0) {
           const defaultNote = { id: Date.now().toString(), title: 'Daily Journal', entries: {} };
-          return { notes: [defaultNote], activeNoteId: defaultNote.id };
+          newNotes = [defaultNote];
         }
+        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
+        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: newNotes }), 5000);
         return {
           notes: newNotes,
           activeNoteId: state.activeNoteId === id ? newNotes[0].id : state.activeNoteId
@@ -2060,6 +2099,8 @@ export const useDashboardStore = create<DashboardState>()(
         const newNotes = [...state.notes];
         const [moved] = newNotes.splice(fromIndex, 1);
         newNotes.splice(toIndex, 0, moved);
+        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
+        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: newNotes }), 5000);
         return { notes: newNotes };
       }),
 
@@ -2310,7 +2351,7 @@ export const useDashboardStore = create<DashboardState>()(
         const payload = isWeekend
           ? { weekendTimes: newTimes, timetableGrid: newGrid, timetableColors: newColors }
           : { weekdayTimes: newTimes, timetableGrid: newGrid, timetableColors: newColors };
-        
+
         pushTimetableToDB(payload);
         return payload as any;
       }),
@@ -2515,30 +2556,22 @@ export const useDashboardStore = create<DashboardState>()(
       showSettingsBtn: true,
       showStopwatch: true,
       toggleVisibility: (key) => set((state) => {
-        const newValue = !state[key];
-        const payload = { [key]: newValue };
-        pushSettingsToDB(payload);
-        return payload;
+        return { [key]: !state[key] };
       }),
       hideConfig: {
         quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
       },
       setHideConfig: (key, value) => set((state) => {
-        const newHideConfig = { ...state.hideConfig, [key]: value };
-        pushSettingsToDB({ hideConfig: newHideConfig });
-        return { hideConfig: newHideConfig };
+        return { hideConfig: { ...state.hideConfig, [key]: value } };
       }),
       setHideAll: (hide) => {
         if (hide) {
-          const payload = {
+          set({
             hideConfig: {
               quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
             }
-          };
-          pushSettingsToDB(payload);
-          set(payload);
+          });
         } else {
-          pushSettingsToDB({ hideConfig: {} });
           set({ hideConfig: {} });
         }
       },
@@ -2547,21 +2580,16 @@ export const useDashboardStore = create<DashboardState>()(
         quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
       },
       setMobileHideConfig: (key, value) => set((state) => {
-        const newMobileHideConfig = { ...state.mobileHideConfig, [key]: value };
-        pushSettingsToDB({ mobileHideConfig: newMobileHideConfig });
-        return { mobileHideConfig: newMobileHideConfig };
+        return { mobileHideConfig: { ...state.mobileHideConfig, [key]: value } };
       }),
       setMobileHideAll: (hide) => {
         if (hide) {
-          const payload = {
+          set({
             mobileHideConfig: {
               quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
             }
-          };
-          pushSettingsToDB(payload);
-          set(payload);
+          });
         } else {
-          pushSettingsToDB({ mobileHideConfig: {} });
           set({ mobileHideConfig: {} });
         }
       },
@@ -2569,13 +2597,25 @@ export const useDashboardStore = create<DashboardState>()(
       isPanicHidden: false,
       togglePanicHide: () => set((state) => ({ isPanicHidden: !state.isPanicHidden })),
       panicShortcutKey: 'ctrl+z',
-      setPanicShortcutKey: (key) => set({ panicShortcutKey: key.toLowerCase() }),
+      setPanicShortcutKey: (key) => {
+        set({ panicShortcutKey: key.toLowerCase() });
+        get().forceInstantSave();
+      },
       focusShortcutKey: 'ctrl+h',
-      setFocusShortcutKey: (key) => set({ focusShortcutKey: key.toLowerCase() }),
+      setFocusShortcutKey: (key) => {
+        set({ focusShortcutKey: key.toLowerCase() });
+        get().forceInstantSave();
+      },
       panicWallpaperSwitch: false,
-      setPanicWallpaperSwitch: (val) => set({ panicWallpaperSwitch: val }),
+      setPanicWallpaperSwitch: (val) => {
+        set({ panicWallpaperSwitch: val });
+        get().forceInstantSave();
+      },
       peekModeWallpaper: null,
-      setPeekModeWallpaper: (url) => set({ peekModeWallpaper: url }),
+      setPeekModeWallpaper: (url) => {
+        set({ peekModeWallpaper: url });
+        get().forceInstantSave();
+      },
 
       rightWidgetsOffset: 48, // Default corresponds to bottom-12 (48px)
       setRightWidgetsOffset: (offset) => set({ rightWidgetsOffset: Math.max(0, offset) }),

@@ -5,7 +5,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { useWallpaperUrl } from '@/hooks/useWallpaperUrl';
 import { saveWallpaperToDB, deleteWallpaperFromDB, getWallpaperFromDB } from '@/lib/indexedDB';
 import { prepareFileForStorage } from '@/lib/imageUtils';
-import { Sparkles, ChevronLeft, ChevronRight, X, Flame, Volume2, VolumeX, Settings } from 'lucide-react';
+import { Sparkles, ChevronLeft, ChevronRight, X, Flame, Volume2, VolumeX, Settings, Copy, Check } from 'lucide-react';
 import Tooltip from './Tooltip';
 import ManifestationSettingsModal from './ManifestationSettingsModal';
 
@@ -58,6 +58,7 @@ export default function ManifestationBoard() {
     const [availablePhotos, setAvailablePhotos] = useState<string[]>([]);
     const [isLoadingAvailable, setIsLoadingAvailable] = useState(true);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [copied, setCopied] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
@@ -143,6 +144,13 @@ export default function ManifestationBoard() {
         setActiveIndex(prev);
     }, [availablePhotos.length, effectiveIndex, isMobile]);
 
+    const handleCopyQuote = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(randomQuote);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     const isHidden = useDashboardStore((state) => state.isHidden);
     const isPanicHidden = useDashboardStore((state) => state.isPanicHidden);
 
@@ -181,10 +189,6 @@ export default function ManifestationBoard() {
             style={{ zoom: inverseScale }}
             className="fixed inset-0 z-[99999] bg-black flex flex-col justify-between p-2 sm:p-4 animate-in fade-in duration-300 select-none w-screen h-screen overflow-hidden"
         >
-
-
-
-
             {availablePhotos.length > 0 && !isMissing && resolvedUrl && (
                 <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none flex items-center justify-center bg-black">
                     {isVideo ? (
@@ -210,7 +214,7 @@ export default function ManifestationBoard() {
                 </div>
             )}
 
-            {/* TOP RIGHT CLOSE BUTTON & SETTINGS */}
+            {/* TOP RIGHT CLOSE BUTTON & SETTINGS (DESKTOP ONLY) */}
             <div className="fixed hidden md:flex items-center gap-2 top-5 right-3 z-50 pointer-events-none">
                 <button
                     onClick={(e) => {
@@ -236,47 +240,43 @@ export default function ManifestationBoard() {
                 </button>
             </div>
 
+            {/* BOTTOM CLOSE & SETTINGS (MOBILE ONLY) */}
+            <div className="fixed bottom-5 px-4 w-full flex justify-between md:hidden z-50 pointer-events-none">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsSettingsOpen(true);
+                    }}
+                    className="pointer-events-auto p-2.5 rounded-full bg-white/20 backdrop-blur-xl border border-white/50 text-white/90 hover:bg-white/40 hover:text-amber-500 shadow-md transition-all flex items-center justify-center"
+                >
+                    <Settings className="w-5 h-5" />
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsManifestationOpen(false);
+                    }}
+                    className="pointer-events-auto p-2.5 rounded-full bg-white/20 backdrop-blur-xl border border-white/50 text-white/90 hover:bg-white/40 hover:text-red-500 shadow-md transition-all flex items-center justify-center"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
 
 
             {/* SMALL WIDTH PILL SIZE TOP HEADER (Z-30) */}
             <div className="w-full flex flex-col items-center justify-center gap-2 z-30 shrink-0 pt-2 sm:pt-1 pointer-events-none">
-                {/* MOBILE ONLY: SETTINGS & CLOSE ON TOP LINE */}
-                <div className="md:hidden flex items-center justify-center gap-2 z-50 pointer-events-none">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsSettingsOpen(true);
-                        }}
-                        className="pointer-events-auto p-2 rounded-full bg-white/20 backdrop-blur-xl border border-white/50 text-white/90 hover:bg-white/40 hover:border-white/70 hover:text-amber-500 shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs uppercase tracking-wider active:scale-95 group relative"
-                    >
-                        <Settings className="w-4 h-4" />
-                        <span>Settings</span>
-                    </button>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsManifestationOpen(false);
-                        }}
-                        className="pointer-events-auto p-2 rounded-full bg-white/20 backdrop-blur-xl border border-white/50 text-white/90 hover:bg-white/40 hover:border-white/70 hover:text-red-500 shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs uppercase tracking-wider active:scale-95 group relative"
-                    >
-                        <X className="w-4 h-4" />
-                        <span>Close</span>
-                    </button>
-                </div>
-
-                {/* QUOTE PILL (SECOND LINE ON MOBILE, ONLY LINE ON DESKTOP) */}
+                {/* QUOTE PILL */}
                 <div
                     className="pointer-events-auto relative flex items-center gap-2 sm:gap-3 px-3.5 py-1.5 sm:px-4 sm:py-1.5 rounded-full bg-black/60 backdrop-blur-xl border border-amber-500/30 shadow-2xl max-w-[95%] sm:max-w-fit"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Left Side: Sparkles + Title + Board ON/OFF Toggle Switch */}
                     <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                         <div className="p-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
                             <Sparkles className="w-3.5 h-3.5 animate-pulse" />
                         </div>
                         <div className="relative group min-w-0 flex items-center">
                             <span
-                                className="text-xs font-semibold italic text-amber-200/90 tracking-wide max-w-[240px] sm:max-w-[400px] md:max-w-[500px] cursor-pointer hover:text-amber-100 transition-colors"
+                                className="text-xs font-semibold italic text-amber-200/90 tracking-wide max-w-[220px] sm:max-w-[400px] md:max-w-[500px] cursor-pointer hover:text-amber-100 transition-colors truncate sm:whitespace-normal"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     const next = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];
@@ -285,7 +285,17 @@ export default function ManifestationBoard() {
                             >
                                 "{randomQuote}"
                             </span>
-                            <Tooltip text="Click for another quote" position="bottom" />
+
+                            {/* Copy Quote Button directly inside the pill */}
+                            <button
+                                onClick={handleCopyQuote}
+                                className="ml-1.5 p-1 rounded-md hover:bg-amber-500/20 transition-colors pointer-events-auto shrink-0 flex items-center justify-center"
+                                title="Copy quote"
+                            >
+                                {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-amber-400/80" />}
+                            </button>
+
+                            <Tooltip text="Click text for another quote" position="bottom" />
                         </div>
                     </div>
                 </div>

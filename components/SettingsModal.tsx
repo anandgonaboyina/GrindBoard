@@ -31,7 +31,7 @@ import { getResolvedAudioUrl } from '@/hooks/useAudioUrl';
 import { CustomWallpaperPreview } from './CustomWallpaperPreview';
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, dashboardScale, setDashboardScale, mobileDashboardScale, setMobileDashboardScale, dockScale, setDockScale, dockOffset, setDockOffset, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, peekModeWallpaper, setPeekModeWallpaper, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, manifestationCustomQuotes, setManifestationCustomQuotes, addManifestationCustomQuote, deleteManifestationCustomQuote, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, autoOpenCountdowns, setAutoOpenCountdowns, showManifestationBoard, setShowManifestationBoard, manifestationDesktopPhotos, setManifestationDesktopPhotos, activeManifestationDesktopIndex, setActiveManifestationDesktopIndex, manifestationMobilePhotos, setManifestationMobilePhotos, activeManifestationMobileIndex, setActiveManifestationMobileIndex } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, dashboardScale, setDashboardScale, mobileDashboardScale, setMobileDashboardScale, dockScale, setDockScale, dockOffset, setDockOffset, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, /*clearAllTasksAndPlans */ lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, peekModeWallpaper, setPeekModeWallpaper, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, manifestationCustomQuotes, setManifestationCustomQuotes, addManifestationCustomQuote, deleteManifestationCustomQuote, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, autoOpenCountdowns, setAutoOpenCountdowns, showManifestationBoard, setShowManifestationBoard, manifestationDesktopPhotos, setManifestationDesktopPhotos, activeManifestationDesktopIndex, setActiveManifestationDesktopIndex, manifestationMobilePhotos, setManifestationMobilePhotos, activeManifestationMobileIndex, setActiveManifestationMobileIndex } = useDashboardStore();
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
   const [showThemeNotice, setShowThemeNotice] = useState(false);
@@ -2472,8 +2472,9 @@ export default function SettingsModal() {
                         <p className="text-[10px] md:text-[11px] font-bold text-red-400">Peek Mode</p>
                         <p className="text-[8px] md:text-[9px] text-white/50 mt-0.5">Hide all widgets instantly.</p>
                       </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <div className="flex items-center gap-1.5">
+                      <div className="flex items-start gap-1.5 shrink-0">
+                        {/* Input and Info Text Wrapper */}
+                        <div className="flex flex-col items-center gap-1">
                           <input
                             type="text"
                             value={formatShortcutText(panicShortcutKey)}
@@ -2482,13 +2483,17 @@ export default function SettingsModal() {
                             placeholder="Keys..."
                             className="w-24 md:w-32 h-6 md:h-7 px-1.5 bg-black/40 border border-white/10 rounded text-center text-white outline-none focus:border-red-400 font-bold uppercase text-[9px] md:text-[10px]"
                           />
-                          <button
-                            onClick={() => togglePanicHide()}
-                            className="px-2 py-1 md:px-2.5 md:py-1 bg-red-500/20 text-red-300 rounded border border-red-500/30 text-[9px] md:text-[10px] font-bold uppercase"
-                          >
-                            Trigger
-                          </button>
+                          <p className="text-[7px] md:text-[8px] text-white/40 italic">
+                            Click & press keys to set
+                          </p>
                         </div>
+
+                        <button
+                          onClick={() => togglePanicHide()}
+                          className="px-2 py-1 md:px-2.5 md:py-1 bg-red-500/20 text-red-300 rounded border border-red-500/30 text-[9px] md:text-[10px] font-bold uppercase h-6 md:h-7"
+                        >
+                          Trigger
+                        </button>
                       </div>
                     </div>
 
@@ -2618,8 +2623,10 @@ export default function SettingsModal() {
                         <p className="text-[10px] md:text-[11px] font-bold text-blue-400">Focus Mode</p>
                         <p className="text-[8px] md:text-[9px] text-white/50 mt-0.5">Hide selected widgets below.</p>
                       </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <div className="flex items-center gap-1.5">
+                      <div className="flex items-start gap-1.5 shrink-0">
+
+                        {/* Input and Info Text Wrapper */}
+                        <div className="flex flex-col items-center gap-1">
                           <input
                             type="text"
                             value={formatShortcutText(focusShortcutKey)}
@@ -2628,13 +2635,17 @@ export default function SettingsModal() {
                             placeholder="Keys..."
                             className="w-24 md:w-32 h-6 md:h-7 px-1.5 bg-black/40 border border-white/10 rounded text-center text-white outline-none focus:border-blue-400 font-bold uppercase text-[9px] md:text-[10px]"
                           />
-                          <button
-                            onClick={() => toggleHide()}
-                            className="px-2 py-1 md:px-2.5 md:py-1 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 text-[9px] md:text-[10px] font-bold uppercase"
-                          >
-                            Trigger
-                          </button>
+                          <p className="text-[7px] md:text-[8px] text-white/40 italic">
+                            Click & press keys to set
+                          </p>
                         </div>
+
+                        <button
+                          onClick={() => toggleHide()}
+                          className="px-2 py-1 md:px-2.5 md:py-1 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 text-[9px] md:text-[10px] font-bold uppercase h-6 md:h-7"
+                        >
+                          Trigger
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2848,6 +2859,36 @@ export default function SettingsModal() {
                         </label>
                       </div>
                     </div>
+
+                    {/* Clear Tasks & Plans */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-orange-500/10 border border-orange-500/30 gap-2">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <CheckSquare className="text-orange-400 w-4 h-4 shrink-0" />
+                        <div className="min-w-0 pr-1">
+                          <h4 className="font-medium text-[10px] md:text-sm text-orange-300 whitespace-nowrap">Clear Tasks & Plans</h4>
+                          <p className="text-[8px] md:text-[10px] text-white/60 leading-tight">Instantly delete all tasks and plans.</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setConfirmModal({
+                            isOpen: true,
+                            title: 'Clear Tasks & Plans',
+                            message: 'Are you sure you want to completely clear all your tasks, tomorrow tasks, and plans? This action will permanently remove them from the cloud and cannot be undone.',
+                            isDestructive: true,
+                            onConfirm: () => {
+                              // clearAllTasksAndPlans();
+                              showAlertModal('not yet implemented', 'will come soon');
+                              // showAlertModal('Cleared Successfully', 'All tasks and plans have been deleted.');
+                            }
+                          });
+                        }}
+                        className="w-full sm:w-auto justify-center px-2 py-1 md:px-3 md:py-1.5 bg-orange-500/20 text-orange-300 rounded text-[9px] md:text-[10px] font-bold border border-orange-500/50 flex items-center gap-1 whitespace-nowrap"
+                      >
+                        Clear Tasks
+                      </button>
+                    </div>
+
 
                     {/* Reset Timetable */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2">
