@@ -134,7 +134,7 @@ export const useTaskStore = create<TaskState>()(
 
                 // 2. Clear out local storage cache override immediately if using persist
                 if (typeof window !== 'undefined') {
-                    const cached = localStorage.getItem('task-storage'); // Update key if named differently
+                    const cached = localStorage.getItem('tasks-storage');
                     if (cached) {
                         try {
                             const parsed = JSON.parse(cached);
@@ -142,7 +142,7 @@ export const useTaskStore = create<TaskState>()(
                                 parsed.state.tasks = newTasks;
                                 parsed.state.tomorrowTasks = newTomorrowTasks;
                                 parsed.state.lastModified = now;
-                                localStorage.setItem('task-storage', JSON.stringify(parsed));
+                                localStorage.setItem('tasks-storage', JSON.stringify(parsed));
                             }
                         } catch (e) { }
                     }
@@ -235,7 +235,7 @@ export const useTaskStore = create<TaskState>()(
                 return {};
             }),
             fetchTasks: async () => {
-                // GUARD: Do not attempt to fetch if offline on boot
+                // 🛡️ GUARD 1: Do not attempt to fetch if offline on boot
                 if (typeof window !== 'undefined' && !navigator.onLine) {
                     console.log("Offline on boot: Skipping task fetch, strictly trusting local cache.");
                     return;
@@ -250,19 +250,35 @@ export const useTaskStore = create<TaskState>()(
                     });
                     if (res.ok) {
                         const json = await res.json();
-                        // GUARD: Only override local cache if we ACTUALLY got valid data
                         if (json.success && json.data) {
-                            set({
-                                tasks: json.data.tasks || [],
-                                tomorrowTasks: json.data.tomorrowTasks || [],
-                                tasksDate: json.data.tasksDate || '',
-                                taskGroupNames: json.data.taskGroupNames || ['Core Tasks', 'Daily Routine', 'Milestones'],
-                                lastModified: json.data.lastModified || Date.now()
-                            });
+
+                            const localModified = get().lastModified || 0;
+                            const cloudModified = json.data.lastModified || 0;
+
+                            // 🛡️ GUARD 2: ONLY overwrite if the cloud data is genuinely newer!
+                            if (cloudModified >= localModified) {
+                                console.log("Cloud is newer or equal. Syncing tasks DOWN.");
+                                set({
+                                    tasks: json.data.tasks || get().tasks,
+                                    tomorrowTasks: json.data.tomorrowTasks || get().tomorrowTasks,
+                                    tasksDate: json.data.tasksDate || get().tasksDate,
+                                    taskGroupNames: json.data.taskGroupNames || get().taskGroupNames,
+                                    lastModified: cloudModified
+                                });
+                            } else {
+                                // 🛡️ GUARD 3: Local is newer! Protect local data and push it UP.
+                                console.log("Local tasks are newer! Protecting local cache and syncing UP to fix cloud.");
+                                pushTasksToDB({
+                                    tasks: get().tasks,
+                                    tomorrowTasks: get().tomorrowTasks,
+                                    tasksDate: get().tasksDate,
+                                    taskGroupNames: get().taskGroupNames,
+                                    lastModified: localModified
+                                });
+                            }
                         }
                     }
                 } catch (e) {
-                    // GUARD: On error, do absolutely nothing to the state.
                     console.error("Failed to fetch tasks from DB, keeping local state completely intact:", e);
                 }
             },
