@@ -6,7 +6,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { useTimetableStore, pushTimetableToDB } from '@/store/timetableStore';
 import { useTaskStore, pushTasksToDB } from '@/store/taskStore';
 import { useNoteStore } from '@/store/noteStore';
-import { X, Upload, LinkIcon, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
+import { X, Upload, Code, LinkIcon, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
 import ScrollableWithArrows from './ScrollableWithArrows';
@@ -2035,7 +2035,7 @@ export default function SettingsModal() {
                         ))}
                       </div>
 
-                      {customDesktopWallpapers.length < 4 && (
+                      {customDesktopWallpapers.length < 8 && (
                         <div className="flex gap-2 w-full mt-1">
                           <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-black/40 hover:bg-black/60 border border-white/10 border-dashed rounded-lg text-[9px] md:text-[10px] text-white/60 hover:text-white cursor-pointer transition-colors font-semibold">
                             <Plus className="w-3.5 h-3.5" /> File
@@ -2138,7 +2138,7 @@ export default function SettingsModal() {
                         ))}
                       </div>
 
-                      {customMobileWallpapers.length < 4 && (
+                      {customMobileWallpapers.length < 8 && (
                         <div className="flex gap-2 w-full mt-1">
                           <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-black/40 hover:bg-black/60 border border-white/10 border-dashed rounded-lg text-[9px] md:text-[10px] text-white/60 hover:text-white cursor-pointer transition-colors font-semibold">
                             <Plus className="w-3.5 h-3.5" /> File

@@ -672,7 +672,7 @@ export default function ConnectTab() {
     setLoadingFriendAction({ friendId, type: 'stats' });
     const token = localStorage.getItem('dashboard_sync_token');
     try {
-      const res = await fetch(`/api/friends/stats?friendId=${friendId}&t=${Date.now()}`, {
+      const res = await fetch(`/api/friends/stats?friendId=${friendId}&type=stats&t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -700,7 +700,7 @@ export default function ConnectTab() {
     setLoadingFriendAction({ friendId, type: 'timetable' });
     const token = localStorage.getItem('dashboard_sync_token');
     try {
-      const res = await fetch(`/api/friends/stats?friendId=${friendId}&t=${Date.now()}`, {
+      const res = await fetch(`/api/friends/stats?friendId=${friendId}&type=timetable&t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
@@ -723,7 +723,7 @@ export default function ConnectTab() {
     setLoadingFriendAction({ friendId, type: 'tasks' });
     const token = localStorage.getItem('dashboard_sync_token');
     try {
-      const res = await fetch(`/api/friends/stats?friendId=${friendId}&t=${Date.now()}`, {
+      const res = await fetch(`/api/friends/stats?friendId=${friendId}&type=tasks&t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });

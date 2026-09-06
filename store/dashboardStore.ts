@@ -954,14 +954,16 @@ const fileStorage = createJSONStorage(() => ({
               const mergedCustomAlarmSounds = mergeArraysById(localState.customAlarmSounds, cloudState.customAlarmSounds);
 
               const baseState = lastSavedValue ? (JSON.parse(lastSavedValue).state || {}) : {};
-              const mergedManifestationDesktopPhotos = mergeStringArrays(localState.manifestationDesktopPhotos, cloudState.manifestationDesktopPhotos, baseState.manifestationDesktopPhotos, isCloudNewer);
-              const mergedManifestationMobilePhotos = mergeStringArrays(localState.manifestationMobilePhotos, cloudState.manifestationMobilePhotos, baseState.manifestationMobilePhotos, isCloudNewer);
-              const mergedCustomDesktopWallpapers = mergeStringArrays(localState.customDesktopWallpapers, cloudState.customDesktopWallpapers, baseState.customDesktopWallpapers, isCloudNewer);
-              const mergedCustomMobileWallpapers = mergeStringArrays(localState.customMobileWallpapers, cloudState.customMobileWallpapers, baseState.customMobileWallpapers, isCloudNewer);
-              const mergedCustomQuotes = mergeStringArrays(localState.customQuotes, cloudState.customQuotes, baseState.customQuotes, isCloudNewer);
-              const mergedManifestationCustomQuotes = mergeStringArrays(localState.manifestationCustomQuotes, cloudState.manifestationCustomQuotes, baseState.manifestationCustomQuotes, isCloudNewer);
-              const mergedLockedWidgets = mergeStringArrays(localState.lockedWidgets, cloudState.lockedWidgets, baseState.lockedWidgets, isCloudNewer);
-
+              // If the cloud is newer, trust the cloud's list of files absolutely. 
+              // If local is newer (e.g., added offline), trust local. 
+              // This instantly kills the ghost files!
+              const mergedManifestationDesktopPhotos = isCloudNewer ? (cloudState.manifestationDesktopPhotos || []) : (localState.manifestationDesktopPhotos || []);
+              const mergedManifestationMobilePhotos = isCloudNewer ? (cloudState.manifestationMobilePhotos || []) : (localState.manifestationMobilePhotos || []);
+              const mergedCustomDesktopWallpapers = isCloudNewer ? (cloudState.customDesktopWallpapers || []) : (localState.customDesktopWallpapers || []);
+              const mergedCustomMobileWallpapers = isCloudNewer ? (cloudState.customMobileWallpapers || []) : (localState.customMobileWallpapers || []);
+              const mergedCustomQuotes = isCloudNewer ? (cloudState.customQuotes || []) : (localState.customQuotes || []);
+              const mergedManifestationCustomQuotes = isCloudNewer ? (cloudState.manifestationCustomQuotes || []) : (localState.manifestationCustomQuotes || []);
+              const mergedLockedWidgets = isCloudNewer ? (cloudState.lockedWidgets || []) : (localState.lockedWidgets || []);
               const mergedWeekdayTimes = (Array.isArray(cloudState.weekdayTimes) && cloudState.weekdayTimes.length > 0)
                 ? cloudState.weekdayTimes
                 : (Array.isArray(localState.weekdayTimes) ? localState.weekdayTimes : []);

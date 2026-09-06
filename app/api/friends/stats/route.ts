@@ -22,6 +22,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const friendId = searchParams.get('friendId');
+    const fetchType = searchParams.get('type') || 'all'; // NEW: Get requested type
 
     if (!friendId) return NextResponse.json({ error: 'Friend ID required' }, { status: 400 });
 
@@ -38,12 +39,44 @@ export async function GET(request: Request) {
 
     if (!friendship) return NextResponse.json({ error: 'Not friends' }, { status: 403 });
 
-    const friendDashboard = await db.collection('DashboardStorage').findOne({ userId: friendId });
-    const settingsRecord = await db.collection('Settings').findOne({ userId: friendId });
-    const tasksRecord = await db.collection('Tasks').findOne({ userId: friendId });
-    const statsRecord = await db.collection('Stats').findOne({ userId: friendId });
-    const dailyRoutineRecord = await db.collection('DailyRoutine').findOne({ userId: friendId });
-    const timetableRecord = await db.collection('Timetable').findOne({ userId: friendId });
+    const { ObjectId } = require('mongodb');
+    let friendObjId = null;
+    try { friendObjId = new ObjectId(friendId); } catch (e) { }
+
+    const safeUserQuery = friendObjId
+      ? { $or: [{ userId: friendId }, { userId: friendObjId }] }
+      : { userId: friendId };
+
+    const userQuery = friendObjId ? { _id: friendObjId } : { _id: friendId };
+
+    // 🚀 PARALLEL QUERIES: Only fetch exactly what the frontend asked for!
+    const [
+      friendAccount,
+      friendDashboard,
+      settingsRecord,
+      tasksRecord,
+      statsRecord,
+      dailyRoutineRecord,
+      timetableRecord
+    ] = await Promise.all([
+      db.collection('User').findOne(userQuery),
+      db.collection('DashboardStorage').findOne(safeUserQuery), // Legacy fallback
+
+      (fetchType === 'timetable' || fetchType === 'all')
+        ? db.collection('Settings').findOne(safeUserQuery) : Promise.resolve(null),
+
+      (fetchType === 'tasks' || fetchType === 'all')
+        ? db.collection('Tasks').findOne(safeUserQuery) : Promise.resolve(null),
+
+      (fetchType === 'stats' || fetchType === 'all')
+        ? db.collection('Stats').findOne(safeUserQuery) : Promise.resolve(null),
+
+      (fetchType === 'stats' || fetchType === 'all')
+        ? db.collection('DailyRoutine').findOne(safeUserQuery) : Promise.resolve(null),
+
+      (fetchType === 'timetable' || fetchType === 'all')
+        ? db.collection('timetables').findOne(safeUserQuery) : Promise.resolve(null)
+    ]);
 
     if (!friendDashboard && !settingsRecord && !tasksRecord && !statsRecord && !dailyRoutineRecord && !timetableRecord) {
       return NextResponse.json({ data: null });
@@ -60,69 +93,43 @@ export async function GET(request: Request) {
         ...(settingsRecord?.generalSettings || legacyGS || {})
       };
 
-      const TIMETABLE_KEYS = [
-        'timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes',
-        'timetableStartTime', 'timetableWeekendStartTime'
-      ];
-      const SETTING_ARRAY_KEYS = [
-        'widgetOffsets', 'clockOffsets', 'lockedWidgets',
-        'hiddenWallpapers', 'customDesktopWallpapers', 'customMobileWallpapers',
-        ...TIMETABLE_KEYS
-      ];
-      SETTING_ARRAY_KEYS.forEach(key => {
-        if (settingsRecord && settingsRecord[key] !== undefined) parsedData[key] = settingsRecord[key];
-      });
+      if (settingsRecord) {
+        ['widgetOffsets', 'clockOffsets', 'lockedWidgets', 'hiddenWallpapers', 'customDesktopWallpapers', 'customMobileWallpapers'].forEach(key => {
+          if (settingsRecord[key] !== undefined) parsedData[key] = settingsRecord[key];
+        });
+      }
 
-      const TASK_KEYS = ['tasks', 'tomorrowTasks', 'taskGroupNames', 'countdowns', 'deadlines', 'syntheticDeadlines'];
-      TASK_KEYS.forEach(key => {
-        if (tasksRecord && tasksRecord[key] !== undefined) parsedData[key] = tasksRecord[key];
-      });
+      if (tasksRecord) {
+        ['tasks', 'tomorrowTasks', 'taskGroupNames', 'countdowns', 'deadlines', 'syntheticDeadlines'].forEach(key => {
+          if (tasksRecord[key] !== undefined) parsedData[key] = tasksRecord[key];
+        });
+      }
 
-      const STATS_KEYS = ['history', 'stopwatchSessions'];
-      STATS_KEYS.forEach(key => {
-        if (statsRecord && statsRecord[key] !== undefined) parsedData[key] = statsRecord[key];
-      });
+      if (statsRecord) {
+        ['history', 'stopwatchSessions'].forEach(key => {
+          if (statsRecord[key] !== undefined) parsedData[key] = statsRecord[key];
+        });
+        if (statsRecord.dailyTimes !== undefined) parsedData.dailyTimes = statsRecord.dailyTimes;
+      }
 
-      const DAILY_ROUTINE_KEYS = ['dailyTimes'];
-      DAILY_ROUTINE_KEYS.forEach(key => {
-        if (dailyRoutineRecord && dailyRoutineRecord[key] !== undefined) parsedData[key] = dailyRoutineRecord[key];
-      });
-      
-      // Backward compat
-      if (statsRecord && statsRecord.dailyTimes !== undefined && parsedData.dailyTimes === undefined) {
-        parsedData.dailyTimes = statsRecord.dailyTimes;
+      if (dailyRoutineRecord) {
+        if (dailyRoutineRecord.dailyTimes !== undefined) parsedData.dailyTimes = dailyRoutineRecord.dailyTimes;
       }
     }
 
-    // Always merge Timetable collection fields if present (Legacy support)
-    const LEGACY_TIMETABLE_KEYS = [
-      'timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes',
-      'timetableStartTime', 'timetableWeekendStartTime'
-    ];
-    LEGACY_TIMETABLE_KEYS.forEach(key => {
-      if (timetableRecord && timetableRecord[key] !== undefined) {
-        parsedData[key] = timetableRecord[key];
-      }
-    });
-
-    const { ObjectId } = require('mongodb');
-    let userQuery;
-    try {
-      userQuery = { _id: new ObjectId(friendId) };
-    } catch {
-      userQuery = { _id: friendId };
+    // FORCE TIMETABLE OVERWRITE
+    if (timetableRecord) {
+      ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime', 'useTimetableRange'].forEach(key => {
+        if (timetableRecord[key] !== undefined) parsedData[key] = timetableRecord[key];
+      });
     }
-    const friendAccount = await db.collection('User').findOne(userQuery);
 
-    const isTaskSharingEnabled =
-      friendship.taskSharing?.[friendId] !== false &&
-      friendship.taskSharing?.[friendId?.toString()] !== false;
+    const isTaskSharingEnabled = friendship.taskSharing?.[friendId] !== false && friendship.taskSharing?.[friendId?.toString()] !== false;
 
     let finalTasks = isTaskSharingEnabled ? (parsedData.tasks || []) : undefined;
     let finalTomorrowTasks = isTaskSharingEnabled ? (parsedData.tomorrowTasks || []) : undefined;
 
     if (finalTasks && finalTomorrowTasks) {
-      // Ensure no overlap between tabs to prevent duplicate key errors (mirroring client hydration)
       const tIds = new Set(finalTasks.map((t: any) => t.id));
       finalTomorrowTasks = finalTomorrowTasks.filter((t: any) => !tIds.has(t.id));
     }
@@ -142,6 +149,7 @@ export async function GET(request: Request) {
       weekendTimes: parsedData.weekendTimes || null,
       timetableStartTime: parsedData.timetableStartTime !== undefined ? parsedData.timetableStartTime : 540,
       timetableWeekendStartTime: parsedData.timetableWeekendStartTime !== undefined ? parsedData.timetableWeekendStartTime : 540,
+      useTimetableRange: parsedData.useTimetableRange || false,
       lastLogin: friendAccount?.lastLogin || null,
       createdAt: friendAccount?.createdAt || null
     };
