@@ -1,20 +1,17 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { dbConnect } from '@/lib/mongodb';
+import Timetable from '@/models/Timetable';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
 
 const authenticate = (request: Request) => {
   const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.split(' ')[1];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return decoded;
-  } catch (error) {
+    return jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as { userId: string };
+  } catch {
     return null;
   }
 };
@@ -22,23 +19,12 @@ const authenticate = (request: Request) => {
 export async function GET(request: Request) {
   try {
     const user = authenticate(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const client = await clientPromise;
-    const db = client.db();
-    
-    const timetableRecord = await db.collection('Timetable').findOne({ userId: user.userId });
-    
-    if (!timetableRecord) {
-      return NextResponse.json({ data: null });
-    }
-
-    const { _id, userId, ...coreData } = timetableRecord as any;
-    return NextResponse.json({ data: coreData });
+    await dbConnect();
+    const timetable = await Timetable.findOne({ userId: user.userId });
+    return NextResponse.json({ success: true, data: timetable });
   } catch (error) {
-    console.error('Error fetching timetable:', error);
     return NextResponse.json({ error: 'Failed to fetch timetable' }, { status: 500 });
   }
 }
@@ -46,31 +32,20 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const user = authenticate(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    
-    const client = await clientPromise;
-    const db = client.db();
+    if (!body.updates) return NextResponse.json({ error: 'No updates provided' }, { status: 400 });
 
-    const newLastModified = Date.now();
-    
-    const updatePayload = { ...body, lastModified: newLastModified };
-
-    await db.collection('Timetable').updateOne(
+    await dbConnect();
+    const updatedTimetable = await Timetable.findOneAndUpdate(
       { userId: user.userId },
-      { 
-        $set: updatePayload,
-        $setOnInsert: { userId: user.userId }
-      },
-      { upsert: true }
+      { $set: body.updates, lastModified: Date.now() },
+      { upsert: true, new: true }
     );
 
-    return NextResponse.json({ success: true, lastModified: newLastModified });
+    return NextResponse.json({ success: true, data: updatedTimetable });
   } catch (error) {
-    console.error('Error updating timetable:', error);
     return NextResponse.json({ error: 'Failed to update timetable' }, { status: 500 });
   }
 }

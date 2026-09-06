@@ -28,9 +28,9 @@ export async function GET(request: Request) {
 
     const client = await clientPromise;
     const db = client.db();
-    
+
     const settingsRecord = await db.collection('Settings').findOne({ userId: user.userId });
-    
+
     if (!settingsRecord) {
       return NextResponse.json({ data: null });
     }
@@ -51,12 +51,12 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    
+
     const client = await clientPromise;
     const db = client.db();
 
     const newLastModified = Date.now();
-    
+
     const displaySettings: Record<string, any> = {};
     const generalSettings: Record<string, any> = {};
     const rootSettings: Record<string, any> = {};
@@ -71,16 +71,16 @@ export async function PATCH(request: Request) {
       }
     });
 
-    const updatePayload = { 
-      ...displaySettings, 
-      ...generalSettings, 
-      ...rootSettings, 
-      lastModified: newLastModified 
+    const updatePayload = {
+      ...displaySettings,
+      ...generalSettings,
+      ...rootSettings,
+      lastModified: newLastModified
     };
 
     await db.collection('Settings').updateOne(
       { userId: user.userId },
-      { 
+      {
         $set: updatePayload,
         $setOnInsert: { userId: user.userId }
       },

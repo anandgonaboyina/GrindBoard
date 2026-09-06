@@ -2,29 +2,10 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { getLocalDateString } from '@/utils/date';
 
-const DEFAULT_TIMETABLE_GRID = {
-  "Mon": { "09:00 AM": "DSA", "10:00 AM": "Web Dev", "11:00 AM": "OS", "12:00 PM": "Lunch", "01:00 PM": "Math", "02:00 PM": "Physics", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-  "Tue": { "09:00 AM": "Math", "10:00 AM": "DSA", "11:00 AM": "Web Dev", "12:00 PM": "Lunch", "01:00 PM": "OS", "02:00 PM": "DB", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-  "Wed": { "09:00 AM": "OS", "10:00 AM": "Math", "11:00 AM": "DSA", "12:00 PM": "Lunch", "01:00 PM": "Web Dev", "02:00 PM": "Physics", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-  "Thu": { "09:00 AM": "DB", "10:00 AM": "OS", "11:00 AM": "Math", "12:00 PM": "Lunch", "01:00 PM": "DSA", "02:00 PM": "Web Dev", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-  "Fri": { "09:00 AM": "Web Dev", "10:00 AM": "DB", "11:00 AM": "OS", "12:00 PM": "Lunch", "01:00 PM": "Math", "02:00 PM": "DSA", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
-  "Sat": { "09:00 AM": "Free", "10:00 AM": "Free", "11:00 AM": "Free", "12:00 PM": "Free", "01:00 PM": "Free", "02:00 PM": "Free", "03:00 PM": "Free", "04:00 PM": "Free", "05:00 PM": "Free" },
-  "Sun": { "09:00 AM": "Free", "10:00 AM": "Free", "11:00 AM": "Free", "12:00 PM": "Free", "01:00 PM": "Free", "02:00 PM": "Free", "03:00 PM": "Free", "04:00 PM": "Free", "05:00 PM": "Free" },
-};
-
 export interface CustomAlarmSound {
   id: string;
   name: string;
   url: string;
-}
-
-export interface Task {
-  id: string;
-  title: string;
-  duration: number; // in minutes
-  completed: boolean;
-  timeSpent?: number; // total minutes spent on this task
-  groupId?: number; // 0, 1, or 2 for Tab 1, 2, 3
 }
 
 export interface Note {
@@ -87,8 +68,6 @@ export const filterActiveDeadlines = (deadlines: any[]) => {
   });
 };
 
-export type TimetableGrid = Record<string, Record<string, string>>;
-
 interface DashboardState {
   wallpaper: string;
   bgIndex: number;
@@ -104,7 +83,8 @@ interface DashboardState {
   setCustomDesktopWallpapers: (urls: string[]) => void;
   activeDesktopCustomIndex: number | null;
   setActiveDesktopCustomIndex: (index: number | null) => void;
-
+  clearAllTasksAndPlans: () => void;
+  resetTimetable: () => void;
   customMobileWallpapers: string[];
   setCustomMobileWallpapers: (urls: string[]) => void;
   activeMobileCustomIndex: number | null;
@@ -125,27 +105,17 @@ interface DashboardState {
   setManifestationMobilePhotos: (urls: string[]) => void;
   activeManifestationMobileIndex: number | null;
   setActiveManifestationMobileIndex: (index: number | null) => void;
-
-  history: Record<string, number>;
-  tasks: Task[];
-  tomorrowTasks: Task[];
-  tasksDate: string;
-  checkTasksRollover: () => void;
-  reorderTasks: (tab: 'today' | 'tomorrow', startIndex: number, endIndex: number) => void;
   isHidden: boolean;
   lockedWallpaper: string | null;
   setLockedWallpaper: (filename: string | null) => void;
   setWallpaper: (url: string) => void;
-  addMins: (dateKey: string, mins: number) => void;
-  setTasks: (tasks: Task[], tab?: 'today' | 'tomorrow') => void;
-  addTask: (title: string, duration: number, tab?: 'today' | 'tomorrow', groupId?: number) => void;
-  toggleTask: (id: string, tab?: 'today' | 'tomorrow') => void;
-  deleteTask: (id: string, tab?: 'today' | 'tomorrow') => void;
-  moveTaskTab: (id: string, fromTab: 'today' | 'tomorrow') => void;
-  taskGroupNames: string[];
-  setTaskGroupName: (index: number, name: string) => void;
   toggleHide: () => void;
-
+  timetableGrid: Record<string, any>;
+  timetableColors: Record<string, any>;
+  weekdayTimes: string[];
+  weekendTimes: string[];
+  timetableStartTime: number;
+  timetableWeekendStartTime: number;
   isTaskManagerOpen: boolean;
   toggleTaskManager: () => void;
   isStatsOpen: boolean;
@@ -272,6 +242,9 @@ interface DashboardState {
   toggleNotes: () => void;
   reorderNotes: (fromIndex: number, toIndex: number) => void;
 
+  //timetable
+  isTimetableOpen: boolean;
+  setIsTimetableOpen: (isOpen: boolean) => void;
   // Stopwatch State
   isStopwatchOpen: boolean;
   toggleStopwatch: () => void;
@@ -329,27 +302,6 @@ interface DashboardState {
   dismissDeadlineAlert: (id: string) => void;
   isDeadlinesCollapsed: boolean;
   setIsDeadlinesCollapsed: (collapsed: boolean) => void;
-
-  // Timetable
-  timetableGrid: TimetableGrid;
-  timetableColors: Record<string, Record<string, string>>;
-  updateTimetableCell: (day: string, time: string, subject: string) => void;
-  updateTimetableColor: (day: string, time: string, color: string) => void;
-  weekdayTimes: string[];
-  weekendTimes: string[];
-  timetableStartTime: number;
-  timetableWeekendStartTime: number;
-  setTimetableStartTime: (mins: number) => void;
-  setTimetableWeekendStartTime: (mins: number) => void;
-  updateTimetableTime: (isWeekend: boolean, index: number, newTime: string, keyMap?: Record<string, string>) => void;
-  renameTimetableKeys: (isWeekend: boolean, keyMap: Record<string, string>) => void;
-  resetTimetable: () => void;
-  addTimetableRow: (isWeekend: boolean, prepend?: boolean) => void;
-  deleteTimetableRow: (isWeekend: boolean, index: number) => void;
-  useTimetableRange: boolean;
-  toggleTimetableRange: () => void;
-  isTimetableOpen: boolean;
-  setIsTimetableOpen: (isOpen: boolean) => void;
 
   viewingFriend: { username: string, stats: any } | null;
   setViewingFriend: (friend: { username: string, stats: any } | null) => void;
@@ -565,23 +517,17 @@ const mergeStringArrays = (localArr: any, cloudArr: any, baseArr: any = null, cl
   if (!Array.isArray(localArr)) localArr = [];
   if (!Array.isArray(cloudArr)) cloudArr = [];
 
-  // When cloud state is newer (e.g. user deleted or reordered media/wallpapers on another device),
-  // cloudArr is the authoritative list of active URL items.
-  // We sanitize any legacy 'custom-' items that might have made it to the cloud.
-  const sanitizedCloudArr = cloudArr.filter((item: any) => typeof item === 'string' && !item.startsWith('custom-'));
-
-  // Local files (custom-) are ALWAYS strictly local and preserved on this device.
+  // Remove base64 data, but KEEP 'custom-' references so the device can recover them
+  const sanitizedCloudArr = cloudArr.filter((item: any) => typeof item === 'string' && !item.startsWith('data:'));
   const localOnlyItems = localArr.filter((item: any) => typeof item === 'string' && item.startsWith('custom-'));
 
   if (cloudIsNewer) {
     return Array.from(new Set([...sanitizedCloudArr, ...localOnlyItems]));
   }
 
-  // If local is newer or cloud is empty:
   if (cloudArr.length === 0) return localArr;
   if (localArr.length === 0) return cloudArr;
 
-  // Respect localArr order, bringing in any cloud items missing from local
   const localSet = new Set(localArr);
   const result = [...localArr];
   for (const item of sanitizedCloudArr) {
@@ -673,8 +619,7 @@ const performSave = async () => {
     if (lastSavedValue) {
       const oldState = JSON.parse(lastSavedValue).state || {};
       const newState = JSON.parse(valueToSave).state || {};
-
-      const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
+      const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
       const STATS_KEYS = ['history'];
       const DAILY_ROUTINE_KEYS = ['dailyTimes'];
       const NOTES_KEYS = ['notes'];
@@ -735,12 +680,12 @@ const performSave = async () => {
       LOCAL_ONLY_MEDIA_KEYS.forEach(key => {
         if (Array.isArray(parsedData.state[key])) {
           parsedData.state[key] = parsedData.state[key].filter(
-            (v: string) => typeof v === 'string' && !v.startsWith('data:') && !v.startsWith('custom-')
-          );
+            (v: string) => typeof v === 'string' && !v.startsWith('data:')
+          ); // FIX: Removed the custom- restriction
         }
       });
       // Also sanitize scalar media fields
-      if (typeof parsedData.state.peekModeWallpaper === 'string' && (parsedData.state.peekModeWallpaper.startsWith('data:') || parsedData.state.peekModeWallpaper.startsWith('custom-'))) {
+      if (typeof parsedData.state.peekModeWallpaper === 'string' && parsedData.state.peekModeWallpaper.startsWith('data:')) {
         delete parsedData.state.peekModeWallpaper;
       }
     }
@@ -784,8 +729,8 @@ const performSave = async () => {
       const mergedHasSeenOnboarding = Boolean(localHasSeen || cloudHasSeen);
 
       const mergedState = {
-        ...parsedLocal.state,
-        ...parsedCloud.state, // Cloud wins for scalar settings and complex objects to prevent default overrides
+        ...parsedCloud.state, // Cloud goes first
+        ...parsedLocal.state, // Local goes SECOND so your fresh edits win!
 
         // Deep merge tracking data to prevent data loss
         history: mergedHistory,
@@ -803,15 +748,10 @@ const performSave = async () => {
         deadlineAlertDays: parsedCloud.state.deadlineAlertDays || parsedLocal.state.deadlineAlertDays,
         dismissedDeadlineAlerts: parsedCloud.state.dismissedDeadlineAlerts || parsedLocal.state.dismissedDeadlineAlerts,
 
-        // Tasks use union merge during a 409 conflict to preserve all edits from both devices
-        ...(() => {
-          const tTasks = deduplicateTasks([...(parsedLocal.state.tasks || []), ...(parsedCloud.state.tasks || [])]);
-          let tomTasks = deduplicateTasks([...(parsedLocal.state.tomorrowTasks || []), ...(parsedCloud.state.tomorrowTasks || [])]);
-          // Ensure no overlap between tabs to prevent duplicates
-          const tIds = new Set(tTasks.map((t: any) => t.id));
-          tomTasks = tomTasks.filter((t: any) => !tIds.has(t.id));
-          return { tasks: tTasks, tomorrowTasks: tomTasks };
-        })(),
+        // Strict overwrite based on cloud truth to prevent ghost resurrections
+        tasks: parsedCloud.state.tasks || parsedLocal.state.tasks,
+        tomorrowTasks: parsedCloud.state.tomorrowTasks || parsedLocal.state.tomorrowTasks,
+        notes: parsedCloud.state.notes || parsedLocal.state.notes,
         tasksDate: (parsedLocal.state.tasksDate && parsedCloud.state.tasksDate) ?
           (parsedLocal.state.tasksDate > parsedCloud.state.tasksDate ? parsedLocal.state.tasksDate : parsedCloud.state.tasksDate) :
           (parsedLocal.state.tasksDate || parsedCloud.state.tasksDate || getLocalDateString()),
@@ -909,7 +849,6 @@ const performSave = async () => {
     lastSavedValue = valueToSave; // Update the last saved reference
   } catch (err) {
     console.warn("Failed to save to DB, storing locally:", err);
-    lastSavedValue = valueToSave;
   } finally {
     isSaving = false;
     if (success) {
@@ -1065,13 +1004,8 @@ const fileStorage = createJSONStorage(() => ({
               const isCloudNewer = cloudLastMod > getSyncLastModified();
 
               // Use union merge for tasks to prevent data loss across devices or during offline syncs
-              const _mergedTasks = deduplicateTasks([...(cloudState.tasks || []), ...(localState.tasks || [])]);
-              let _mergedTomorrowTasks = deduplicateTasks([...(cloudState.tomorrowTasks || []), ...(localState.tomorrowTasks || [])]);
-              // Ensure no overlap between tabs to prevent duplicate key errors
-              const _tIds = new Set(_mergedTasks.map(t => t.id));
-              _mergedTomorrowTasks = _mergedTomorrowTasks.filter(t => !_tIds.has(t.id));
-              const mergedTasks = _mergedTasks;
-              const mergedTomorrowTasks = _mergedTomorrowTasks;
+              const mergedTasks = isCloudNewer ? (cloudState.tasks || []) : (localState.tasks || []);
+              const mergedTomorrowTasks = isCloudNewer ? (cloudState.tomorrowTasks || []) : (localState.tomorrowTasks || []);
 
               const mergedTasksDate = (localState.tasksDate && cloudState.tasksDate) ?
                 (localState.tasksDate > cloudState.tasksDate ? localState.tasksDate : cloudState.tasksDate) :
@@ -1293,28 +1227,26 @@ const fileStorage = createJSONStorage(() => ({
   },
   setItem: async (_name: string, value: string): Promise<void> => {
     if (typeof window === 'undefined' || isSyncingFromCloud || isAuthTransition) return;
-    if (value === lastSavedValue) return; // Prevent overwriting DB with unchanged hydration state
+    if (value === lastSavedValue) return;
 
-    // Safety check: NEVER save to DB if hydration hasn't finished, to prevent overwriting with initial defaults!
+    // Safety check: NEVER save to DB if hydration hasn't finished
     if (useDashboardStore.getState && !useDashboardStore.getState()._hasHydrated) {
-      console.warn("Blocked save attempt before hydration!");
       return;
     }
 
-    // ALWAYS save locally first so offline restarts have immediate latest data!
     try {
       localStorage.setItem('dashboard-storage', value);
-    } catch (e) {
-      console.warn("Failed to save to localStorage, likely due to massive base64 strings exceeding 5MB quota:", e);
-      // We do NOT return here, so that pendingValue is still updated and cloud sync still fires!
-    }
+    } catch (e) { }
+
     const newTime = Math.max(Date.now(), getSyncLastModified() + 1);
-    setSyncLastModified(newTime); // Mark local as newest immediately!
+    setSyncLastModified(newTime);
 
     pendingValue = value;
     hasUnsavedChanges = true;
-
-    if (!isSaving && !saveTimeout) {
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    if (!isSaving) {
       saveTimeout = setTimeout(performSave, 5000);
     }
   },
@@ -1324,17 +1256,6 @@ const fileStorage = createJSONStorage(() => ({
   },
 }));
 
-export const pushTimetableToDB = async (payload: any) => {
-  if (typeof window === 'undefined') return;
-  const token = localStorage.getItem('dashboard_sync_token');
-  if (!token) return;
-  try {
-    useDashboardStore.setState(payload);
-    window.dispatchEvent(new Event('app_sync_now'));
-  } catch (e) {
-    console.error("Failed to push timetable to DB via unified sync", e);
-  }
-};
 
 export const pushCountdownsToDB = async (payload: any) => {
   if (typeof window === 'undefined') return;
@@ -1354,23 +1275,23 @@ export const pushCountdownsToDB = async (payload: any) => {
   }
 };
 
-export const pushSettingsToDB = async (payload: any) => {
-  if (typeof window === 'undefined') return;
-  const token = localStorage.getItem('dashboard_sync_token');
-  if (!token) return;
-  try {
-    await fetch('/api/settings', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
-  } catch (e) {
-    console.error('Failed to push settings to DB', e);
-  }
-};
+// export const pushSettingsToDB = async (payload: any) => {
+//   if (typeof window === 'undefined') return;
+//   const token = localStorage.getItem('dashboard_sync_token');
+//   if (!token) return;
+//   try {
+//     await fetch('/api/settings', {
+//       method: 'PATCH',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': `Bearer ${token}`
+//       },
+//       body: JSON.stringify(payload)
+//     });
+//   } catch (e) {
+//     console.error('Failed to push settings to DB', e);
+//   }
+// };
 
 export const pushDeadlinesToDB = async (payload: any) => {
   if (typeof window === 'undefined') return;
@@ -1416,24 +1337,6 @@ export const pushDailyRoutineToDB = async (payload: any) => {
   }
 };
 
-export const pushNotesToDB = async (payload: any) => {
-  if (typeof window === 'undefined') return;
-  const token = localStorage.getItem('dashboard_sync_token');
-  if (!token) return;
-  try {
-    await fetch('/api/notes', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
-  } catch (e) {
-    console.error('Failed to push notes to DB', e);
-  }
-};
-
 export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
@@ -1442,17 +1345,6 @@ export const useDashboardStore = create<DashboardState>()(
       currentBgType: null,
       lockedWallpaper: null,
       history: {},
-      tasks: [],
-      tomorrowTasks: [],
-      tasksDate: getLocalDateString(),
-      taskGroupNames: ['Core Tasks', 'Daily Routine', 'Milestones'],
-      setTaskGroupName: (index, name) => set((state) => {
-        const DEFAULT_TAB_NAMES = ['Core Tasks', 'Daily Routine', 'Milestones'];
-        const newNames = [...(state.taskGroupNames || DEFAULT_TAB_NAMES)];
-        const cleanName = name.trim() || DEFAULT_TAB_NAMES[index] || `Tab ${index + 1}`;
-        newNames[index] = cleanName === `Tab ${index + 1}` ? DEFAULT_TAB_NAMES[index] : cleanName;
-        return { taskGroupNames: newNames };
-      }),
       isHidden: false,
       _hasHydrated: false,
       theme: 'dark',
@@ -1544,107 +1436,6 @@ export const useDashboardStore = create<DashboardState>()(
           };
         });
       },
-
-      setTasks: (tasks, tab = 'today') => {
-        set(tab === 'today' ? { tasks } : { tomorrowTasks: tasks });
-      },
-
-      addTask: (title, duration, tab = 'today', groupId = 0) => {
-        set((state) => {
-          const newTask = {
-            id: Date.now().toString(),
-            title,
-            duration,
-            completed: false,
-            timeSpent: 0,
-            groupId
-          };
-          if (tab === 'today') {
-            return { tasks: [...state.tasks, newTask] };
-          }
-          return { tomorrowTasks: [...state.tomorrowTasks, newTask] };
-        });
-      },
-
-      toggleTask: (id, tab = 'today') => {
-        set((state) => {
-          if (tab === 'today') {
-            return {
-              tasks: state.tasks.map((t) =>
-                t.id === id ? { ...t, completed: !t.completed } : t
-              ),
-            };
-          }
-          return {
-            tomorrowTasks: state.tomorrowTasks.map((t) =>
-              t.id === id ? { ...t, completed: !t.completed } : t
-            ),
-          };
-        });
-      },
-
-      deleteTask: (id, tab = 'today') => {
-        set((state) => {
-          const isCurrentlyActive = state.activeTaskId === id;
-          if (tab === 'today') {
-            return {
-              tasks: state.tasks.filter((t) => t.id !== id),
-              ...(isCurrentlyActive && { activeTaskId: null, activeTaskTitle: null })
-            };
-          }
-          return {
-            tomorrowTasks: state.tomorrowTasks.filter((t) => t.id !== id),
-            ...(isCurrentlyActive && { activeTaskId: null, activeTaskTitle: null })
-          };
-        });
-      },
-
-      moveTaskTab: (id, fromTab) => {
-        set((state) => {
-          if (fromTab === 'today') {
-            const taskToMove = state.tasks.find(t => t.id === id);
-            if (!taskToMove) return state;
-            return {
-              tasks: state.tasks.filter(t => t.id !== id),
-              tomorrowTasks: [...state.tomorrowTasks, taskToMove]
-            };
-          } else {
-            const taskToMove = state.tomorrowTasks.find(t => t.id === id);
-            if (!taskToMove) return state;
-            return {
-              tomorrowTasks: state.tomorrowTasks.filter(t => t.id !== id),
-              tasks: [...state.tasks, taskToMove]
-            };
-          }
-        });
-      },
-
-      // clearAllTasksAndPlans: () => {
-      //   set({ tasks: [], tomorrowTasks: [], plans: [] });
-      //   get().forceInstantSave();
-      // },
-
-      updateTaskTitle: (id, title, tab = 'today') => {
-        set((state) => {
-          const isCurrentlyActive = state.activeTaskId === id;
-          if (tab === 'today') {
-            return {
-              tasks: state.tasks.map((t) =>
-                t.id === id ? { ...t, title } : t
-              ),
-              ...(isCurrentlyActive && { activeTaskTitle: title }),
-            };
-          }
-          return {
-            tomorrowTasks: state.tomorrowTasks.map((t) =>
-              t.id === id ? { ...t, title } : t
-            ),
-            ...(isCurrentlyActive && { activeTaskTitle: title }),
-          };
-        });
-        get().forceInstantSave();
-      },
-
       toggleHide: () => set((state) => ({ isHidden: !state.isHidden })),
 
       isTaskManagerOpen: false,
@@ -1742,184 +1533,58 @@ export const useDashboardStore = create<DashboardState>()(
           widgetZIndices: { ...currentZ, timer: maxZ + 1 }
         };
       }),
-
+      // Active Task for Timer
       activeTaskId: null,
       activeTaskTitle: null,
-      setActiveTask: (id, title) => set({ activeTaskId: id, activeTaskTitle: title }),
-      updateTaskDuration: (id, decreaseMins) => {
-        set((state) => {
-          const isPersonal = state.tasks.some(t => t.id === id) || state.tomorrowTasks.some(t => t.id === id);
-
-          if (isPersonal) {
-            const mapTask = (t: any) => {
-              if (t.id === id) {
-                const newDuration = Math.max(0, t.duration - decreaseMins);
-                return {
-                  ...t,
-                  duration: newDuration,
-                  timeSpent: (t.timeSpent || 0) + decreaseMins,
-                  completed: t.completed || (newDuration === 0)
-                };
-              }
-              return t;
-            };
-            return {
-              tasks: state.tasks.map(mapTask),
-              tomorrowTasks: state.tomorrowTasks.map(mapTask)
-            };
-          }
-
-          let foundGroup: any = null;
-          let foundTask: any = null;
-          let foundUserId: string | null = null;
-
-          for (const g of state.userGroups) {
-            if (g.memberTasks) {
-              for (const uId in g.memberTasks) {
-                const t = g.memberTasks[uId]?.find((task: any) => task.id === id);
-                if (t) {
-                  foundGroup = g;
-                  foundTask = t;
-                  foundUserId = uId;
-                  break;
-                }
-              }
-            }
-            if (!foundTask) {
-              const t = g.tasks?.find((task: any) => task.id === id);
-              if (t) {
-                foundGroup = g;
-                foundTask = t;
-                break;
-              }
-            }
-            if (foundGroup) break;
-          }
-
-          if (foundGroup) {
-            const username = typeof window !== 'undefined' ? localStorage.getItem('dashboard_username') : '';
-            const myMemberInfo = foundGroup.members?.find((m: any) => m.username === username || m.isMe);
-            const targetUId = foundUserId || myMemberInfo?.userId || myMemberInfo?.username;
-
-            if (targetUId) {
-              const d = new Date();
-              const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-              let updatedCompletionParams = null;
-
-              const newUserGroups = state.userGroups.map(g => {
-                if (g._id === foundGroup._id) {
-                  const completions = g.completions || {};
-                  const userCompletions = completions[targetUId] || {};
-                  const todayCompletions = userCompletions[todayStr] || {};
-                  const taskCompletion = todayCompletions[id] || { timeSpent: 0, completed: false };
-
-                  const newTimeSpent = (taskCompletion.timeSpent || 0) + decreaseMins;
-                  let newCompleted = taskCompletion.completed;
-
-                  // Auto-complete if time spent equals or exceeds duration
-                  if (newTimeSpent >= (foundTask.duration || 0)) {
-                    newCompleted = true;
-                  }
-
-                  const newCompletions = {
-                    ...completions,
-                    [targetUId]: {
-                      ...userCompletions,
-                      [todayStr]: {
-                        ...todayCompletions,
-                        [id]: {
-                          ...taskCompletion,
-                          timeSpent: newTimeSpent,
-                          completed: newCompleted
-                        }
-                      }
-                    }
-                  };
-
-                  updatedCompletionParams = {
-                    dateStr: todayStr,
-                    taskId: id,
-                    completed: newCompleted,
-                    timeSpent: newTimeSpent,
-                    targetUserId: targetUId
-                  };
-
-                  return {
-                    ...g,
-                    completions: newCompletions
-                  };
-                }
-                return g;
-              });
-
-              const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
-              if (token && updatedCompletionParams) {
-                fetch(`/api/groups/${foundGroup._id}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                  body: JSON.stringify({ action: 'update_completion', ...((updatedCompletionParams as any) || {}) })
-                }).catch(() => { });
-              }
-
-              return { userGroups: newUserGroups };
-            }
-          }
-
-          return state;
-        });
+      setActiveTask: (id, title) => {
+        set({ activeTaskId: id, activeTaskTitle: title });
+        get().forceInstantSave();
       },
-      editTaskDuration: (id, newDuration, tab = 'today') => set((state) => {
-        if (tab === 'today') {
-          return { tasks: state.tasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
-        }
-        return { tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
-      }),
-      editTaskTimeSpent: (id, newTimeSpent, tab = 'today') => set((state) => {
-        const updateTasks = (tasks: Task[]) => tasks.map(t => {
-          if (t.id === id) {
-            const diff = newTimeSpent - (t.timeSpent || 0);
+      updateTaskDuration: (id, decreaseMins) => {
+        set((state) => ({
+          tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins) } : t),
+          tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins) } : t)
+        } as any));
+        get().forceInstantSave();
+      },
+      editTaskDuration: (id, newDuration, tab = 'today') => {
+        set((state) => ({
+          ...(tab === 'today' && { tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, duration: newDuration } : t) }),
+          ...(tab === 'tomorrow' && { tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, duration: newDuration } : t) })
+        } as any));
+        get().forceInstantSave();
+      },
+      editTaskTimeSpent: (id, newTimeSpent, tab = 'today') => {
+        set((state) => ({
+          ...(tab === 'today' && { tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, timeSpent: newTimeSpent } : t) }),
+          ...(tab === 'tomorrow' && { tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, timeSpent: newTimeSpent } : t) })
+        } as any));
+        get().forceInstantSave();
+      },
+      updateTaskTitle: (id, title, tab = 'today') => {
+        set((state) => {
+          const isCurrentlyActive = state.activeTaskId === id;
+          // Cast to any since tasks array type is implicitly handled in your store
+          const currentTasks = (state as any).tasks || [];
+          const currentTomorrow = (state as any).tomorrowTasks || [];
+
+          if (tab === 'today') {
             return {
-              ...t,
-              timeSpent: Math.max(0, newTimeSpent),
-              duration: Math.max(0, t.duration - diff)
+              tasks: currentTasks.map((t: any) =>
+                t.id === id ? { ...t, title } : t
+              ),
+              ...(isCurrentlyActive && { activeTaskTitle: title }),
             };
           }
-          return t;
-        });
-
-        if (tab === 'today') {
-          return { tasks: updateTasks(state.tasks) };
-        }
-        return { tomorrowTasks: updateTasks(state.tomorrowTasks) };
-      }),
-      reorderTasks: (tab, startIndex, endIndex) => set((state) => {
-        const list = tab === 'today' ? Array.from(state.tasks) : Array.from(state.tomorrowTasks);
-        const [removed] = list.splice(startIndex, 1);
-        list.splice(endIndex, 0, removed);
-        return tab === 'today' ? { tasks: list } : { tomorrowTasks: list };
-      }),
-      checkTasksRollover: () => set((state) => {
-        const todayStr = getLocalDateString();
-        if (!state.tasksDate || state.tasksDate !== todayStr) {
-          if (!state.tomorrowTasks || state.tomorrowTasks.length === 0) {
-            return { tasksDate: todayStr };
-          }
-          const newToday = state.tomorrowTasks.map(t => ({
-            ...t,
-            completed: false,
-            timeSpent: 0,
-            id: Date.now().toString() + Math.random() // Unique ID
-          }));
           return {
-            tasksDate: todayStr,
-            tasks: [...state.tasks, ...newToday],
-            tomorrowTasks: [], // Clear tomorrow's tasks after they are moved to today
+            tomorrowTasks: currentTomorrow.map((t: any) =>
+              t.id === id ? { ...t, title } : t
+            ),
+            ...(isCurrentlyActive && { activeTaskTitle: title }),
           };
-        }
-        return {};
-      }),
-
+        });
+        get().forceInstantSave();
+      },
       timerEndAt: null,
       timerPausedLeft: null,
       timerInitialMins: null,
@@ -2018,32 +1683,21 @@ export const useDashboardStore = create<DashboardState>()(
       useCustomQuotes: false,
       setUseCustomQuotes: (useCustom) => set({ useCustomQuotes: useCustom }),
       manifestationCustomQuotes: [],
-      setManifestationCustomQuotes: (quotes) => set((state) => {
-        const payload = { manifestationCustomQuotes: (quotes || []).slice(0, 30) };
-        pushSettingsToDB(payload);
-        return payload;
+      setManifestationCustomQuotes: (quotes) => set(() => {
+        return { manifestationCustomQuotes: (quotes || []).slice(0, 30) };
       }),
       addManifestationCustomQuote: (quote) => set((state) => {
         const trimmed = quote.trim();
         const current = state.manifestationCustomQuotes || [];
         if (!trimmed || current.length >= 30) return state;
-        const payload = { manifestationCustomQuotes: [...current, trimmed] };
-        pushSettingsToDB(payload);
-        return payload;
+        return { manifestationCustomQuotes: [...current, trimmed] };
       }),
       deleteManifestationCustomQuote: (index) => set((state) => {
-        const payload = { manifestationCustomQuotes: (state.manifestationCustomQuotes || []).filter((_, i) => i !== index) };
-        pushSettingsToDB(payload);
-        return payload;
+        return { manifestationCustomQuotes: (state.manifestationCustomQuotes || []).filter((_, i) => i !== index) };
       }),
-
       // Notes State
       notes: [{ id: 'default', title: 'Daily Journal', entries: {} }],
-      setNotes: (notes) => {
-        set({ notes });
-        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
-        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: get().notes }), 5000);
-      },
+      setNotes: (notes) => set({ notes }),
       activeNoteId: 'default',
       isNotesOpen: false,
       addNote: () => set((state) => {
@@ -2052,17 +1706,11 @@ export const useDashboardStore = create<DashboardState>()(
           return { activeNoteId: emptyNote.id };
         }
         const newNote = { id: Date.now().toString(), title: 'New Note', entries: {} };
-        const updatedNotes = [newNote, ...state.notes];
-        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
-        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: updatedNotes }), 5000);
-        return { notes: updatedNotes, activeNoteId: newNote.id };
+        return { notes: [newNote, ...state.notes], activeNoteId: newNote.id };
       }),
-      updateNoteTitle: (id, title) => set((state) => {
-        const updatedNotes = state.notes.map(n => n.id === id ? { ...n, title } : n);
-        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
-        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: updatedNotes }), 5000);
-        return { notes: updatedNotes };
-      }),
+      updateNoteTitle: (id, title) => set((state) => ({
+        notes: state.notes.map(n => n.id === id ? { ...n, title } : n)
+      })),
       updateNoteEntry: (id, date, content) => set((state) => {
         const updatedNotes = state.notes.map(n => {
           if (n.id !== id) return n;
@@ -2075,8 +1723,6 @@ export const useDashboardStore = create<DashboardState>()(
           }
           return { ...n, entries: newEntries };
         });
-        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
-        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: updatedNotes }), 5000);
         return { notes: updatedNotes };
       }),
       deleteNote: (id) => set((state) => {
@@ -2085,8 +1731,6 @@ export const useDashboardStore = create<DashboardState>()(
           const defaultNote = { id: Date.now().toString(), title: 'Daily Journal', entries: {} };
           newNotes = [defaultNote];
         }
-        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
-        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: newNotes }), 5000);
         return {
           notes: newNotes,
           activeNoteId: state.activeNoteId === id ? newNotes[0].id : state.activeNoteId
@@ -2099,8 +1743,6 @@ export const useDashboardStore = create<DashboardState>()(
         const newNotes = [...state.notes];
         const [moved] = newNotes.splice(fromIndex, 1);
         newNotes.splice(toIndex, 0, moved);
-        if (notesSaveTimeout) clearTimeout(notesSaveTimeout);
-        notesSaveTimeout = setTimeout(() => pushNotesToDB({ notes: newNotes }), 5000);
         return { notes: newNotes };
       }),
 
@@ -2268,173 +1910,20 @@ export const useDashboardStore = create<DashboardState>()(
       isDeadlinesCollapsed: false,
       setIsDeadlinesCollapsed: (collapsed) => set({ isDeadlinesCollapsed: collapsed }),
 
-      // Timetable
-      timetableGrid: JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID)),
-      timetableColors: {},
-      updateTimetableCell: (day, time, subject) => set((state) => {
-        const newGrid = {
-          ...state.timetableGrid,
-          [day]: {
-            ...state.timetableGrid[day],
-            [time]: subject
-          }
-        };
-        pushTimetableToDB({ timetableGrid: newGrid });
-        return { timetableGrid: newGrid };
-      }),
-      updateTimetableColor: (day, time, color) => set((state) => {
-        const newColors = {
-          ...state.timetableColors,
-          [day]: {
-            ...(state.timetableColors[day] || {}),
-            [time]: color
-          }
-        };
-        pushTimetableToDB({ timetableColors: newColors });
-        return { timetableColors: newColors };
-      }),
-      weekdayTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
-      weekendTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
-      timetableStartTime: 540, // Default 9:00 AM
-      timetableWeekendStartTime: 540, // Default 9:00 AM
-      setTimetableStartTime: (mins) => set({ timetableStartTime: mins }),
-      setTimetableWeekendStartTime: (mins) => set({ timetableWeekendStartTime: mins }),
-      updateTimetableTime: (isWeekend, index, newTime, keyMap) => set((state) => {
-        const targetArray = isWeekend ? state.weekendTimes : state.weekdayTimes;
-        const fallbackArray = ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"];
-        const timesList = targetArray || fallbackArray;
-        const newTimes = [...timesList];
-        const oldTime = newTimes[index];
-        newTimes[index] = newTime;
-
-        // Also update the timetableGrid and timetableColors keys to preserve data
-        const newGrid = { ...state.timetableGrid };
-        const newColors = { ...(state.timetableColors || {}) };
-        const targetDays = isWeekend ? ["Sat", "Sun"] : ["Mon", "Tue", "Wed", "Thu", "Fri"];
-
-        if (keyMap) {
-          targetDays.forEach(day => {
-            if (newGrid[day]) {
-              const currentDayData = { ...newGrid[day] };
-              let updatedDayData: Record<string, string> = {};
-              Object.entries(currentDayData).forEach(([oldKey, value]) => {
-                const newKey = keyMap[oldKey] || oldKey;
-                updatedDayData[newKey] = value;
-              });
-              newGrid[day] = updatedDayData;
-            }
-            if (newColors[day]) {
-              const currentDayColors = { ...newColors[day] };
-              let updatedDayColors: Record<string, string> = {};
-              Object.entries(currentDayColors).forEach(([oldKey, value]) => {
-                const newKey = keyMap[oldKey] || oldKey;
-                updatedDayColors[newKey] = value;
-              });
-              newColors[day] = updatedDayColors;
-            }
-          });
-        } else {
-          targetDays.forEach(day => {
-            if (newGrid[day] && newGrid[day][oldTime] !== undefined) {
-              newGrid[day] = { ...newGrid[day] };
-              newGrid[day][newTime] = newGrid[day][oldTime];
-              delete newGrid[day][oldTime];
-            }
-            if (newColors[day] && newColors[day][oldTime] !== undefined) {
-              newColors[day] = { ...newColors[day] };
-              newColors[day][newTime] = newColors[day][oldTime];
-              delete newColors[day][oldTime];
-            }
-          });
-        }
-
-        const payload = isWeekend
-          ? { weekendTimes: newTimes, timetableGrid: newGrid, timetableColors: newColors }
-          : { weekdayTimes: newTimes, timetableGrid: newGrid, timetableColors: newColors };
-
-        pushTimetableToDB(payload);
-        return payload as any;
-      }),
-      renameTimetableKeys: (isWeekend, keyMap) => set((state) => {
-        const newGrid = { ...state.timetableGrid };
-        const newColors = { ...(state.timetableColors || {}) };
-        const targetDays = isWeekend ? ["Sat", "Sun"] : ["Mon", "Tue", "Wed", "Thu", "Fri"];
-
-        targetDays.forEach(day => {
-          if (newGrid[day]) {
-            const currentDayData = { ...newGrid[day] };
-            let updatedDayData: Record<string, string> = {};
-
-            Object.entries(currentDayData).forEach(([oldKey, value]) => {
-              const newKey = keyMap[oldKey] || oldKey;
-              updatedDayData[newKey] = value;
-            });
-            newGrid[day] = updatedDayData;
-          }
-          if (newColors[day]) {
-            const currentDayColors = { ...newColors[day] };
-            let updatedDayColors: Record<string, string> = {};
-
-            Object.entries(currentDayColors).forEach(([oldKey, value]) => {
-              const newKey = keyMap[oldKey] || oldKey;
-              updatedDayColors[newKey] = value;
-            });
-            newColors[day] = updatedDayColors;
-          }
-        });
-
-        const payload = { timetableGrid: newGrid, timetableColors: newColors };
-        pushTimetableToDB(payload);
-        return payload;
-      }),
-      resetTimetable: () => set(() => {
-        const payload = {
-          timetableGrid: JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID)),
-          timetableColors: {},
-          weekdayTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
-          weekendTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
-        };
-        pushTimetableToDB(payload);
-        return payload;
-      }),
-      addTimetableRow: (isWeekend, prepend = false) => set((state) => {
-        const targetArray = isWeekend ? state.weekendTimes : state.weekdayTimes;
-        const timesList = targetArray || [];
-        const newTimes = prepend ? ["60", ...timesList] : [...timesList, "60"];
-        const payload = isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
-        pushTimetableToDB(payload);
-        return payload as any;
-      }),
-      deleteTimetableRow: (isWeekend, index) => set((state) => {
-        const targetArray = isWeekend ? state.weekendTimes : state.weekdayTimes;
-        const timesList = targetArray || [];
-        const newTimes = timesList.filter((_, i) => i !== index);
-        // Do not aggressively delete keys from timetableGrid here.
-        // It relies on legacy string times and can accidentally delete shifted rows.
-        // Orphaned keys are harmless and prevent data loss.
-        const payload = isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
-        pushTimetableToDB(payload);
-        return payload as any;
-      }),
-      useTimetableRange: true,
-      toggleTimetableRange: () => set((state) => ({ useTimetableRange: !state.useTimetableRange })),
+      //timetable
       isTimetableOpen: false,
-      setIsTimetableOpen: (isOpen) => set((state) => {
-        let extra = {};
-        if (isOpen) {
-          const currentZ = state.widgetZIndices || {};
-          const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50;
-          extra = { widgetZIndices: { ...currentZ, timetable: maxZ + 1 } };
-        }
-        return { isTimetableOpen: isOpen, ...extra };
-      }),
-
-
+      setIsTimetableOpen: (isOpen) => set({ isTimetableOpen: isOpen }),
+      timetableGrid: {},
+      timetableColors: {},
+      weekdayTimes: [],
+      weekendTimes: [],
+      timetableStartTime: 540,
+      timetableWeekendStartTime: 540,
 
       viewingFriend: null,
       setViewingFriend: (friend) => set({ viewingFriend: friend }),
 
-      // Daily Times
+      // Daily Times (WAKE UP LOG)
       dailyTimes: {},
       isDayStartModalOpen: false,
       toggleDayStartModal: () => set((state) => ({ isDayStartModalOpen: !state.isDayStartModalOpen })),
@@ -2684,7 +2173,17 @@ export const useDashboardStore = create<DashboardState>()(
           console.error("Failed to clear all data", err);
         }
       },
-
+      clearAllTasksAndPlans: () => {
+        set({ tasks: [], tomorrowTasks: [], plans: [] });
+        get().forceInstantSave();
+      },
+      resetTimetable: () => {
+        set({
+          timetableGrid: {}, // This will auto-fallback to defaults on next load
+          timetableColors: {}
+        });
+        get().forceInstantSave();
+      },
       forceInstantSave: () => {
         if (typeof window !== 'undefined') {
           if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
@@ -2693,21 +2192,11 @@ export const useDashboardStore = create<DashboardState>()(
       },
 
       pushManifestationToDB: () => {
-        const state = get();
-        pushSettingsToDB({
-          manifestationDesktopPhotos: state.manifestationDesktopPhotos,
-          manifestationMobilePhotos: state.manifestationMobilePhotos,
-          manifestationCustomQuotes: state.manifestationCustomQuotes,
-        });
+        get().forceInstantSave();
       },
 
       pushWallpapersToDB: () => {
-        const state = get();
-        pushSettingsToDB({
-          customDesktopWallpapers: state.customDesktopWallpapers,
-          customMobileWallpapers: state.customMobileWallpapers,
-          hiddenWallpapers: state.hiddenWallpapers
-        });
+        get().forceInstantSave();
       },
     }),
     {
@@ -2900,3 +2389,4 @@ export const useDashboardStore = create<DashboardState>()(
     }
   )
 );
+

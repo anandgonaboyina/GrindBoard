@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useDashboardStore, pushTimetableToDB } from '@/store/dashboardStore';
+import { useDashboardStore } from '@/store/dashboardStore';
+import { useTimetableStore, pushTimetableToDB } from '@/store/timetableStore';
+import { useTaskStore, pushTasksToDB } from '@/store/taskStore';
 import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
@@ -14,7 +16,6 @@ const DEFAULT_WALLPAPERS = [
   'itachi-uchiha.png', 'kakashi.mp4', 'kakashi2.mp4', 'kakashi3.png',
   'kakashiChild.jpg', 'naruto.webp', 'RockLee.mp4', 'squa7.jpg', 'demonslayer1.mp4'
 ];
-
 const DEFAULT_ALARM_SOUNDS = [
   { id: 'naruto', name: 'naruto BGM ( default )', url: '/ringtones/narutoBGM.mp3' },
   { id: 'demonslayer', name: 'Demon Slayer', url: '/ringtones/Demon Slayer.mp3' },
@@ -31,7 +32,8 @@ import { getResolvedAudioUrl } from '@/hooks/useAudioUrl';
 import { CustomWallpaperPreview } from './CustomWallpaperPreview';
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, dashboardScale, setDashboardScale, mobileDashboardScale, setMobileDashboardScale, dockScale, setDockScale, dockOffset, setDockOffset, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, /*clearAllTasksAndPlans */ lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, peekModeWallpaper, setPeekModeWallpaper, timetableGrid, resetTimetable, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, manifestationCustomQuotes, setManifestationCustomQuotes, addManifestationCustomQuote, deleteManifestationCustomQuote, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, autoOpenCountdowns, setAutoOpenCountdowns, showManifestationBoard, setShowManifestationBoard, manifestationDesktopPhotos, setManifestationDesktopPhotos, activeManifestationDesktopIndex, setActiveManifestationDesktopIndex, manifestationMobilePhotos, setManifestationMobilePhotos, activeManifestationMobileIndex, setActiveManifestationMobileIndex } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, is24HourClock, toggle24HourClock, clockScale, setClockScale, dashboardScale, setDashboardScale, mobileDashboardScale, setMobileDashboardScale, dockScale, setDockScale, dockOffset, setDockOffset, currentBgSrc, hiddenWallpapers, toggleWallpaperVisibility, showQuote, showTimer, showCountdowns, showVideoControls, showClock, showTasks, showCalendar, showTodayWork, showStats, showPlans, showNotes, showTimetable, showDock, showDeadlineAlerts, showBgSwitcher, showSettingsBtn, showStopwatch, toggleVisibility, isSlideshowEnabled, setIsSlideshowEnabled, slideshowIntervalMins, setSlideshowIntervalMins, lockedWidgets, toggleWidgetLock, resetAllOffsets, clearOldData, clearAllData, /*clearAllTasksAndPlans */ lockedWallpaper, setLockedWallpaper, deadlineAlertDays, setDeadlineAlertDays, hideConfig, setHideConfig, setHideAll, mobileHideConfig, setMobileHideConfig, setMobileHideAll, rightWidgetsOffset, setRightWidgetsOffset, alarmSound, setAlarmSound, customAlarmSounds, addCustomAlarmSound, deleteCustomAlarmSound, alarmDurationSecs, setAlarmDurationSecs, alarmVolume, setAlarmVolume, enableAlarmSound, setEnableAlarmSound, enableAlarmVibration, setEnableAlarmVibration, toggleHide, panicShortcutKey, setPanicShortcutKey, focusShortcutKey, setFocusShortcutKey, togglePanicHide, panicWallpaperSwitch, setPanicWallpaperSwitch, peekModeWallpaper, setPeekModeWallpaper, panicButtonMode, setPanicButtonMode, customDesktopWallpapers, setCustomDesktopWallpapers, activeDesktopCustomIndex, setActiveDesktopCustomIndex, customMobileWallpapers, setCustomMobileWallpapers, activeMobileCustomIndex, setActiveMobileCustomIndex, theme, setTheme, customQuotes, setCustomQuotes, useCustomQuotes, setUseCustomQuotes, manifestationCustomQuotes, setManifestationCustomQuotes, addManifestationCustomQuote, deleteManifestationCustomQuote, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, autoOpenCountdowns, setAutoOpenCountdowns, showManifestationBoard, setShowManifestationBoard, manifestationDesktopPhotos, setManifestationDesktopPhotos, activeManifestationDesktopIndex, setActiveManifestationDesktopIndex, manifestationMobilePhotos, setManifestationMobilePhotos, activeManifestationMobileIndex, setActiveManifestationMobileIndex } = useDashboardStore();
+  const { clearAllTasksAndPlans, resetTimetable, forceInstantSave } = useDashboardStore();
 
   const [focusPlatform, setFocusPlatform] = useState<'desktop' | 'mobile'>('desktop');
   const [showThemeNotice, setShowThemeNotice] = useState(false);
@@ -571,15 +573,23 @@ export default function SettingsModal() {
       'Plan Your Day Backup',
       'All your created tasks (both Today and Tomorrow), time remaining, completion times, interval duration, and task alert beep settings.',
       () => {
-        const state = useDashboardStore.getState();
+        // 1. Pull task arrays and dates from your dedicated Task Store
+        const taskState = useTaskStore.getState();
+
+        // 2. Pull interval alert settings from the Dashboard Store
+        const dashboardState = useDashboardStore.getState();
+
         return {
-          tasks: state.tasks || [],
-          tomorrowTasks: state.tomorrowTasks || [],
-          tasksDate: state.tasksDate,
-          taskIntervalAlertMins: state.taskIntervalAlertMins || 10,
-          taskIntervalRingSecs: state.taskIntervalRingSecs || 10,
-          isTaskIntervalAlertEnabled: state.isTaskIntervalAlertEnabled || false,
-          taskGroupNames: state.taskGroupNames || ['Core Tasks', 'Daily Routine', 'Milestones']
+          // From Task Store:
+          tasks: taskState.tasks || [],
+          tomorrowTasks: taskState.tomorrowTasks || [],
+          tasksDate: taskState.tasksDate,
+          taskGroupNames: taskState.taskGroupNames || ['Core Tasks', 'Daily Routine', 'Milestones'],
+
+          // From Dashboard Store:
+          taskIntervalAlertMins: dashboardState.taskIntervalAlertMins || 10,
+          taskIntervalRingSecs: dashboardState.taskIntervalRingSecs || 10,
+          isTaskIntervalAlertEnabled: dashboardState.isTaskIntervalAlertEnabled || false,
         };
       }
     );
@@ -589,20 +599,34 @@ export default function SettingsModal() {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsProcessingBackup(true);
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        useDashboardStore.setState({
+
+        // 1. Prepare the payload for your dedicated Task Store
+        const taskPayload = {
           tasks: data.tasks || [],
           tomorrowTasks: data.tomorrowTasks || [],
           tasksDate: data.tasksDate || new Date().toISOString().split('T')[0],
+          taskGroupNames: data.taskGroupNames || ['Core Tasks', 'Daily Routine', 'Milestones']
+        };
+
+        // 2. Update the local Task Store and push directly to the Tasks API
+        useTaskStore.setState(taskPayload);
+        pushTasksToDB(taskPayload);
+
+        // 3. Update the Dashboard Store with the interval settings and force its save
+        useDashboardStore.setState({
           taskIntervalAlertMins: data.taskIntervalAlertMins || 10,
           taskIntervalRingSecs: data.taskIntervalRingSecs || 10,
           isTaskIntervalAlertEnabled: data.isTaskIntervalAlertEnabled || false,
-          taskGroupNames: data.taskGroupNames || ['Core Tasks', 'Daily Routine', 'Milestones']
         });
+        useDashboardStore.getState().forceInstantSave();
+
         showAlertModal('Data Restored', 'Plan Your Day data restored successfully!');
+
       } catch (err) {
         showAlertModal('Restore Failed', 'Failed to parse backup file.');
       } finally {
@@ -612,7 +636,6 @@ export default function SettingsModal() {
     reader.readAsText(file);
     e.target.value = '';
   };
-
   const handleBackupNotes = () => {
     showBackupModal(
       'Backup Notes',
@@ -641,6 +664,7 @@ export default function SettingsModal() {
         showAlertModal('Restore Failed', 'Failed to parse backup file.');
       } finally {
         setIsProcessingBackup(false);
+        useDashboardStore.getState().forceInstantSave();
       }
     };
     reader.readAsText(file);
@@ -718,10 +742,12 @@ export default function SettingsModal() {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsProcessingBackup(true);
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
+
         if (data.timetableGrid) {
           const restoredPayload = {
             timetableGrid: data.timetableGrid || {},
@@ -731,9 +757,15 @@ export default function SettingsModal() {
             timetableStartTime: data.timetableStartTime || 540,
             timetableWeekendStartTime: data.timetableWeekendStartTime || 540,
           };
-          useDashboardStore.setState(restoredPayload);
+
+          // 1. Update the local Timetable store
+          useTimetableStore.setState(restoredPayload);
+
+          // 2. CRITICAL FIX: Use the dedicated API function instead of forceInstantSave
           pushTimetableToDB(restoredPayload);
+
           showAlertModal('Data Restored', 'Timetable restored successfully!');
+
         } else {
           showAlertModal('Restore Failed', 'Invalid backup file format for Timetable.');
         }
@@ -746,7 +778,6 @@ export default function SettingsModal() {
     reader.readAsText(file);
     e.target.value = '';
   };
-
   const handleExportData = () => {
     showBackupModal(
       'Full Dashboard Backup',
@@ -1652,7 +1683,7 @@ export default function SettingsModal() {
                           { key: 'showNotes', icon: StickyNote, label: 'Quick Notes', color: 'text-yellow-300', state: showNotes },
                           { key: 'showTimetable', icon: CalendarDays, label: 'Timetable', color: 'text-purple-400', state: showTimetable },
                           { key: 'showDock', icon: Layout, label: 'Bottom Dock', color: 'text-cyan-300', state: showDock },
-                          { key: 'showDeadlineAlerts', icon: Bell, label: 'Alerts', color: 'text-red-400', state: showDeadlineAlerts },
+                          { key: 'showDeadlineAlerts', icon: Bell, label: 'Deadline Alerts', color: 'text-red-400', state: showDeadlineAlerts },
                           { key: 'showBgSwitcher', icon: ImageIcon, label: 'Bg Switcher', color: 'text-green-300', state: showBgSwitcher },
                         ].map(({ key, icon: Icon, label, color, state }) => (
                           <div key={key} className="flex items-center justify-between p-2 md:p-2 rounded-lg bg-black/30 border border-white/5">
@@ -2693,8 +2724,8 @@ export default function SettingsModal() {
                         calendar: 'Calendar', timetable: 'Timetable',
                         timer: 'Session Timer', dock: 'Bottom Dock', clock: 'Big Clock',
                         todayFocusPill: 'Focus Pill', timerPill: 'Timer Pill',
-                        deadlineAlerts: 'Alerts', bgSwitcher: 'Bg Switcher', stopwatch: 'Stopwatch',
-                        settingsBtn: 'Settings Btn', videoControls: 'Video Ctrl',
+                        deadlineAlerts: 'Deadline Alerts', bgSwitcher: 'Bg Switcher', stopwatch: 'Stopwatch',
+                        settingsBtn: 'Settings Btn',
                         manifestation: 'Manifestation Board'
                       }).map(([key, label]) => {
                         const isHidden = focusPlatform === 'desktop' ? hideConfig[key] : mobileHideConfig[key];
@@ -2877,9 +2908,12 @@ export default function SettingsModal() {
                             message: 'Are you sure you want to completely clear all your tasks, tomorrow tasks, and plans? This action will permanently remove them from the cloud and cannot be undone.',
                             isDestructive: true,
                             onConfirm: () => {
-                              // clearAllTasksAndPlans();
-                              showAlertModal('not yet implemented', 'will come soon');
-                              // showAlertModal('Cleared Successfully', 'All tasks and plans have been deleted.');
+                              // 1. Wipe the Task store and push to the DB
+                              useTaskStore.setState({ tasks: [], tomorrowTasks: [] });
+                              pushTasksToDB({ tasks: [], tomorrowTasks: [] });
+                              useDashboardStore.getState().forceInstantSave();
+
+                              showAlertModal('Cleared Successfully', 'All tasks and plans have been deleted. Refreshing...');
                             }
                           });
                         }}
@@ -2907,8 +2941,10 @@ export default function SettingsModal() {
                             message: 'Are you sure you want to completely reset your Timetable to default? This cannot be undone.',
                             isDestructive: true,
                             onConfirm: () => {
-                              resetTimetable();
-                              showAlertModal('Reset Complete', 'Timetable reset successfully.');
+                              // 1. Update Zustand, LocalStorage, and trigger MongoDB save
+                              useTimetableStore.getState().resetTimetable();
+
+                              showAlertModal('Reset Complete', 'Timetable reset successfully');
                             }
                           });
                         }}

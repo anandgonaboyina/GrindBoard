@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
+// IMPORT THE NEW TASK STORE
+import { useTaskStore } from '@/store/taskStore';
 import { Plus, Play, Trash2, CheckCircle, Circle, Clock, RotateCcw, Filter, BellRing, ClipboardList, Info, X, ArrowRight, ArrowLeft, ChevronDown } from 'lucide-react';
 import { fetchQuote } from '@/utils/quoteEngine';
 import DraggableWidget from './DraggableWidget';
@@ -50,8 +52,45 @@ export default function TaskManager() {
         };
     }, [isInfoOpen]);
 
-    const { tasks, tomorrowTasks, checkTasksRollover, reorderTasks, setTasks, addTask, toggleTask, deleteTask, triggerTimer, isTaskManagerOpen, showQuotePopup, editTaskDuration, editTaskTimeSpent, updateTaskTitle, taskIntervalAlertMins, setTaskIntervalAlertMins, taskIntervalRingSecs, setTaskIntervalRingSecs, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, moveTaskTab, taskGroupNames, setTaskGroupName, activeTaskId, userGroups, setUserGroups, selectedGroupId, setSelectedGroupId } = useDashboardStore();
+    // SPLIT THE HOOKS: Get global states (like timers and groups) from DashboardStore
+    const {
+        triggerTimer,
+        isTaskManagerOpen,
+        showQuotePopup,
+        taskIntervalAlertMins,
+        setTaskIntervalAlertMins,
+        taskIntervalRingSecs,
+        setTaskIntervalRingSecs,
+        isTaskIntervalAlertEnabled,
+        setIsTaskIntervalAlertEnabled,
+        activeTaskId,
+        userGroups,
+        setUserGroups,
+        selectedGroupId,
+        setSelectedGroupId
+    } = useDashboardStore();
 
+    // SPLIT THE HOOKS: Get Task-specific data from TaskStore
+    const {
+        tasks,
+        tomorrowTasks,
+        fetchTasks,
+        checkTasksRollover,
+        reorderTasks,
+        setTasks,
+        addTask,
+        toggleTask,
+        deleteTask,
+        editTaskDuration,
+        editTaskTimeSpent,
+        updateTaskTitle,
+        moveTaskTab,
+        taskGroupNames,
+        setTaskGroupName
+    } = useTaskStore();
+    useEffect(() => {
+        fetchTasks();
+    }, [fetchTasks]);
     useEffect(() => {
         // Fetch user groups for TaskManager if not already loaded or on mount
         const fetchGroups = async () => {
@@ -229,7 +268,7 @@ export default function TaskManager() {
     };
 
     let totalRemainingMinutes = 0;
-    
+
     if (selectedGroupId) {
         const activeGroup = userGroups.find(g => g._id === selectedGroupId);
         if (activeGroup) {
@@ -382,95 +421,95 @@ export default function TaskManager() {
                     </div>
 
                     {/* Header for Today/Tomorrow and Interval Alert */}
-                        <>
-                            <div className="flex items-center gap-1 md:gap-2 flex-wrap">
-                                <div className="flex items-center gap-1 md:gap-2">
-                                    {selectedGroupId ? (
+                    <>
+                        <div className="flex items-center gap-1 md:gap-2 flex-wrap">
+                            <div className="flex items-center gap-1 md:gap-2">
+                                {selectedGroupId ? (
+                                    <button
+                                        onClick={() => {
+                                            setSelectedGroupId(null);
+                                        }}
+                                        className="flex items-center gap-1.5 px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 hover:border-blue-400 rounded-md text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0"
+                                        title="Go back to Personal Tasks"
+                                    >
+                                        <ArrowLeft size={12} className="shrink-0 text-blue-400" />
+                                        <span>Go Personal Tasks</span>
+                                    </button>
+                                ) : (
+                                    <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shrink-0">
                                         <button
                                             onClick={() => {
+                                                setActiveTab('today');
                                                 setSelectedGroupId(null);
                                             }}
-                                            className="flex items-center gap-1.5 px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 hover:border-blue-400 rounded-md text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0"
-                                            title="Go back to Personal Tasks"
+                                            className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${!selectedGroupId && activeTab === 'today' ? 'bg-sky-500/20 text-sky-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
                                         >
-                                            <ArrowLeft size={12} className="shrink-0 text-blue-400" />
-                                            <span>Go Personal Tasks</span>
+                                            Today
                                         </button>
-                                    ) : (
-                                        <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shrink-0">
-                                            <button
-                                                onClick={() => {
-                                                    setActiveTab('today');
-                                                    setSelectedGroupId(null);
-                                                }}
-                                                className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${!selectedGroupId && activeTab === 'today' ? 'bg-sky-500/20 text-sky-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
-                                            >
-                                                Today
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setActiveTab('tomorrow');
-                                                    setSelectedGroupId(null);
-                                                }}
-                                                className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${!selectedGroupId && activeTab === 'tomorrow' ? 'bg-purple-500/20 text-purple-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
-                                            >
-                                                Tomorrow
-                                            </button>
-                                        </div>
-                                    )}
-                                    <div
-                                        className="relative flex items-center gap-1 md:gap-1.5 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0"
-                                        title="Plays a short beep every X minutes while a task timer is running"
-                                    >
-                                        <div
-                                            className="flex items-center gap-1 md:gap-1.5 cursor-pointer"
+                                        <button
                                             onClick={() => {
-                                                if (isTaskIntervalAlertEnabled) {
-                                                    setIsTaskIntervalAlertEnabled(false);
-                                                } else {
-                                                    setIsTaskIntervalAlertEnabled(true);
-                                                    if (taskIntervalAlertMins === 0) {
-                                                        setTaskIntervalAlertMins(10);
-                                                    }
-                                                }
+                                                setActiveTab('tomorrow');
+                                                setSelectedGroupId(null);
                                             }}
+                                            className={`px-1.5 py-0.5 md:px-2 md:py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider transition-colors ${!selectedGroupId && activeTab === 'tomorrow' ? 'bg-purple-500/20 text-purple-300' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
                                         >
-                                            <BellRing size={12} className={isTaskIntervalAlertEnabled ? "text-sky-300" : "text-white/40"} />
-                                            <span className="text-[9px] font-medium text-white/70">Interval</span>
-                                            <button
-                                                className={`relative inline-flex h-2.5 md:h-3 w-4 md:w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTaskIntervalAlertEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
-                                            >
-                                                <span className={`inline-block h-1.5 md:h-2 w-1.5 md:w-2 transform rounded-full bg-white transition-transform ${isTaskIntervalAlertEnabled ? 'translate-x-1.5 md:translate-x-2.5' : 'translate-x-0.5'}`} />
-                                            </button>
-                                        </div>
-
-                                        {isTaskIntervalAlertEnabled ? (
-                                            <div className="flex items-center gap-1 pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
-                                                <input
-                                                    type="number"
-                                                    value={taskIntervalAlertMins || ''}
-                                                    onChange={(e) => {
-                                                        const val = parseInt(e.target.value);
-                                                        setTaskIntervalAlertMins(isNaN(val) ? 0 : val);
-
-                                                    }}
-                                                    className="w-6 md:w-7 bg-black/40 border border-white/20 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
-                                                    min="1"
-                                                />
-                                                <span className="text-[8px] font-medium text-white/40 uppercase">min</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
-                                                <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
-                                            </div>
-                                        )}
+                                            Tomorrow
+                                        </button>
+                                    </div>
+                                )}
+                                <div
+                                    className="relative flex items-center gap-1 md:gap-1.5 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0"
+                                    title="Plays a short beep every X minutes while a task timer is running"
+                                >
+                                    <div
+                                        className="flex items-center gap-1 md:gap-1.5 cursor-pointer"
+                                        onClick={() => {
+                                            if (isTaskIntervalAlertEnabled) {
+                                                setIsTaskIntervalAlertEnabled(false);
+                                            } else {
+                                                setIsTaskIntervalAlertEnabled(true);
+                                                if (taskIntervalAlertMins === 0) {
+                                                    setTaskIntervalAlertMins(10);
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <BellRing size={12} className={isTaskIntervalAlertEnabled ? "text-sky-300" : "text-white/40"} />
+                                        <span className="text-[9px] font-medium text-white/70">Interval</span>
+                                        <button
+                                            className={`relative inline-flex h-2.5 md:h-3 w-4 md:w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTaskIntervalAlertEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
+                                        >
+                                            <span className={`inline-block h-1.5 md:h-2 w-1.5 md:w-2 transform rounded-full bg-white transition-transform ${isTaskIntervalAlertEnabled ? 'translate-x-1.5 md:translate-x-2.5' : 'translate-x-0.5'}`} />
+                                        </button>
                                     </div>
 
+                                    {isTaskIntervalAlertEnabled ? (
+                                        <div className="flex items-center gap-1 pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
+                                            <input
+                                                type="number"
+                                                value={taskIntervalAlertMins || ''}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    setTaskIntervalAlertMins(isNaN(val) ? 0 : val);
+
+                                                }}
+                                                className="w-6 md:w-7 bg-black/40 border border-white/20 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                                                min="1"
+                                            />
+                                            <span className="text-[8px] font-medium text-white/40 uppercase">min</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
+                                            <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
+                                        </div>
+                                    )}
                                 </div>
+
                             </div>
-                            {/* Sub-tabs for grouping */}
-                            {!selectedGroupId && (
-                                <div className="flex items-start gap-1">
+                        </div>
+                        {/* Sub-tabs for grouping */}
+                        {!selectedGroupId && (
+                            <div className="flex items-start gap-1">
                                 {[0, 1, 2].map((idx) => {
                                     const tabTasks = currentTasks.filter(t => (t.groupId || 0) === idx);
                                     const tabRemaining = tabTasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + (t.duration || 0), 0);
@@ -519,8 +558,8 @@ export default function TaskManager() {
                                     );
                                 })}
                             </div>
-                            )}
-                        </>
+                        )}
+                    </>
                 </div>
 
                 {selectedGroupId ? (
@@ -570,7 +609,7 @@ export default function TaskManager() {
                                                             e.stopPropagation();
                                                             try {
                                                                 (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-                                                            } catch {}
+                                                            } catch { }
                                                             draggedIndexRef.current = index;
                                                             setDraggedIndex(index);
                                                         }}

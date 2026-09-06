@@ -1,6 +1,8 @@
 "use client";
 
-import { useDashboardStore, pushTimetableToDB } from "@/store/dashboardStore";
+// 1. Separate the imports
+import { useDashboardStore } from "@/store/dashboardStore";
+import { useTimetableStore, pushTimetableToDB } from "@/store/timetableStore"; // Import your new store
 import { CalendarDays, Edit2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Check, Settings, Plus, Trash, Clock, ArrowUp, ArrowDown, X, Sun, Moon, Copy, ClipboardPaste, Download, Upload } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import ConfirmationModal from './ConfirmationModal';
@@ -9,12 +11,10 @@ import Tooltip from './Tooltip';
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const WEEKENDS = ["Sat", "Sun"];
 
-// Exact sizing to guarantee perfect alignment across columns
-const CELL_HEIGHT = 40; // Tighter 32px per block height for ultra-compact views
-const CELL_GAP = 4;     // 4px gap between blocks
+const CELL_HEIGHT = 40;
+const CELL_GAP = 4;
 const TOTAL_HEIGHT = CELL_HEIGHT + CELL_GAP;
 
-// Upgraded to a richer palette with explicit Light and Dark mode variants
 export const CELL_COLORS = [
   { name: 'default', bg: 'bg-white/5', lightBg: 'bg-black/5', active: 'bg-violet-500/30', lightActive: 'bg-violet-500/20', text: 'text-gray-300', lightText: 'text-slate-600', solidBg: 'bg-white/40', lightSolidBg: 'bg-black/20' },
   { name: 'red', bg: 'bg-rose-500/15', lightBg: 'bg-rose-500/20', active: 'bg-rose-500/30', lightActive: 'bg-rose-500/30', text: 'text-rose-300', lightText: 'text-rose-700', solidBg: 'bg-rose-500/80', lightSolidBg: 'bg-rose-500' },
@@ -27,7 +27,6 @@ export const CELL_COLORS = [
   { name: 'pink', bg: 'bg-fuchsia-500/15', lightBg: 'bg-fuchsia-500/20', active: 'bg-fuchsia-500/30', lightActive: 'bg-fuchsia-500/30', text: 'text-fuchsia-300', lightText: 'text-fuchsia-700', solidBg: 'bg-fuchsia-500/80', lightSolidBg: 'bg-fuchsia-500' },
 ];
 
-// Utility to format minutes into h:mm AM/PM
 const formatTime = (totalMins: number) => {
   let h = Math.floor(totalMins / 60) % 24;
   const m = totalMins % 60;
@@ -50,12 +49,18 @@ const parseMins = (tStr: string) => {
 };
 
 export default function Timetable() {
+  // 2. Keep global states here
   const {
     theme: globalTheme,
     timetableThemeOverride,
     setTimetableThemeOverride,
+    viewingFriend,
+    setViewingFriend
+  } = useDashboardStore();
+
+  // 3. Move ALL timetable data to the new store
+  const {
     timetableGrid: myTimetableGrid,
-    // ...
     timetableColors: myTimetableColors,
     weekdayTimes: myWeekdayTimes,
     weekendTimes: myWeekendTimes,
@@ -63,15 +68,18 @@ export default function Timetable() {
     timetableWeekendStartTime: myTimetableWeekendStartTime,
     setTimetableStartTime,
     setTimetableWeekendStartTime,
-    updateTimetableCell, updateTimetableColor,
-    updateTimetableTime, addTimetableRow, deleteTimetableRow,
-    useTimetableRange, toggleTimetableRange, renameTimetableKeys,
-    viewingFriend, setViewingFriend
-  } = useDashboardStore();
+    updateTimetableCell,
+    updateTimetableColor,
+    updateTimetableTime,
+    addTimetableRow,
+    deleteTimetableRow,
+    useTimetableRange,
+    toggleTimetableRange,
+    renameTimetableKeys,
+  } = useTimetableStore();
 
   const effectiveTheme = timetableThemeOverride || (globalTheme === 'light' ? 'light' : 'dark');
   const isDark = effectiveTheme === 'dark';
-
   const DEFAULT_TIMETABLE_GRID: Record<string, Record<string, string>> = {
     "Mon": { "09:00 AM": "DSA", "10:00 AM": "Web Dev", "11:00 AM": "OS", "12:00 PM": "Lunch", "01:00 PM": "Math", "02:00 PM": "Physics", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
     "Tue": { "09:00 AM": "Math", "10:00 AM": "DSA", "11:00 AM": "Web Dev", "12:00 PM": "Lunch", "01:00 PM": "OS", "02:00 PM": "DB", "03:00 PM": "Project", "04:00 PM": "Free", "05:00 PM": "Free" },
@@ -82,9 +90,17 @@ export default function Timetable() {
     "Sun": { "09:00 AM": "Free", "10:00 AM": "Free", "11:00 AM": "Free", "12:00 PM": "Free", "01:00 PM": "Free", "02:00 PM": "Free", "03:00 PM": "Free", "04:00 PM": "Free", "05:00 PM": "Free" },
   };
 
+  // FIX: Safely parse the grid in case the database returns it as a string
+  let parsedMyGrid = myTimetableGrid;
+  if (typeof parsedMyGrid === 'string') {
+    try { parsedMyGrid = JSON.parse(parsedMyGrid); } catch (e) { parsedMyGrid = {}; }
+  }
   const friendGrid = viewingFriend?.stats?.timetableGrid;
   const friendHasGrid = friendGrid && typeof friendGrid === 'object' && Object.keys(friendGrid).length > 0;
-  const timetableGrid = viewingFriend ? (friendHasGrid ? friendGrid : DEFAULT_TIMETABLE_GRID) : (myTimetableGrid && Object.keys(myTimetableGrid).length > 0 ? myTimetableGrid : DEFAULT_TIMETABLE_GRID);
+  // Use parsedMyGrid instead of myTimetableGrid
+  const timetableGrid = viewingFriend
+    ? (friendHasGrid ? friendGrid : DEFAULT_TIMETABLE_GRID)
+    : (parsedMyGrid && Object.keys(parsedMyGrid).length > 0 ? parsedMyGrid : DEFAULT_TIMETABLE_GRID);
   const timetableColors = viewingFriend ? (viewingFriend.stats.timetableColors || {}) : myTimetableColors;
   const weekdayTimes = viewingFriend ? (viewingFriend.stats.weekdayTimes || ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"]) : myWeekdayTimes;
   const weekendTimes = viewingFriend ? (viewingFriend.stats.weekendTimes || ["10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM"]) : myWeekendTimes;
@@ -142,20 +158,26 @@ export default function Timetable() {
       const token = localStorage.getItem('dashboard_sync_token');
       if (!token) return;
       try {
-        const res = await fetch('/api/timetable', {
+        // Cache-busting URL parameter to guarantee fresh data
+        const res = await fetch(`/api/timetable?t=${Date.now()}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const data = await res.json();
-        if (data.data) {
-          useDashboardStore.setState((state) => ({
-            timetableGrid: data.data.timetableGrid || state.timetableGrid,
-            timetableColors: data.data.timetableColors || state.timetableColors,
-            weekdayTimes: data.data.weekdayTimes || state.weekdayTimes,
-            weekendTimes: data.data.weekendTimes || state.weekendTimes,
+        const json = await res.json();
+
+        if (json.success && json.data) {
+          // UPDATE THE NEW TIMETABLE STORE
+          useTimetableStore.setState((state) => ({
+            timetableGrid: (json.data.timetableGrid && Object.keys(json.data.timetableGrid).length > 0) ? json.data.timetableGrid : state.timetableGrid,
+            timetableColors: json.data.timetableColors || state.timetableColors,
+            weekdayTimes: (json.data.weekdayTimes && json.data.weekdayTimes.length > 0) ? json.data.weekdayTimes : state.weekdayTimes,
+            weekendTimes: (json.data.weekendTimes && json.data.weekendTimes.length > 0) ? json.data.weekendTimes : state.weekendTimes,
+            timetableStartTime: json.data.timetableStartTime || state.timetableStartTime,
+            timetableWeekendStartTime: json.data.timetableWeekendStartTime || state.timetableWeekendStartTime,
+            useTimetableRange: json.data.useTimetableRange !== undefined ? json.data.useTimetableRange : state.useTimetableRange
           }));
         }
       } catch (e) {
-        // ignore
+        console.error("Failed to fetch live timetable", e);
       }
     };
     fetchLiveTimetable();
@@ -245,7 +267,8 @@ export default function Timetable() {
       timetableGrid: newGrid,
       timetableColors: newColors
     });
-    pushTimetableToDB({ timetableGrid: newGrid, timetableColors: newColors });
+
+    useDashboardStore.getState().forceInstantSave();
   };
 
   const isWeekendMode = viewMode === "weekends";
@@ -372,10 +395,10 @@ export default function Timetable() {
           timetableStartTime: myTimetableStartTime,
           timetableWeekendStartTime: myTimetableWeekendStartTime,
         };
-        
+
         // Check if we are running in Lively Wallpaper (WebView2)
         const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
-        
+
         if (isWebView2) {
           fetch('/api/download-echo', {
             method: 'POST',
@@ -418,7 +441,7 @@ export default function Timetable() {
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -428,23 +451,23 @@ export default function Timetable() {
       try {
         const content = e.target?.result as string;
         const parsed = JSON.parse(content);
-        
+
         if (parsed.timetableGrid) {
-          useDashboardStore.setState({
+          const restoredPayload = {
             timetableGrid: parsed.timetableGrid || {},
             timetableColors: parsed.timetableColors || {},
             weekdayTimes: parsed.weekdayTimes || [],
             weekendTimes: parsed.weekendTimes || [],
             timetableStartTime: parsed.timetableStartTime || 540,
             timetableWeekendStartTime: parsed.timetableWeekendStartTime || 540,
-          });
-          pushTimetableToDB({
-            timetableGrid: parsed.timetableGrid || {},
-            timetableColors: parsed.timetableColors || {},
-            weekdayTimes: parsed.weekdayTimes || [],
-            weekendTimes: parsed.weekendTimes || []
-          });
+          };
+
+          // 1. Update the local timetable state
+          useTimetableStore.setState(restoredPayload);
+          // 2. Push directly to MongoDB using the function from your store
+          pushTimetableToDB(restoredPayload);
           showToast('Timetable imported successfully!');
+
         } else {
           showToast("Invalid backup file.");
         }
@@ -454,13 +477,11 @@ export default function Timetable() {
     };
     reader.readAsText(file);
     setShowSettings(false);
-    
-    // Reset file input
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
-
   const handleUpdateDuration = (idx: number, newDur: number) => {
     let oldAccumulated = startTime;
     const oldTimesStrs: string[] = [];
@@ -660,13 +681,13 @@ export default function Timetable() {
                   title: 'How to Copy a Day',
                   message: (
                     <div className="flex flex-col gap-2 text-sm">
-                      <p><strong>1.</strong> Click the <Copy size={12} className="inline mx-1"/> icon on the day you want to copy.</p>
-                      <p><strong>2.</strong> Click the <ClipboardPaste size={12} className="inline mx-1"/> icon on another day to paste the schedule there.</p>
+                      <p><strong>1.</strong> Click the <Copy size={12} className="inline mx-1" /> icon on the day you want to copy.</p>
+                      <p><strong>2.</strong> Click the <ClipboardPaste size={12} className="inline mx-1" /> icon on another day to paste the schedule there.</p>
                     </div>
                   ),
                   confirmText: 'Got it!',
                   hideCancel: true,
-                  onConfirm: () => {}
+                  onConfirm: () => { }
                 });
               }
             }}

@@ -53,10 +53,10 @@ export default function Dashboard() {
       if (newArr.length !== originalLength) healed = true;
       return newArr;
     };
-    
+
     const healedDesktop = healArray(state.customDesktopWallpapers);
     const healedMobile = healArray(state.customMobileWallpapers);
-    
+
     if (healed) {
       useDashboardStore.setState({
         customDesktopWallpapers: healedDesktop,
@@ -214,15 +214,15 @@ export default function Dashboard() {
     let nextIndex = activeIndex === null ? 0 : (activeIndex + 1) % list.length;
     let foundValid = false;
     let attempts = 0;
-    
+
     while (attempts < list.length) {
       const url = list[nextIndex];
       if (url.startsWith('custom-')) {
         const { getWallpaperFromDB } = await import('@/lib/indexedDB');
         let blob = await getWallpaperFromDB(url);
         if (!blob) {
-            await new Promise(r => setTimeout(r, 200));
-            blob = await getWallpaperFromDB(url);
+          await new Promise(r => setTimeout(r, 200));
+          blob = await getWallpaperFromDB(url);
         }
         if (blob) {
           foundValid = true;
@@ -336,11 +336,12 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Manifestation Board Toggle Control (Top Right on PC, Left Edge on Mobile) */}
-        {!isPanicHidden && (!isHidden || !hideConfig.manifestation) && showManifestationBoard && (
-          <div 
-            data-tour="manifestation-toggle"
-            className={`fixed z-[90] sm:z-[40] 
+        <div className={isPanicHidden ? 'hidden' : 'block'}>
+          {/* Manifestation Board Toggle Control (Top Right on PC, Left Edge on Mobile) */}
+          {showManifestationBoard && (
+            <div
+              data-tour="manifestation-toggle"
+              className={`fixed z-[90] sm:z-[40]  ${(!isHidden || !hideConfig.manifestation) ? 'block' : 'hidden'}
                        left-0 top-[calc(26vh-46px)] sm:left-auto sm:top-10 sm:right-3 
                        glass-btn sm:bg-transparent sm:glass-btn-none border-l-0 sm:border-l sm:border sm:border-amber-500/40 
                        rounded-l-none rounded-r-xl sm:rounded-xl 
@@ -349,241 +350,239 @@ export default function Dashboard() {
                        text-amber-300 hover:bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.2)] group
                        ${isCalendarOpen ? 'max-sm:-translate-x-[120%]' : 'translate-x-0'}
             `}
-            onClick={toggleManifestationOpen}
-          >
-            <Sparkles className="w-5 h-5 sm:w-4 sm:h-4 animate-pulse text-amber-300" />
-            <div className="hidden sm:block w-0 h-0"><Tooltip text="Open Vision Board" position="left" /></div>
-            <div className="block sm:hidden w-0 h-0"><Tooltip text="Open Vision Board" position="right" /></div>
-          </div>
-        )}
-
-        {!isPanicHidden && (
-          <>
-            {/* Quote Popup */}
-            {(!isHidden || !hideConfig.quote) && showQuote && <QuotePopup />}
-
-            {/* Stats Modal */}
-            {(!isHidden || !hideConfig.stats) && showStats && <StatsModal />}
-
-            {/* Day Start Modal / Indicator */}
-            <DayStartModal />
-
-            {/* Quick Notes */}
-            {(!isHidden || !hideConfig.notes) && showNotes && <NotesManager />}
-
-            {/* Roadmap & Plans */}
-            {(!isHidden || !hideConfig.plans) && showPlans && <RoadmapManager />}
-
-            {/* Bottom Left Stacked Column Container: Target Countdowns (Top) & Deadlines Modal (Bottom) */}
-            <div
-              style={{
-                bottom: isMobile ? `${148 + dockOffset}px` : `${80 + dockOffset}px`,
-                zIndex: 50
-              }}
-              className="fixed left-1.5 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300"
+              onClick={toggleManifestationOpen}
             >
-              {/* Top Item: Target Countdowns */}
-              {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
-                <div
-                  className={`pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isMobileCountdownsVisible ? '-translate-x-[150%] opacity-0 pointer-events-none h-0 overflow-hidden mb-0' : 'translate-x-0 opacity-100'}`}
-                >
-                  {countdowns.length > 0 ? (() => {
-                    const safeIndex = Math.min(activeCountdownIndex, Math.max(0, countdowns.length - 1));
-                    return (
-                      <Countdown
-                        key={countdowns[safeIndex].id}
-                        id={countdowns[safeIndex].id}
-                        hasPrev={safeIndex > 0}
-                        hasNext={safeIndex < countdowns.length - 1}
-                        onPrev={() => setActiveCountdownIndex(p => p - 1)}
-                        onNext={() => setActiveCountdownIndex(p => p + 1)}
-                        onAddNew={() => setActiveCountdownIndex(countdowns.length)}
-                        currentIndex={safeIndex}
-                        totalCount={countdowns.length}
-                      />
-                    );
-                  })() : (
-                    <Countdown totalCount={0} onAddNew={() => setActiveCountdownIndex(0)} />
+              <Sparkles className="w-5 h-5 sm:w-4 sm:h-4 animate-pulse text-amber-300" />
+              <div className="hidden sm:block w-0 h-0"><Tooltip text="Open Vision Board" position="left" /></div>
+              <div className="block sm:hidden w-0 h-0"><Tooltip text="Open Vision Board" position="right" /></div>
+            </div>
+          )}
+
+          {/* Quote Popup */}
+          {showQuote && <div className={(!isHidden || !hideConfig.quote) ? 'block' : 'hidden'}>   <QuotePopup /></div>}
+
+          {/* Stats Modal */}
+          {showStats && <div className={(!isHidden || !hideConfig.stats) ? 'block' : 'hidden'}> <StatsModal /> </div>}
+
+          {/* Day Start Modal / Indicator */}
+          <DayStartModal />
+
+          {/* Quick Notes */}
+          {showNotes && <div className={(!isHidden || !hideConfig.notes) ? 'block' : 'hidden'}>  <NotesManager /> </div>}
+
+          {/* Roadmap & Plans */}
+          {showPlans && <div className={(!isHidden || !hideConfig.plans) ? 'block' : 'hidden'}>  <RoadmapManager /> </div>}
+
+          {/* Bottom Left Stacked Column Container: Target Countdowns (Top) & Deadlines Modal (Bottom) */}
+          <div
+            style={{
+              bottom: isMobile ? `${148 + dockOffset}px` : `${80 + dockOffset}px`,
+              zIndex: 50
+            }}
+            className="fixed left-1.5 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300"
+          >
+            {/* Top Item: Target Countdowns */}
+            {showCountdowns && (
+              <div
+                className={(!isHidden || !hideConfig.countdowns) ? `pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isMobileCountdownsVisible ? '-translate-x-[150%] opacity-0 pointer-events-none h-0 overflow-hidden mb-0' : 'translate-x-0 opacity-100'}` : 'hidden'}
+              >
+                {countdowns.length > 0 ? (() => {
+                  const safeIndex = Math.min(activeCountdownIndex, Math.max(0, countdowns.length - 1));
+                  return (
+                    <Countdown
+                      key={countdowns[safeIndex].id}
+                      id={countdowns[safeIndex].id}
+                      hasPrev={safeIndex > 0}
+                      hasNext={safeIndex < countdowns.length - 1}
+                      onPrev={() => setActiveCountdownIndex(p => p - 1)}
+                      onNext={() => setActiveCountdownIndex(p => p + 1)}
+                      onAddNew={() => setActiveCountdownIndex(countdowns.length)}
+                      currentIndex={safeIndex}
+                      totalCount={countdowns.length}
+                    />
+                  );
+                })() : (
+                  <Countdown totalCount={0} onAddNew={() => setActiveCountdownIndex(0)} />
+                )}
+              </div>
+            )}
+
+            {/* Bottom Item: Deadline Ticker Widget */}
+            {showDeadlineAlerts && (
+              <div className={(!isHidden || !hideConfig.deadlineAlerts) ? "pointer-events-auto" : "hidden"}>
+                <DeadlineTickerWidget />
+              </div>)
+            }
+          </div>
+
+          {/* Draggable Widgets */}
+          <div className="absolute inset-0 pointer-events-none z-50">
+          </div>
+
+          {/* Left Side Drawer: Calendar */}
+          <>
+            {/* Edge Peek Tab for Calendar */}
+            {showCalendar && (<div
+              data-tour="calendar-drawer"
+              className={(!isHidden || !hideConfig.calendar) ? `fixed left-0 top-[26vh] sm:top-[20vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group` : 'hidden'}
+              onClick={handleCalendarExpand}
+            >
+              <Calendar size={20} className="sm:w-6 sm:h-6" />
+              <Tooltip text="Open Calendar" position="right" />
+            </div>)}
+
+            {/* Edge Peek Tab for Leaderboard */}
+            <div
+              data-tour="leaderboard-drawer"
+              className={`fixed left-0 top-[calc(26vh+46px)] sm:top-[28vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
+              onClick={() => {
+                useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'leaderboard' });
+              }}
+            >
+              <Trophy size={20} className="sm:w-6 sm:h-6" />
+              <Tooltip text="Open Leaderboard" position="right" />
+            </div>
+
+            {/* Edge Peek Tab for Groups */}
+            <div
+              data-tour="groups-drawer"
+              className={`fixed left-0 top-[calc(26vh+92px)] sm:top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
+              onClick={() => {
+                useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'groups' });
+              }}
+            >
+              <Users size={20} className="sm:w-6 sm:h-6" />
+              <Tooltip text="Open Groups" position="right" />
+            </div>
+
+            {/* Edge Peek Tab for Target Countdowns */}
+            <div
+              className={((!isHidden || !hideConfig.countdowns) && showCountdowns) ? `fixed left-0 top-[calc(26vh+138px)] sm:top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[50] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'} group` : 'hidden'}
+              onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(true)}
+            >
+              <Hourglass size={20} className="sm:w-6 sm:h-6 text-indigo-400 animate-pulse" />
+              <Tooltip text="Open Target Countdowns" position="right" />
+            </div>
+
+
+            <div
+              className={`fixed top-[100px] left-0 h-auto max-h-[calc(100vh-140px)] w-auto max-w-[85vw] pb-4 pl-2 pr-0 sm:pl-4 flex flex-col transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] group pointer-events-auto select-none ${isCalendarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-[calc(100%+20px)] pointer-events-none'}`}
+              onTouchStart={(e) => setEdgeTouchStartX(e.touches[0].clientX)}
+              onTouchEnd={(e) => {
+                if (edgeTouchStartX !== null && edgeTouchStartX - e.changedTouches[0].clientX > 15) {
+                  if (isCalendarOpen) useDashboardStore.setState({ isCalendarOpen: false });
+                }
+                setEdgeTouchStartX(null);
+              }}
+              onTouchCancel={() => setEdgeTouchStartX(null)}
+              onMouseDown={(e) => setEdgeTouchStartX(e.clientX)}
+              onMouseUp={(e) => {
+                if (edgeTouchStartX !== null && edgeTouchStartX - e.clientX > 15) {
+                  if (isCalendarOpen) useDashboardStore.setState({ isCalendarOpen: false });
+                }
+                setEdgeTouchStartX(null);
+              }}
+              onMouseLeave={(e) => {
+                if (edgeTouchStartX !== null && edgeTouchStartX - e.clientX > 15) {
+                  if (isCalendarOpen) useDashboardStore.setState({ isCalendarOpen: false });
+                }
+                setEdgeTouchStartX(null);
+              }}
+            >
+              {/* When closed, disable clicks on the calendar so you don't accidentally press its buttons when tapping the edge */}
+              <div className={`w-full h-full relative ${!isCalendarOpen ? 'pointer-events-none' : ''}`}>
+                <MiniCalendar />
+              </div>
+            </div>
+          </>
+
+          {/* Right Side Drawer: Tasks */}
+          {showTasks && (
+            <>
+              {/* Edge Peek Tab for Task Manager */}
+              <div
+                data-tour="task-drawer"
+                className={(!isHidden || !hideConfig.tasks) ? `fixed right-0 top-[20vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTaskManagerOpen ? 'translate-x-[120%]' : 'translate-x-0'} group` : 'hidden'}
+                onClick={() => { if (!isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: true }) }}
+              >
+                <ListTodo size={20} className="sm:w-6 sm:h-6" />
+                <Tooltip text="Open Tasks" position="left" />
+              </div>
+
+              <div
+                className={`fixed top-[140px] right-0 h-auto max-h-[calc(100vh-200px)] w-[320px] sm:w-[340px] max-w-[85vw] pb-4 pr-2 pl-0 sm:pr-4 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] ${isTaskManagerOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}
+                onTouchStart={(e) => setEdgeTouchStartX(e.touches[0].clientX)}
+                onTouchEnd={(e) => {
+                  if (edgeTouchStartX !== null && e.changedTouches[0].clientX - edgeTouchStartX > 60) {
+                    if (isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: false });
+                  }
+                  setEdgeTouchStartX(null);
+                }}
+                onTouchCancel={() => setEdgeTouchStartX(null)}
+                onMouseDown={(e) => setEdgeTouchStartX(e.clientX)}
+                onMouseUp={(e) => {
+                  if (edgeTouchStartX !== null && e.clientX - edgeTouchStartX > 60) {
+                    if (isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: false });
+                  }
+                  setEdgeTouchStartX(null);
+                }}
+                onMouseLeave={() => setEdgeTouchStartX(null)}
+              >
+                <div className="w-full h-full relative">
+                  <TaskManager />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Edge Peek Tab for News */}
+          <>
+            <div className={(!isHidden || !hideConfig.settingsBtn) ? 'block' : 'hidden'}>
+              <div
+                data-tour="news-drawer"
+                className={`fixed right-0 top-[28vh] sm:top-[30vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isNewsOpen ? 'translate-x-[120%]' : 'translate-x-0'} group`}
+                onClick={() => useDashboardStore.setState({ isNewsOpen: true })}
+              >
+                <div className="relative flex flex-col items-center">
+                  <Newspaper size={20} className="sm:w-6 sm:h-6 text-blue-400" />
+                  {hasUnreadNews && (
+                    <span className="absolute -top-3 -right-3 bg-blue-500 text-white text-[8px] font-black px-1 py-0.5 rounded shadow-[0_0_10px_rgba(59,130,246,0.8)] animate-pulse border border-black z-10 uppercase tracking-widest">
+                      NEW
+                    </span>
                   )}
                 </div>
-              )}
-
-              {/* Bottom Item: Deadline Ticker Widget */}
-              {(!isHidden || !hideConfig.deadlineAlerts) && showDeadlineAlerts && (
-                <div className="pointer-events-auto">
-                  <DeadlineTickerWidget />
-                </div>
-              )}
+                <Tooltip text="What's New" position="left" />
+              </div>
+              <NewsModal />
             </div>
+          </>
 
-            {/* Draggable Widgets */}
-            <div className="absolute inset-0 pointer-events-none z-50">
-            </div>
-
-            {/* Left Side Drawer: Calendar */}
-            {(!isHidden || !hideConfig.calendar) && showCalendar && (
-              <>
-                {/* Edge Peek Tab for Calendar */}
-                <div
-                  data-tour="calendar-drawer"
-                  className={`fixed left-0 top-[26vh] sm:top-[20vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
-                  onClick={handleCalendarExpand}
-                >
-                  <Calendar size={20} className="sm:w-6 sm:h-6" />
-                  <Tooltip text="Open Calendar" position="right" />
-                </div>
-
-                {/* Edge Peek Tab for Leaderboard */}
-                <div
-                  data-tour="leaderboard-drawer"
-                  className={`fixed left-0 top-[calc(26vh+46px)] sm:top-[28vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
-                  onClick={() => {
-                    useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'leaderboard' });
-                  }}
-                >
-                  <Trophy size={20} className="sm:w-6 sm:h-6" />
-                  <Tooltip text="Open Leaderboard" position="right" />
-                </div>
-
-                {/* Edge Peek Tab for Groups */}
-                <div
-                  data-tour="groups-drawer"
-                  className={`fixed left-0 top-[calc(26vh+92px)] sm:top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
-                  onClick={() => {
-                    useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'groups' });
-                  }}
-                >
-                  <Users size={20} className="sm:w-6 sm:h-6" />
-                  <Tooltip text="Open Groups" position="right" />
-                </div>
-
-                {/* Edge Peek Tab for Target Countdowns */}
-                {(!isHidden || !hideConfig.countdowns) && showCountdowns && (
-                  <div
-                    className={`fixed left-0 top-[calc(26vh+138px)] sm:top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[50] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'} group`}
-                    onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(true)}
-                  >
-                    <Hourglass size={20} className="sm:w-6 sm:h-6 text-indigo-400 animate-pulse" />
-                    <Tooltip text="Open Target Countdowns" position="right" />
-                  </div>
-                )}
-
-                <div
-                  className={`fixed top-[100px] left-0 h-auto max-h-[calc(100vh-140px)] w-auto max-w-[85vw] pb-4 pl-2 pr-0 sm:pl-4 flex flex-col transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] group pointer-events-auto select-none ${isCalendarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-[calc(100%+20px)] pointer-events-none'}`}
-                  onTouchStart={(e) => setEdgeTouchStartX(e.touches[0].clientX)}
-                  onTouchEnd={(e) => {
-                    if (edgeTouchStartX !== null && edgeTouchStartX - e.changedTouches[0].clientX > 15) {
-                      if (isCalendarOpen) useDashboardStore.setState({ isCalendarOpen: false });
-                    }
-                    setEdgeTouchStartX(null);
-                  }}
-                  onTouchCancel={() => setEdgeTouchStartX(null)}
-                  onMouseDown={(e) => setEdgeTouchStartX(e.clientX)}
-                  onMouseUp={(e) => {
-                    if (edgeTouchStartX !== null && edgeTouchStartX - e.clientX > 15) {
-                      if (isCalendarOpen) useDashboardStore.setState({ isCalendarOpen: false });
-                    }
-                    setEdgeTouchStartX(null);
-                  }}
-                  onMouseLeave={(e) => {
-                    if (edgeTouchStartX !== null && edgeTouchStartX - e.clientX > 15) {
-                      if (isCalendarOpen) useDashboardStore.setState({ isCalendarOpen: false });
-                    }
-                    setEdgeTouchStartX(null);
-                  }}
-                >
-                  {/* When closed, disable clicks on the calendar so you don't accidentally press its buttons when tapping the edge */}
-                  <div className={`w-full h-full relative ${!isCalendarOpen ? 'pointer-events-none' : ''}`}>
-                    <MiniCalendar />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Right Side Drawer: Tasks */}
-            {(!isHidden || !hideConfig.tasks) && showTasks && (
-              <>
-                {/* Edge Peek Tab for Task Manager */}
-                <div
-                  data-tour="task-drawer"
-                  className={`fixed right-0 top-[20vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTaskManagerOpen ? 'translate-x-[120%]' : 'translate-x-0'} group`}
-                  onClick={() => { if (!isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: true }) }}
-                >
-                  <ListTodo size={20} className="sm:w-6 sm:h-6" />
-                  <Tooltip text="Open Tasks" position="left" />
-                </div>
-
-                <div
-                  className={`fixed top-[140px] right-0 h-auto max-h-[calc(100vh-200px)] w-[320px] sm:w-[340px] max-w-[85vw] pb-4 pr-2 pl-0 sm:pr-4 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] ${isTaskManagerOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}
-                  onTouchStart={(e) => setEdgeTouchStartX(e.touches[0].clientX)}
-                  onTouchEnd={(e) => {
-                    if (edgeTouchStartX !== null && e.changedTouches[0].clientX - edgeTouchStartX > 60) {
-                      if (isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: false });
-                    }
-                    setEdgeTouchStartX(null);
-                  }}
-                  onTouchCancel={() => setEdgeTouchStartX(null)}
-                  onMouseDown={(e) => setEdgeTouchStartX(e.clientX)}
-                  onMouseUp={(e) => {
-                    if (edgeTouchStartX !== null && e.clientX - edgeTouchStartX > 60) {
-                      if (isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: false });
-                    }
-                    setEdgeTouchStartX(null);
-                  }}
-                  onMouseLeave={() => setEdgeTouchStartX(null)}
-                >
-                  <div className="w-full h-full relative">
-                    <TaskManager />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Edge Peek Tab for News */}
-            {(!isHidden || !hideConfig.settingsBtn) && (
-              <>
-                <div
-                  data-tour="news-drawer"
-                  className={`fixed right-0 top-[28vh] sm:top-[30vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isNewsOpen ? 'translate-x-[120%]' : 'translate-x-0'} group`}
-                  onClick={() => useDashboardStore.setState({ isNewsOpen: true })}
-                >
-                  <div className="relative flex flex-col items-center">
-                    <Newspaper size={20} className="sm:w-6 sm:h-6 text-blue-400" />
-                    {hasUnreadNews && (
-                      <span className="absolute -top-3 -right-3 bg-blue-500 text-white text-[8px] font-black px-1 py-0.5 rounded shadow-[0_0_10px_rgba(59,130,246,0.8)] animate-pulse border border-black z-10 uppercase tracking-widest">
-                        NEW
-                      </span>
-                    )}
-                  </div>
-                  <Tooltip text="What's New" position="left" />
-                </div>
-                <NewsModal />
-              </>
-            )}
-
-            {/* BigClock */}
-            {(showClock || showTodayWork || showTimer || showStopwatch) && (
+          {/* BigClock */}
+          {
+            <div className={(showClock || showTodayWork || showTimer || showStopwatch) ? 'block' : 'hidden'}>
               <div
                 style={{ zIndex: widgetZIndices.clock || 50 }}
-                className={`absolute pointer-events-none transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTimetableOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100'} ${
-                  currentBgType === 'image'
-                    ? 'top-32 left-1/2 -translate-x-1/2 translate-y-0 scale-[0.85] md:scale-100 md:top-40 origin-top'
-                    : 'top-32 left-1/2 -translate-x-1/2 md:top-40 md:left-10 md:translate-x-0 translate-y-0 scale-[0.85] md:scale-100 origin-top md:origin-top-left'
+                className={`absolute pointer-events-none transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTimetableOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100'} ${currentBgType === 'image'
+                  ? 'top-32 left-1/2 -translate-x-1/2 translate-y-0 scale-[0.85] md:scale-100 md:top-40 origin-top'
+                  : 'top-32 left-1/2 -translate-x-1/2 md:top-40 md:left-10 md:translate-x-0 translate-y-0 scale-[0.85] md:scale-100 origin-top md:origin-top-left'
                   }`}>
                 <DraggableClock>
                   <BigClock />
                 </DraggableClock>
               </div>
-            )}
+            </div>}
 
-            {/* Bottom Center (Above Dock): Timetable */}
-            {(!isHidden || !hideConfig.timetable) && showTimetable && (
+          {/* Bottom Center (Above Dock): Timetable */}
+          {showTimetable && (
+            <div className={(!isHidden || !hideConfig.timetable) ? 'block' : 'hidden'}>
               <div
                 style={{
                   zIndex: widgetZIndices.timetable || 50,
                   bottom: isMobile ? `${96 + dockOffset}px` : `${160 + dockOffset}px`
                 }}
-                className="absolute left-1/2 -translate-x-1/2 w-[calc(100vw)] md:w-auto flex flex-col items-center scale-[0.9] md:scale-100 origin-bottom pointer-events-none transition-all duration-300"
+                className={
+                  'block absolute left-1/2 -translate-x-1/2 w-[calc(100vw)] md:w-auto flex flex-col items-center scale-[0.9] md:scale-100 origin-bottom pointer-events-none transition-all duration-300'
+                }
               >
                 {/* The Expanded Timetable */}
                 <div
@@ -614,48 +613,48 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Bottom Center: Dock */}
-            {(!isHidden || !hideConfig.dock) && showDock && (
-              <div
-                style={{
-                  bottom: isMobile ? `${8 + dockOffset}px` : `${72 + dockOffset}px`,
-                  transform: `translateX(-50%) scale(${isMobile ? mobileDashboardScale : dockScale})`,
-                  transformOrigin: 'bottom center',
-                }}
-                className="absolute left-1/2 z-50 transition-all duration-300 w-[calc(100vw-16px)] max-w-md sm:w-auto sm:max-w-none flex justify-center"
-              >
-                <Dock onOpenNotes={() => console.log('Open Notes clicked')} />
-              </div>
-            )}
-
-
-
-            {/* Bottom Right Container */}
+          {/* Bottom Center: Dock */}
+          {showDock && (
             <div
-              style={{ bottom: `${rightWidgetsOffset + 30}px`, zIndex: bottomRightZ }}
-              className="absolute right-1 sm:right-2 md:right-2 flex items-end transition-all duration-300 pointer-events-none scale-[0.75] sm:scale-85 md:scale-100 origin-bottom-right"
+              style={{
+                bottom: isMobile ? `${8 + dockOffset}px` : `${72 + dockOffset}px`,
+                transform: `translateX(-50%) scale(${isMobile ? mobileDashboardScale : dockScale})`,
+                transformOrigin: 'bottom center',
+              }}
+              className={(!isHidden || !hideConfig.dock) ? "block absolute left-1/2 z-50 transition-all duration-300 w-[calc(100vw-16px)] max-w-md sm:w-auto sm:max-w-none flex justify-center" : 'hidden'}
             >
-              {/* TaskManager & Timer Group */}
-              <div className="flex flex-col items-end gap-2 pointer-events-none mr-1 md:mr-[10px] relative z-20">
-                <div className="flex flex-col md:flex-row items-end md:items-start gap-2 md:gap-3 pointer-events-auto">
-                  <div className={(!isHidden || !hideConfig.stopwatch) && showStopwatch ? '' : 'hidden'}>
-                    <Stopwatch />
-                  </div>
-                  <div className={((!isHidden || !hideConfig.timer) && showTimer) || isAlarmPlaying ? '' : 'hidden'}>
-                    <Timer />
-                  </div>
+              <Dock onOpenNotes={() => console.log('Open Notes clicked')} />
+            </div>
+          )}
+
+
+
+          {/* Bottom Right Container */}
+          <div
+            style={{ bottom: `${rightWidgetsOffset + 30}px`, zIndex: bottomRightZ }}
+            className="absolute right-1 sm:right-2 md:right-2 flex items-end transition-all duration-300 pointer-events-none scale-[0.75] sm:scale-85 md:scale-100 origin-bottom-right"
+          >
+            {/* TaskManager & Timer Group */}
+            <div className="flex flex-col items-end gap-2 pointer-events-none mr-1 md:mr-[10px] relative z-20">
+              <div className="flex flex-col md:flex-row items-end md:items-start gap-2 md:gap-3 pointer-events-auto">
+                <div className={(!isHidden || !hideConfig.stopwatch) && showStopwatch ? '' : 'hidden'}>
+                  <Stopwatch />
+                </div>
+                <div className={((!isHidden || !hideConfig.timer) && showTimer) || isAlarmPlaying ? '' : 'hidden'}>
+                  <Timer />
                 </div>
               </div>
-
-              {/* Vertical Icons Toolbar (Side toggle btns scale with container) */}
-              <div className="pointer-events-none relative z-10">
-                <RightToolbar />
-              </div>
             </div>
-          </>
-        )}
+
+            {/* Vertical Icons Toolbar (Side toggle btns scale with container) */}
+            <div className="pointer-events-none relative z-10">
+              <RightToolbar />
+            </div>
+          </div>
+        </div>
 
         {/* Settings Modal */}
         <SettingsModal />
@@ -676,7 +675,7 @@ export default function Dashboard() {
         {/* Guided Onboarding Tour */}
         <GuidedTour />
 
-      </main>
+      </main >
     </>
   );
 }

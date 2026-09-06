@@ -18,7 +18,6 @@ export default function BigClock() {
   const showClock = useDashboardStore((state) => state.showClock);
   const showTodayWork = useDashboardStore((state) => state.showTodayWork);
   const clockScale = useDashboardStore((state) => state.clockScale || 1);
-
   const timerEndAt = useDashboardStore((state) => state.timerEndAt);
   const deadlines = useDashboardStore((state) => state.deadlines);
   const deadlineAlertDays = useDashboardStore((state) => state.deadlineAlertDays);
@@ -28,7 +27,7 @@ export default function BigClock() {
   const theme = useDashboardStore((state) => state.theme);
   const timerPausedLeft = useDashboardStore((state) => state.timerPausedLeft);
   const stopwatchStartTime = useDashboardStore((state) => state.stopwatchStartTime);
-
+  const isPanicHidden = useDashboardStore((state) => state.isPanicHidden);
   const [isMobile, setIsMobile] = useState(false);
 
   const [activeTimerSecs, setActiveTimerSecs] = useState<number | null>(null);
@@ -212,7 +211,7 @@ export default function BigClock() {
           </div>
         </Tooltip>
       )}
-      <div className='center pills fixed top-0 left-0 w-full flex justify-center  items-center'>
+      <div className={isPanicHidden ? 'hidden' : 'block center pills fixed top-0 left-0 w-full flex justify-center  items-center'}>
         {/* Top Floating Pills (Global Focus + Global Timer) */}
         {typeof document !== 'undefined' && createPortal(
           <div className="fixed top-0 left-0 right-0 z-[40] flex items-start justify-center gap-3 transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] translate-y-0 pointer-events-none mt-2 md:mt-3">
@@ -227,7 +226,7 @@ export default function BigClock() {
               onMouseLeave={handlePillTouchEnd}
             >
 
-              <div className="flex gap-1 relative">
+              <div className={isPanicHidden ? 'hidden' : 'block flex gap-1 relative'}>
                 {/* Focus Pill for BOTH Desktop & Mobile */}
                 {focusPillVisible && (
                   <div className="relative flex items-center">

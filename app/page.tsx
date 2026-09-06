@@ -9,7 +9,6 @@ import UserManualModal from '@/components/UserManualModal';
 import { BookOpen } from 'lucide-react';
 
 
-
 export default function CloudLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

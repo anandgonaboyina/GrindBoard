@@ -241,7 +241,7 @@ export default function ManifestationBoard() {
             </div>
 
             {/* BOTTOM CLOSE & SETTINGS (MOBILE ONLY) */}
-            <div className="fixed bottom-5 px-4 w-full flex justify-between md:hidden z-50 pointer-events-none">
+            <div className="fixed bottom-5 left-2/3 gap-2 px-4 w-full flex  md:hidden z-50 pointer-events-none">
                 <button
                     onClick={(e) => {
                         e.stopPropagation();

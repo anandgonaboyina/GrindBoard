@@ -119,7 +119,7 @@ function mergeStringArraysServer(incoming: any[] = [], existing: any[] = []): an
 const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime'];
 
 const SETTING_ARRAY_KEYS = [
-  'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 
+  'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers',
   'activeDesktopCustomIndex', 'activeMobileCustomIndex', 'customLocalWallpaperName',
   'widgetOffsets', 'clockOffsets', 'lockedWidgets',
   'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton',
@@ -150,7 +150,7 @@ export async function GET(request: Request) {
 
     const client = await clientPromise;
     const db = client.db();
-    
+
     const existing = await db.collection('DashboardStorage').findOne({ userId: user.userId });
     const notesRecord = await db.collection('Notes').findOne({ userId: user.userId });
     const settingsRecord = await db.collection('Settings').findOne({ userId: user.userId });
@@ -161,7 +161,7 @@ export async function GET(request: Request) {
     const timetableRecord = await db.collection('Timetable').findOne({ userId: user.userId });
     const deadlinesRecord = await db.collection('Deadlines').findOne({ userId: user.userId });
     const countdownsRecord = await db.collection('Countdowns').findOne({ userId: user.userId });
-    
+
     let maxLastModified = existing ? (existing.lastModified || 0) : 0;
     const collections = [notesRecord, settingsRecord, tasksRecord, roadmapsRecord, statsRecord, dailyRoutineRecord, timetableRecord, deadlinesRecord, countdownsRecord];
     for (const record of collections) {
@@ -241,7 +241,7 @@ export async function GET(request: Request) {
         ...(settingsRecord?.displaySettings || legacyDS || {}),
         ...(settingsRecord?.generalSettings || legacyGS || {})
       };
-      
+
       SETTING_ARRAY_KEYS.forEach(key => {
         if (settingsRecord && settingsRecord[key] !== undefined) {
           reconstructedState[key] = settingsRecord[key];
@@ -269,7 +269,7 @@ export async function GET(request: Request) {
       if (statsRecord && statsRecord.dailyTimes !== undefined && reconstructedState.dailyTimes === undefined) {
         reconstructedState.dailyTimes = statsRecord.dailyTimes;
       }
-      
+
       TIMETABLE_KEYS.forEach(key => {
         if (timetableRecord && timetableRecord[key] !== undefined) {
           reconstructedState[key] = timetableRecord[key];
@@ -295,7 +295,7 @@ export async function GET(request: Request) {
       if (roadmapsRecord && roadmapsRecord.roadmaps) {
         reconstructedState.roadmaps = roadmapsRecord.roadmaps;
       }
-      
+
       returnedData = {
         state: reconstructedState,
         version: version || 2
@@ -303,16 +303,16 @@ export async function GET(request: Request) {
     } else {
       returnedData = { state: { notes: notesRecord?.notes || [] }, version: 2 };
     }
-    
 
 
-    console.log('GET /api/store returning for user', user.userId, ':', { 
-      hasExisting: !!existing, 
+
+    console.log('GET /api/store returning for user', user.userId, ':', {
+      hasExisting: !!existing,
       hasSettings: !!settingsRecord,
       hasTasks: !!tasksRecord,
       hitElseBlock: !(existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord)
     });
-    return NextResponse.json({ 
+    return NextResponse.json({
       data: returnedData,
       lastModified: cloudLastModified
     });
@@ -405,7 +405,7 @@ export async function POST(request: Request) {
           ...(existingSettings?.displaySettings || legacyDS || {}),
           ...(existingSettings?.generalSettings || legacyGS || {})
         };
-        
+
         SETTING_ARRAY_KEYS.forEach(key => {
           if (existingSettings && existingSettings[key] !== undefined) {
             reconstructedState[key] = existingSettings[key];
@@ -423,13 +423,13 @@ export async function POST(request: Request) {
             reconstructedState[key] = existingStats[key];
           }
         });
-        
+
         DAILY_ROUTINE_KEYS.forEach(key => {
           if (existingDailyRoutine && existingDailyRoutine[key] !== undefined) {
             reconstructedState[key] = existingDailyRoutine[key];
           }
         });
-        
+
         if (existingStats && existingStats.dailyTimes !== undefined && reconstructedState.dailyTimes === undefined) {
           reconstructedState.dailyTimes = existingStats.dailyTimes;
         }
@@ -485,13 +485,13 @@ export async function POST(request: Request) {
     }
 
     if (hasConflict) {
-      return NextResponse.json({ 
-        conflict: true, 
+      return NextResponse.json({
+        conflict: true,
         cloudData: existingCloudData,
         cloudLastModified: cloudLastModified
       }, { status: 409 });
     }
-    
+
     // Support both direct { clearAll: true } and wrapped versions
     if (payload.clearAll === true || (payload.data && payload.data.clearAll === true)) {
       await Promise.all([
@@ -507,7 +507,7 @@ export async function POST(request: Request) {
       ]);
       return NextResponse.json({ success: true, message: 'All data cleared' });
     }
-    
+
     if (!body) {
       console.error('400 Error - No data provided. Payload keys:', Object.keys(payload));
       return NextResponse.json({ error: 'No data provided' }, { status: 400 });
@@ -538,7 +538,7 @@ export async function POST(request: Request) {
       }
     }
 
-    
+
     const tasksSpecificData: Record<string, any> = {};
     const unsetTasksKeys: Record<string, string> = {};
 
@@ -612,13 +612,13 @@ export async function POST(request: Request) {
     });
 
     try {
-      require('fs').appendFileSync('D:/productivedashborad/dashboard-cloud/debug-store.txt', 
+      require('fs').appendFileSync('D:/productivedashborad/dashboard-cloud/debug-store.txt',
         `[${new Date().toISOString()}] POST\n` +
         `modifiedKeys: ${modifiedKeys.join(', ')}\n` +
         `isFullSync: ${isFullSync}\n` +
         `settingsSpecificData has timetableGrid: ${!!settingsSpecificData.timetableGrid}\n\n`
       );
-    } catch (e) {}
+    } catch (e) { }
 
     const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys, ...unsetDailyRoutineKeys, ...unsetDeadlineKeys };
 
@@ -631,14 +631,14 @@ export async function POST(request: Request) {
       };
       await db.collection('Deadlines').updateOne(
         { userId: user.userId },
-        { 
+        {
           $set: deadlinesDoc,
           $setOnInsert: { userId: user.userId }
         },
         { upsert: true }
       );
     }
-    
+
     if (isFullSync || modifiedCollections.includes('DashboardStorage') || modifiedCollections.includes('Settings')) {
       const updateDoc = {
         version: version || 2,
@@ -650,7 +650,7 @@ export async function POST(request: Request) {
 
       await db.collection('DashboardStorage').updateOne(
         { userId: user.userId },
-        { 
+        {
           $set: updateDoc,
           $unset: unsetLegacyKeys,
           $setOnInsert: { userId: user.userId }
@@ -722,7 +722,7 @@ export async function POST(request: Request) {
 
       await db.collection('Settings').updateOne(
         { userId: user.userId },
-        { 
+        {
           $set: settingsDoc,
           $setOnInsert: { userId: user.userId }
         },
@@ -733,7 +733,7 @@ export async function POST(request: Request) {
     // 3. Save Tasks to the isolated Tasks collection
     if ((isFullSync || modifiedCollections.includes('Tasks')) && Object.keys(tasksSpecificData).length > 0) {
       let tasksDoc: any = { ...tasksSpecificData, lastModified: newLastModified };
-      
+
       if (existingTasks) {
         const TASK_ARRAY_KEYS = ['tasks', 'tomorrowTasks', 'deadlines', 'countdowns', 'plans'];
         TASK_ARRAY_KEYS.forEach(key => {
@@ -750,7 +750,7 @@ export async function POST(request: Request) {
 
       await db.collection('Tasks').updateOne(
         { userId: user.userId },
-        { 
+        {
           $set: tasksDoc,
           $setOnInsert: { userId: user.userId }
         },
@@ -760,24 +760,16 @@ export async function POST(request: Request) {
 
     // 4. Save Notes to the isolated Notes collection
     if ((isFullSync || modifiedCollections.includes('Notes')) && notes !== undefined) {
-      let notesToSave = notes;
-      if (existingNotes && Array.isArray(existingNotes.notes) && existingNotes.notes.length > 0) {
-        if (!Array.isArray(notes) || notes.length === 0) {
-          notesToSave = existingNotes.notes;
-        } else {
-          notesToSave = notes; // Authoritative overwrite to preserve deletions/reordering
-        }
-      }
       await db.collection('Notes').updateOne(
         { userId: user.userId },
-        { 
-          $set: { notes: notesToSave, lastModified: newLastModified },
+        {
+          $set: { notes: notes, lastModified: newLastModified },
           $setOnInsert: { userId: user.userId }
         },
         { upsert: true }
       );
     }
-    
+
     // 5. Save Roadmaps to the isolated Roadmaps collection
     if ((isFullSync || modifiedCollections.includes('Roadmaps')) && roadmaps !== undefined) {
       let roadmapsToSave = roadmaps;
@@ -790,23 +782,23 @@ export async function POST(request: Request) {
       }
       await db.collection('Roadmaps').updateOne(
         { userId: user.userId },
-        { 
+        {
           $set: { roadmaps: roadmapsToSave, lastModified: newLastModified },
           $setOnInsert: { userId: user.userId }
         },
         { upsert: true }
       );
     }
-    
+
     // 6. Save Stats to the isolated Stats collection
     if ((isFullSync || modifiedCollections.includes('Stats')) && Object.keys(statsSpecificData).length > 0) {
       const statsDoc: any = { ...statsSpecificData, lastModified: newLastModified };
-      
+
       if (existingStats && existingStats.history) {
         const incomingHistory = statsDoc.history || {};
         const serverHistory = existingStats.history;
         const mergedHistory = { ...serverHistory };
-        
+
         Object.keys(incomingHistory).forEach(date => {
           const inc = incomingHistory[date] || 0;
           const srv = serverHistory[date] || 0;
@@ -814,17 +806,17 @@ export async function POST(request: Request) {
         });
         statsDoc.history = mergedHistory;
       }
-      
+
       await db.collection('Stats').updateOne(
         { userId: user.userId },
-        { 
+        {
           $set: statsDoc,
           $setOnInsert: { userId: user.userId }
         },
         { upsert: true }
       );
     }
-    
+
     // 7. Save DailyRoutines to the isolated DailyRoutine collection
     if ((isFullSync || modifiedCollections.includes('DailyRoutine')) && Object.keys(dailyRoutineSpecificData).length > 0) {
       let dailyRoutineDoc: any = { ...dailyRoutineSpecificData, lastModified: newLastModified };
@@ -854,7 +846,7 @@ export async function POST(request: Request) {
 
       await db.collection('DailyRoutine').updateOne(
         { userId: user.userId },
-        { 
+        {
           $set: dailyRoutineDoc,
           $setOnInsert: { userId: user.userId }
         },
@@ -869,7 +861,7 @@ export async function POST(request: Request) {
     } catch {
       userQuery = { _id: user.userId };
     }
-    
+
     // Auto-update the active status in the Users collection
     await db.collection('User').updateOne(
       userQuery,
