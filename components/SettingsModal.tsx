@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { useTimetableStore, pushTimetableToDB } from '@/store/timetableStore';
 import { useTaskStore, pushTasksToDB } from '@/store/taskStore';
+import { useNoteStore } from '@/store/noteStore';
 import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
@@ -642,7 +643,7 @@ export default function SettingsModal() {
       'notes_backup.json',
       'Notes Backup',
       'All your personal notes, ideas, and saved HTML content inside the notepad.',
-      () => useDashboardStore.getState().notes || []
+      () => useNoteStore.getState().notes || []
     );
   };
 
@@ -655,7 +656,7 @@ export default function SettingsModal() {
       try {
         const data = JSON.parse(event.target?.result as string);
         if (Array.isArray(data)) {
-          useDashboardStore.setState({ notes: data });
+          useNoteStore.getState().setNotes(data);
           showAlertModal('Data Restored', 'Notes restored successfully!');
         } else {
           showAlertModal('Restore Failed', 'Invalid format for notes backup.');
@@ -825,6 +826,26 @@ export default function SettingsModal() {
       const processImportData = async (isMerge: boolean) => {
         try {
           let finalData = parsed;
+
+          // 1. Intercept and merge external store data (Tasks & Notes)
+          const parsedTasks = parsed.state.tasks || [];
+          const parsedNotes = parsed.state.notes || [];
+
+          if (parsedTasks.length > 0) {
+            const currentTasks = isMerge ? (useTaskStore.getState().tasks || []) : [];
+            useTaskStore.getState().setTasks([...currentTasks, ...parsedTasks].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i));
+          }
+          if (parsedNotes.length > 0) {
+            const currentNotes = isMerge ? (useNoteStore.getState().notes || []) : [];
+            useNoteStore.getState().setNotes([...currentNotes, ...parsedNotes].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i));
+          }
+
+          // 2. Remove them from the parsed object so they don't break the Dashboard state types
+          delete parsed.state.tasks;
+          delete parsed.state.notes;
+          delete parsed.state.timetableGrid;
+
+          // 3. Process the rest of the Dashboard state normally
           if (isMerge) {
             const currentState = useDashboardStore.getState();
             finalData = {
@@ -832,10 +853,8 @@ export default function SettingsModal() {
               state: {
                 ...currentState,
                 ...parsed.state,
-                tasks: [...(currentState.tasks || []), ...(parsed.state.tasks || [])].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i),
                 countdowns: [...(currentState.countdowns || []), ...(parsed.state.countdowns || [])].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i),
                 deadlines: [...(currentState.deadlines || []), ...(parsed.state.deadlines || [])].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i),
-                notes: [...(currentState.notes || []), ...(parsed.state.notes || [])].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i),
                 roadmaps: [...(currentState.roadmaps || []), ...(parsed.state.roadmaps || [])].filter((t, i, a) => a.findIndex(x => x.id === t.id) === i),
               }
             };

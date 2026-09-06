@@ -19,6 +19,7 @@ interface TaskState {
     tomorrowTasks: Task[];
     tasksDate: string;
     taskGroupNames: string[];
+    lastModified: number;
     setTaskGroupName: (index: number, name: string) => void;
     setTasks: (tasks: Task[], tab?: 'today' | 'tomorrow') => void;
     addTask: (title: string, duration: number, tab?: 'today' | 'tomorrow', groupId?: number) => void;
@@ -66,9 +67,10 @@ export const useTaskStore = create<TaskState>()(
             setHasHydrated: (state) => set({ _hasHydrated: state }),
             tasks: [],
             tomorrowTasks: [],
+
             tasksDate: getLocalDateString(),
             taskGroupNames: ['Core Tasks', 'Daily Routine', 'Milestones'],
-
+            lastModified: Date.now(),
             setTaskGroupName: (index, name) => {
                 set((state) => {
                     const DEFAULT_TAB_NAMES = ['Core Tasks', 'Daily Routine', 'Milestones'];
@@ -198,9 +200,12 @@ export const useTaskStore = create<TaskState>()(
             }),
 
             reorderTasks: (tab, startIndex, endIndex) => set((state) => {
-                const list = tab === 'today' ? Array.apply(null, state.tasks as any) : Array.apply(null, state.tomorrowTasks as any);
+                const list = (tab === 'today' ? [...state.tasks] : [...state.tomorrowTasks]) as Task[];
+                if (startIndex < 0 || startIndex >= list.length || endIndex < 0 || endIndex >= list.length) return state;
+
                 const [removed] = list.splice(startIndex, 1);
                 list.splice(endIndex, 0, removed);
+
                 const updates = tab === 'today' ? { tasks: list } : { tomorrowTasks: list };
                 pushTasksToDB(updates);
                 return updates;

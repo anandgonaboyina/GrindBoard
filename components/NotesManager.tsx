@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
+import { useNoteStore } from '@/store/noteStore';
 import { Sun, Moon, Plus, X, StickyNote, Trash2, Undo, Redo, Bold, Italic, Underline, List, Download, ChevronLeft, ChevronRight, Calendar, Upload, GripVertical } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
@@ -15,19 +16,26 @@ function EditorBlock({ isLight, date, initialHtml, onChange }: { isLight: boolea
     onChangeRef.current = onChange;
   }, [onChange]);
 
+  // 1. Syncs incoming cloud data safely WITHOUT triggering a save
   useEffect(() => {
-    // Only set initial HTML once when mounting to prevent cursor jumps
-    if (editorRef.current && editorRef.current.innerHTML === '') {
-      editorRef.current.innerHTML = initialHtml;
+    if (editorRef.current) {
+      if (editorRef.current.innerHTML === '') {
+        editorRef.current.innerHTML = initialHtml;
+      } else if (editorRef.current.innerHTML !== initialHtml && document.activeElement !== editorRef.current) {
+        editorRef.current.innerHTML = initialHtml;
+      }
     }
+  }, [initialHtml]);
+
+  // 2. ONLY saves when the editor is actually closed/unmounted
+  useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      // Ensure we save when the component unmounts (e.g. modal closed)
       if (editorRef.current) {
         onChangeRef.current(editorRef.current.innerHTML);
       }
     };
-  }, [initialHtml]);
+  }, []); // Empty array ensures this only ever runs on unmount!
 
   const handleInput = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -73,13 +81,22 @@ function EditorBlock({ isLight, date, initialHtml, onChange }: { isLight: boolea
 }
 
 export default function NotesManager() {
-  const { theme: globalTheme, notesThemeOverride, setNotesThemeOverride, isNotesOpen, toggleNotes, notes, setNotes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote, reorderNotes } = useDashboardStore();
+  // 1.UI state in Dashboard Store
+  const { theme: globalTheme, notesThemeOverride, setNotesThemeOverride, isNotesOpen, toggleNotes } = useDashboardStore();
+  // 2. Pull heavy text data from the Note Store
+  const { notes, setNotes, activeNoteId, addNote, updateNoteTitle, updateNoteEntry, deleteNote, setActiveNote, reorderNotes, fetchNotes } = useNoteStore();
+
   const effectiveTheme = notesThemeOverride || (globalTheme === 'light' ? 'light' : 'dark');
   const isLight = effectiveTheme === 'light';
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
+  useEffect(() => {
+    if (isNotesOpen) {
+      fetchNotes();
+    }
+  }, [isNotesOpen, fetchNotes]);
   if (!mounted || !isNotesOpen) return null;
 
   return (
@@ -419,7 +436,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        
+
         let importedNotes = [];
         if (Array.isArray(data)) {
           importedNotes = data;
@@ -432,7 +449,7 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
 
         // Merge logic: append entries for matching titles, otherwise add new
         const existingNotes = [...notes];
-        
+
         importedNotes.forEach((impNote: any) => {
           const existing = existingNotes.find(n => n.title === impNote.title);
           if (existing) {
@@ -447,9 +464,9 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
                 }
               });
             } else if (impNote.content) {
-               // legacy
-               const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-               mergedEntries[todayStr] = (mergedEntries[todayStr] ? mergedEntries[todayStr] + `<br/><br/>--- Imported ---<br/><br/>` : '') + impNote.content;
+              // legacy
+              const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+              mergedEntries[todayStr] = (mergedEntries[todayStr] ? mergedEntries[todayStr] + `<br/><br/>--- Imported ---<br/><br/>` : '') + impNote.content;
             }
             existing.entries = mergedEntries;
           } else {
@@ -513,13 +530,11 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
                       setActiveNote(note.id);
                       setIsMobileDetailView(true);
                     }}
-                    className={`group flex items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl cursor-pointer transition-all min-w-0 ${
-                      isDragging ? 'opacity-40 scale-[0.98]' : ''
-                    } ${
-                      activeNoteId === note.id
+                    className={`group flex items-center justify-between p-2 md:p-2.5 rounded-lg md:rounded-xl cursor-pointer transition-all min-w-0 ${isDragging ? 'opacity-40 scale-[0.98]' : ''
+                      } ${activeNoteId === note.id
                         ? (isLight ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'bg-white/20 text-white shadow-md')
                         : (isLight ? 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900' : 'text-white/60 hover:bg-white/10 hover:text-white')
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-1 flex-1 min-w-0 pr-1">
                       <div
@@ -658,9 +673,8 @@ function NotepadModal({ isLight, setNotesThemeOverride, toggleNotes, notes, acti
               <div className="flex items-center gap-1 md:gap-2 shrink-0 relative">
                 <button
                   onClick={scrollToToday}
-                  className={`px-2 py-1 md:px-2.5 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-1 text-[11px] md:text-xs font-semibold ${
-                    isLight ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20' : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 border border-blue-500/30'
-                  }`}
+                  className={`px-2 py-1 md:px-2.5 md:py-1.5 rounded-lg md:rounded-xl transition-all flex items-center gap-1 text-[11px] md:text-xs font-semibold ${isLight ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20' : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 border border-blue-500/30'
+                    }`}
                   title="Scroll to Today's Note"
                 >
                   <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />

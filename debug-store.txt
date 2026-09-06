@@ -12588,3 +12588,908 @@ modifiedKeys: viewingFriend
 isFullSync: false
 settingsSpecificData has timetableGrid: false
 
+[2026-09-06T09:46:58.220Z] POST
+modifiedKeys: userGroups, hasUnreadNews, currentQuote, deadlines, deadlineAlertDays
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:48:05.195Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:49:32.417Z] POST
+modifiedKeys: clockOffsets
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:49:58.285Z] POST
+modifiedKeys: isPanicHidden
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:50:16.208Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:50:25.902Z] POST
+modifiedKeys: settingsActiveTab, currentQuote, isPanicHidden
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:52:39.523Z] POST
+modifiedKeys: activeManifestationDesktopIndex, settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:52:57.089Z] POST
+modifiedKeys: activeManifestationDesktopIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:55:08.352Z] POST
+modifiedKeys: notes, activeNoteId
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:56:42.985Z] POST
+modifiedKeys: activeManifestationDesktopIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:57:15.997Z] POST
+modifiedKeys: selectedGroupId
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:57:29.708Z] POST
+modifiedKeys: selectedGroupId
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:57:44.383Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:58:17.716Z] POST
+modifiedKeys: selectedGroupId
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:58:35.411Z] POST
+modifiedKeys: selectedGroupId
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:59:04.255Z] POST
+modifiedKeys: userGroups
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T09:59:31.191Z] POST
+modifiedKeys: activeManifestationDesktopIndex, currentQuote, tasks, tasksDate
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:13:52.208Z] POST
+modifiedKeys: activeManifestationDesktopIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:14:29.492Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:14:53.276Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:15:05.273Z] POST
+modifiedKeys: currentQuote, clockOffsets
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:16:08.003Z] POST
+modifiedKeys: customDesktopWallpapers, activeDesktopCustomIndex, currentQuote, notes, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:16:19.490Z] POST
+modifiedKeys: customDesktopWallpapers, currentQuote, notes, is24HourClock
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:17:17.478Z] POST
+modifiedKeys: clockOffsets
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:17:55.591Z] POST
+modifiedKeys: clockOffsets
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:17:57.401Z] POST
+modifiedKeys: clockOffsets
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:18:25.538Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:18:34.701Z] POST
+modifiedKeys: isTimerOpen
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:18:49.441Z] POST
+modifiedKeys: isTimerOpen, clockOffsets
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:19:06.304Z] POST
+modifiedKeys: isTimerOpen
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:19:14.672Z] POST
+modifiedKeys: connectInitialTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:20:08.700Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:24:48.523Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:25:04.167Z] POST
+modifiedKeys: customDesktopWallpapers, activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:25:31.779Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:36:20.406Z] POST
+modifiedKeys: clockOffsets
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:36:58.184Z] POST
+modifiedKeys: settingsActiveTab, alarmSound
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:41:28.651Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:41:28.674Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:41:28.958Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:42:29.539Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:42:29.969Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:42:30.759Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:50:58.381Z] POST
+modifiedKeys: userGroups, hasUnreadNews, deadlines, deadlineAlertDays, dailyTimes
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:51:00.688Z] POST
+modifiedKeys: hasUnreadNews
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:51:02.659Z] POST
+modifiedKeys: hasUnreadNews, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:51:51.118Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:53:29.341Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:53:56.193Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:56:26.671Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:56:33.887Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, is24HourClock, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T10:58:00.994Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:01:42.272Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:01:42.518Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:01:54.217Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:02:13.743Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:02:26.267Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:03:42.223Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:03:42.257Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:04:13.132Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:09:32.192Z] POST
+modifiedKeys: activeDesktopCustomIndex, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:09:32.205Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:09:42.675Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:09:42.947Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:09:50.578Z] POST
+modifiedKeys: activeDesktopCustomIndex, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:09:51.321Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:09:58.858Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:09:59.372Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:10:07.119Z] POST
+modifiedKeys: activeDesktopCustomIndex, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:10:16.621Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:10:24.522Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:10:33.285Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:10:41.081Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:10:49.285Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:10:57.023Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:11:05.331Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:11:13.075Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:11:21.182Z] POST
+modifiedKeys: activeDesktopCustomIndex, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:11:21.194Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:11:29.245Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:11:38.193Z] POST
+modifiedKeys: activeDesktopCustomIndex, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:11:38.366Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:11:46.176Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:11:54.195Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:02.231Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:10.193Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:10.195Z] POST
+modifiedKeys: activeDesktopCustomIndex, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:17.914Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:18.280Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:25.983Z] POST
+modifiedKeys: activeDesktopCustomIndex, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:26.382Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:33.952Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:42.202Z] POST
+modifiedKeys: activeDesktopCustomIndex, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:42.356Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:50.254Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:12:58.681Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:13:08.163Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:13:08.411Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:13:20.698Z] POST
+modifiedKeys: activeDesktopCustomIndex, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:13:22.029Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:13:31.050Z] POST
+modifiedKeys: activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:13:49.214Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:13:49.841Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:14:22.872Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:14:46.413Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:14:57.192Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:16:02.206Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:16:15.472Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:16:47.653Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:16:47.663Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:16:47.906Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:17:54.292Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:18:05.670Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:19:41.686Z] POST
+modifiedKeys: selectedGroupId
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:23:05.603Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:23:23.859Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:25:19.561Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:25:34.553Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:26:58.114Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:28:03.227Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:28:09.609Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:28:36.631Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:28:37.412Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:29:01.240Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:29:01.481Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:29:09.198Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:31:30.862Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:31:37.344Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:36:13.683Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:36:13.714Z] POST
+modifiedKeys: currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:36:14.811Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:38:17.759Z] POST
+modifiedKeys: customDesktopWallpapers, activeDesktopCustomIndex, settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:38:29.303Z] POST
+modifiedKeys: customDesktopWallpapers, activeDesktopCustomIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:38:33.068Z] POST
+modifiedKeys: customDesktopWallpapers, settingsActiveTab, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:38:37.113Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:38:51.044Z] POST
+modifiedKeys: settingsActiveTab, dashboardScale
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:38:57.724Z] POST
+modifiedKeys: showPlans
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:39:02.617Z] POST
+modifiedKeys: settingsActiveTab, focusShortcutKey
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:39:04.767Z] POST
+modifiedKeys: panicShortcutKey
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:39:30.547Z] POST
+modifiedKeys: isHidden
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:39:49.365Z] POST
+modifiedKeys: isHidden, manifestationDesktopPhotos, activeManifestationDesktopIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:39:56.225Z] POST
+modifiedKeys: activeManifestationDesktopIndex
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:40:12.925Z] POST
+modifiedKeys: activeManifestationDesktopIndex, is24HourClock, clockOffsets
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:40:20.874Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:40:55.181Z] POST
+modifiedKeys: customDesktopWallpapers, activeDesktopCustomIndex, manifestationDesktopPhotos, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:41:00.235Z] POST
+modifiedKeys: customDesktopWallpapers, manifestationDesktopPhotos, activeManifestationDesktopIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:44:42.503Z] POST
+modifiedKeys: activeDesktopCustomIndex, activeManifestationDesktopIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:46:43.394Z] POST
+modifiedKeys: customDesktopWallpapers, activeDesktopCustomIndex, manifestationDesktopPhotos, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:46:44.065Z] POST
+modifiedKeys: activeDesktopCustomIndex, activeManifestationDesktopIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:46:44.067Z] POST
+modifiedKeys: activeDesktopCustomIndex, activeManifestationDesktopIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:50:14.633Z] POST
+modifiedKeys: isPanicHidden
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:50:23.176Z] POST
+modifiedKeys: isPanicHidden
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:50:36.895Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:50:38.936Z] POST
+modifiedKeys: showPlans
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:50:41.350Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:50:44.176Z] POST
+modifiedKeys: panicShortcutKey
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:50:46.951Z] POST
+modifiedKeys: focusShortcutKey
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:50:53.390Z] POST
+modifiedKeys: peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:51:02.229Z] POST
+modifiedKeys: isHidden
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:51:28.363Z] POST
+modifiedKeys: isHidden, is24HourClock, clockOffsets
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:51:44.340Z] POST
+modifiedKeys: activeManifestationDesktopIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:51:45.192Z] POST
+modifiedKeys: activeDesktopCustomIndex, activeManifestationDesktopIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:52:01.251Z] POST
+modifiedKeys: customDesktopWallpapers, manifestationDesktopPhotos, currentQuote, is24HourClock, clockOffsets, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:52:11.195Z] POST
+modifiedKeys: activeDesktopCustomIndex, activeManifestationDesktopIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:52:21.189Z] POST
+modifiedKeys: activeManifestationDesktopIndex, currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:52:36.197Z] POST
+modifiedKeys: settingsActiveTab
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:57:39.107Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T11:57:52.635Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:10:19.473Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:14:26.621Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:16:02.231Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:16:22.919Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:16:54.126Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:19:49.266Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:21:07.721Z] POST
+modifiedKeys: activeDesktopCustomIndex, activeManifestationDesktopIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:21:07.911Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:21:08.742Z] POST
+modifiedKeys: activeDesktopCustomIndex, activeManifestationDesktopIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:23:07.942Z] POST
+modifiedKeys: activeDesktopCustomIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:24:40.128Z] POST
+modifiedKeys: activeDesktopCustomIndex, activeManifestationDesktopIndex, currentQuote, peekModeWallpaper
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:24:40.437Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
+[2026-09-06T12:26:05.759Z] POST
+modifiedKeys: currentQuote
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+

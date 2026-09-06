@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore, setAuthTransition } from '@/store/dashboardStore';
+import { useTaskStore } from '@/store/taskStore';
+import { useTimetableStore } from '@/store/timetableStore';
 import { createPortal } from 'react-dom';
 import { Users, UserPlus, Rss, LogIn, UserCircle, Search, Trash, Lock, Unlock, Check, X, ShieldAlert, BarChart2, Map, Clock, Trophy, RefreshCw, ChevronDown, ChevronUp, ChevronLeft, Info, Eye, EyeOff, Flame, Calendar, Settings, Sparkles, UserX, WifiOff } from 'lucide-react';
 import ScrollableWithArrows from './ScrollableWithArrows';
@@ -156,7 +158,9 @@ function LeaderboardLoadingSkeleton() {
 }
 
 export default function ConnectTab() {
-  const { history, tasks, timetableGrid, connectInitialTab, setConnectInitialTab } = useDashboardStore();
+  const { history, connectInitialTab, setConnectInitialTab } = useDashboardStore();
+  const { tasks } = useTaskStore();
+  const { timetableGrid } = useTimetableStore();
   const [activeTab, setActiveTab] = useState<'profile' | 'friends' | 'leaderboard' | 'groups'>(connectInitialTab || 'profile');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('');

@@ -1,17 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { getLocalDateString } from '@/utils/date';
-
+import { useTaskStore } from '@/store/taskStore';
+import { useTimetableStore } from '@/store/timetableStore';
 export interface CustomAlarmSound {
   id: string;
   name: string;
   url: string;
-}
-
-export interface Note {
-  id: string;
-  title: string;
-  entries: Record<string, string>; // date string -> html content
 }
 
 export type ResourceLink = {
@@ -69,6 +64,8 @@ export const filterActiveDeadlines = (deadlines: any[]) => {
 };
 
 interface DashboardState {
+  history: Record<string, number>;
+  addMins: (dateKey: string, mins: number) => void;
   wallpaper: string;
   bgIndex: number;
   currentBgType: 'image' | 'video' | null;
@@ -230,17 +227,8 @@ interface DashboardState {
 
 
   // Notes State
-  notes: Note[];
-  setNotes: (notes: Note[]) => void;
-  activeNoteId: string | null;
   isNotesOpen: boolean;
-  addNote: () => void;
-  updateNoteTitle: (id: string, title: string) => void;
-  updateNoteEntry: (id: string, date: string, content: string) => void;
-  deleteNote: (id: string) => void;
-  setActiveNote: (id: string) => void;
   toggleNotes: () => void;
-  reorderNotes: (fromIndex: number, toIndex: number) => void;
 
   //timetable
   isTimetableOpen: boolean;
@@ -538,58 +526,6 @@ const mergeStringArrays = (localArr: any, cloudArr: any, baseArr: any = null, cl
   return result;
 };
 
-const mergeNotes = (localNotes: any[] = [], cloudNotes: any[] = [], isCloudNewer: boolean = false): any[] => {
-  if (!Array.isArray(localNotes)) localNotes = [];
-  if (!Array.isArray(cloudNotes)) cloudNotes = [];
-
-  if (localNotes.length === 0 && cloudNotes.length > 0) return cloudNotes;
-  if (cloudNotes.length === 0 && localNotes.length > 0) return localNotes;
-
-  const map = new Map<string, any>();
-
-  cloudNotes.forEach((cNote) => {
-    if (cNote && cNote.id) {
-      map.set(cNote.id, { ...cNote, entries: { ...(cNote.entries || {}) } });
-    }
-  });
-
-  localNotes.forEach((lNote) => {
-    if (lNote && lNote.id) {
-      const existing = map.get(lNote.id);
-      if (!existing) {
-        map.set(lNote.id, { ...lNote, entries: { ...(lNote.entries || {}) } });
-      } else {
-        // Deep merge entries per date
-        const mergedEntries = { ...(existing.entries || {}) };
-        const localEntries = lNote.entries || {};
-        for (const date in localEntries) {
-          const lText = localEntries[date];
-          const cText = mergedEntries[date];
-
-          if (lText && !cText) {
-            mergedEntries[date] = lText;
-          } else if (cText && !lText) {
-            mergedEntries[date] = cText;
-          } else if (lText && cText) {
-            // Authoritative overwrite based on which state is newer, ignoring character length!
-            mergedEntries[date] = isCloudNewer ? cText : lText;
-          }
-        }
-
-        map.set(lNote.id, {
-          ...existing,
-          ...lNote,
-          title: (lNote.title && lNote.title !== 'New Note') ? lNote.title : (existing.title || lNote.title),
-          entries: mergedEntries,
-        });
-      }
-    }
-  });
-
-  return Array.from(map.values());
-};
-
-
 
 const performSave = async () => {
   if (!pendingValue || isSyncingFromCloud || isAuthTransition) {
@@ -749,15 +685,6 @@ const performSave = async () => {
         dismissedDeadlineAlerts: parsedCloud.state.dismissedDeadlineAlerts || parsedLocal.state.dismissedDeadlineAlerts,
 
         // Strict overwrite based on cloud truth to prevent ghost resurrections
-        tasks: parsedCloud.state.tasks || parsedLocal.state.tasks,
-        tomorrowTasks: parsedCloud.state.tomorrowTasks || parsedLocal.state.tomorrowTasks,
-        notes: parsedCloud.state.notes || parsedLocal.state.notes,
-        tasksDate: (parsedLocal.state.tasksDate && parsedCloud.state.tasksDate) ?
-          (parsedLocal.state.tasksDate > parsedCloud.state.tasksDate ? parsedLocal.state.tasksDate : parsedCloud.state.tasksDate) :
-          (parsedLocal.state.tasksDate || parsedCloud.state.tasksDate || getLocalDateString()),
-        // Countdowns are decoupled and always take cloud truth
-        countdowns: parsedCloud.state.countdowns || parsedLocal.state.countdowns,
-        notes: mergeNotes(parsedLocal.state.notes, parsedCloud.state.notes),
         roadmaps: mergeArraysById(parsedLocal.state.roadmaps, parsedCloud.state.roadmaps),
         plans: mergeArraysById(parsedLocal.state.plans, parsedCloud.state.plans),
         customAlarmSounds: mergeArraysById(parsedLocal.state.customAlarmSounds, parsedCloud.state.customAlarmSounds),
@@ -1012,7 +939,6 @@ const fileStorage = createJSONStorage(() => ({
                 (cloudState.tasksDate || localState.tasksDate || getLocalDateString());
               const mergedDeadlines = filterActiveDeadlines(mergeArraysById(localState.deadlines, cloudState.deadlines));
 
-              const mergedNotes = mergeNotes(localState.notes, cloudState.notes, isCloudNewer);
               const mergedRoadmaps = mergeArraysById(localState.roadmaps, cloudState.roadmaps);
               const mergedPlans = mergeArraysById(localState.plans, cloudState.plans);
               const mergedCustomAlarmSounds = mergeArraysById(localState.customAlarmSounds, cloudState.customAlarmSounds);
@@ -1079,7 +1005,6 @@ const fileStorage = createJSONStorage(() => ({
                 tasks: mergedTasks,
                 tomorrowTasks: mergedTomorrowTasks,
                 countdowns: cloudState.countdowns || localState.countdowns,
-                notes: mergedNotes,
                 roadmaps: mergedRoadmaps,
                 plans: mergedPlans,
                 manifestationDesktopPhotos: mergedManifestationDesktopPhotos,
@@ -1094,13 +1019,6 @@ const fileStorage = createJSONStorage(() => ({
                 weekendTimes: mergedWeekendTimes,
                 clockOffsets: mergedClockOffsets,
                 widgetOffsets: mergedWidgetOffsets,
-                timetableGrid: (cloudState.timetableGrid && typeof cloudState.timetableGrid === 'object' && Object.keys(cloudState.timetableGrid).length > 0)
-                  ? cloudState.timetableGrid
-                  : ((localState.timetableGrid && typeof localState.timetableGrid === 'object' && Object.keys(localState.timetableGrid).length > 0) ? localState.timetableGrid : JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID))),
-                timetableColors: (cloudState.timetableColors && typeof cloudState.timetableColors === 'object' && Object.keys(cloudState.timetableColors).length > 0)
-                  ? cloudState.timetableColors
-                  : (localState.timetableColors || {}),
-
                 // Deadlines are completely decoupled and always take the cloud truth
                 deadlines: cloudState.deadlines || localState.deadlines,
                 syntheticDeadlines: cloudState.syntheticDeadlines || localState.syntheticDeadlines,
@@ -1695,56 +1613,9 @@ export const useDashboardStore = create<DashboardState>()(
       deleteManifestationCustomQuote: (index) => set((state) => {
         return { manifestationCustomQuotes: (state.manifestationCustomQuotes || []).filter((_, i) => i !== index) };
       }),
-      // Notes State
-      notes: [{ id: 'default', title: 'Daily Journal', entries: {} }],
-      setNotes: (notes) => set({ notes }),
-      activeNoteId: 'default',
+      // Notes UI State
       isNotesOpen: false,
-      addNote: () => set((state) => {
-        const emptyNote = state.notes.find(n => n.title === 'New Note' && Object.values(n.entries).every(e => !e || e.trim() === '' || e === '<br>'));
-        if (emptyNote) {
-          return { activeNoteId: emptyNote.id };
-        }
-        const newNote = { id: Date.now().toString(), title: 'New Note', entries: {} };
-        return { notes: [newNote, ...state.notes], activeNoteId: newNote.id };
-      }),
-      updateNoteTitle: (id, title) => set((state) => ({
-        notes: state.notes.map(n => n.id === id ? { ...n, title } : n)
-      })),
-      updateNoteEntry: (id, date, content) => set((state) => {
-        const updatedNotes = state.notes.map(n => {
-          if (n.id !== id) return n;
-          const newEntries = { ...n.entries };
-          const cleanText = content.replace(/<[^>]*>?/gm, '').trim();
-          if (!cleanText) {
-            delete newEntries[date];
-          } else {
-            newEntries[date] = content;
-          }
-          return { ...n, entries: newEntries };
-        });
-        return { notes: updatedNotes };
-      }),
-      deleteNote: (id) => set((state) => {
-        let newNotes = state.notes.filter(n => n.id !== id);
-        if (newNotes.length === 0) {
-          const defaultNote = { id: Date.now().toString(), title: 'Daily Journal', entries: {} };
-          newNotes = [defaultNote];
-        }
-        return {
-          notes: newNotes,
-          activeNoteId: state.activeNoteId === id ? newNotes[0].id : state.activeNoteId
-        };
-      }),
-      setActiveNote: (id) => set({ activeNoteId: id }),
       toggleNotes: () => set((state) => ({ isNotesOpen: !state.isNotesOpen })),
-      reorderNotes: (fromIndex, toIndex) => set((state) => {
-        if (fromIndex < 0 || fromIndex >= state.notes.length || toIndex < 0 || toIndex >= state.notes.length) return state;
-        const newNotes = [...state.notes];
-        const [moved] = newNotes.splice(fromIndex, 1);
-        newNotes.splice(toIndex, 0, moved);
-        return { notes: newNotes };
-      }),
 
       // Stopwatch Defaults
       isStopwatchOpen: false,
@@ -2174,7 +2045,7 @@ export const useDashboardStore = create<DashboardState>()(
         }
       },
       clearAllTasksAndPlans: () => {
-        set({ tasks: [], tomorrowTasks: [], plans: [] });
+        useTaskStore.setState({ tasks: [], tomorrowTasks: [] });
         get().forceInstantSave();
       },
       resetTimetable: () => {
@@ -2205,15 +2076,6 @@ export const useDashboardStore = create<DashboardState>()(
       version: 2, // Store schema version
       migrate: (persistedState: any, version: number) => {
         if (version < 2) {
-          // Schema Migration V2: Fix legacy tasks to prevent .toUpperCase() crashes
-          if (persistedState.tasks && Array.isArray(persistedState.tasks)) {
-            persistedState.tasks = persistedState.tasks.map((task: any) => ({
-              ...task,
-              priority: task.priority || 'medium', // Ensure priority always exists
-              tags: task.tags || [],               // Ensure tags always exist
-              subtasks: task.subtasks || [],       // Ensure subtasks always exist
-            }));
-          }
           // Ensure hideConfig is a safe object
           if (!persistedState.hideConfig) {
             persistedState.hideConfig = {};
@@ -2318,29 +2180,12 @@ export const useDashboardStore = create<DashboardState>()(
 
         // Defensive fallbacks: Ensure critical arrays and objects are NEVER overwritten with undefined or null
         // due to schema mismatches, and always retain their expected types.
-        safeState.tasks = Array.isArray(persistedState.tasks) ? persistedState.tasks : currentState.tasks;
-        safeState.tomorrowTasks = Array.isArray(persistedState.tomorrowTasks) ? persistedState.tomorrowTasks : currentState.tomorrowTasks;
-        safeState.notes = mergeNotes(currentState.notes || [], persistedState.notes || []);
-        if (safeState.notes && safeState.notes.length > 0) {
-          const activeExists = safeState.notes.some((n: any) => n.id === safeState.activeNoteId);
-          if (!activeExists) {
-            safeState.activeNoteId = safeState.notes[0].id;
-          }
-        }
         safeState.roadmaps = Array.isArray(persistedState.roadmaps) ? persistedState.roadmaps : currentState.roadmaps;
         safeState.deadlines = filterActiveDeadlines(persistedState.deadlines || []);
 
         // Deep merge records/objects to ensure we don't drop newly added default keys
         if (persistedState.history && typeof persistedState.history === 'object') {
           safeState.history = { ...currentState.history, ...persistedState.history };
-        }
-        if (persistedState.timetableGrid && typeof persistedState.timetableGrid === 'object' && Object.keys(persistedState.timetableGrid).length > 0) {
-          safeState.timetableGrid = persistedState.timetableGrid;
-        } else if (!safeState.timetableGrid || Object.keys(safeState.timetableGrid).length === 0) {
-          safeState.timetableGrid = JSON.parse(JSON.stringify(DEFAULT_TIMETABLE_GRID));
-        }
-        if (persistedState.timetableColors && typeof persistedState.timetableColors === 'object') {
-          safeState.timetableColors = persistedState.timetableColors;
         }
         if (persistedState.dailyTimes && typeof persistedState.dailyTimes === 'object') {
           safeState.dailyTimes = mergeDailyTimes(currentState.dailyTimes || {}, persistedState.dailyTimes || {});
@@ -2366,16 +2211,6 @@ export const useDashboardStore = create<DashboardState>()(
         if (error) {
           console.error("Hydration failed!", error);
         }
-        // NOTE: Do NOT call cleanOldDeadlines() here!
-        // At this point state.deadlines is from localStorage (which may be the default []).
-        // Cloud deadlines haven't been merged yet — calling pushDeadlinesToDB here
-        // would push deadlines:[] and WIPE the entire Deadlines collection in MongoDB.
-        // Deadline cleanup happens safely in MiniCalendar after live data is loaded.
-        // Defer setHasHydrated by one microtask tick so any synchronous setState
-        // calls from the storage merge (cloud data, conflict resolution, etc.) can
-        // settle into the store BEFORE the loading screen lifts and the dashboard renders.
-        // This eliminates the "empty data flash" caused by the loading screen lifting
-        // before merged state is applied.
         const markHydrated = () => {
           if (state && typeof state.setHasHydrated === 'function') {
             state.setHasHydrated(true);
