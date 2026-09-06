@@ -532,6 +532,16 @@ const performSave = async () => {
     saveTimeout = null;
     return;
   }
+
+  // 🛡️ STRICT OFFLINE GUARD: Stop the save engine completely if offline
+  if (typeof window !== 'undefined' && !navigator.onLine) {
+    console.warn("Offline: Dashboard save paused, keeping local changes safe until Wi-Fi connects.");
+    hasUnsavedChanges = true;
+    isSaving = false;
+    if (!saveTimeout) saveTimeout = setTimeout(performSave, 5000);
+    return;
+  }
+
   const valueToSave = pendingValue;
   isSaving = true;
 
@@ -555,8 +565,7 @@ const performSave = async () => {
     if (lastSavedValue) {
       const oldState = JSON.parse(lastSavedValue).state || {};
       const newState = JSON.parse(valueToSave).state || {};
-      const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
-      const STATS_KEYS = ['history'];
+      const TASK_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
       const DAILY_ROUTINE_KEYS = ['dailyTimes'];
       const NOTES_KEYS = ['notes'];
       const ROADMAPS_KEYS = ['roadmaps'];
@@ -577,7 +586,7 @@ const performSave = async () => {
         if (JSON.stringify(newState[key]) !== JSON.stringify(oldState[key])) {
           modifiedKeys.push(key);
           if (TASK_KEYS.includes(key)) modifiedCollections.push('Tasks');
-          else if (STATS_KEYS.includes(key)) modifiedCollections.push('Stats');
+          else if (TASK_KEYS.includes(key)) modifiedCollections.push('Stats');
           else if (DAILY_ROUTINE_KEYS.includes(key)) modifiedCollections.push('DailyRoutine');
           else if (NOTES_KEYS.includes(key)) modifiedCollections.push('Notes');
           else if (ROADMAPS_KEYS.includes(key)) modifiedCollections.push('Roadmaps');
@@ -1193,23 +1202,6 @@ export const pushCountdownsToDB = async (payload: any) => {
   }
 };
 
-// export const pushSettingsToDB = async (payload: any) => {
-//   if (typeof window === 'undefined') return;
-//   const token = localStorage.getItem('dashboard_sync_token');
-//   if (!token) return;
-//   try {
-//     await fetch('/api/settings', {
-//       method: 'PATCH',
-//       headers: {
-//         'Content-Type': 'application/json',
-//         'Authorization': `Bearer ${token}`
-//       },
-//       body: JSON.stringify(payload)
-//     });
-//   } catch (e) {
-//     console.error('Failed to push settings to DB', e);
-//   }
-// };
 
 export const pushDeadlinesToDB = async (payload: any) => {
   if (typeof window === 'undefined') return;

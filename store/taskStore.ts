@@ -37,9 +37,16 @@ interface TaskState {
 let taskSaveTimeout: NodeJS.Timeout | null = null;
 
 
-// Debounced API sync helper (waits 1000ms after last edit before hitting DB)
+
+// Debounced API sync helper (waits 5000ms after last edit before hitting DB)
 export const pushTasksToDB = async (updates: Partial<TaskState>) => {
     if (typeof window === 'undefined') return;
+
+    // GUARD: Stop save attempts immediately if offline
+    if (!navigator.onLine) {
+        console.warn("Offline: Tasks saved locally, will sync to cloud when online.");
+        return;
+    }
 
     if (taskSaveTimeout) clearTimeout(taskSaveTimeout);
 
@@ -52,7 +59,8 @@ export const pushTasksToDB = async (updates: Partial<TaskState>) => {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ updates })
             });
-            console.log(res.json());
+            // FIXED: Added await here so it actually logs the data, not a Promise
+            console.log(await res.json());
         } catch (e) {
             console.error("Failed to sync tasks", e);
         }
@@ -227,6 +235,12 @@ export const useTaskStore = create<TaskState>()(
                 return {};
             }),
             fetchTasks: async () => {
+                // GUARD: Do not attempt to fetch if offline on boot
+                if (typeof window !== 'undefined' && !navigator.onLine) {
+                    console.log("Offline on boot: Skipping task fetch, strictly trusting local cache.");
+                    return;
+                }
+
                 const token = localStorage.getItem('dashboard_sync_token');
                 if (!token) return;
 
@@ -236,6 +250,7 @@ export const useTaskStore = create<TaskState>()(
                     });
                     if (res.ok) {
                         const json = await res.json();
+                        // GUARD: Only override local cache if we ACTUALLY got valid data
                         if (json.success && json.data) {
                             set({
                                 tasks: json.data.tasks || [],
@@ -247,7 +262,8 @@ export const useTaskStore = create<TaskState>()(
                         }
                     }
                 } catch (e) {
-                    console.error("Failed to fetch tasks from DB", e);
+                    // GUARD: On error, do absolutely nothing to the state.
+                    console.error("Failed to fetch tasks from DB, keeping local state completely intact:", e);
                 }
             },
         }),

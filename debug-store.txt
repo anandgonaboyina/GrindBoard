@@ -13493,3 +13493,8 @@ modifiedKeys: currentQuote
 isFullSync: false
 settingsSpecificData has timetableGrid: false
 
+[2026-09-06T12:29:13.832Z] POST
+modifiedKeys: isHidden
+isFullSync: false
+settingsSpecificData has timetableGrid: false
+
