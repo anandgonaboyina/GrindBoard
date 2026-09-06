@@ -6,7 +6,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { useTimetableStore, pushTimetableToDB } from '@/store/timetableStore';
 import { useTaskStore, pushTasksToDB } from '@/store/taskStore';
 import { useNoteStore } from '@/store/noteStore';
-import { X, Upload, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
+import { X, Upload, LinkIcon, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
 import ScrollableWithArrows from './ScrollableWithArrows';
@@ -908,9 +908,9 @@ export default function SettingsModal() {
   if (!isSettingsOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-6 pointer-events-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-1.5 sm:p-4 pointer-events-auto">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity"
         onClick={() => {
           stopPreviewAudio();
           toggleSettings();
@@ -918,9 +918,7 @@ export default function SettingsModal() {
         }}
       />
 
-      {/* Changed max-w-4xl to max-w-3xl for compact styling */}
-      <div className="relative w-full max-w-3xl h-[80vh] md:h-[80vh] flex flex-col bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl md:rounded-3xl overflow-hidden text-white animate-in zoom-in-95 duration-200">
-
+      <div className={`relative w-full max-w-3xl flex flex-col bg-slate-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl md:rounded-3xl overflow-hidden text-white animate-in zoom-in-95 duration-200 ${!isMobileDetailView ? 'h-fit max-h-[85vh] md:h-[80vh]' : 'h-[85vh] md:h-[80vh]'}`}>
         <style dangerouslySetInnerHTML={{
           __html: `
           @keyframes continuous-glass-sweep {
@@ -930,50 +928,59 @@ export default function SettingsModal() {
           .glass-sweep-anim {
             animation: continuous-glass-sweep 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
           }
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+          }
         ` }} />
-        {/* Header - scaled down padding and text */}
-        <div className="flex items-center justify-between p-2.5 sm:p-3 md:p-4 border-b border-white/10 bg-black/20 shrink-0 gap-1.5 md:gap-3">
-          <div className="flex items-center gap-1.5 md:gap-2.5 min-w-0 flex-1 pr-1">
+
+        {/* Header - Scaled down padding, wrapped text */}
+        <div className="flex flex-row items-center justify-between p-2 md:p-3 border-b border-white/10 bg-black/20 shrink-0 gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {isMobileDetailView && (
               <button
                 onClick={() => setIsMobileDetailView(false)}
-                className="md:hidden p-1 hover:bg-white/10 rounded-lg transition-colors text-white/80 border border-white/10 bg-white/5 shrink-0"
+                className="md:hidden p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/80 border border-white/10 bg-white/5 shrink-0 active:scale-95"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
             )}
             <SettingsIcon className={`${isMobileDetailView ? 'hidden md:block' : 'block'} text-blue-400 w-4 h-4 md:w-5 md:h-5 shrink-0`} />
-            <h2 className="text-sm sm:text-base md:text-lg font-bold tracking-wide leading-tight flex items-center gap-1 md:gap-2 min-w-0 truncate">
+            <h2 className="text-sm md:text-base font-bold tracking-wide leading-tight flex items-center gap-1 md:gap-2 flex-wrap min-w-0">
               {isMobileDetailView ? (
-                <span className="md:hidden capitalize truncate">
+                <span className="md:hidden capitalize break-words">
                   {settingsActiveTab === "manifestation" ? "Manifestation Board" : settingsActiveTab === "about" ? "About Dev" : settingsActiveTab === "connect" ? "Connect & Ranks" : settingsActiveTab + " Settings"}
                 </span>
               ) : null}
-              <span className={isMobileDetailView ? 'hidden md:inline truncate' : 'inline truncate'}>
+              <span className={isMobileDetailView ? 'hidden md:inline break-words' : 'inline break-words'}>
                 <span className="md:hidden">Settings</span>
                 <span className="hidden md:inline">Dashboard Settings</span>
               </span>
               <button
                 onClick={(e) => { e.stopPropagation(); setInfoModalKey('dragControls'); }}
-                className={`${isMobileDetailView ? 'hidden md:flex' : 'flex'} p-1 text-blue-400 hover:text-blue-300 bg-white/5 hover:bg-white/10 rounded-full transition-colors shrink-0`}
+                className={`${isMobileDetailView ? 'hidden md:flex' : 'flex'} p-1 text-blue-400 hover:text-blue-300 bg-white/5 hover:bg-white/10 border border-blue-500/20 rounded-full transition-colors shrink-0`}
                 title="View Drag Controls"
               >
-                <Info className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <Info className="w-3.5 h-3.5" />
               </button>
             </h2>
           </div>
-          <div className="flex items-center gap-1 md:gap-2 shrink-0">
-            <div className="flex items-center gap-1 md:gap-2 mr-0.5 md:mr-2 border-r border-white/10 pr-1.5 md:pr-3 shrink-0">
-              <div className="relative group mt-1.5 md:mt-0">
-                <span className="absolute -top-2 left-2 px-1 bg-[#1a1b26]/90 backdrop-blur-md rounded-md text-[7px] md:text-[8px] font-bold tracking-widest text-white/50 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300 whitespace-nowrap">Apply / Update</span>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 mr-1 md:mr-2 border-r border-white/10 pr-1.5 md:pr-2.5 shrink-0">
+              <div className="relative group">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-1.5 bg-[#1a1b26]/90 backdrop-blur-md border border-white/10 rounded-md text-[8px] font-bold tracking-widest text-white/70 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300 whitespace-nowrap opacity-0 group-hover:opacity-100">Apply Changes</span>
                 <button
                   onClick={handleRefreshApp}
                   disabled={isRefreshing}
-                  className="flex flex-row items-center justify-center gap-1 md:gap-1.5 px-2 py-1.5 md:px-2.5 md:py-1.5 hover:bg-blue-500/20 hover:border-blue-500/50 active:bg-blue-600/30 rounded-lg transition-all border border-white/10 bg-black/40 shrink-0 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  className="flex flex-row items-center justify-center gap-1.5 px-2 py-1.5 hover:bg-blue-500/20 hover:border-blue-500/50 active:scale-95 rounded-lg transition-all border border-white/10 bg-white/5 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer shadow-sm"
                   title="Refresh the app to apply changes or fix wallpaper bugs"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 md:w-3.5 md:h-3.5 text-blue-400 shrink-0 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-                  <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-semibold text-white/90 leading-none mt-0.5">
+                  <RefreshCw className={`w-3.5 h-3.5 text-blue-400 shrink-0 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                  <span className="text-[9px] md:text-[10px] font-bold text-white/90 leading-none whitespace-nowrap">
                     {isRefreshing ? 'Refreshing...' : 'Refresh App'}
                   </span>
                 </button>
@@ -982,9 +989,9 @@ export default function SettingsModal() {
             {isMobileDetailView && ['preferences', 'sound', 'focus', 'wallpaper', 'data'].includes(settingsActiveTab) && (
               <button
                 onClick={() => setInfoModalKey(settingsActiveTab === 'wallpaper' ? 'wallpapers' : settingsActiveTab === 'focus' ? 'panic' : settingsActiveTab === 'data' ? 'backup' : settingsActiveTab)}
-                className="md:hidden p-1.5 hover:bg-white/10 rounded-xl transition-colors text-blue-400 bg-white/5 border border-white/10 shadow-sm"
+                className="md:hidden p-1.5 hover:bg-blue-500/20 rounded-lg transition-colors text-blue-400 bg-white/5 border border-white/10 shadow-sm active:scale-95"
               >
-                <Info className="w-5 h-5" />
+                <Info className="w-4 h-4" />
               </button>
             )}
             <button
@@ -993,130 +1000,126 @@ export default function SettingsModal() {
                 toggleSettings();
                 setIsMobileDetailView(false);
               }}
-              className="p-1.5 md:p-2 hover:bg-white/10 rounded-xl transition-colors text-white/60 hover:text-white"
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/60 hover:text-white border border-transparent hover:border-white/10 active:scale-95"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
         </div>
 
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden w-full">
-          {/* Sidebar Tabs - Narrowed to w-48 on desktop */}
-          <div className={`${isMobileDetailView ? 'hidden md:flex' : 'flex h-full'} flex-col w-full md:w-48 bg-black/20 border-r-0 md:border-r border-white/10 relative group shrink-0`}>
-
-            <ScrollableWithArrows className="flex-1 p-3 flex flex-col gap-2 h-full pb-10">
+          {/* Sidebar Tabs - Highly Compact */}
+          <div className={`${isMobileDetailView ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-44 lg:w-48 bg-black/20 border-r-0 md:border-r border-white/10 relative group shrink-0`}>
+            <ScrollableWithArrows className="flex-1 p-2 flex flex-col gap-1.5 pb-4 md:pb-10 custom-scrollbar">
               <button
                 onClick={() => handleTabClick('preferences')}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'preferences' && !isMobileDetailView ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
+                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-bold ${settingsActiveTab === 'preferences' && !isMobileDetailView ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
               >
-                <Sliders className="w-4 h-4" /> Preferences
+                <Sliders className="w-3.5 h-3.5" /> Preferences
               </button>
               <button
                 onClick={() => handleTabClick('wallpaper')}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'wallpaper' && !isMobileDetailView ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
+                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-bold ${settingsActiveTab === 'wallpaper' && !isMobileDetailView ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 shadow-sm' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
               >
-                <ImageIcon className="w-4 h-4" /> Wallpapers
+                <ImageIcon className="w-3.5 h-3.5" /> Wallpapers
               </button>
 
               <button
                 onClick={() => handleTabClick('quotes')}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'quotes' && !isMobileDetailView ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
+                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-bold ${settingsActiveTab === 'quotes' && !isMobileDetailView ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30 shadow-sm' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
               >
-                <MessageSquare className="w-4 h-4" /> Quotes Settings
+                <MessageSquare className="w-3.5 h-3.5" /> Quotes Settings
               </button>
               <button
                 onClick={() => handleTabClick('sound')}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'sound' && !isMobileDetailView ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
+                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-bold ${settingsActiveTab === 'sound' && !isMobileDetailView ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-sm' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
               >
-                <Bell className="w-4 h-4" /> Sound Settings
+                <Bell className="w-3.5 h-3.5" /> Sound Settings
               </button>
 
               <button
                 onClick={() => handleTabClick('focus')}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'focus' && !isMobileDetailView ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
+                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-bold ${settingsActiveTab === 'focus' && !isMobileDetailView ? 'bg-red-500/20 text-red-300 border border-red-500/30 shadow-sm' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
               >
-                <EyeOff className="w-4 h-4" /> Focus / Peek
+                <EyeOff className="w-3.5 h-3.5" /> Focus / Peek
               </button>
               <button
                 onClick={() => handleTabClick('data')}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'data' && !isMobileDetailView ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
+                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-bold ${settingsActiveTab === 'data' && !isMobileDetailView ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
               >
-                <Database className="w-4 h-4" /> Data & Backup
+                <Database className="w-3.5 h-3.5" /> Data & Backup
               </button>
               <button
                 onClick={() => handleTabClick('connect')}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs md:text-xs font-medium ${settingsActiveTab === 'connect' && !isMobileDetailView ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent bg-black/40 md:bg-transparent'}`}
+                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-bold ${settingsActiveTab === 'connect' && !isMobileDetailView ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
               >
-                <Globe className={`w-4 h-4 ${settingsActiveTab === 'connect' ? 'text-blue-400 animate-pulse' : ''}`} /> Connect & Ranks
+                <Globe className={`w-3.5 h-3.5 ${settingsActiveTab === 'connect' ? 'text-blue-400 animate-pulse' : ''}`} /> Connect & Ranks
               </button>
+
+              <div className="my-1 border-t border-white/10" />
+
               <button
                 onClick={() => handleTabClick('about')}
-                className={`relative overflow-hidden group flex flex-row w-full min-h-[76px] md:min-h-[84px] items-center justify-between gap-3 px-3 py-2 md:py-3 rounded-xl transition-all ${settingsActiveTab === 'about' && !isMobileDetailView ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-white border border-blue-500/30 shadow-lg' : 'bg-black/40 md:bg-black/20 text-white/60 hover:bg-white/10 hover:text-white hover:border-white/20 border border-white/5 md:hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] backdrop-blur-md'}`}
+                className={`relative overflow-hidden group flex flex-row w-full items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${settingsActiveTab === 'about' && !isMobileDetailView ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-white border border-blue-500/30 shadow-lg' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5'}`}
               >
-                <div className="absolute top-0 bottom-0 w-[200%] bg-gradient-to-r from-transparent via-white/25 via-blue-300/20 to-transparent pointer-events-none glass-sweep-anim" style={{ left: '-100%' }} />
+                <div className="absolute top-0 bottom-0 w-[200%] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none glass-sweep-anim" style={{ left: '-100%' }} />
                 <img
                   src="/branding/author.jpeg"
                   alt="Developer"
-                  className="w-16 h-16 md:w-14 md:h-14 rounded-full object-cover shadow-lg border-2 border-white/30 relative z-10 shrink-0"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.parentElement?.insertAdjacentHTML('afterbegin', '<svg class="w-8 h-8 relative z-10" ... />');
-                  }}
+                  className="w-8 h-8 rounded-full object-cover shadow-sm border border-white/30 shrink-0"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
-                <div className="flex flex-col items-start md:items-start text-left relative z-10 min-w-0 flex-1 pl-1">
-                  <span className="text-[11px] md:text-[11px] font-bold tracking-wide leading-tight text-white block">Support Developer</span>
-                  <span className="text-[9.5px] md:text-[9px] text-blue-300 font-semibold uppercase mt-0.5 tracking-wider block truncate w-full">
-                    <pre>Anand kumar</pre>
-                  </span>
+                <div className="flex flex-col items-start text-left min-w-0">
+                  <span className="text-[10px] font-bold text-white/90">Anand Kumar</span>
+                  <span className="text-[8px] text-blue-300 font-bold uppercase tracking-wider">Developer</span>
                 </div>
               </button>
 
               <button
                 onClick={() => setIsUserManualOpen(true)}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-medium bg-black/40 md:bg-transparent text-white/60 hover:bg-white/5 hover:text-white border border-transparent mb-2`}
+                className={`flex w-full items-center gap-2.5 px-3 py-2 rounded-xl transition-all text-[11px] font-bold text-white/60 hover:bg-white/5 hover:text-white border border-transparent mb-2 mt-1`}
               >
-                <BookOpen className="w-4 h-4 text-blue-400" /> User Manual
+                <BookOpen className="w-3.5 h-3.5 text-blue-400" /> User Manual
               </button>
 
             </ScrollableWithArrows>
           </div>
 
-          {/* Content Area */}
+          {/* Content Area - Minimized Padding, Wrapped Text */}
           <div className={`relative flex-1 overflow-hidden flex-col group/content ${isMobileDetailView ? 'flex' : 'hidden md:flex'}`}>
 
-
-            <ScrollableWithArrows className="flex-1 p-2 pt-4 pb-8 md:p-4 md:pb-8 md:pt-4 h-full pr-1">
+            <ScrollableWithArrows className="flex-1 p-2 pb-8 md:p-4 md:pb-8 h-full custom-scrollbar">
 
               {settingsActiveTab === 'connect' && (
                 <ConnectTab />
               )}
 
               {settingsActiveTab === 'preferences' && (
-                <div className="flex flex-col gap-4 md:gap-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm md:text-base font-semibold">General Preferences</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Customize your dashboard's theme, scaling, layout positions, and widget visibility.</p>
+                <div className="flex flex-col gap-3 md:gap-4">
+                  <div className="flex items-start justify-between gap-2 px-1">
+                    <div className="flex flex-col">
+                      <h3 className="text-sm md:text-base font-bold text-white/90">General Preferences</h3>
+                      <p className="text-white/50 text-[10px] md:text-[11px] leading-snug break-words">Customize theme, UI scaling, layout positions, and individual widget visibility.</p>
                     </div>
-                    <button onClick={() => setInfoModalKey('preferences')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors mr-1">
-                      <Info className="w-4 h-4" />
+                    <button onClick={() => setInfoModalKey('preferences')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 rounded-full transition-colors shrink-0">
+                      <Info className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  {/* Top Replay Tour Banner & PC Wallpaper Banner in Preferences */}
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between p-1 sm:p-2.5 rounded-lg bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-black/40 border border-indigo-500/30 gap-2 shadow-sm overflow-hidden">
-                      <div className="flex items-center gap-1 sm:gap-2.5 min-w-0">
-                        <div className="p-1 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
-                          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300 animate-pulse" />
+                  <div className="flex flex-col gap-2">
+                    {/* Guided Tour Banner */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-indigo-900/30 to-purple-900/20 border border-indigo-500/20 gap-2 shadow-sm">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 shrink-0">
+                          <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="text-[10px] sm:text-xs font-bold text-white flex items-center gap-1 ">
-                            <span className="truncate">Guided Tour</span>
-                            <span className="hidden sm:inline-flex items-center text-[8px] bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 px-1 py-0.5 rounded shrink-0">Interactive</span>
+                        <div className="flex flex-col min-w-0">
+                          <h4 className="text-[11px] md:text-xs font-bold text-white/90 flex items-center gap-1.5 flex-wrap">
+                            <span className="break-words">Guided Tour</span>
+                            <span className="text-[8px] bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 px-1.5 py-0.5 rounded font-bold">Interactive</span>
                           </h4>
-                          <p className="text-[9px] sm:text-[10px] text-white/60 leading-tight mt-0.5 max-w-[200px] sm:max-w-none">
-                            Need a refresher? Replay the guided tour anytime.
+                          <p className="text-[9px] md:text-[10px] text-white/60 leading-snug mt-0.5 break-words">
+                            Need a refresher? Replay the guided tour to learn dashboard controls.
                           </p>
                         </div>
                       </div>
@@ -1125,551 +1128,295 @@ export default function SettingsModal() {
                           useDashboardStore.getState().startTour();
                           toggleSettings();
                         }}
-                        className="px-1 py-1 sm:px-2 sm:py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-md font-bold text-[9px] sm:text-[10px] shadow-sm shadow-indigo-500/20 active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
+                        className="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-lg font-bold text-[10px] shadow-sm active:scale-95 transition-all w-full sm:w-auto text-center shrink-0"
                       >
-                        <span>Replay Tour</span>
+                        Replay Tour
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-black/40 border border-blue-500/30 gap-1 shadow-sm overflow-hidden">
-                      <div className="flex items-center gap-1 sm:gap-2.5 min-w-0">
-                        <div className="p-1 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
-                          <MonitorPlay className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+                    {/* PC Wallpaper Banner */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-blue-900/30 to-indigo-900/20 border border-blue-500/20 gap-2 shadow-sm">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/20 shrink-0">
+                          <MonitorPlay className="w-4 h-4 text-blue-400" />
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="text-[10px] sm:text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                            <span className="truncate">PC Wallpaper</span>
-                            <span className="hidden sm:inline-flex items-center text-[8px] bg-blue-500/30 text-blue-200 border border-blue-500/40 px-1 py-0.5 rounded shrink-0">Tutorial</span>
+                        <div className="flex flex-col min-w-0">
+                          <h4 className="text-[11px] md:text-xs font-bold text-white/90 flex items-center gap-1.5 flex-wrap">
+                            <span className="break-words">PC Wallpaper Tutorial</span>
+                            <span className="text-[8px] bg-blue-500/30 text-blue-200 border border-blue-500/40 px-1.5 py-0.5 rounded font-bold">Guide</span>
                           </h4>
-                          <p className="text-[9px] sm:text-[10px] text-white/60 leading-tight mt-0.5 max-w-[200px] sm:max-w-none">
-                            Set up interactive desktop background via Lively.
+                          <p className="text-[9px] md:text-[10px] text-white/60 leading-snug mt-0.5 break-words">
+                            Learn how to set up interactive desktop backgrounds via Lively.
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={() => setIsWallpaperTutorialOpen(true)}
-                        className="px-1 py-1 sm:px-3 sm:py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-md font-bold text-[9px] sm:text-[10px] shadow-sm shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
+                        className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg font-bold text-[10px] shadow-sm active:scale-95 transition-all w-full sm:w-auto text-center shrink-0"
                       >
-                        <span>Setup Guide</span>
+                        Setup Guide
                       </button>
                     </div>
-                    {/* 1. Dashboard Launcher Visibility Toggle */}
-                    <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-amber-900/40 via-orange-900/30 to-black/40 border border-amber-500/30 gap-1 shadow-sm overflow-hidden mb-2">
-                      <div className="flex items-center gap-1 sm:gap-2.5 min-w-0">
-                        <div className="p-1 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+
+                    {/* Manifestation Button Toggle */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-900/20 to-orange-900/10 border border-amber-500/20 gap-3 shadow-sm">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                          <Sparkles className="w-4 h-4" />
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="text-[10px] sm:text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                            <span className="truncate text-amber-200">Manifestation Button</span>
-                          </h4>
-                          <p className="text-[9px] sm:text-[10px] text-white/60 leading-tight mt-0.5 max-w-[200px] sm:max-w-none">
-                            Toggle visibility of the Vision Board launcher.
+                        <div className="flex flex-col min-w-0">
+                          <h4 className="text-[11px] md:text-xs font-bold text-amber-200 break-words">Manifestation Button</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">
+                            Toggle visibility of the Vision Board launcher on your dashboard.
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={() => setShowManifestationBoard(!showManifestationBoard)}
-                        className={`relative inline-flex h-4 w-8 sm:h-5 sm:w-10 items-center rounded-full transition-colors shrink-0 ${showManifestationBoard ? 'bg-amber-500' : 'bg-white/20'}`}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${showManifestationBoard ? 'bg-amber-500' : 'bg-white/20'}`}
                       >
-                        <span className={`inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform ${showManifestationBoard ? 'translate-x-4 sm:translate-x-5' : 'translate-x-1'}`} />
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${showManifestationBoard ? 'translate-x-4.5' : 'translate-x-1'}`} />
                       </button>
                     </div>
-
                   </div>
 
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3 md:gap-4">
                     {/* SECTION 1: THEME & DISPLAY OPTIONS */}
-                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
-                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5 px-0.5">
-                        <Layout className="w-3.5 h-3.5 text-purple-400" />
-                        <span>Theme & Time Format</span>
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                      <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5 px-1 pb-1 border-b border-white/5">
+                        <Layout className="w-3.5 h-3.5" /> Theme & Formatting
                       </h4>
 
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5 mt-1">
                         {/* Theme Toggle */}
-                        <div className="flex flex-col p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-2">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3">
-                            <div className="flex items-center gap-2 md:gap-3">
-                              <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                                <Layout className="text-purple-400 w-4 h-4" />
-                              </div>
-                              <div className="min-w-0 pr-2">
-                                <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Dashboard Theme</h5>
-                                <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Dark Mode active. Light & Auto themes coming in a future update.</p>
+                        <div className="flex flex-col p-2.5 rounded-lg bg-black/40 border border-white/5 gap-2.5">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <Layout className="text-purple-400 w-4 h-4 mt-0.5 shrink-0" />
+                              <div className="flex flex-col min-w-0">
+                                <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Dashboard Theme</h5>
+                                <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">Dark Mode is optimized. Light & Auto modes are coming soon.</p>
                               </div>
                             </div>
-
-                            <div className="flex bg-black/40 border border-white/10 rounded-lg p-0.5 self-end sm:self-auto shrink-0">
-                              <button
-                                onClick={() => setTheme('dark')}
-                                className="px-3 py-1 text-[10px] md:text-xs font-bold rounded-md capitalize transition-all bg-purple-500 text-white shadow-md"
-                              >
-                                Dark
-                              </button>
-                              <button
-                                onClick={() => setShowThemeNotice(true)}
-                                className="px-2.5 py-1 text-[10px] md:text-xs font-medium rounded-md capitalize text-white/40 hover:text-amber-300 hover:bg-amber-500/10 transition-all flex items-center gap-1 cursor-pointer"
-                                title="Light & Auto themes coming soon"
-                              >
-                                <span>Auto</span>
-                                <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">Soon</span>
-                              </button>
-                              <button
-                                onClick={() => setShowThemeNotice(true)}
-                                className="px-2.5 py-1 text-[10px] md:text-xs font-medium rounded-md capitalize text-white/40 hover:text-amber-300 hover:bg-amber-500/10 transition-all flex items-center gap-1 cursor-pointer"
-                                title="Light & Auto themes coming soon"
-                              >
-                                <span>Light</span>
-                                <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">Soon</span>
-                              </button>
+                            <div className="flex bg-black/40 border border-white/10 rounded-lg p-1 w-full sm:w-auto shrink-0 gap-1">
+                              <button onClick={() => setTheme('dark')} className="flex-1 sm:flex-none px-3 py-1.5 text-[10px] font-bold rounded-md bg-purple-500/80 text-white shadow-sm transition-all">Dark</button>
+                              <button onClick={() => setShowThemeNotice(true)} className="flex-1 sm:flex-none px-2 py-1.5 text-[10px] font-bold rounded-md text-white/40 hover:bg-white/10 transition-all flex items-center justify-center gap-1">Light <span className="text-[7px] bg-amber-500/20 text-amber-300 px-1 py-0.5 rounded border border-amber-500/30 leading-none">Soon</span></button>
                             </div>
                           </div>
-
                           {showThemeNotice && (
-                            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[10px] md:text-xs text-amber-200 flex items-center justify-between gap-2 animate-in fade-in">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                                <span className="truncate">Light & Auto themes will be available in a future update! Dark Mode is optimized.</span>
-                              </div>
-                              <button onClick={() => setShowThemeNotice(false)} className="p-0.5 text-amber-300 hover:text-white rounded shrink-0">
-                                <X className="w-3 h-3" />
-                              </button>
+                            <div className="p-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-[9px] text-amber-200 flex items-start justify-between gap-2">
+                              <span className="break-words leading-tight">Light and Auto themes will be available in a future update!</span>
+                              <button onClick={() => setShowThemeNotice(false)} className="p-0.5 shrink-0 hover:bg-white/10 rounded"><X className="w-3 h-3" /></button>
                             </div>
                           )}
                         </div>
 
-                        {/* Toggle 24-hour clock */}
-                        <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5">
-                          <div className="flex items-center gap-2 md:gap-3">
-                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                              <Clock className="text-blue-300 w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 pr-2">
-                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">24-Hour Clock Format</h5>
-                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Military time (14:00 instead of 2:00 PM)</p>
+                        {/* 24-hour clock */}
+                        <div className="flex flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <Clock className="text-blue-300 w-4 h-4 mt-0.5 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">24-Hour Clock Format</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Use military time (e.g., 14:00 instead of 2:00 PM).</p>
                             </div>
                           </div>
-                          <button
-                            onClick={toggle24HourClock}
-                            className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${is24HourClock ? 'bg-blue-500' : 'bg-white/20'}`}
-                          >
-                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${is24HourClock ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          <button onClick={toggle24HourClock} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${is24HourClock ? 'bg-blue-500' : 'bg-white/20'}`}>
+                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${is24HourClock ? 'translate-x-4.5' : 'translate-x-1'}`} />
                           </button>
                         </div>
 
-                        {/* Auto-Open Target Countdowns */}
-                        <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5">
-                          <div className="flex items-center gap-2 md:gap-3">
-                            <div className="p-1 md:p-1.5 bg-indigo-500/20 text-indigo-400 rounded-md shrink-0">
-                              <Hourglass className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 pr-2">
-                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Auto-Open Countdowns on Launch</h5>
-                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">
-                                Automatically opens & displays your target countdowns on dashboard launch unless disabled.
-                              </p>
+                        {/* Auto-Open Countdowns */}
+                        <div className="flex flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <Hourglass className="text-indigo-400 w-4 h-4 mt-0.5 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Auto-Open Countdowns</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Automatically expand your target countdowns on startup.</p>
                             </div>
                           </div>
-                          <button
-                            onClick={() => setAutoOpenCountdowns(!autoOpenCountdowns)}
-                            className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${autoOpenCountdowns ? 'bg-indigo-500' : 'bg-white/20'}`}
-                          >
-                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${autoOpenCountdowns ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          <button onClick={() => setAutoOpenCountdowns(!autoOpenCountdowns)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${autoOpenCountdowns ? 'bg-indigo-500' : 'bg-white/20'}`}>
+                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${autoOpenCountdowns ? 'translate-x-4.5' : 'translate-x-1'}`} />
                           </button>
                         </div>
 
                         {/* Deadline Alerts */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
-                          <div className="flex items-center gap-2 md:gap-3">
-                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                              <Bell className="text-yellow-400 w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 pr-2">
-                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Deadline Alerts</h5>
-                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Show deadlines modal as deadlines approach.</p>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <Bell className="text-yellow-400 w-4 h-4 mt-0.5 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Deadline Alerts</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Show popup modal as important deadlines approach.</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto pl-7 sm:pl-0">
-                            <span className="text-white/60 text-[9px] md:text-[11px] whitespace-nowrap">Alert me</span>
+                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto bg-black/40 p-1.5 rounded-lg border border-white/5">
+                            <span className="text-white/60 text-[9px] font-bold uppercase">Alert me</span>
                             <input
-                              type="number"
-                              min="0"
-                              max="30"
+                              type="number" min="0" max="30"
                               value={deadlineAlertDays}
                               onChange={(e) => setDeadlineAlertDays(parseInt(e.target.value) || 0)}
-                              className="w-10 md:w-12 bg-black/40 border border-white/10 rounded-md px-1 py-0.5 text-center text-white outline-none focus:border-yellow-400 font-medium text-[10px] md:text-xs"
+                              className="w-10 bg-black/60 border border-white/20 rounded p-1 text-center text-white outline-none focus:border-yellow-400 font-bold text-[10px]"
                             />
-                            <span className="text-white/60 text-[9px] md:text-[11px] whitespace-nowrap">days before</span>
+                            <span className="text-white/60 text-[9px] font-bold uppercase">days before</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* SECTION 2: SIZING & UI SCALE CONTROL */}
-                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
-                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5 px-0.5">
-                        <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Sizing & UI Scaling</span>
+                    {/* SECTION 2: SIZING & SCALING */}
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                      <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5 px-1 pb-1 border-b border-white/5">
+                        <Sliders className="w-3.5 h-3.5" /> UI Scaling Controls
                       </h4>
 
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5 mt-1">
                         {/* Desktop UI Scale */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
-                          <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                              <Monitor className="text-emerald-400 w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 pr-2">
-                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Desktop UI Scale</h5>
-                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Scale layout for desktop & large displays.</p>
+                        <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <Monitor className="text-emerald-400 w-4 h-4 mt-0.5 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Desktop UI Scale</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Scale the entire dashboard layout for larger displays.</p>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
-                            <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
+                          <div className="flex items-center gap-1.5 shrink-0 w-full xl:w-auto justify-end">
+                            <div className="flex bg-black/60 border border-white/10 rounded-md p-1 gap-0.5">
                               {[0.75, 1.0, 1.25].map(s => (
-                                <button
-                                  key={s}
-                                  onClick={() => setDashboardScale(s)}
-                                  className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((dashboardScale || 1) - s) < 0.01 ? 'bg-emerald-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
-                                >
+                                <button key={s} onClick={() => setDashboardScale(s)} className={`px-2 py-1 text-[9px] font-bold rounded transition-all ${Math.abs((dashboardScale || 1) - s) < 0.01 ? 'bg-emerald-500/80 text-white' : 'text-white/50 hover:bg-white/10'}`}>
                                   {Math.round(s * 100)}%
                                 </button>
                               ))}
                             </div>
-
-                            <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
-                              <button
-                                onClick={() => setDashboardScale(Math.max(0.5, Math.round(((dashboardScale || 1) - 0.05) * 100) / 100))}
-                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                                title="Decrease (-5%)"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-
-                              <div className="flex items-center font-mono text-[10px] md:text-xs text-emerald-300 font-bold px-0.5">
-                                <input
-                                  type="number"
-                                  min="50"
-                                  max="150"
-                                  step="1"
-                                  value={Math.round((dashboardScale || 1) * 100)}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    if (!isNaN(val)) {
-                                      setDashboardScale(Math.min(1.5, Math.max(0.5, val / 100)));
-                                    }
-                                  }}
-                                  className="w-7 bg-transparent text-center text-emerald-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                                <span className="text-[9px] text-emerald-400/80">%</span>
-                              </div>
-
-                              <button
-                                onClick={() => setDashboardScale(Math.min(1.5, Math.round(((dashboardScale || 1) + 0.05) * 100) / 100))}
-                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                                title="Increase (+5%)"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
+                            <div className="flex items-center bg-black/60 border border-white/10 rounded-md p-1">
+                              <button onClick={() => setDashboardScale(Math.max(0.5, Math.round(((dashboardScale || 1) - 0.05) * 100) / 100))} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><Minus className="w-3 h-3" /></button>
+                              <span className="font-mono text-[10px] text-emerald-300 font-bold px-1.5">{Math.round((dashboardScale || 1) * 100)}%</span>
+                              <button onClick={() => setDashboardScale(Math.min(1.5, Math.round(((dashboardScale || 1) + 0.05) * 100) / 100))} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><Plus className="w-3 h-3" /></button>
                             </div>
-
                             {Math.abs((dashboardScale || 1) - 1.0) >= 0.01 && (
-                              <button
-                                onClick={() => setDashboardScale(1.0)}
-                                className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
-                                title="Reset to 100%"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                              </button>
+                              <button onClick={() => setDashboardScale(1.0)} className="p-1.5 hover:bg-white/10 border border-white/5 rounded text-white/50 hover:text-white transition-colors"><RotateCcw className="w-3.5 h-3.5" /></button>
                             )}
                           </div>
                         </div>
 
                         {/* Mobile UI Scale */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
-                          <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                              <Smartphone className="text-sky-400 w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 pr-2">
-                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Mobile UI Scale</h5>
-                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Independent scale layout for mobile screens.</p>
+                        <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <Smartphone className="text-sky-400 w-4 h-4 mt-0.5 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Mobile UI Scale</h5>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Independent scale adjustment for smaller touch screens.</p>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
-                            <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
+                          <div className="flex items-center gap-1.5 shrink-0 w-full xl:w-auto justify-end">
+                            <div className="flex bg-black/60 border border-white/10 rounded-md p-1 gap-0.5">
                               {[0.75, 1.0, 1.25].map(s => (
-                                <button
-                                  key={s}
-                                  onClick={() => setMobileDashboardScale(s)}
-                                  className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((mobileDashboardScale || 1) - s) < 0.01 ? 'bg-sky-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
-                                >
+                                <button key={s} onClick={() => setMobileDashboardScale(s)} className={`px-2 py-1 text-[9px] font-bold rounded transition-all ${Math.abs((mobileDashboardScale || 1) - s) < 0.01 ? 'bg-sky-500/80 text-white' : 'text-white/50 hover:bg-white/10'}`}>
                                   {Math.round(s * 100)}%
                                 </button>
                               ))}
                             </div>
-
-                            <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
-                              <button
-                                onClick={() => setMobileDashboardScale(Math.max(0.5, Math.round(((mobileDashboardScale || 1) - 0.05) * 100) / 100))}
-                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                                title="Decrease (-5%)"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-
-                              <div className="flex items-center font-mono text-[10px] md:text-xs text-sky-300 font-bold px-0.5">
-                                <input
-                                  type="number"
-                                  min="50"
-                                  max="150"
-                                  step="1"
-                                  value={Math.round((mobileDashboardScale || 1) * 100)}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    if (!isNaN(val)) {
-                                      setMobileDashboardScale(Math.min(1.5, Math.max(0.5, val / 100)));
-                                    }
-                                  }}
-                                  className="w-7 bg-transparent text-center text-sky-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                                <span className="text-[9px] text-sky-400/80">%</span>
-                              </div>
-
-                              <button
-                                onClick={() => setMobileDashboardScale(Math.min(1.5, Math.round(((mobileDashboardScale || 1) + 0.05) * 100) / 100))}
-                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                                title="Increase (+5%)"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
+                            <div className="flex items-center bg-black/60 border border-white/10 rounded-md p-1">
+                              <button onClick={() => setMobileDashboardScale(Math.max(0.5, Math.round(((mobileDashboardScale || 1) - 0.05) * 100) / 100))} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><Minus className="w-3 h-3" /></button>
+                              <span className="font-mono text-[10px] text-sky-300 font-bold px-1.5">{Math.round((mobileDashboardScale || 1) * 100)}%</span>
+                              <button onClick={() => setMobileDashboardScale(Math.min(1.5, Math.round(((mobileDashboardScale || 1) + 0.05) * 100) / 100))} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><Plus className="w-3 h-3" /></button>
                             </div>
-
                             {Math.abs((mobileDashboardScale || 1) - 1.0) >= 0.01 && (
-                              <button
-                                onClick={() => setMobileDashboardScale(1.0)}
-                                className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
-                                title="Reset to 100%"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                              </button>
+                              <button onClick={() => setMobileDashboardScale(1.0)} className="p-1.5 hover:bg-white/10 border border-white/5 rounded text-white/50 hover:text-white transition-colors"><RotateCcw className="w-3.5 h-3.5" /></button>
                             )}
                           </div>
                         </div>
 
-                        {/* Big Clock Size */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
-                          <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                              <Clock className="text-blue-400 w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 pr-2">
-                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Big Clock Size</h5>
-                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Scale the clock for your screen.</p>
-                            </div>
-                          </div>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">current size : {Math.round((clockScale) * 100)}%</p>
-                          <div className="flex items-center gap-2 w-full sm:w-40 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
-                            <span className="text-[9px] md:text-[10px] text-white/40">50%</span>
-                            <input
-                              type="range"
-                              min="0.5"
-                              max="1.5"
-                              step="0.05"
-                              value={clockScale}
-                              onChange={(e) => setClockScale(parseFloat(e.target.value))}
-                              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
-                            />
-                            <span className="text-[9px] md:text-[10px] text-white/40">150%</span>
-                          </div>
-                        </div>
-
-                        {/* Bottom Dock Size (Scale) */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
-                          <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                              <Sliders className="text-purple-400 w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 pr-2">
-                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Bottom Dock Size</h5>
-                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Resize bottom dock icons for your display.</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto mt-1 sm:mt-0">
-                            <div className="flex bg-black/40 border border-white/10 rounded-md p-0.5">
-                              {[0.75, 1.0, 1.25].map(s => (
-                                <button
-                                  key={s}
-                                  onClick={() => setDockScale(s)}
-                                  className={`px-1.5 py-0.5 text-[9px] md:text-[10px] font-medium rounded transition-all ${Math.abs((dockScale || 1) - s) < 0.01 ? 'bg-purple-500 text-white font-bold' : 'text-white/60 hover:text-white'}`}
-                                >
-                                  {Math.round(s * 100)}%
-                                </button>
-                              ))}
-                            </div>
-
-                            <div className="flex items-center bg-black/40 border border-white/10 rounded-md p-0.5">
-                              <button
-                                onClick={() => setDockScale(Math.max(0.5, Math.round(((dockScale || 1) - 0.05) * 100) / 100))}
-                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                                title="Decrease (-5%)"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-
-                              <div className="flex items-center font-mono text-[10px] md:text-xs text-purple-300 font-bold px-0.5">
-                                <input
-                                  type="number"
-                                  min="50"
-                                  max="150"
-                                  step="1"
-                                  value={Math.round((dockScale || 1) * 100)}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    if (!isNaN(val)) {
-                                      setDockScale(Math.min(1.5, Math.max(0.5, val / 100)));
-                                    }
-                                  }}
-                                  className="w-7 bg-transparent text-center text-purple-300 font-mono font-bold outline-none text-[10px] md:text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                                <span className="text-[9px] text-purple-400/80">%</span>
+                        {/* Components Scale (Clock & Dock) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                          <div className="flex flex-col p-2.5 rounded-lg bg-black/40 border border-white/5 gap-2">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <Clock className="text-blue-400 w-4 h-4 mt-0.5 shrink-0" />
+                              <div className="flex flex-col min-w-0">
+                                <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Big Clock Size</h5>
+                                <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Scale the main clock widget.</p>
                               </div>
-
-                              <button
-                                onClick={() => setDockScale(Math.min(1.5, Math.round(((dockScale || 1) + 0.05) * 100) / 100))}
-                                className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                                title="Increase (+5%)"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
                             </div>
+                            <div className="flex items-center gap-2 mt-1 bg-black/40 p-1.5 rounded-md border border-white/5">
+                              <span className="text-[9px] text-white/40 font-bold">50%</span>
+                              <input type="range" min="0.5" max="1.5" step="0.05" value={clockScale} onChange={(e) => setClockScale(parseFloat(e.target.value))} className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                              <span className="text-[9px] text-white/40 font-bold">150%</span>
+                            </div>
+                          </div>
 
-                            {Math.abs((dockScale || 1) - 1.0) >= 0.01 && (
-                              <button
-                                onClick={() => setDockScale(1.0)}
-                                className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white transition-colors"
-                                title="Reset to 100%"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                          <div className="flex flex-col p-2.5 rounded-lg bg-black/40 border border-white/5 gap-2">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <Sliders className="text-purple-400 w-4 h-4 mt-0.5 shrink-0" />
+                              <div className="flex flex-col min-w-0">
+                                <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Bottom Dock Size</h5>
+                                <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Resize the global bottom dock.</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between bg-black/40 border border-white/10 rounded-md p-1 w-fit mt-1">
+                              <button onClick={() => setDockScale(Math.max(0.5, Math.round(((dockScale || 1) - 0.05) * 100) / 100))} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><Minus className="w-3 h-3" /></button>
+                              <span className="font-mono text-[10px] text-purple-300 font-bold px-3">{Math.round((dockScale || 1) * 100)}%</span>
+                              <button onClick={() => setDockScale(Math.min(1.5, Math.round(((dockScale || 1) + 0.05) * 100) / 100))} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><Plus className="w-3 h-3" /></button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* SECTION 3: TOOLBAR & DOCK POSITIONS */}
-                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
-                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5 px-0.5">
-                        <ChevronUp className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Toolbar & Dock Offsets (Move Up / Down)</span>
+                    {/* SECTION 3: TOOLBAR & OFFSETS */}
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                      <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5 px-1 pb-1 border-b border-white/5">
+                        <ChevronUp className="w-3.5 h-3.5" /> Positional Offsets
                       </h4>
 
-                      <div className="flex flex-col gap-2">
-                        {/* Right Toolbar Position */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
-                          <div className="flex items-center gap-2 md:gap-3">
-                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                              <Layout className="text-cyan-400 w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 pr-2">
-                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Right Toolbar Position</h5>
-                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Adjust the vertical offset of right-side toolbar widgets.</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 mt-1">
+                        <div className="flex items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <Layout className="text-cyan-400 w-4 h-4 mt-0.5 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Right Toolbar</h5>
+                              <p className="text-[9px] text-white/50 leading-snug mt-0.5 break-words">Vertical offset.</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0 bg-black/40 border border-white/10 rounded-md p-1 self-end sm:self-auto">
-                            <button
-                              onClick={() => setRightWidgetsOffset(Math.max(0, rightWidgetsOffset - 10))}
-                              className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                              title="Move Down"
-                            >
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="font-bold text-[10px] md:text-xs w-6 md:w-8 text-center text-cyan-300">{rightWidgetsOffset}</span>
-                            <button
-                              onClick={() => setRightWidgetsOffset(rightWidgetsOffset + 10)}
-                              className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                              title="Move Up"
-                            >
-                              <ChevronUp className="w-3.5 h-3.5" />
-                            </button>
+                          <div className="flex items-center gap-1 shrink-0 bg-black/60 border border-white/10 rounded-md p-1">
+                            <button onClick={() => setRightWidgetsOffset(Math.max(0, rightWidgetsOffset - 10))} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><ChevronDown className="w-3.5 h-3.5" /></button>
+                            <span className="font-bold text-[10px] w-6 text-center text-cyan-300">{rightWidgetsOffset}</span>
+                            <button onClick={() => setRightWidgetsOffset(rightWidgetsOffset + 10)} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><ChevronUp className="w-3.5 h-3.5" /></button>
                           </div>
                         </div>
 
-                        {/* Bottom Dock Position */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5 gap-1.5 sm:gap-3">
-                          <div className="flex items-center gap-2 md:gap-3">
-                            <div className="p-1 md:p-1.5 bg-white/5 rounded-md shrink-0">
-                              <Layout className="text-purple-400 w-4 h-4" />
-                            </div>
-                            <div className="min-w-0 pr-2">
-                              <h5 className="font-medium text-xs md:text-sm whitespace-nowrap">Bottom Dock Position</h5>
-                              <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Move bottom dock & timetable toggle up or down.</p>
+                        <div className="flex items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <Layout className="text-purple-400 w-4 h-4 mt-0.5 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Bottom Dock</h5>
+                              <p className="text-[9px] text-white/50 leading-snug mt-0.5 break-words">Vertical offset.</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0 bg-black/40 border border-white/10 rounded-md p-1 self-end sm:self-auto">
-                            <button
-                              onClick={() => setDockOffset(dockOffset - 10)}
-                              className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                              title="Move Down"
-                            >
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="font-bold text-[10px] md:text-xs w-6 md:w-8 text-center text-purple-300">{dockOffset}</span>
-                            <button
-                              onClick={() => setDockOffset(dockOffset + 10)}
-                              className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors"
-                              title="Move Up"
-                            >
-                              <ChevronUp className="w-3.5 h-3.5" />
-                            </button>
+                          <div className="flex items-center gap-1 shrink-0 bg-black/60 border border-white/10 rounded-md p-1">
+                            <button onClick={() => setDockOffset(dockOffset - 10)} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><ChevronDown className="w-3.5 h-3.5" /></button>
+                            <span className="font-bold text-[10px] w-6 text-center text-purple-300">{dockOffset}</span>
+                            <button onClick={() => setDockOffset(dockOffset + 10)} className="p-1 hover:bg-white/10 rounded text-white/50 hover:text-white transition-colors"><ChevronUp className="w-3.5 h-3.5" /></button>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* SECTION 4: WIDGET DRAG LOCKING & POSITION RESETS */}
-                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
-                      <div className="flex items-center justify-between gap-2 px-0.5">
-                        <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-rose-400" />
-                          <span>Widget Drag Locking</span>
+                    {/* SECTION 4: DRAG LOCKING */}
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                      <div className="flex items-center justify-between px-1 pb-1 border-b border-white/5">
+                        <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" /> Widget Drag Lock
                         </h4>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              useDashboardStore.getState().startTour();
-                              toggleSettings();
-                            }}
-                            className="px-2 py-1 md:px-2.5 md:py-1 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded-md transition-colors border border-indigo-500/30 font-medium text-[9px] md:text-[10px] whitespace-nowrap cursor-pointer flex items-center gap-1"
-                          >
-                            <Sparkles className="w-3 h-3" />
-                            <span>Replay Tour</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (currentBgSrc) resetAllOffsets(currentBgSrc);
-                            }}
-                            className="px-2 py-1 md:px-2.5 md:py-1 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-md transition-colors border border-red-500/30 font-medium text-[9px] md:text-[10px] whitespace-nowrap cursor-pointer"
-                          >
-                            Reset Default Positions
-                          </button>
-                        </div>
+                        <button onClick={() => { if (currentBgSrc) resetAllOffsets(currentBgSrc); }} className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 rounded text-[9px] font-bold transition-all active:scale-95 break-words">
+                          Reset Default Positions
+                        </button>
                       </div>
-                      <p className="text-[9px] md:text-[10px] text-white/50 px-0.5">Lock elements so they cannot be dragged accidentally on screen.</p>
+                      <p className="text-[9px] md:text-[10px] text-white/50 px-1 leading-snug break-words">Lock specific elements to prevent accidental dragging on your screen.</p>
 
-                      <div className="grid grid-cols-2 gap-1.5 md:gap-2 mt-1">
-                        {[
-                          { key: 'clock', icon: Clock, label: 'Clock', color: 'text-blue-300' },
-                        ].map(({ key, icon: Icon, label, color }) => (
-                          <div key={key} className="flex items-center justify-between p-2 md:p-2 rounded-lg bg-black/30 border border-white/5">
-                            <div className="flex items-center gap-1.5 md:gap-2 min-w-0 pr-1">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 mt-1">
+                        {[{ key: 'clock', icon: Clock, label: 'Main Clock', color: 'text-blue-400' }].map(({ key, icon: Icon, label, color }) => (
+                          <div key={key} className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-white/5">
+                            <div className="flex items-center gap-1.5 min-w-0 pr-1">
                               <Icon className={`${color} w-3.5 h-3.5 shrink-0`} />
-                              <span className="text-[9px] md:text-[11px] font-medium truncate">{label}</span>
+                              <span className="text-[9px] md:text-[10px] font-bold break-words">{label}</span>
                             </div>
                             <button onClick={() => toggleWidgetLock(key as any)} className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0 ${lockedWidgets.includes(key as any) ? 'bg-blue-500' : 'bg-white/20'}`}>
                               <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${lockedWidgets.includes(key as any) ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
@@ -1680,20 +1427,19 @@ export default function SettingsModal() {
                     </div>
 
                     {/* SECTION 5: WIDGET VISIBILITY */}
-                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-black/20 border border-white/10">
-                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5 px-0.5">
-                        <Eye className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>Widget Visibility</span>
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                      <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5 px-1 pb-1 border-b border-white/5">
+                        <Eye className="w-3.5 h-3.5" /> Widget Visibility Toggles
                       </h4>
-                      <p className="text-[9px] md:text-[10px] text-white/50 px-0.5">Toggle individual widgets on or off across your dashboard layout.</p>
+                      <p className="text-[9px] md:text-[10px] text-white/50 px-1 leading-snug break-words">Turn individual dashboard components on or off globally.</p>
 
-                      <div className="grid grid-cols-2 gap-1.5 md:gap-2 mt-1">
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 mt-1">
                         {[
-                          { key: 'showQuote', icon: MessageSquare, label: 'Quote', color: 'text-purple-400', state: showQuote },
+                          { key: 'showQuote', icon: MessageSquare, label: 'Quote Box', color: 'text-purple-400', state: showQuote },
                           { key: 'showTimer', icon: TimerIcon, label: 'Timer', color: 'text-yellow-400', state: showTimer },
                           { key: 'showStopwatch', icon: Clock, label: 'Stopwatch', color: 'text-blue-400', state: showStopwatch },
-                          { key: 'showCountdowns', icon: Hourglass, label: 'Countdowns', color: 'text-blue-400', state: showCountdowns },
-                          { key: 'showVideoControls', icon: Film, label: 'Video Ctrl', color: 'text-green-400', state: showVideoControls },
+                          { key: 'showCountdowns', icon: Hourglass, label: 'Targets', color: 'text-indigo-400', state: showCountdowns },
+                          { key: 'showVideoControls', icon: Film, label: 'Media Ctrl', color: 'text-green-400', state: showVideoControls },
                           { key: 'showTodayWork', icon: Flame, label: 'Today Focus', color: 'text-orange-400', state: showTodayWork },
                           { key: 'showTasks', icon: CheckSquare, label: 'Tasks', color: 'text-orange-400', state: showTasks },
                           { key: 'showCalendar', icon: Calendar, label: 'Calendar', color: 'text-pink-400', state: showCalendar },
@@ -1702,31 +1448,20 @@ export default function SettingsModal() {
                           { key: 'showNotes', icon: StickyNote, label: 'Quick Notes', color: 'text-yellow-300', state: showNotes },
                           { key: 'showTimetable', icon: CalendarDays, label: 'Timetable', color: 'text-purple-400', state: showTimetable },
                           { key: 'showDock', icon: Layout, label: 'Bottom Dock', color: 'text-cyan-300', state: showDock },
-                          { key: 'showDeadlineAlerts', icon: Bell, label: 'Deadline Alerts', color: 'text-red-400', state: showDeadlineAlerts },
-                          { key: 'showBgSwitcher', icon: ImageIcon, label: 'Bg Switcher', color: 'text-green-300', state: showBgSwitcher },
+                          { key: 'showDeadlineAlerts', icon: Bell, label: 'Alerts', color: 'text-red-400', state: showDeadlineAlerts },
+                          { key: 'showBgSwitcher', icon: ImageIcon, label: 'Bg Switch', color: 'text-green-300', state: showBgSwitcher },
+                          { key: 'showClock', icon: Clock, label: 'Big Clock', color: 'text-cyan-400', state: showClock },
                         ].map(({ key, icon: Icon, label, color, state }) => (
-                          <div key={key} className="flex items-center justify-between p-2 md:p-2 rounded-lg bg-black/30 border border-white/5">
-                            <div className="flex items-center gap-1.5 md:gap-2 min-w-0 pr-1">
+                          <div key={key} className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-white/5 hover:bg-white/5 transition-colors">
+                            <div className="flex items-center gap-1.5 min-w-0 pr-1">
                               <Icon className={`${color} w-3.5 h-3.5 shrink-0`} />
-                              <span className="text-[9px] md:text-[11px] font-medium truncate">{label}</span>
+                              <span className="text-[9px] md:text-[10px] font-bold text-white/90 break-words">{label}</span>
                             </div>
-                            <button onClick={() => toggleVisibility(key as any)} className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0 ${state ? 'bg-blue-500' : 'bg-white/20'}`}>
-                              <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${state ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                            <button onClick={() => toggleVisibility(key as any)} className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${state ? 'bg-blue-500' : 'bg-white/20'}`}>
+                              <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${state ? 'translate-x-4.5' : 'translate-x-1'}`} />
                             </button>
                           </div>
                         ))}
-
-                        <div className="flex flex-col justify-center p-2 md:p-2 rounded-lg bg-black/30 border border-white/5 col-span-2 sm:col-span-1">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 md:gap-2">
-                              <Clock className="text-cyan-400 w-3.5 h-3.5 shrink-0" />
-                              <span className="text-[9px] md:text-[11px] font-medium">Big Clock</span>
-                            </div>
-                            <button onClick={() => toggleVisibility('showClock')} className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0 ${showClock ? 'bg-blue-500' : 'bg-white/20'}`}>
-                              <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${showClock ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                            </button>
-                          </div>
-                        </div>
                       </div>
                     </div>
 
@@ -1735,31 +1470,28 @@ export default function SettingsModal() {
               )}
 
               {settingsActiveTab === 'sound' && (
-                <div className="flex flex-col gap-4 md:gap-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm md:text-base font-semibold">Sound Settings</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Configure audio ringtones, alarm durations, and interval focus beeps.</p>
+                <div className="flex flex-col gap-3 md:gap-4">
+                  <div className="flex items-start justify-between gap-2 px-1">
+                    <div className="flex flex-col">
+                      <h3 className="text-sm md:text-base font-bold text-white/90">Sound Settings</h3>
+                      <p className="text-white/50 text-[10px] md:text-[11px] leading-snug break-words mt-0.5">Configure audio ringtones, alarm durations, and focus interval beeps.</p>
                     </div>
-                    <button onClick={() => setInfoModalKey('sound')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors mr-1">
-                      <Info className="w-4 h-4" />
+                    <button onClick={() => setInfoModalKey('sound')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 rounded-full transition-colors shrink-0">
+                      <Info className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  <div className="flex flex-col gap-4">
-                    {/* SECTION 1: DEFAULT ALARM RINGTONES (DRAG TO SCROLL LIBRARY) */}
-                    <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-black/20 border border-white/10">
-                      <div className="flex items-center justify-between gap-2 px-0.5">
-                        <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-blue-300 flex items-center gap-1.5">
-                          <Music className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Default Alarm Ringtones</span>
+                  <div className="flex flex-col gap-3">
+                    {/* SECTION 1: DEFAULT ALARM RINGTONES */}
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                      <div className="flex items-center justify-between px-1 pb-1 border-b border-white/5 gap-2">
+                        <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5 break-words">
+                          <Music className="w-3.5 h-3.5" /> Default Ringtones
                         </h4>
-                        <span className="text-[9px] md:text-[10px] text-white/40 italic">Drag or use scroll arrows</span>
+                        <span className="text-[8px] md:text-[9px] text-white/40 italic break-words text-right">Drag to scroll</span>
                       </div>
-                      <p className="text-[9px] md:text-[10px] text-white/50 px-0.5">Select a ringtone from our default library.</p>
 
-                      {/* ScrollableWithArrows Container for Ringtones */}
-                      <div className="h-52 rounded-xl bg-black/40 border border-white/10 overflow-hidden relative">
+                      <div className="h-[28vh] md:h-52 rounded-xl bg-black/40 border border-white/10 overflow-hidden relative mt-1">
                         <ScrollableWithArrows className="p-1.5 flex flex-col gap-1.5" downArrowOffset="bottom-2">
                           {DEFAULT_ALARM_SOUNDS.map((sound) => {
                             const isActive = alarmSound === sound.url || (sound.url === '/ringtones/narutoBGM.mp3' && alarmSound === '/ringtones/alarm.mp3');
@@ -1772,20 +1504,19 @@ export default function SettingsModal() {
                                   stopPreviewAudio();
                                   setAlarmSound(sound.url);
                                 }}
-                                className={`flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all select-none cursor-pointer ${isActive
-                                  ? 'bg-blue-600/30 border-blue-500/70 text-white shadow-md shadow-blue-500/10'
-                                  : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10 text-white/80 hover:text-white'
+                                className={`flex items-center justify-between p-2.5 rounded-lg border transition-all select-none cursor-pointer ${isActive
+                                  ? 'bg-blue-600/20 border-blue-500/50 text-white shadow-sm'
+                                  : 'bg-white/5 border-transparent hover:bg-white/10 text-white/80 hover:text-white'
                                   }`}
                               >
-                                <div className="flex items-center gap-2.5 min-w-0 pr-2 flex-1">
-                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-blue-400 bg-blue-500/30' : 'border-white/30'}`}>
+                                <div className="flex items-start gap-2.5 min-w-0 pr-2 flex-1">
+                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${isActive ? 'border-blue-400 bg-blue-500/30' : 'border-white/30'}`}>
                                     {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
                                   </div>
-                                  <Music className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-blue-300' : 'text-white/40'}`} />
-                                  <span className="text-[11px] md:text-xs font-medium truncate" title={sound.name}>{sound.name}</span>
-                                  {isActive && (
-                                    <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-semibold shrink-0">Active Default</span>
-                                  )}
+                                  <div className="flex flex-col min-w-0 flex-1">
+                                    <span className="text-[10px] md:text-xs font-bold break-words leading-tight">{sound.name}</span>
+                                    {isActive && <span className="text-[8px] md:text-[9px] text-blue-300 font-bold uppercase tracking-wider mt-0.5">Active Default</span>}
+                                  </div>
                                 </div>
 
                                 <button
@@ -1794,10 +1525,9 @@ export default function SettingsModal() {
                                     e.stopPropagation();
                                     handleTogglePreviewAudio(sound.url);
                                   }}
-                                  className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-[9px] cursor-pointer"
-                                  title="Preview sound"
+                                  className="p-1.5 md:p-2 rounded-lg bg-black/40 hover:bg-black/60 border border-white/10 text-white/80 hover:text-white transition-colors shrink-0 flex items-center justify-center cursor-pointer"
                                 >
-                                  {isPreviewing ? <Pause className="w-3 h-3 text-yellow-300 animate-pulse" /> : <Play className="w-3 h-3" />}
+                                  {isPreviewing ? <Pause className="w-3.5 h-3.5 text-yellow-300 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
                                 </button>
                               </div>
                             );
@@ -1807,40 +1537,32 @@ export default function SettingsModal() {
                     </div>
 
                     {/* SECTION 2: CUSTOM RINGTONES */}
-                    <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-black/20 border border-white/10">
-                      <div className="flex items-center justify-between gap-2 px-0.5">
-                        <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-                          <Upload className="w-3.5 h-3.5 text-purple-400" />
-                          <span>Custom Ringtones</span>
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                      <div className="flex items-center justify-between px-1 pb-1 border-b border-white/5 gap-2">
+                        <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-purple-400 flex items-center gap-1.5 break-words">
+                          <Upload className="w-3.5 h-3.5" /> Custom Ringtones
                         </h4>
 
-                        <input
-                          type="file"
-                          ref={audioFileInputRef}
-                          onChange={handleAudioUpload}
-                          accept="audio/*"
-                          className="hidden"
-                        />
+                        <input type="file" ref={audioFileInputRef} onChange={handleAudioUpload} accept="audio/*" className="hidden" />
 
                         <button
                           type="button"
                           onClick={() => audioFileInputRef.current?.click()}
                           disabled={(customAlarmSounds || []).length >= 3}
-                          className={`flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1 rounded-md text-[9px] md:text-[10px] font-medium transition-all border shrink-0 cursor-pointer ${(customAlarmSounds || []).length >= 3
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[9px] md:text-[10px] font-bold transition-all border shrink-0 cursor-pointer ${(customAlarmSounds || []).length >= 3
                             ? 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
-                            : 'bg-purple-600/30 hover:bg-purple-600/50 border-purple-500/40 text-purple-200 hover:text-white'
+                            : 'bg-purple-600/20 hover:bg-purple-600/40 border-purple-500/40 text-purple-200 hover:text-white'
                             }`}
                         >
-                          <Upload className="w-3 h-3 shrink-0" />
+                          <Upload className="w-3 h-3" />
                           <span>Upload ({(customAlarmSounds || []).length}/3)</span>
                         </button>
                       </div>
-                      <p className="text-[9px] md:text-[10px] text-white/50 px-0.5">Upload max 3 custom ringtone files stored in browser database.</p>
 
-                      <div className="grid gap-1.5 md:gap-2 mt-0.5">
+                      <div className="flex flex-col gap-1.5 mt-1">
                         {(customAlarmSounds || []).length === 0 ? (
-                          <div className="p-3 text-center border border-dashed border-white/10 rounded-lg text-white/40 text-[10px] md:text-[11px]">
-                            No custom ringtones uploaded yet.
+                          <div className="p-4 text-center border border-dashed border-white/10 rounded-xl text-white/40 text-[10px] md:text-xs bg-black/20 break-words">
+                            No custom ringtones uploaded yet. Max 3 files.
                           </div>
                         ) : (
                           (customAlarmSounds || []).map((sound) => {
@@ -1849,36 +1571,34 @@ export default function SettingsModal() {
                             return (
                               <div
                                 key={sound.id}
-                                className={`flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all ${isActive
-                                  ? 'bg-purple-500/20 border-purple-500/50'
-                                  : 'bg-black/30 border-white/5 hover:border-white/20'
+                                className={`flex items-center justify-between p-2 md:p-2.5 rounded-xl border transition-all ${isActive
+                                  ? 'bg-purple-500/10 border-purple-500/40 shadow-sm'
+                                  : 'bg-black/40 border-white/5 hover:border-white/10 hover:bg-black/60'
                                   }`}
                               >
                                 <div
-                                  className="flex items-center gap-2 md:gap-2.5 cursor-pointer flex-1 min-w-0 pr-2"
+                                  className="flex items-start gap-2.5 cursor-pointer flex-1 min-w-0 pr-2"
                                   onClick={() => {
                                     stopPreviewAudio();
                                     setAlarmSound(sound.url);
                                   }}
                                 >
-                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-purple-400 bg-purple-500/30' : 'border-white/30'}`}>
+                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${isActive ? 'border-purple-400 bg-purple-500/30' : 'border-white/30'}`}>
                                     {isActive && <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
                                   </div>
-                                  <span className="text-[10px] md:text-[11px] font-medium truncate text-white" title={sound.name}>{sound.name}</span>
-                                  <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold shrink-0">Custom</span>
-                                  {isActive && (
-                                    <span className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-300 font-semibold shrink-0">Active</span>
-                                  )}
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-[10px] md:text-[11px] font-bold break-words leading-tight text-white/90">{sound.name}</span>
+                                    {isActive && <span className="text-[8px] md:text-[9px] text-purple-300 font-bold uppercase tracking-wider mt-0.5">Active Custom</span>}
+                                  </div>
                                 </div>
 
-                                <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center gap-1.5 shrink-0">
                                   <button
                                     type="button"
                                     onClick={() => handleTogglePreviewAudio(sound.url)}
-                                    className="p-1 md:p-1.5 rounded bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors flex items-center gap-1 text-[9px] cursor-pointer"
-                                    title="Preview sound"
+                                    className="p-1.5 md:p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
                                   >
-                                    {isPreviewing ? <Pause className="w-3 h-3 text-yellow-300 animate-pulse" /> : <Play className="w-3 h-3" />}
+                                    {isPreviewing ? <Pause className="w-3.5 h-3.5 text-yellow-300 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
                                   </button>
                                   <button
                                     type="button"
@@ -1889,10 +1609,9 @@ export default function SettingsModal() {
                                       }
                                       deleteCustomAlarmSound(sound.id);
                                     }}
-                                    className="p-1 md:p-1.5 rounded bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white transition-colors cursor-pointer"
-                                    title="Delete custom ringtone"
+                                    className="p-1.5 md:p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
                                   >
-                                    <Trash2 className="w-3 h-3" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               </div>
@@ -1903,112 +1622,97 @@ export default function SettingsModal() {
                     </div>
 
                     {/* SECTION 3: ALARM DURATION & SOUND TOGGLES */}
-                    <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-black/20 border border-white/10">
-                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5 px-0.5">
-                        <Volume2 className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Alarm Duration & Toggles</span>
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                      <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5 px-1 pb-1 border-b border-white/5">
+                        <Volume2 className="w-3.5 h-3.5" /> Alarm Duration & Toggles
                       </h4>
 
-                      <div className="flex flex-col gap-2">
-                        {/* Auto Stop Timer Slider */}
-                        <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-black/30 border border-white/5">
-                          <div className="flex justify-between items-center">
-                            <label className="text-xs md:text-sm font-medium text-white/90">Auto Stop Timer</label>
-                            <span className="text-[9px] md:text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono font-bold">{alarmDurationSecs} Secs</span>
+                      <div className="flex flex-col gap-1.5 mt-1">
+                        {/* Auto Stop Timer */}
+                        <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-black/40 border border-white/5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex flex-col min-w-0">
+                              <label className="text-[11px] md:text-xs font-bold text-white/90 break-words">Auto Stop Timer</label>
+                              <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">How long the alarm rings before stopping automatically.</p>
+                            </div>
+                            <span className="text-[9px] md:text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">{alarmDurationSecs}s</span>
                           </div>
-                          <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">How long should the alarm ring before automatically stopping.</p>
                           <input
-                            type="range"
-                            min="5"
-                            max="120"
-                            step="5"
+                            type="range" min="5" max="120" step="5"
                             value={alarmDurationSecs || 60}
                             onChange={(e) => setAlarmDurationSecs(parseInt(e.target.value))}
-                            className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-amber-400 hover:accent-amber-300 mt-1"
+                            className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-amber-400"
                           />
-                          <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
-                            <span>5s</span>
-                            <span>60s</span>
-                            <span>120s</span>
+                          <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-white/40">
+                            <span>5s</span><span>60s</span><span>120s</span>
                           </div>
                         </div>
 
-                        {/* Enable Alarm Sound */}
-                        <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5">
+                        {/* Enable Sound */}
+                        <div className="flex flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
                           <div className="flex flex-col pr-2 min-w-0">
-                            <span className="text-xs md:text-sm font-medium text-white/90">Enable Alarm Sound</span>
-                            <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Play alarm ringtone when timer completes.</p>
+                            <span className="text-[11px] md:text-xs font-bold text-white/90 break-words">Enable Alarm Sound</span>
+                            <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">Play ringtone when timer completes.</p>
                           </div>
-                          <button
-                            onClick={() => setEnableAlarmSound(!enableAlarmSound)}
-                            className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${enableAlarmSound ? 'bg-blue-500' : 'bg-white/20'}`}
-                          >
-                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${enableAlarmSound ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          <button onClick={() => setEnableAlarmSound(!enableAlarmSound)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${enableAlarmSound ? 'bg-blue-500' : 'bg-white/20'}`}>
+                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${enableAlarmSound ? 'translate-x-4.5' : 'translate-x-1'}`} />
                           </button>
                         </div>
 
-                        {/* Enable Device Vibrate */}
-                        <div className="flex items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/30 border border-white/5">
+                        {/* Enable Vibrate */}
+                        <div className="flex flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
                           <div className="flex flex-col pr-2 min-w-0">
-                            <span className="text-xs md:text-sm font-medium text-white/90">Enable Device Vibration</span>
-                            <p className="text-[9px] md:text-[10px] text-white/50 leading-tight truncate">Vibrate mobile or supported devices on timer end.</p>
+                            <span className="text-[11px] md:text-xs font-bold text-white/90 break-words">Enable Device Vibration</span>
+                            <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">Vibrate supported devices on timer end.</p>
                           </div>
-                          <button
-                            onClick={() => setEnableAlarmVibration(!enableAlarmVibration)}
-                            className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${enableAlarmVibration ? 'bg-blue-500' : 'bg-white/20'}`}
-                          >
-                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${enableAlarmVibration ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          <button onClick={() => setEnableAlarmVibration(!enableAlarmVibration)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${enableAlarmVibration ? 'bg-blue-500' : 'bg-white/20'}`}>
+                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${enableAlarmVibration ? 'translate-x-4.5' : 'translate-x-1'}`} />
                           </button>
                         </div>
                       </div>
                     </div>
 
                     {/* SECTION 4: TASK TIMER INTERVAL ALERTS */}
-                    <div className="flex flex-col gap-2.5 p-3 rounded-xl bg-black/20 border border-white/10">
-                      <h4 className="text-xs md:text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5 px-0.5">
-                        <Bell className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Task Timer Interval Focus Beeps</span>
+                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                      <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5 px-1 pb-1 border-b border-white/5">
+                        <Bell className="w-3.5 h-3.5" /> Interval Focus Beeps
                       </h4>
 
-                      <div className="flex flex-col gap-3 p-2.5 rounded-lg bg-black/30 border border-white/5">
-                        <div className="flex justify-between items-center">
-                          <label className="text-xs md:text-sm font-medium text-white/90">Task Interval Alert Frequency</label>
-                          <span className="text-[9px] md:text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 rounded font-mono font-bold">{taskIntervalAlertMins} Mins</span>
+                      <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-black/40 border border-white/5 mt-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-col min-w-0">
+                            <label className="text-[11px] md:text-xs font-bold text-white/90 break-words">Alert Frequency</label>
+                            <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">Plays a short beep every X mins during active tasks.</p>
+                          </div>
+                          <span className="text-[9px] md:text-[10px] bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">{taskIntervalAlertMins}m</span>
                         </div>
-                        <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">Plays a short focus beep every X minutes while a task timer is actively running.</p>
                         <input
-                          type="range"
-                          min="1"
-                          max="60"
-                          step="1"
+                          type="range" min="1" max="60" step="1"
                           value={taskIntervalAlertMins || 10}
                           onChange={(e) => setTaskIntervalAlertMins(parseInt(e.target.value))}
-                          className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400 hover:accent-cyan-300 mt-1"
+                          className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400 mt-1"
                         />
-                        <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
-                          <span>1m</span>
-                          <span>30m</span>
-                          <span>60m</span>
+                        <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-white/40">
+                          <span>1m</span><span>30m</span><span>60m</span>
                         </div>
 
-                        <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2">
-                          <label className="text-xs md:text-sm font-medium text-white/90">Interval Beep Duration</label>
-                          <span className="text-[9px] md:text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 rounded font-mono font-bold">{taskIntervalRingSecs} Secs</span>
+                        <div className="h-px bg-white/10 w-full my-1.5" />
+
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-col min-w-0">
+                            <label className="text-[11px] md:text-xs font-bold text-white/90 break-words">Beep Duration</label>
+                            <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">How long the interval rings before stopping.</p>
+                          </div>
+                          <span className="text-[9px] md:text-[10px] bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">{taskIntervalRingSecs}s</span>
                         </div>
-                        <p className="text-[9px] md:text-[10px] text-white/50 leading-tight">How long the interval alert should ring before automatically stopping.</p>
                         <input
-                          type="range"
-                          min="1"
-                          max="30"
-                          step="1"
+                          type="range" min="1" max="30" step="1"
                           value={taskIntervalRingSecs || 10}
                           onChange={(e) => setTaskIntervalRingSecs(parseInt(e.target.value))}
-                          className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400 hover:accent-cyan-300 mt-1"
+                          className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400 mt-1"
                         />
-                        <div className="flex justify-between text-[8px] md:text-[9px] text-white/40">
-                          <span>1s</span>
-                          <span>15s</span>
-                          <span>30s</span>
+                        <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-white/40">
+                          <span>1s</span><span>15s</span><span>30s</span>
                         </div>
                       </div>
                     </div>
@@ -2018,42 +1722,44 @@ export default function SettingsModal() {
               )}
 
               {settingsActiveTab === 'quotes' && (
-                <div className="flex flex-col gap-3 md:gap-4 min-h-[60vh]">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm md:text-base font-semibold">Quotes Settings</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Manage your custom motivational quotes.</p>
+                <div className="flex flex-col gap-3 md:gap-4 min-h-[50vh]">
+                  <div className="flex items-start justify-between gap-2 px-1">
+                    <div className="flex flex-col">
+                      <h3 className="text-sm md:text-base font-bold text-white/90">Quotes Settings</h3>
+                      <p className="text-white/50 text-[10px] md:text-[11px] leading-snug break-words mt-0.5">Manage your custom motivational quotes for the dashboard.</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-2 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5">
-                    <div className="flex items-center gap-2 md:gap-3">
-                      <div className="p-1 md:p-1.5 bg-white/5 rounded-md">
+                  <div className="flex flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 gap-3 shadow-sm">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="p-1.5 bg-pink-500/10 rounded-lg border border-pink-500/20 shrink-0">
                         <MessageSquare className="text-pink-400 w-4 h-4" />
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-xs md:text-sm text-white/90">Use Custom Quotes</span>
-                        <span className="text-[9px] md:text-[10px] text-white/50">Show custom list instead of defaults</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold text-[11px] md:text-xs text-white/90 break-words">Use Custom Quotes</span>
+                        <span className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Show your custom list instead of system defaults</span>
                       </div>
                     </div>
                     <button
                       onClick={() => setUseCustomQuotes(!useCustomQuotes)}
-                      className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${useCustomQuotes ? 'bg-pink-500' : 'bg-white/20'}`}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${useCustomQuotes ? 'bg-pink-500' : 'bg-white/20'}`}
                     >
-                      <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${useCustomQuotes ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${useCustomQuotes ? 'translate-x-4.5' : 'translate-x-1'}`} />
                     </button>
                   </div>
 
                   {useCustomQuotes && (
-                    <div className="flex flex-col gap-3">
-                      <div className="bg-black/30 border border-white/10 rounded-lg p-2.5 md:p-3 flex flex-col gap-2">
-                        <h4 className="text-[10px] md:text-xs font-semibold text-white/80">Add New Quote</h4>
+                    <div className="flex flex-col gap-2.5 p-2.5 md:p-3 rounded-xl bg-black/20 border border-white/5">
+
+                      {/* Add new quote form */}
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-2.5 flex flex-col gap-2">
+                        <h4 className="text-[10px] md:text-[11px] font-bold text-white/80 uppercase tracking-wider">Add New Quote</h4>
                         <input
                           type="text"
                           placeholder="Quote text..."
                           value={newQuoteText}
                           onChange={(e) => setNewQuoteText(e.target.value)}
-                          className="w-full bg-black/40 border border-white/10 rounded-md px-2 py-1.5 text-[10px] md:text-xs outline-none focus:border-pink-500/50 placeholder:text-white/40"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-[10px] md:text-xs outline-none focus:border-pink-500/50 placeholder:text-white/30 text-white font-medium shadow-inner"
                         />
                         <div className="flex items-center gap-2">
                           <input
@@ -2061,31 +1767,37 @@ export default function SettingsModal() {
                             placeholder="Author (optional)"
                             value={newQuoteAuthor}
                             onChange={(e) => setNewQuoteAuthor(e.target.value)}
-                            className="flex-1 bg-black/40 border border-white/10 rounded-md px-2 py-1.5 text-[10px] md:text-xs outline-none focus:border-pink-500/50 placeholder:text-white/40"
+                            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-[10px] md:text-xs outline-none focus:border-pink-500/50 placeholder:text-white/30 text-white font-medium shadow-inner"
                           />
-                          <button onClick={handleAddQuote} className="bg-pink-500/80 hover:bg-pink-500 text-white px-3 py-1.5 rounded text-[10px] md:text-xs font-medium transition-colors">Add</button>
+                          <button onClick={handleAddQuote} className="bg-pink-500/20 border border-pink-500/30 hover:bg-pink-500 text-pink-300 hover:text-white px-4 py-2 rounded-lg text-[10px] md:text-xs font-bold transition-all active:scale-95 shrink-0">
+                            Add
+                          </button>
                         </div>
                       </div>
 
-                      <div className="flex justify-between items-center px-1">
-                        <span className="text-[10px] md:text-xs font-medium text-white/60">Your Quotes ({customQuotes.length}/50)</span>
-                        <button onClick={() => setShowBulkAddModal(true)} className="text-[10px] md:text-xs text-pink-400 hover:text-pink-300 font-medium">Bulk Add JSON</button>
+                      <div className="flex justify-between items-center px-1 pt-1 border-t border-white/5 mt-1">
+                        <span className="text-[10px] md:text-[11px] font-bold text-white/70">Your Quotes ({customQuotes.length}/50)</span>
+                        <button onClick={() => setShowBulkAddModal(true)} className="text-[9px] md:text-[10px] text-pink-400 hover:text-pink-300 font-bold bg-pink-500/10 px-2 py-1 rounded border border-pink-500/20 transition-colors">
+                          Bulk Add JSON
+                        </button>
                       </div>
 
-                      <div className="flex flex-col gap-2 h-[30vh]">
-                        <ScrollableWithArrows>
-                          <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-2 h-[25vh] md:h-[30vh]">
+                        <ScrollableWithArrows className="custom-scrollbar pr-1">
+                          <div className="flex flex-col gap-1.5">
                             {customQuotes.length === 0 ? (
-                              <div className="text-center py-4 text-[10px] md:text-xs text-white/40 italic bg-black/20 rounded-lg">No custom quotes added.</div>
+                              <div className="text-center py-6 text-[10px] md:text-xs text-white/40 italic bg-black/30 rounded-xl border border-white/5 break-words px-2">
+                                No custom quotes added. Add some above!
+                              </div>
                             ) : (
                               customQuotes.map((q, idx) => (
-                                <div key={idx} className="flex justify-between items-start p-2 bg-white/5 border border-white/10 rounded-lg gap-2">
-                                  <div className="flex flex-col min-w-0 pointer-events-none">
-                                    <span className="text-[10px] md:text-[11px] text-white/90 break-words leading-snug">"{q.text}"</span>
-                                    <span className="text-[8px] md:text-[9px] text-pink-300 mt-0.5">- {q.author}</span>
+                                <div key={idx} className="flex items-start justify-between p-2.5 bg-black/40 border border-white/5 rounded-xl gap-2 hover:bg-black/60 transition-colors">
+                                  <div className="flex flex-col min-w-0 pr-2">
+                                    <span className="text-[10px] md:text-[11px] text-white/90 break-words leading-snug font-medium">"{q.text}"</span>
+                                    <span className="text-[8px] md:text-[9px] text-pink-300/80 font-bold tracking-wide mt-1">- {q.author || 'Unknown'}</span>
                                   </div>
-                                  <button onClick={() => handleDeleteQuote(idx)} className="p-1 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors shrink-0">
-                                    <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                                  <button onClick={() => handleDeleteQuote(idx)} className="p-1.5 text-white/30 hover:text-red-400 bg-white/5 hover:bg-red-500/10 rounded-lg transition-colors shrink-0">
+                                    <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                   </button>
                                 </div>
                               ))
@@ -2096,108 +1808,103 @@ export default function SettingsModal() {
                     </div>
                   )}
 
-                  {/* MANIFESTATION BOARD CUSTOM QUOTES SECTION */}
-                  <div className="flex flex-col gap-3 mt-2 pt-3 border-t border-white/10">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="p-1 md:p-1.5 bg-amber-500/20 text-amber-300 rounded-md border border-amber-500/30">
+                  {/* MANIFESTATION BOARD QUOTES */}
+                  <div className="flex flex-col gap-2.5 mt-1 bg-white/[0.03] border border-white/10 rounded-xl p-2.5 md:p-3 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-white/5 pb-2.5">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg border border-amber-500/20 shrink-0">
                           <Sparkles className="w-4 h-4 animate-pulse" />
                         </div>
-                        <div>
-                          <h4 className="font-bold text-xs md:text-sm text-amber-300">Manifestation Board Quotes</h4>
-                          <p className="text-[9px] md:text-[10px] text-white/50">Add custom quotes (max 30) for your manifestation overlay header.</p>
+                        <div className="flex flex-col min-w-0">
+                          <h4 className="font-bold text-[11px] md:text-xs text-amber-300 break-words">Manifestation Board Quotes</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Add custom phrases (max 30) for your vision board overlay.</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
                         <button
                           onClick={() => setShowBulkAddManifestation(!showBulkAddManifestation)}
-                          className="text-[10px] md:text-xs text-amber-400 hover:text-amber-300 font-semibold underline transition-colors cursor-pointer"
+                          className="text-[9px] md:text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-1 rounded hover:bg-amber-500/20 font-bold transition-colors cursor-pointer"
                         >
                           {showBulkAddManifestation ? 'Hide Bulk' : 'Bulk Add'}
                         </button>
-                        <span className="text-[10px] md:text-xs font-mono font-bold text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-500/30">
-                          {(manifestationCustomQuotes || []).length} / 30
+                        <span className="text-[9px] md:text-[10px] font-mono font-bold text-amber-300 bg-black/40 px-1.5 py-0.5 rounded border border-white/10">
+                          {(manifestationCustomQuotes || []).length}/30
                         </span>
                       </div>
                     </div>
 
                     {showBulkAddManifestation && (
-                      <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-2.5 flex flex-col gap-2 transition-all">
+                      <div className="bg-black/60 border border-amber-500/20 rounded-xl p-2.5 flex flex-col gap-2 shadow-inner">
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] md:text-xs font-bold text-amber-300">Bulk Add Quotes</span>
-                          <button
-                            onClick={() => setShowBulkAddManifestation(false)}
-                            className="text-[9px] text-white/50 hover:text-white cursor-pointer"
-                          >
-                            Close
+                          <span className="text-[10px] md:text-[11px] font-bold text-amber-300 uppercase tracking-wider">Bulk Import Text</span>
+                          <button onClick={() => setShowBulkAddManifestation(false)} className="p-0.5 text-white/40 hover:text-white bg-white/5 rounded">
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <p className="text-[9px] text-white/60 leading-tight">
-                          Paste multiple quotes line-by-line OR as a JSON array <code>["Quote 1", "Quote 2"]</code>. Max 30 quotes.
+                        <p className="text-[8px] md:text-[9px] text-white/50 leading-tight break-words">
+                          Paste multiple lines or a JSON array <code>["Quote 1", "Quote 2"]</code>.
                         </p>
                         <textarea
                           value={bulkManifestationInput}
                           onChange={(e) => setBulkManifestationInput(e.target.value)}
                           rows={4}
-                          placeholder="Line 1: I am focused and determined&#10;Line 2: Every small step counts&#10;Line 3: Success is a daily habit"
-                          className="w-full bg-black/60 border border-amber-500/30 rounded-md p-2 text-[10px] md:text-xs font-mono text-amber-100 outline-none focus:border-amber-500/60 resize-none placeholder:text-white/30"
+                          placeholder="Line 1: I am focused&#10;Line 2: Every small step counts"
+                          className="w-full bg-black/40 border border-amber-500/20 rounded-lg p-2 text-[10px] md:text-xs font-mono text-amber-100/90 outline-none focus:border-amber-500/50 resize-none placeholder:text-white/20 custom-scrollbar"
                         />
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end mt-0.5">
                           <button
                             onClick={handleBulkAddManifestationQuotes}
-                            className="bg-amber-500 hover:bg-amber-400 text-black px-3 py-1 rounded text-[10px] md:text-xs font-bold transition-colors cursor-pointer"
+                            className="bg-amber-500/20 border border-amber-500/30 hover:bg-amber-500 text-amber-200 hover:text-black px-4 py-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
                           >
-                            Import Quotes
+                            Import Now
                           </button>
                         </div>
                       </div>
                     )}
 
-                    <div className="bg-black/30 border border-white/10 rounded-lg p-2.5 md:p-3 flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          placeholder="Type manifestation quote..."
-                          value={newManifestationQuoteText}
-                          onChange={(e) => setNewManifestationQuoteText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddManifestationQuote();
-                            }
-                          }}
-                          className="flex-1 bg-black/40 border border-white/10 rounded-md px-2.5 py-1.5 text-[10px] md:text-xs outline-none focus:border-amber-500/50 placeholder:text-white/40 text-white"
-                        />
-                        <button
-                          onClick={handleAddManifestationQuote}
-                          disabled={(manifestationCustomQuotes || []).length >= 30}
-                          className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black px-3 py-1.5 rounded-md text-[10px] md:text-xs font-bold transition-all shrink-0 cursor-pointer"
-                        >
-                          Add Quote
-                        </button>
-                      </div>
-                      {(manifestationCustomQuotes || []).length > 0 && (
-                        <p className="text-[9px] text-amber-300/80 italic">
-                          ✨ Custom quotes active! These automatically replace default quotes across all synced devices.
-                        </p>
-                      )}
+                    <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-white/5">
+                      <input
+                        type="text"
+                        placeholder="Type manifestation quote..."
+                        value={newManifestationQuoteText}
+                        onChange={(e) => setNewManifestationQuoteText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddManifestationQuote();
+                          }
+                        }}
+                        className="flex-1 bg-transparent px-2 text-[10px] md:text-xs outline-none placeholder:text-white/30 text-white font-medium"
+                      />
+                      <button
+                        onClick={handleAddManifestationQuote}
+                        disabled={(manifestationCustomQuotes || []).length >= 30}
+                        className="bg-amber-500/20 hover:bg-amber-500 disabled:opacity-30 text-amber-300 hover:text-black px-3 py-1.5 rounded-md text-[10px] font-bold transition-all shrink-0 border border-amber-500/30 hover:border-amber-500"
+                      >
+                        Add
+                      </button>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 max-h-[22vh] overflow-y-auto pr-1">
+                    {(manifestationCustomQuotes || []).length > 0 && (
+                      <p className="text-[8.5px] md:text-[9.5px] text-amber-300/70 italic px-1 break-words">
+                        ✨ Custom quotes are active and sync across devices!
+                      </p>
+                    )}
+
+                    <div className="flex flex-col gap-1.5 max-h-[22vh] overflow-y-auto custom-scrollbar pr-1 mt-1">
                       {(manifestationCustomQuotes || []).length === 0 ? (
-                        <div className="text-center py-3 text-[10px] md:text-xs text-white/40 italic bg-black/20 rounded-lg border border-white/5">
-                          No custom manifestation quotes added yet. Default quotes will be shown.
+                        <div className="text-center py-4 text-[10px] md:text-[11px] text-white/40 italic bg-black/20 rounded-xl border border-white/5 px-2 break-words">
+                          No custom quotes added. Default vision board quotes will show.
                         </div>
                       ) : (
                         (manifestationCustomQuotes || []).map((q, idx) => (
-                          <div key={idx} className="flex justify-between items-center p-2 bg-black/30 border border-amber-500/20 rounded-lg gap-2">
-                            <span className="text-[10px] md:text-[11px] text-amber-200/90 font-medium italic break-words leading-snug">
+                          <div key={idx} className="flex justify-between items-center p-2 md:p-2.5 bg-black/40 border border-amber-500/10 hover:border-amber-500/20 rounded-xl gap-2 transition-colors">
+                            <span className="text-[10px] md:text-[11px] text-amber-100/90 font-medium italic break-words leading-snug">
                               "{q}"
                             </span>
                             <button
                               onClick={() => deleteManifestationCustomQuote(idx)}
-                              className="p-1 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors shrink-0 cursor-pointer"
-                              title="Delete Quote"
+                              className="p-1.5 text-white/30 hover:text-red-400 bg-white/5 hover:bg-red-500/10 rounded-lg transition-colors shrink-0 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -2207,58 +1914,71 @@ export default function SettingsModal() {
                     </div>
                   </div>
 
+                  {/* Bulk Add Quotes JSON Modal */}
                   {showBulkAddModal && (
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col p-4 md:rounded-r-3xl">
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-sm font-bold">Bulk Add Quotes (JSON)</h4>
-                        <button onClick={() => setShowBulkAddModal(false)} className="p-1 text-white/60 hover:text-white bg-white/10 rounded-full"><X className="w-4 h-4" /></button>
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-xl z-50 flex flex-col p-4 md:p-6 md:rounded-r-3xl animate-in fade-in">
+                      <div className="flex justify-between items-center mb-4 bg-white/5 p-3 rounded-xl border border-white/10">
+                        <div className="flex items-center gap-2">
+                          <Code className="text-pink-400 w-4 h-4" />
+                          <h4 className="text-xs md:text-sm font-bold uppercase tracking-widest text-white/90">Bulk Import JSON</h4>
+                        </div>
+                        <button onClick={() => setShowBulkAddModal(false)} className="p-1.5 text-white/50 hover:text-white bg-black/40 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
                       </div>
-                      <p className="text-[10px] text-white/60 mb-2">Format: <code>{`[{"text": "Quote here", "author": "Author Name"}]`}</code></p>
+                      <p className="text-[9px] md:text-[10px] text-white/60 mb-2 px-1 break-words">Format must be valid JSON: <code>{`[{"text": "Quote here", "author": "Author Name"}]`}</code></p>
                       <textarea
                         value={bulkQuotesJson}
                         onChange={(e) => setBulkQuotesJson(e.target.value)}
-                        className="flex-1 bg-black/60 border border-white/20 rounded-lg p-3 text-[10px] md:text-xs font-mono outline-none focus:border-pink-500/50 text-white/80 resize-none"
+                        className="flex-1 w-full bg-black/50 border border-pink-500/20 rounded-xl p-3 md:p-4 text-[10px] md:text-xs font-mono outline-none focus:border-pink-500/50 text-pink-100/80 resize-none custom-scrollbar shadow-inner"
                         placeholder='[\n  {"text": "Stay hungry, stay foolish.", "author": "Steve Jobs"}\n]'
                       />
-                      <button onClick={handleBulkAddQuotes} className="mt-3 bg-pink-500/80 hover:bg-pink-500 text-white py-2 rounded-lg text-xs font-bold transition-colors">Import JSON</button>
+                      <div className="flex justify-end mt-3">
+                        <button onClick={handleBulkAddQuotes} className="bg-pink-500 hover:bg-pink-400 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-lg active:scale-95">Import JSON</button>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
 
               {settingsActiveTab === 'wallpaper' && (
-                <div className="flex flex-col gap-4 md:gap-6 h-full pb-4">
+                <div className="flex flex-col gap-3 md:gap-4 h-full pb-2">
+                  <div className="flex items-start justify-between gap-2 px-1">
+                    <div className="flex flex-col">
+                      <h3 className="text-sm md:text-base font-bold text-white/90">Wallpapers</h3>
+                      <p className="text-white/50 text-[10px] md:text-[11px] leading-snug break-words mt-0.5">Customize backgrounds for desktop and mobile layouts.</p>
+                    </div>
+                  </div>
 
-
-                  <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-black/40 border border-blue-500/30 gap-2 shadow-sm overflow-hidden shrink-0">
-                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                      <div className="p-1.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
-                        <MonitorPlay className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+                  {/* PC Wallpaper Tutorial Banner */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-blue-900/30 to-indigo-900/20 border border-blue-500/20 gap-2 shadow-sm shrink-0">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/20 shrink-0">
+                        <MonitorPlay className="w-4 h-4 text-blue-400" />
                       </div>
-                      <div className="min-w-0">
-                        <h4 className="text-[10px] sm:text-xs font-bold text-white flex items-center gap-1.5 truncate">
-                          <span className="truncate">PC Wallpaper</span>
-                          <span className="hidden sm:inline-flex items-center text-[8px] bg-blue-500/30 text-blue-200 border border-blue-500/40 px-1 py-0.5 rounded shrink-0">Tutorial</span>
+                      <div className="flex flex-col min-w-0">
+                        <h4 className="text-[11px] md:text-xs font-bold text-white/90 flex items-center gap-1.5 flex-wrap">
+                          <span className="break-words">PC Wallpaper Background</span>
+                          <span className="text-[8px] bg-blue-500/30 text-blue-200 border border-blue-500/40 px-1.5 py-0.5 rounded font-bold">Tutorial</span>
                         </h4>
-                        <p className="text-[9px] sm:text-[10px] text-white/60 leading-tight mt-0.5 truncate max-w-[200px] sm:max-w-none">
-                          Set up interactive desktop background via Lively.
+                        <p className="text-[9px] md:text-[10px] text-white/60 leading-snug mt-0.5 break-words">
+                          Learn how to set up an interactive desktop background via Lively.
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => setIsWallpaperTutorialOpen(true)}
-                      className="px-2 py-1.5 sm:px-3 sm:py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-md font-bold text-[9px] sm:text-[10px] shadow-sm shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
+                      className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg font-bold text-[10px] shadow-sm active:scale-95 transition-all w-full sm:w-auto text-center shrink-0 flex justify-center items-center gap-1.5"
                     >
-                      <MonitorPlay className="w-3 h-3 text-blue-300 hidden sm:block" />
-                      <span>Setup Guide</span>
+                      <MonitorPlay className="w-3 h-3 text-blue-300 hidden sm:block" /> Setup Guide
                     </button>
                   </div>
 
-                  <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-4">
+                  <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4">
                     {/* Desktop Wallpapers */}
-                    <div className="bg-white/5 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 flex flex-col gap-2.5 md:gap-3">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-                        <h4 className="font-medium text-[10px] md:text-[11px] text-blue-300">Desktop Wallpapers</h4>
+                    <div className="bg-white/[0.03] border border-white/10 rounded-xl p-3 md:p-4 flex flex-col gap-2.5 shadow-sm">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <h4 className="font-bold text-[11px] md:text-xs text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <Monitor className="w-3.5 h-3.5" /> Desktop
+                        </h4>
                         {customDesktopWallpapers.length > 0 && (
                           <button
                             type="button"
@@ -2277,15 +1997,14 @@ export default function SettingsModal() {
                                 }
                               });
                             }}
-                            className="flex items-center gap-1 text-[9px] md:text-[10px] px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-100 transition-colors border border-red-500/30 cursor-pointer"
+                            className="flex items-center gap-1 text-[9px] px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors border border-red-500/20 cursor-pointer font-bold"
                           >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Delete All</span>
+                            <Trash2 className="w-3 h-3" /> Delete All
                           </button>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 md:gap-2.5">
+                      <div className="grid grid-cols-2 gap-2 mt-1">
                         {customDesktopWallpapers.map((url, i) => (
                           <CustomWallpaperPreview
                             key={`desktop-wp-${i}`}
@@ -2317,13 +2036,11 @@ export default function SettingsModal() {
                       </div>
 
                       {customDesktopWallpapers.length < 4 && (
-                        <div className="flex gap-2 w-full">
-                          <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 mt-1 bg-white/5 hover:bg-white/10 border border-white/10 border-dashed rounded text-[9px] md:text-[10px] text-white/60 hover:text-white cursor-pointer transition-colors">
-                            <Plus className="w-3 h-3" /> Upload File
+                        <div className="flex gap-2 w-full mt-1">
+                          <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-black/40 hover:bg-black/60 border border-white/10 border-dashed rounded-lg text-[9px] md:text-[10px] text-white/60 hover:text-white cursor-pointer transition-colors font-semibold">
+                            <Plus className="w-3.5 h-3.5" /> File
                             <input
-                              type="file"
-                              accept="image/*,video/*"
-                              className="hidden"
+                              type="file" accept="image/*,video/*" className="hidden"
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
@@ -2331,7 +2048,6 @@ export default function SettingsModal() {
                                   showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }
-                                // Always use an IndexedDB key — NEVER base64/dataUrl strings
                                 const id = `custom-desktop-${Date.now()}`;
                                 await saveWallpaperToDB(id, file);
                                 setCustomDesktopWallpapers([...customDesktopWallpapers, id]);
@@ -2343,11 +2059,7 @@ export default function SettingsModal() {
                           <button
                             onClick={() => {
                               setConfirmModal({
-                                isOpen: true,
-                                title: 'Add Wallpaper URL',
-                                message: 'Enter a direct image or video URL (https://...):',
-                                isPrompt: true,
-                                promptPlaceholder: 'https://...',
+                                isOpen: true, title: 'Add Wallpaper URL', message: 'Enter direct image or video URL (https://...):', isPrompt: true, promptPlaceholder: 'https://...',
                                 onConfirm: (url?: string) => {
                                   if (url && url.trim().startsWith('http')) {
                                     setCustomDesktopWallpapers([...customDesktopWallpapers, url.trim()]);
@@ -2356,18 +2068,20 @@ export default function SettingsModal() {
                                 }
                               });
                             }}
-                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 mt-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/60 hover:text-white transition-colors"
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-black/40 hover:bg-black/60 border border-white/10 rounded-lg text-[9px] md:text-[10px] text-white/60 hover:text-white transition-colors font-semibold"
                           >
-                            Add URL
+                            <LinkIcon className="w-3.5 h-3.5" /> URL
                           </button>
                         </div>
                       )}
                     </div>
 
                     {/* Mobile Wallpapers */}
-                    <div className="bg-white/5 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 flex flex-col gap-2.5 md:gap-3">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-                        <h4 className="font-medium text-[10px] md:text-[11px] text-pink-300">Mobile Wallpapers</h4>
+                    <div className="bg-white/[0.03] border border-white/10 rounded-xl p-3 md:p-4 flex flex-col gap-2.5 shadow-sm">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <h4 className="font-bold text-[11px] md:text-xs text-pink-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <Smartphone className="w-3.5 h-3.5" /> Mobile
+                        </h4>
                         {customMobileWallpapers.length > 0 && (
                           <button
                             type="button"
@@ -2386,15 +2100,14 @@ export default function SettingsModal() {
                                 }
                               });
                             }}
-                            className="flex items-center gap-1 text-[9px] md:text-[10px] px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-100 transition-colors border border-red-500/30 cursor-pointer"
+                            className="flex items-center gap-1 text-[9px] px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors border border-red-500/20 cursor-pointer font-bold"
                           >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Delete All</span>
+                            <Trash2 className="w-3 h-3" /> Delete All
                           </button>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 md:gap-2.5">
+                      <div className="grid grid-cols-2 gap-2 mt-1">
                         {customMobileWallpapers.map((url, i) => (
                           <CustomWallpaperPreview
                             key={`mobile-wp-${i}`}
@@ -2426,13 +2139,11 @@ export default function SettingsModal() {
                       </div>
 
                       {customMobileWallpapers.length < 4 && (
-                        <div className="flex gap-2 w-full">
-                          <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 mt-1 bg-white/5 hover:bg-white/10 border border-white/10 border-dashed rounded text-[9px] md:text-[10px] text-white/60 hover:text-white cursor-pointer transition-colors">
-                            <Plus className="w-3 h-3" /> Upload File
+                        <div className="flex gap-2 w-full mt-1">
+                          <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-black/40 hover:bg-black/60 border border-white/10 border-dashed rounded-lg text-[9px] md:text-[10px] text-white/60 hover:text-white cursor-pointer transition-colors font-semibold">
+                            <Plus className="w-3.5 h-3.5" /> File
                             <input
-                              type="file"
-                              accept="image/*,video/*"
-                              className="hidden"
+                              type="file" accept="image/*,video/*" className="hidden"
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
@@ -2440,7 +2151,6 @@ export default function SettingsModal() {
                                   showAlertModal('File Too Large', 'Maximum allowed file size is 25MB.');
                                   return;
                                 }
-                                // Always use an IndexedDB key — NEVER base64/dataUrl strings
                                 const id = `custom-mobile-${Date.now()}`;
                                 await saveWallpaperToDB(id, file);
                                 setCustomMobileWallpapers([...customMobileWallpapers, id]);
@@ -2452,11 +2162,7 @@ export default function SettingsModal() {
                           <button
                             onClick={() => {
                               setConfirmModal({
-                                isOpen: true,
-                                title: 'Add Wallpaper URL',
-                                message: 'Enter a direct image or video URL (https://...):',
-                                isPrompt: true,
-                                promptPlaceholder: 'https://...',
+                                isOpen: true, title: 'Add Wallpaper URL', message: 'Enter direct image or video URL (https://...):', isPrompt: true, promptPlaceholder: 'https://...',
                                 onConfirm: (url?: string) => {
                                   if (url && url.trim().startsWith('http')) {
                                     setCustomMobileWallpapers([...customMobileWallpapers, url.trim()]);
@@ -2465,9 +2171,9 @@ export default function SettingsModal() {
                                 }
                               });
                             }}
-                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 mt-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/60 hover:text-white transition-colors"
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-black/40 hover:bg-black/60 border border-white/10 rounded-lg text-[9px] md:text-[10px] text-white/60 hover:text-white transition-colors font-semibold"
                           >
-                            Add URL
+                            <LinkIcon className="w-3.5 h-3.5" /> URL
                           </button>
                         </div>
                       )}
@@ -2476,104 +2182,130 @@ export default function SettingsModal() {
 
                   {/* Reset selection */}
                   {(activeDesktopCustomIndex !== null || activeMobileCustomIndex !== null) && (
-                    <div className="flex justify-center mt-1 md:mt-2">
+                    <div className="flex justify-center mt-2">
                       <button
                         onClick={() => {
                           setActiveDesktopCustomIndex(null);
                           setActiveMobileCustomIndex(null);
                         }}
-                        className="px-3 py-1.5 md:px-3 md:py-1.5 bg-red-500/20 text-red-300 hover:bg-red-500 hover:text-white rounded text-[10px] md:text-[11px] font-bold transition-all border border-red-500/30"
+                        className="px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-[10px] md:text-[11px] font-bold transition-all shadow-sm flex items-center gap-1.5"
                       >
-                        Clear Active Selections
+                        <X className="w-3.5 h-3.5" /> Clear Active Selections
                       </button>
                     </div>
                   )}
 
-
                 </div>
               )}
 
-
-
               {settingsActiveTab === 'focus' && (
-                <div className="flex flex-col gap-3 md:gap-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm md:text-base font-semibold">Focus & Peek Mode</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Configure visibility shortcuts.</p>
+                <div className="flex flex-col gap-3 md:gap-4 h-full pb-4">
+                  <div className="flex items-start justify-between gap-2 px-1">
+                    <div className="flex flex-col">
+                      <h3 className="text-sm md:text-base font-bold text-white/90">Focus & Peek Mode</h3>
+                      <p className="text-white/50 text-[10px] md:text-[11px] leading-snug break-words mt-0.5">Configure visibility shortcuts and custom peek backgrounds.</p>
                     </div>
-                    <button onClick={() => setInfoModalKey('panic')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors mr-1">
-                      <Info className="w-4 h-4" />
+                    <button onClick={() => setInfoModalKey('panic')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 rounded-full transition-colors shrink-0">
+                      <Info className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  <div className="flex flex-col p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
-                    <h4 className="font-medium text-[11px] md:text-xs">Visibility Shortcuts</h4>
+                  {/* SECTION 1: VISIBILITY SHORTCUTS & PEEK MODE */}
+                  <div className="flex flex-col gap-2.5 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                    <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-red-400 flex items-center gap-1.5 px-1 pb-1 border-b border-white/5 break-words">
+                      <EyeOff className="w-3.5 h-3.5" /> Visibility Shortcuts
+                    </h4>
 
-
-                    <div className="p-2 md:p-2 rounded-md bg-red-500/10 border border-red-500/20 flex flex-col gap-1">
-                      <p className="text-[8px] md:text-[9px] text-red-300 leading-relaxed">
-                        <strong className="text-red-400">Mobile Peek:</strong> Tap the <strong className="text-white">Eye Icon</strong> right side to trigger!
+                    <div className="p-2 md:p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 mt-1">
+                      <p className="text-[9px] md:text-[10px] text-red-200/90 leading-relaxed break-words">
+                        <strong className="text-red-400">Mobile Triggers:</strong> Tap the <strong className="text-white">Eye Icon</strong> on the right edge of your screen!
                       </p>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 bg-white/5 p-2 md:p-2.5 rounded-md">
-                      <div>
-                        <p className="text-[10px] md:text-[11px] font-bold text-red-400">Peek Mode</p>
-                        <p className="text-[8px] md:text-[9px] text-white/50 mt-0.5">Hide all widgets instantly.</p>
-                      </div>
-                      <div className="flex items-start gap-1.5 shrink-0">
-                        {/* Input and Info Text Wrapper */}
-                        <div className="flex flex-col items-center gap-1">
-                          <input
-                            type="text"
-                            value={formatShortcutText(panicShortcutKey)}
-                            onKeyDown={(e) => handleShortcutCapture(e, setPanicShortcutKey)}
-                            readOnly
-                            placeholder="Keys..."
-                            className="w-24 md:w-32 h-6 md:h-7 px-1.5 bg-black/40 border border-white/10 rounded text-center text-white outline-none focus:border-red-400 font-bold uppercase text-[9px] md:text-[10px]"
-                          />
-                          <p className="text-[7px] md:text-[8px] text-white/40 italic">
-                            Click & press keys to set
-                          </p>
+                    <div className="flex flex-col gap-2">
+                      {/* Peek Mode Trigger */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3 shadow-inner">
+                        <div className="flex flex-col min-w-0">
+                          <p className="text-[11px] md:text-xs font-bold text-red-400 break-words">Peek Mode Trigger</p>
+                          <p className="text-[9px] md:text-[10px] text-white/50 mt-0.5 leading-snug break-words">Hide all widgets instantly with this keyboard shortcut.</p>
                         </div>
+                        <div className="flex items-start gap-2 shrink-0 self-end sm:self-auto w-full sm:w-auto">
+                          <div className="flex flex-col items-center gap-1 flex-1 sm:flex-none">
+                            <input
+                              type="text"
+                              value={formatShortcutText(panicShortcutKey)}
+                              onKeyDown={(e) => handleShortcutCapture(e, setPanicShortcutKey)}
+                              readOnly
+                              placeholder="Keys..."
+                              className="w-full sm:w-28 h-7 md:h-8 px-2 bg-black/60 border border-white/10 rounded-md text-center text-white/90 outline-none focus:border-red-400/50 font-bold uppercase text-[9px] md:text-[10px]"
+                            />
+                            <p className="text-[8px] text-white/40 italic break-words">Click & press keys</p>
+                          </div>
+                          <button
+                            onClick={() => togglePanicHide()}
+                            className="h-7 md:h-8 px-3 md:px-4 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-md border border-red-500/30 text-[9px] md:text-[10px] font-bold uppercase transition-colors shrink-0"
+                          >
+                            Trigger
+                          </button>
+                        </div>
+                      </div>
 
-                        <button
-                          onClick={() => togglePanicHide()}
-                          className="px-2 py-1 md:px-2.5 md:py-1 bg-red-500/20 text-red-300 rounded border border-red-500/30 text-[9px] md:text-[10px] font-bold uppercase h-6 md:h-7"
-                        >
-                          Trigger
-                        </button>
+                      {/* Focus Mode Trigger */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3 shadow-inner">
+                        <div className="flex flex-col min-w-0">
+                          <p className="text-[11px] md:text-xs font-bold text-blue-400 break-words">Focus Mode Trigger</p>
+                          <p className="text-[9px] md:text-[10px] text-white/50 mt-0.5 leading-snug break-words">Hide selected widgets below with this keyboard shortcut.</p>
+                        </div>
+                        <div className="flex items-start gap-2 shrink-0 self-end sm:self-auto w-full sm:w-auto">
+                          <div className="flex flex-col items-center gap-1 flex-1 sm:flex-none">
+                            <input
+                              type="text"
+                              value={formatShortcutText(focusShortcutKey)}
+                              onKeyDown={(e) => handleShortcutCapture(e, setFocusShortcutKey)}
+                              readOnly
+                              placeholder="Keys..."
+                              className="w-full sm:w-28 h-7 md:h-8 px-2 bg-black/60 border border-white/10 rounded-md text-center text-white/90 outline-none focus:border-blue-400/50 font-bold uppercase text-[9px] md:text-[10px]"
+                            />
+                            <p className="text-[8px] text-white/40 italic break-words">Click & press keys</p>
+                          </div>
+                          <button
+                            onClick={() => toggleHide()}
+                            className="h-7 md:h-8 px-3 md:px-4 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-md border border-blue-500/30 text-[9px] md:text-[10px] font-bold uppercase transition-colors shrink-0"
+                          >
+                            Trigger
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-2 md:p-2.5 rounded-md bg-white/5">
-                      <div className="flex items-center gap-2 min-w-0 pr-1">
-                        <ImageIcon className="text-red-400 w-3.5 h-3.5 shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-[9px] md:text-[11px] font-medium block leading-tight truncate">Switch Wallpaper on Peek</span>
+                    <div className="flex flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3 mt-1">
+                      <div className="flex items-start gap-2.5 min-w-0 pr-2">
+                        <ImageIcon className="text-red-400 w-4 h-4 mt-0.5 shrink-0" />
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[11px] md:text-xs font-bold text-white/90 break-words">Switch Wallpaper on Peek</span>
+                          <span className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Change background image when Peek Mode is active.</span>
                         </div>
                       </div>
-                      <button onClick={() => setPanicWallpaperSwitch(!panicWallpaperSwitch)} className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors shrink-0 ${panicWallpaperSwitch ? 'bg-red-500' : 'bg-white/20'}`}>
-                        <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${panicWallpaperSwitch ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                      <button onClick={() => setPanicWallpaperSwitch(!panicWallpaperSwitch)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${panicWallpaperSwitch ? 'bg-red-500' : 'bg-white/20'}`}>
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${panicWallpaperSwitch ? 'translate-x-4.5' : 'translate-x-1'}`} />
                       </button>
                     </div>
 
                     {/* Custom Peek Mode Background Setting */}
-                    <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-md bg-white/5 border border-white/10">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <ImageIcon className="text-red-400 w-3.5 h-3.5 shrink-0" />
-                          <div>
-                            <span className="text-[10px] md:text-[11px] font-bold text-red-300 block">Peek Mode Custom Image</span>
-                            <p className="text-[8px] md:text-[9px] text-white/50">Upload or choose a custom background image/video for Peek Mode on this device.</p>
+                    <div className="flex flex-col gap-2.5 p-2.5 md:p-3 rounded-lg bg-white/5 border border-white/10 mt-1">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <ImageIcon className="text-red-400 w-4 h-4 mt-0.5 shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[11px] md:text-xs font-bold text-red-300 break-words">Peek Mode Custom Background</span>
+                            <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Upload or choose a custom image/video for Peek Mode on this device.</p>
                           </div>
                         </div>
                         {peekModeWallpaper && (
                           <button
                             type="button"
                             onClick={() => setPeekModeWallpaper(null)}
-                            className="px-2 py-0.5 bg-red-500/20 text-red-300 hover:bg-red-500/40 rounded text-[9px] font-semibold border border-red-500/30 transition-colors cursor-pointer"
+                            className="px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-300 rounded-md text-[9px] md:text-[10px] font-bold border border-red-500/20 transition-colors shrink-0 self-start sm:self-auto"
                           >
                             Clear Selection
                           </button>
@@ -2581,7 +2313,7 @@ export default function SettingsModal() {
                       </div>
 
                       {peekModeWallpaper && (
-                        <div className="w-full max-w-[200px] mt-1">
+                        <div className="w-full max-w-[220px] mt-1">
                           <CustomWallpaperPreview
                             url={peekModeWallpaper}
                             isActive={true}
@@ -2600,14 +2332,12 @@ export default function SettingsModal() {
                         </div>
                       )}
 
-                      {/* Action buttons: Upload new file or add URL */}
+                      {/* Action buttons */}
                       <div className="flex gap-2 w-full mt-1">
-                        <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 border-dashed rounded text-[9px] md:text-[10px] text-red-200 cursor-pointer transition-colors">
-                          <Upload className="w-3 h-3" /> Upload Image/Video
+                        <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 border-dashed rounded-lg text-[9px] md:text-[10px] text-red-200 cursor-pointer transition-colors font-semibold shadow-sm">
+                          <Upload className="w-3.5 h-3.5" /> Upload Media
                           <input
-                            type="file"
-                            accept="image/*,video/*"
-                            className="hidden"
+                            type="file" accept="image/*,video/*" className="hidden"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
@@ -2626,40 +2356,32 @@ export default function SettingsModal() {
                           type="button"
                           onClick={() => {
                             setConfirmModal({
-                              isOpen: true,
-                              title: 'Add Peek Mode Image/Video URL',
-                              message: 'Enter direct image or video URL (https://...):',
-                              isPrompt: true,
-                              promptPlaceholder: 'https://...',
+                              isOpen: true, title: 'Add Peek Image/Video URL', message: 'Enter direct image or video URL (https://...):', isPrompt: true, promptPlaceholder: 'https://...',
                               onConfirm: (url?: string) => {
-                                if (url && url.trim().startsWith('http')) {
-                                  setPeekModeWallpaper(url.trim());
-                                }
+                                if (url && url.trim().startsWith('http')) setPeekModeWallpaper(url.trim());
                               }
                             });
                           }}
-                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[9px] md:text-[10px] text-white/70 hover:text-white transition-colors cursor-pointer font-semibold shadow-sm"
                         >
                           Add URL
                         </button>
                       </div>
 
-                      {/* Quick Select from Gallery Wallpapers */}
+                      {/* Quick Select from Gallery */}
                       {(() => {
                         const allWallpapers = Array.from(new Set([...(customDesktopWallpapers || []), ...(customMobileWallpapers || [])]));
                         if (allWallpapers.length === 0) return null;
                         return (
-                          <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-white/10">
-                            <span className="text-[9px] text-white/60 font-semibold">Or Pick from Uploaded Wallpapers:</span>
-                            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                          <div className="flex flex-col gap-1.5 mt-2 pt-2.5 border-t border-white/10">
+                            <span className="text-[9px] md:text-[10px] text-white/50 font-bold tracking-wide uppercase break-words">Quick Select from Gallery</span>
+                            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
                               {allWallpapers.map((url, idx) => (
                                 <button
-                                  key={`peek-pick-${idx}`}
-                                  type="button"
-                                  onClick={() => setPeekModeWallpaper(url)}
-                                  className={`px-2 py-1 rounded text-[8px] font-mono border transition-all truncate max-w-[120px] ${peekModeWallpaper === url ? 'bg-red-500/30 text-red-200 border-red-500/60 font-bold' : 'bg-black/40 text-white/60 border-white/10 hover:text-white hover:bg-white/10'}`}
+                                  key={`peek-pick-${idx}`} type="button" onClick={() => setPeekModeWallpaper(url)}
+                                  className={`px-2.5 py-1.5 rounded-md text-[9px] font-mono border transition-all truncate max-w-[140px] shadow-sm ${peekModeWallpaper === url ? 'bg-red-500/20 text-red-200 border-red-500/40 font-bold' : 'bg-black/40 text-white/60 border-white/10 hover:text-white hover:bg-white/10'}`}
                                 >
-                                  {url.startsWith('custom-') ? `Local Photo #${idx + 1}` : (url.split('/').pop() || `URL #${idx + 1}`)}
+                                  {url.startsWith('custom-') ? `Local Media #${idx + 1}` : (url.split('/').pop() || `URL #${idx + 1}`)}
                                 </button>
                               ))}
                             </div>
@@ -2667,76 +2389,31 @@ export default function SettingsModal() {
                         );
                       })()}
                     </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 bg-white/5 p-2 md:p-2.5 rounded-md">
-                      <div>
-                        <p className="text-[10px] md:text-[11px] font-bold text-blue-400">Focus Mode</p>
-                        <p className="text-[8px] md:text-[9px] text-white/50 mt-0.5">Hide selected widgets below.</p>
-                      </div>
-                      <div className="flex items-start gap-1.5 shrink-0">
-
-                        {/* Input and Info Text Wrapper */}
-                        <div className="flex flex-col items-center gap-1">
-                          <input
-                            type="text"
-                            value={formatShortcutText(focusShortcutKey)}
-                            onKeyDown={(e) => handleShortcutCapture(e, setFocusShortcutKey)}
-                            readOnly
-                            placeholder="Keys..."
-                            className="w-24 md:w-32 h-6 md:h-7 px-1.5 bg-black/40 border border-white/10 rounded text-center text-white outline-none focus:border-blue-400 font-bold uppercase text-[9px] md:text-[10px]"
-                          />
-                          <p className="text-[7px] md:text-[8px] text-white/40 italic">
-                            Click & press keys to set
-                          </p>
-                        </div>
-
-                        <button
-                          onClick={() => toggleHide()}
-                          className="px-2 py-1 md:px-2.5 md:py-1 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 text-[9px] md:text-[10px] font-bold uppercase h-6 md:h-7"
-                        >
-                          Trigger
-                        </button>
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Focus Mode Configuration */}
-                  <div className="flex flex-col p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5">
-                    <div className="flex flex-col sm:flex-row justify-between mb-2 md:mb-3 gap-2">
-                      <div>
-                        <h4 className="font-medium text-[11px] md:text-xs text-red-400 leading-tight">Focus Specific Setup</h4>
-                        <div className="flex bg-black/40 p-0.5 rounded border border-white/10 mt-1.5 w-fit">
-                          <button
-                            onClick={() => setFocusPlatform('desktop')}
-                            className={`px-2 py-1 md:px-3 md:py-1 text-[8px] md:text-[9px] font-bold rounded-sm ${focusPlatform === 'desktop' ? 'bg-blue-500/20 text-blue-400' : 'text-white/40'}`}
-                          >
-                            Desktop
-                          </button>
-                          <button
-                            onClick={() => setFocusPlatform('mobile')}
-                            className={`px-2 py-1 md:px-3 md:py-1 text-[8px] md:text-[9px] font-bold rounded-sm ${focusPlatform === 'mobile' ? 'bg-orange-500/20 text-orange-400' : 'text-white/40'}`}
-                          >
-                            Mobile
-                          </button>
-                        </div>
+                  {/* SECTION 2: FOCUS SPECIFIC SETUP */}
+                  <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-2.5 border-b border-white/5">
+                      <div className="flex flex-col min-w-0">
+                        <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5 break-words">
+                          <EyeOff className="w-3.5 h-3.5" /> Focus Specific Setup
+                        </h4>
+                        <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-1.5 break-words">Select which widgets to hide when Focus Mode is activated.</p>
                       </div>
-                      <div className="flex gap-1.5 shrink-0 self-end sm:self-auto">
-                        <button
-                          onClick={() => focusPlatform === 'desktop' ? setHideAll(false) : setMobileHideAll(false)}
-                          className="px-2 py-1 md:px-2.5 md:py-1 bg-white/10 rounded text-[8px] md:text-[10px]"
-                        >
-                          Keep All
-                        </button>
-                        <button
-                          onClick={() => focusPlatform === 'desktop' ? setHideAll(true) : setMobileHideAll(true)}
-                          className="px-2 py-1 md:px-2.5 md:py-1 bg-red-500/20 text-red-300 rounded border border-red-500/30 text-[8px] md:text-[10px]"
-                        >
-                          Hide All
-                        </button>
+
+                      <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0 w-full lg:w-auto">
+                        <div className="flex bg-black/40 p-1 rounded-lg border border-white/10 w-full sm:w-auto shadow-inner">
+                          <button onClick={() => setFocusPlatform('desktop')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[9px] md:text-[10px] font-bold rounded-md transition-colors ${focusPlatform === 'desktop' ? 'bg-blue-500/20 text-blue-300 shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}>Desktop</button>
+                          <button onClick={() => setFocusPlatform('mobile')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[9px] md:text-[10px] font-bold rounded-md transition-colors ${focusPlatform === 'mobile' ? 'bg-orange-500/20 text-orange-300 shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}>Mobile</button>
+                        </div>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                          <button onClick={() => focusPlatform === 'desktop' ? setHideAll(false) : setMobileHideAll(false)} className="flex-1 sm:flex-none px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[9px] md:text-[10px] font-bold text-white/80 transition-colors shadow-sm">Keep All</button>
+                          <button onClick={() => focusPlatform === 'desktop' ? setHideAll(true) : setMobileHideAll(true)} className="flex-1 sm:flex-none px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg border border-red-500/30 text-[9px] md:text-[10px] font-bold transition-colors shadow-sm">Hide All</button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 md:gap-2.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 md:gap-2 mt-1">
                       {Object.entries({
                         quote: 'Daily Quote', stats: 'Stats Modal', plans: 'Roadmap & Plans',
                         countdowns: 'Countdowns', tasks: 'Tasks', notes: 'Quick Notes',
@@ -2749,13 +2426,13 @@ export default function SettingsModal() {
                       }).map(([key, label]) => {
                         const isHidden = focusPlatform === 'desktop' ? hideConfig[key] : mobileHideConfig[key];
                         return (
-                          <div key={key} className="flex items-center justify-between p-1.5 md:p-2 rounded bg-white/5 border border-white/5">
-                            <span className="text-[8px] md:text-[10px] text-white/80 line-clamp-1 pr-1">{label}</span>
+                          <div key={key} className="flex items-center justify-between p-2 md:p-2.5 rounded-lg bg-black/40 border border-white/5 hover:bg-white/5 transition-colors shadow-inner">
+                            <span className="text-[9px] md:text-[10px] font-bold text-white/80 break-words leading-tight pr-1.5 flex-1">{label}</span>
                             <button
                               onClick={() => focusPlatform === 'desktop' ? setHideConfig(key, !hideConfig[key]) : setMobileHideConfig(key, !mobileHideConfig[key])}
-                              className={`relative inline-flex h-3 w-6 items-center rounded-full transition-colors shrink-0 ${isHidden ? 'bg-red-500' : 'bg-blue-500/50'}`}
+                              className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 ${isHidden ? 'bg-red-500' : 'bg-blue-500/40'}`}
                             >
-                              <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isHidden ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                              <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform ${isHidden ? 'translate-x-4' : 'translate-x-1'}`} />
                             </button>
                           </div>
                         );
@@ -2767,156 +2444,76 @@ export default function SettingsModal() {
 
               {settingsActiveTab === 'data' && (
                 <div className="flex flex-col gap-3 md:gap-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm md:text-base font-semibold">Data & Backup</h3>
-                      <p className="text-white/50 text-[10px] md:text-[11px] md:mt-0.5 px-1">Manage local data.</p>
+                  <div className="flex items-start justify-between gap-2 px-1">
+                    <div className="flex flex-col">
+                      <h3 className="text-sm md:text-base font-bold text-white/90">Data & Backup</h3>
+                      <p className="text-white/50 text-[10px] md:text-[11px] leading-snug break-words mt-0.5">Manage your local storage data safely.</p>
                     </div>
-                    <button onClick={() => setInfoModalKey('backup')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors mr-1">
-                      <Info className="w-4 h-4" />
+                    <button onClick={() => setInfoModalKey('backup')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 rounded-full transition-colors shrink-0">
+                      <Info className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  <div className="p-2.5 md:p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg md:rounded-xl">
-                    <div className="flex items-start gap-2 md:gap-2.5">
-                      <Activity className="text-blue-400 w-3.5 h-3.5 shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="font-semibold text-[10px] md:text-[11px] text-blue-300">Important Recommendation</h4>
-                        <p className="text-[9px] md:text-[10px] text-white/80 mt-1 leading-relaxed">
-                          Backup data regularly. <strong>Switch to a separate User Profile</strong> before importing friend's plans to avoid overwrites!
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl shadow-sm">
+                    <div className="flex items-start gap-2.5">
+                      <div className="bg-blue-500/20 p-1.5 rounded-lg shrink-0 mt-0.5">
+                        <Activity className="text-blue-400 w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <h4 className="font-bold text-[11px] md:text-xs text-blue-300 break-words">Important Recommendation</h4>
+                        <p className="text-[9px] md:text-[10px] text-white/70 mt-1 leading-snug break-words">
+                          Backup your data regularly. <strong className="text-white">Switch to a separate User Profile</strong> before importing a friend's plans to avoid overwriting your own tasks!
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2.5 md:gap-3">
-                    {/* Backup & Restore */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <UploadCloud className="text-green-400 w-4 h-4 shrink-0" />
-                        <div className="min-w-0 pr-1">
-                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap">Backup & Restore</h4>
-                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Export/Import local JSON.</p>
+                  <div className="flex flex-col gap-2 md:gap-2.5 mt-1">
+                    {/* Backup & Restore Items Generator */}
+                    {[
+                      { title: 'Global Backup', desc: 'Export/Import complete local JSON.', icon: UploadCloud, color: 'green', onBackup: handleExportData, onRestore: handleImportData },
+                      { title: 'Plan Your Day', desc: 'Backup/Restore tasks & time intervals.', icon: UploadCloud, color: 'pink', onBackup: handleBackupPlanYourDay, onRestore: handleRestorePlanYourDay },
+                      { title: 'Quick Notes', desc: 'Backup/Restore all your text notes.', icon: UploadCloud, color: 'yellow', onBackup: handleBackupNotes, onRestore: handleRestoreNotes },
+                      { title: 'Settings', desc: 'Backup/Restore dashboard preferences.', icon: UploadCloud, color: 'blue', onBackup: handleBackupSettings, onRestore: handleRestoreSettings },
+                      { title: 'Timetable', desc: 'Backup/Restore your weekly schedule.', icon: CalendarDays, color: 'violet', onBackup: handleBackupTimetable, onRestore: handleRestoreTimetable },
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/10 gap-3 shadow-sm hover:bg-white/[0.05] transition-colors">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <div className={`p-1.5 rounded-lg bg-${item.color}-500/10 text-${item.color}-400 shrink-0 mt-0.5`}>
+                            <item.icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <h4 className={`font-bold text-[11px] md:text-xs whitespace-nowrap text-${item.color}-300`}>{item.title}</h4>
+                            <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">{item.desc}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto mt-1 sm:mt-0">
+                          <button
+                            onClick={item.onBackup}
+                            disabled={isProcessingBackup}
+                            className="flex-1 sm:flex-none justify-center px-3 py-2 bg-black/40 hover:bg-black/60 rounded-lg text-[9px] md:text-[10px] font-bold border border-white/10 flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-inner"
+                          >
+                            <Download className="w-3.5 h-3.5 text-white/60" /> {isProcessingBackup ? '...' : 'Backup'}
+                          </button>
+                          <label className={`flex-1 sm:flex-none justify-center px-3 py-2 bg-${item.color}-500/10 hover:bg-${item.color}-500/20 text-${item.color}-200 rounded-lg text-[9px] md:text-[10px] font-bold border border-${item.color}-500/20 flex items-center gap-1.5 transition-all shadow-sm ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                            <Upload className="w-3.5 h-3.5" /> {isProcessingBackup ? '...' : 'Restore'}
+                            <input type="file" className="hidden" accept=".json" onChange={(e) => { setIsProcessingBackup(true); item.onRestore(e); }} disabled={isProcessingBackup} />
+                          </label>
                         </div>
                       </div>
-                      <div className="flex gap-1.5 w-full sm:w-auto">
-                        <button
-                          onClick={handleExportData}
-                          disabled={isProcessingBackup}
-                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
-                        >
-                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Export'}
-                        </button>
-                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-blue-500/20 text-blue-300 rounded text-[9px] md:text-[10px] font-medium border border-blue-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-blue-500/30'}`}>
-                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Import'}
-                          <input type="file" className="hidden" accept=".json" onChange={(e) => { setIsProcessingBackup(true); handleImportData(e); }} disabled={isProcessingBackup} />
-                        </label>
-                      </div>
-                    </div>
+                    ))}
 
-                    {/* Plan Your Day Backup & Restore */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <UploadCloud className="text-pink-400 w-4 h-4 shrink-0" />
-                        <div className="min-w-0 pr-1">
-                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap">Plan Your Day Backup</h4>
-                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Backup/Restore tasks & intervals.</p>
+                    <div className="my-1 border-t border-white/5" />
+
+                    {/* Dangerous Actions */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 gap-3 shadow-sm">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-orange-500/20 text-orange-400 shrink-0 mt-0.5">
+                          <CheckSquare className="w-4 h-4" />
                         </div>
-                      </div>
-                      <div className="flex gap-1.5 w-full sm:w-auto">
-                        <button
-                          onClick={handleBackupPlanYourDay}
-                          disabled={isProcessingBackup}
-                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
-                        >
-                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Backup'}
-                        </button>
-                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-pink-500/20 text-pink-300 rounded text-[9px] md:text-[10px] font-medium border border-pink-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-pink-500/30'}`}>
-                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Restore'}
-                          <input type="file" className="hidden" accept=".json" onChange={handleRestorePlanYourDay} disabled={isProcessingBackup} />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Notes Backup & Restore */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <UploadCloud className="text-yellow-400 w-4 h-4 shrink-0" />
-                        <div className="min-w-0 pr-1">
-                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap">Notes Backup</h4>
-                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Backup/Restore all your notes.</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5 w-full sm:w-auto">
-                        <button
-                          onClick={handleBackupNotes}
-                          disabled={isProcessingBackup}
-                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
-                        >
-                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Backup'}
-                        </button>
-                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-yellow-500/20 text-yellow-300 rounded text-[9px] md:text-[10px] font-medium border border-yellow-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-yellow-500/30'}`}>
-                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Restore'}
-                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreNotes} disabled={isProcessingBackup} />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Settings Backup & Restore */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <UploadCloud className="text-blue-400 w-4 h-4 shrink-0" />
-                        <div className="min-w-0 pr-1">
-                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap">Settings Backup</h4>
-                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Backup/Restore your preferences.</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5 w-full sm:w-auto">
-                        <button
-                          onClick={handleBackupSettings}
-                          disabled={isProcessingBackup}
-                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
-                        >
-                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Backup'}
-                        </button>
-                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-blue-500/20 text-blue-300 rounded text-[9px] md:text-[10px] font-medium border border-blue-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-blue-500/30'}`}>
-                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Restore'}
-                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreSettings} disabled={isProcessingBackup} />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Timetable Backup & Restore */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2 md:gap-3">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <CalendarDays className="text-violet-400 w-4 h-4 shrink-0" />
-                        <div className="min-w-0 pr-1">
-                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap text-violet-300">Timetable Backup</h4>
-                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Backup/Restore your weekly schedule.</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5 w-full sm:w-auto">
-                        <button
-                          onClick={handleBackupTimetable}
-                          disabled={isProcessingBackup}
-                          className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-white/10 rounded text-[9px] md:text-[10px] font-medium border border-white/10 flex items-center gap-1 text-violet-100 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}
-                        >
-                          <Download className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Backup'}
-                        </button>
-                        <label className={`flex-1 sm:flex-none justify-center px-2 py-1 md:px-3 md:py-1.5 bg-violet-500/20 text-violet-300 rounded text-[9px] md:text-[10px] font-medium border border-violet-500/30 flex items-center gap-1 transition-all ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-violet-500/30'}`}>
-                          <Upload className="w-3 h-3" /> {isProcessingBackup ? '...' : 'Restore'}
-                          <input type="file" className="hidden" accept=".json" onChange={handleRestoreTimetable} disabled={isProcessingBackup} />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Clear Tasks & Plans */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-orange-500/10 border border-orange-500/30 gap-2">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <CheckSquare className="text-orange-400 w-4 h-4 shrink-0" />
-                        <div className="min-w-0 pr-1">
-                          <h4 className="font-medium text-[10px] md:text-sm text-orange-300 whitespace-nowrap">Clear Tasks & Plans</h4>
-                          <p className="text-[8px] md:text-[10px] text-white/60 leading-tight">Instantly delete all tasks and plans.</p>
+                        <div className="flex flex-col min-w-0">
+                          <h4 className="font-bold text-[11px] md:text-xs text-orange-300 break-words">Clear Tasks & Plans</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">Instantly delete all tasks and plans globally.</p>
                         </div>
                       </div>
                       <button
@@ -2927,29 +2524,27 @@ export default function SettingsModal() {
                             message: 'Are you sure you want to completely clear all your tasks, tomorrow tasks, and plans? This action will permanently remove them from the cloud and cannot be undone.',
                             isDestructive: true,
                             onConfirm: () => {
-                              // 1. Wipe the Task store and push to the DB
                               useTaskStore.setState({ tasks: [], tomorrowTasks: [] });
                               pushTasksToDB({ tasks: [], tomorrowTasks: [] });
                               useDashboardStore.getState().forceInstantSave();
-
                               showAlertModal('Cleared Successfully', 'All tasks and plans have been deleted. Refreshing...');
                             }
                           });
                         }}
-                        className="w-full sm:w-auto justify-center px-2 py-1 md:px-3 md:py-1.5 bg-orange-500/20 text-orange-300 rounded text-[9px] md:text-[10px] font-bold border border-orange-500/50 flex items-center gap-1 whitespace-nowrap"
+                        className="w-full sm:w-auto justify-center px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-200 rounded-lg text-[10px] font-bold border border-orange-500/40 flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-sm"
                       >
                         Clear Tasks
                       </button>
                     </div>
 
-
-                    {/* Reset Timetable */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-black/20 border border-white/5 gap-2">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <CalendarDays className="text-purple-400 w-4 h-4 shrink-0" />
-                        <div className="min-w-0 pr-1">
-                          <h4 className="font-medium text-[10px] md:text-sm whitespace-nowrap text-purple-300">Reset Timetable</h4>
-                          <p className="text-[8px] md:text-[10px] text-white/50 leading-tight">Wipe existing schedule and colors.</p>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 gap-3 shadow-sm">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 shrink-0 mt-0.5">
+                          <CalendarDays className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <h4 className="font-bold text-[11px] md:text-xs text-purple-300 break-words">Reset Timetable</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">Wipe existing schedule and colors to defaults.</p>
                         </div>
                       </div>
                       <button
@@ -2960,26 +2555,25 @@ export default function SettingsModal() {
                             message: 'Are you sure you want to completely reset your Timetable to default? This cannot be undone.',
                             isDestructive: true,
                             onConfirm: () => {
-                              // 1. Update Zustand, LocalStorage, and trigger MongoDB save
                               useTimetableStore.getState().resetTimetable();
-
                               showAlertModal('Reset Complete', 'Timetable reset successfully');
                             }
                           });
                         }}
-                        className="w-full sm:w-auto justify-center px-2 py-1 md:px-3 md:py-1.5 bg-purple-500/20 text-purple-300 rounded text-[9px] md:text-[10px] font-bold border border-purple-500/50 flex items-center gap-1 whitespace-nowrap"
+                        className="w-full sm:w-auto justify-center px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 rounded-lg text-[10px] font-bold border border-purple-500/40 flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-sm"
                       >
                         Reset Schedule
                       </button>
                     </div>
 
-                    {/* Danger Zone: Delete All Data */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 md:p-3 rounded-lg md:rounded-xl bg-red-500/10 border border-red-500/30 gap-2">
-                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                        <Trash2 className="text-red-400 w-4 h-4 shrink-0" />
-                        <div className="min-w-0 pr-1">
-                          <h4 className="font-medium text-[10px] md:text-sm text-red-300 whitespace-nowrap">Factory Reset Profile</h4>
-                          <p className="text-[8px] md:text-[10px] text-white/60 leading-tight">Delete ALL tasks, notes, history.</p>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-red-500/10 border border-red-500/20 gap-3 shadow-sm mt-1">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-red-500/20 text-red-400 shrink-0 mt-0.5">
+                          <Trash2 className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <h4 className="font-bold text-[11px] md:text-xs text-red-400 break-words">Factory Reset Profile</h4>
+                          <p className="text-[9px] md:text-[10px] text-red-200/60 leading-snug break-words mt-0.5">Delete ALL tasks, notes, and history permanently.</p>
                         </div>
                       </div>
                       <button
@@ -2995,9 +2589,9 @@ export default function SettingsModal() {
                             }
                           });
                         }}
-                        className="w-full sm:w-auto justify-center px-2 py-1 md:px-3 md:py-1.5 bg-red-500/20 text-red-300 rounded text-[9px] md:text-[10px] font-bold border border-red-500/50 flex items-center gap-1 whitespace-nowrap"
+                        className="w-full sm:w-auto justify-center px-4 py-2 bg-red-600/30 hover:bg-red-600 text-white rounded-lg text-[10px] font-bold border border-red-500/50 flex items-center gap-1.5 whitespace-nowrap transition-all shadow-md active:scale-95"
                       >
-                        <Trash2 className="w-3 h-3" /> Reset All
+                        <Trash2 className="w-3.5 h-3.5" /> Reset Everything
                       </button>
                     </div>
                   </div>
@@ -3005,13 +2599,12 @@ export default function SettingsModal() {
               )}
 
               {settingsActiveTab === 'about' && (
-                <div className="flex flex-col gap-2 md:gap-0 pb-4">
+                <div className="flex flex-col gap-3 pb-4">
+                  <div className="flex flex-col gap-3 bg-white/[0.02] border border-white/5 rounded-2xl p-4 relative overflow-hidden shadow-lg">
+                    <div className="absolute -top-16 -right-16 w-64 h-64 bg-blue-500/20 blur-[60px] rounded-full mix-blend-screen pointer-events-none" />
 
-                  <div className="flex flex-col gap-2.5 md:gap-3 bg-black/30 border border-white/10 rounded-lg md:rounded-2xl p-3 md:p-4 relative overflow-hidden">
-                    <div className="absolute -top-10 -right-10 w-48 h-48 md:w-64 md:h-64 bg-blue-500/30 blur-3xl rounded-full mix-blend-screen pointer-events-none" />
-
-                    <div className="flex flex-row items-center justify-between gap-3 md:gap-4 w-full z-10">
-                      <div className="w-16 h-16 md:w-20 md:h-20 shrink-0 relative rounded-full overflow-hidden border-2 border-blue-400/40 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                    <div className="flex flex-row items-center gap-4 w-full z-10">
+                      <div className="w-20 h-20 md:w-24 md:h-24 shrink-0 relative rounded-full overflow-hidden border-2 border-blue-400/30 shadow-[0_0_20px_rgba(59,130,246,0.3)] bg-black/50">
                         <img
                           src="/branding/author.jpeg"
                           alt="Gonaboyina Anand kumar"
@@ -3020,64 +2613,64 @@ export default function SettingsModal() {
                         />
                       </div>
 
-                      <div className="flex flex-col flex-1 items-start text-left min-w-0 pl-1">
-                        <div className="flex items-center gap-1.5 mb-0.5 w-full">
-                          <h2 className="text-base md:text-lg font-extrabold tracking-tight text-white truncate">Gonaboyina Anand kumar</h2>
-                          <BadgeCheck className="text-blue-400 shrink-0 w-4 h-4 md:w-5 md:h-5 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                      <div className="flex flex-col flex-1 items-start text-left min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1 w-full">
+                          <h2 className="text-lg md:text-xl font-extrabold tracking-tight text-white break-words">Gonaboyina Anand kumar</h2>
+                          <BadgeCheck className="text-blue-400 shrink-0 w-5 h-5 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                         </div>
-                        <p className="text-blue-300 font-semibold tracking-wide uppercase text-[9px] md:text-[11px]">Full Stack MERN Developer</p>
+                        <p className="text-blue-300 font-bold tracking-wider uppercase text-[10px] md:text-xs">Full Stack MERN Developer</p>
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-start text-left z-10 w-full">
-                      <p className="text-[9px] md:text-[11px] text-white/60 mb-2 md:mb-3 leading-relaxed max-w-xl">
-                        Have suggestions, feedback, or found a bug? Click on LinkedIn below to message me directly!
+                    <div className="flex flex-col items-start text-left z-10 w-full mt-2">
+                      <p className="text-[10px] md:text-xs text-white/70 mb-3 md:mb-4 leading-relaxed break-words">
+                        Have suggestions, feedback, or found a bug? I am actively updating this project. Reach out to me directly below!
                       </p>
 
-                      <div className="grid grid-cols-2 gap-1.5 md:gap-1.5 w-full mb-1">
-                        <a href="https://www.linkedin.com/in/anand-kumar-gonaboyina-b63946378" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 md:gap-2 bg-white/5 border border-[#0077b5]/30 rounded-md p-1.5 md:p-2 hover:bg-white/10 transition-colors">
-                          <div className="p-1 md:p-1.5 bg-[#0077b5]/20 rounded shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#0077b5] w-3 h-3"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                        <a href="https://www.linkedin.com/in/anand-kumar-gonaboyina-b63946378" target="_blank" rel="noreferrer" className="flex items-center gap-3 bg-black/40 border border-[#0077b5]/30 rounded-xl p-2.5 hover:bg-[#0077b5]/10 hover:border-[#0077b5]/50 transition-all shadow-sm group">
+                          <div className="p-2 bg-[#0077b5]/20 rounded-lg shrink-0 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#0077b5] w-4 h-4"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
                           </div>
-                          <div className="flex flex-col items-start min-w-0 w-full">
-                            <span className="text-[7px] md:text-[9px] text-white/50 w-full text-left">LinkedIn</span>
-                            <span className="font-semibold text-[8px] md:text-[10px] w-full text-left truncate">Message me</span>
-                          </div>
-                        </a>
-
-                        <a href="https://t.me/gAnandKumar" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 md:gap-2 bg-white/5 border border-white/10 rounded-md p-1.5 md:p-2 hover:bg-white/10 transition-colors">
-                          <div className="p-1 md:p-1.5 bg-[#0088cc]/20 rounded shrink-0">
-                            <Send className="text-[#0088cc] w-3 h-3" />
-                          </div>
-                          <div className="flex flex-col items-start min-w-0">
-                            <span className="text-[7px] md:text-[9px] text-white/50 w-full text-left">Telegram</span>
-                            <span className="font-semibold text-[8px] md:text-[10px] w-full text-left truncate">@gAnandKumar</span>
+                          <div className="flex flex-col items-start min-w-0 flex-1">
+                            <span className="text-[9px] md:text-[10px] text-white/50 w-full text-left uppercase font-bold tracking-wider">LinkedIn</span>
+                            <span className="font-bold text-[11px] md:text-xs w-full text-left break-words text-white/90 group-hover:text-white">Message me</span>
                           </div>
                         </a>
 
-                        <a href="https://my-portfolio-silk-phi-78.vercel.app/" target="_blank" rel="noreferrer" className="col-span-2 justify-self-center w-1/2 min-w-[140px] md:min-w-[180px] flex items-center gap-1.5 md:gap-2 bg-white/5 border border-white/10 rounded-md p-1.5 md:p-2 hover:bg-white/10 transition-colors">
-                          <div className="p-1 md:p-1.5 bg-[#0088cc]/20 rounded shrink-0">
-                            <Briefcase className="text-[#0088cc] w-3 h-3" />
+                        <a href="https://t.me/gAnandKumar" target="_blank" rel="noreferrer" className="flex items-center gap-3 bg-black/40 border border-[#0088cc]/30 rounded-xl p-2.5 hover:bg-[#0088cc]/10 hover:border-[#0088cc]/50 transition-all shadow-sm group">
+                          <div className="p-2 bg-[#0088cc]/20 rounded-lg shrink-0 group-hover:scale-110 transition-transform">
+                            <Send className="text-[#0088cc] w-4 h-4" />
                           </div>
-                          <div className="flex flex-col items-start min-w-0">
-                            <span className="text-[7px] md:text-[9px] text-white/50 w-full text-left">Portfolio</span>
-                            <span className="font-semibold text-[8px] md:text-[10px] w-full text-left truncate">View other projects</span>
+                          <div className="flex flex-col items-start min-w-0 flex-1">
+                            <span className="text-[9px] md:text-[10px] text-white/50 w-full text-left uppercase font-bold tracking-wider">Telegram</span>
+                            <span className="font-bold text-[11px] md:text-xs w-full text-left break-words text-white/90 group-hover:text-white">@gAnandKumar</span>
+                          </div>
+                        </a>
+
+                        <a href="https://my-portfolio-silk-phi-78.vercel.app/" target="_blank" rel="noreferrer" className="sm:col-span-2 flex items-center gap-3 bg-black/40 border border-emerald-500/30 rounded-xl p-2.5 hover:bg-emerald-500/10 hover:border-emerald-500/50 transition-all shadow-sm group justify-center sm:justify-start">
+                          <div className="p-2 bg-emerald-500/20 rounded-lg shrink-0 group-hover:scale-110 transition-transform">
+                            <Briefcase className="text-emerald-400 w-4 h-4" />
+                          </div>
+                          <div className="flex flex-col items-start min-w-0 flex-1">
+                            <span className="text-[9px] md:text-[10px] text-white/50 w-full text-left uppercase font-bold tracking-wider">Portfolio</span>
+                            <span className="font-bold text-[11px] md:text-xs w-full text-left break-words text-white/90 group-hover:text-white">View my other projects</span>
                           </div>
                         </a>
                       </div>
-
                     </div>
                   </div>
 
-
                   {/* Donation Section */}
-                  <div className="flex flex-col p-3 md:p-3 bg-black/20 border border-white/5 rounded-lg md:rounded-2xl text-center items-center justify-center relative overflow-hidden md:mt-4 ">
-                    <h3 className="text-sm md:text-base font-bold mb-0 md:mb-1.5 md:mt-1">Support the Project ❤️</h3>
-                    <p className="text-[9px] md:text-[10px] text-white/60 max-w-md mx-auto mb-2.5 md:mb-4 leading-relaxed px-1">
-                      Built with love, but inspired by the pain of endless distractions and messy workspaces. It took many late nights to bring this vision to life. If this dashboard helps you reclaim your focus, consider supporting its continued development. A small tip goes a long way—and please leave a message, I'd love to hear how it's helping you!
+                  <div className="flex flex-col p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-center items-center justify-center relative overflow-hidden shadow-lg mt-2">
+                    <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-pink-500/10 blur-[50px] rounded-full pointer-events-none" />
+
+                    <h3 className="text-base md:text-lg font-black mb-2 text-white/90 relative z-10 flex items-center gap-2">Support the Project <span className="animate-pulse">❤️</span></h3>
+                    <p className="text-[10px] md:text-xs text-white/60 max-w-lg mx-auto mb-5 leading-relaxed px-1 break-words relative z-10">
+                      Built with love, inspired by the pain of endless distractions and messy workspaces. It took many late nights to bring this vision to life. If this dashboard helps you reclaim your focus, consider supporting its continued development. A small tip goes a long way—and please leave a message, I'd love to hear how it's helping you!
                     </p>
 
-                    <div className="flex flex-wrap justify-center gap-1.5 md:gap-2 mb-3 md:mb-4">
+                    <div className="flex flex-wrap justify-center gap-2 mb-5 relative z-10">
                       {[
                         { amt: 50, label: 'Coffee' }, { amt: 100, label: 'Lunch' },
                         { amt: 200, label: 'Book' }, { amt: 500, label: 'Sponsor' },
@@ -3086,78 +2679,78 @@ export default function SettingsModal() {
                         <button
                           key={d.label}
                           onClick={() => setDonationAmount(d.amt)}
-                          className={`px-2 py-1 md:px-3 md:py-1.5 rounded text-[8px] md:text-[9px] font-bold border ${donationAmount === d.amt ? 'bg-pink-500/20 text-pink-300 border-pink-500/50' : 'bg-black/40 text-white/50 border-white/5'}`}
+                          className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-[10px] md:text-[11px] font-bold border transition-all active:scale-95 ${donationAmount === d.amt ? 'bg-pink-500/20 text-pink-300 border-pink-500/50 shadow-[0_0_10px_rgba(236,72,153,0.3)]' : 'bg-black/40 text-white/60 border-white/10 hover:border-white/20 hover:bg-white/5 hover:text-white'}`}
                         >
-                          {d.amt ? `₹${d.amt}` : 'Any'} {d.amt && `(${d.label})`}
+                          {d.amt ? `₹${d.amt}` : 'Any'} {d.amt && <span className="opacity-60 font-medium hidden sm:inline ml-1">({d.label})</span>}
                         </button>
                       ))}
                     </div>
 
-                    <div className="flex flex-row items-center gap-3 md:gap-4 bg-white/5 p-2 md:p-2.5 rounded-lg md:rounded-xl border border-white/10 w-full sm:w-auto">
-                      <div className="bg-[#ffffff] p-1.5 md:p-2 rounded shadow-xl shrink-0">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-5 bg-black/40 p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/10 w-full sm:w-auto relative z-10 shadow-inner">
+                      <div className="bg-white p-2 md:p-2.5 rounded-xl shadow-xl shrink-0 transition-transform hover:scale-105">
                         <QRCodeSVG
                           value={`upi://pay?pa=${upiId}&pn=Anand%20Kumar&cu=INR${donationAmount ? `&am=${donationAmount}` : ''}`}
-                          size={70}
-                          className="md:w-[90px] md:h-[90px]"
+                          size={90}
+                          className="w-[100px] h-[100px] md:w-[120px] md:h-[120px]"
                           level="H"
                           includeMargin={false}
                           bgColor="#ffffff"
                           fgColor="#000000"
                         />
                       </div>
-                      <div className="flex flex-col text-left gap-1 md:gap-2 min-w-0 pr-2">
+                      <div className="flex flex-col text-center sm:text-left gap-1.5 md:gap-2 min-w-0">
                         <div>
-                          <p className="text-[8px] md:text-[9px] text-white/70 uppercase font-semibold mb-0.5 whitespace-nowrap">Scan to Pay</p>
-                          <p className="font-bold text-xs md:text-sm text-white">{donationAmount ? `₹${donationAmount}` : 'Any Amount'}</p>
+                          <p className="text-[9px] md:text-[10px] text-white/50 uppercase font-black tracking-widest mb-0.5 break-words">Scan to Pay</p>
+                          <p className="font-black text-lg md:text-xl text-white break-words">{donationAmount ? `₹${donationAmount}` : 'Any Amount'}</p>
                         </div>
-                        <div className="h-px w-full bg-white/10 my-0.5" />
+                        <div className="h-px w-full bg-white/10 my-1 hidden sm:block" />
                         <div className="min-w-0">
-                          <p className="text-[8px] md:text-[9px] text-white/50 uppercase font-semibold mb-0.5">UPI ID</p>
-                          <p className="text-[9px] md:text-[10px] text-blue-300 font-mono truncate">{upiId}</p>
+                          <p className="text-[9px] md:text-[10px] text-white/50 uppercase font-black tracking-widest mb-0.5 break-words">UPI ID</p>
+                          <p className="text-[10px] md:text-xs text-blue-300 font-mono break-words font-bold select-all bg-blue-500/10 px-2 py-1 rounded inline-block">{upiId}</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Credits & Supporters Section */}
-                  <div className="flex flex-col gap-3 md:gap-4 mt-1 md:mt-6 pt-3 md:pt-4 border-t border-white/10">
-                    <h3 className="text-xs md:text-sm font-semibold flex items-center gap-1.5 md:gap-2">
-                      <BadgeCheck className="text-pink-400 w-4 h-4 md:w-5 md:h-5" /> Credits & Supporters
+                  <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-white/10">
+                    <h3 className="text-sm md:text-base font-bold flex items-center gap-2 text-white/90">
+                      <BadgeCheck className="text-pink-400 w-5 h-5" /> Credits & Supporters
                     </h3>
 
-                    <div className="bg-pink-500/10 border border-pink-500/20 rounded-lg p-2.5 md:p-3 flex flex-col gap-1.5">
-                      <p className="text-[9px] md:text-[10px] text-pink-300 font-medium leading-relaxed">
+                    <div className="bg-pink-500/10 border border-pink-500/20 rounded-xl p-3 md:p-4 flex flex-col gap-2 shadow-sm">
+                      <p className="text-[10px] md:text-xs text-pink-200 font-medium leading-relaxed break-words">
                         I originally started building this out of pure frustration. I needed something to help me stay on track.
                       </p>
-                      <p className="text-[8px] md:text-[9px] text-pink-200/80 leading-relaxed italic">
+                      <p className="text-[10px] md:text-xs text-pink-300/80 leading-relaxed italic font-semibold break-words">
                         "A big thank you to everyone who believed in this project and tested it. Thanks for always having my back."
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
                       {/* Sathish Kumar */}
-                      <div className="bg-black/20 border border-white/5 rounded-lg p-3 md:p-4 flex items-center text-left gap-3">
-                        <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-full overflow-hidden border-2 border-white/10">
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-3 md:p-4 flex items-center text-left gap-3 shadow-sm hover:bg-white/10 transition-colors group">
+                        <div className="w-14 h-14 shrink-0 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-blue-400/50 transition-colors bg-black/40">
                           <img src="/sathish.jpeg" alt="Sathish" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                         </div>
                         <div className="flex flex-col min-w-0 flex-1">
-                          <h4 className="text-sm md:text-sm font-bold text-white truncate">Sathish Kumar</h4>
-                          <p className="text-[8px] md:text-[9px] text-white/60 font-semibold uppercase mt-0.5 truncate"><span className="text-blue-300">EEE</span> • NIT Patna</p>
-                          <p className=" text-[10px] md:text-[10px] text-white/60 mt-1.5 leading-relaxed">
+                          <h4 className="text-xs md:text-sm font-bold text-white break-words">Sathish Kumar</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/60 font-bold uppercase tracking-wider mt-0.5 break-words"><span className="text-blue-300">EEE</span> • NIT Patna</p>
+                          <p className="text-[10px] md:text-[11px] text-white/70 mt-1.5 leading-snug break-words">
                             Tested countless hours to identify bugs and provided invaluable UX suggestions.
                           </p>
                         </div>
                       </div>
 
                       {/* Jyothir Ganesh */}
-                      <div className="bg-black/20 border border-white/5 rounded-lg p-3 md:p-4 flex items-center text-left gap-3">
-                        <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-full overflow-hidden border-2 border-white/10">
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-3 md:p-4 flex items-center text-left gap-3 shadow-sm hover:bg-white/10 transition-colors group">
+                        <div className="w-14 h-14 shrink-0 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-blue-400/50 transition-colors bg-black/40">
                           <img src="/jyothir.png" alt="Jyothir" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                         </div>
                         <div className="flex flex-col min-w-0 flex-1">
-                          <h4 className="text-sm md:text-sm font-bold text-white truncate">Jyothir Ganesh</h4>
-                          <p className="text-[8px] md:text-[9px] text-white/60 font-semibold uppercase mt-0.5 truncate"><span className="text-blue-300">ECE</span> • Vishnu Inst.</p>
-                          <p className=" text-[10px] md:text-[10px] text-white/60 mt-1.5 leading-relaxed">
+                          <h4 className="text-xs md:text-sm font-bold text-white break-words">Jyothir Ganesh</h4>
+                          <p className="text-[9px] md:text-[10px] text-white/60 font-bold uppercase tracking-wider mt-0.5 break-words"><span className="text-blue-300">ECE</span> • Vishnu Inst.</p>
+                          <p className="text-[10px] md:text-[11px] text-white/70 mt-1.5 leading-snug break-words">
                             My strongest pillar of support. Always provides grounded, factual advice.
                           </p>
                         </div>
@@ -3168,8 +2761,6 @@ export default function SettingsModal() {
               )}
 
             </ScrollableWithArrows>
-
-            {/* Content Scroll Down Button */}
 
           </div>
         </div>

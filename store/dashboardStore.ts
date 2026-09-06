@@ -586,7 +586,7 @@ const performSave = async () => {
         if (JSON.stringify(newState[key]) !== JSON.stringify(oldState[key])) {
           modifiedKeys.push(key);
           if (TASK_KEYS.includes(key)) modifiedCollections.push('Tasks');
-          else if (TASK_KEYS.includes(key)) modifiedCollections.push('Stats');
+          else if (key === 'history') modifiedCollections.push('Stats');
           else if (DAILY_ROUTINE_KEYS.includes(key)) modifiedCollections.push('DailyRoutine');
           else if (NOTES_KEYS.includes(key)) modifiedCollections.push('Notes');
           else if (ROADMAPS_KEYS.includes(key)) modifiedCollections.push('Roadmaps');
@@ -638,7 +638,8 @@ const performSave = async () => {
     const payload = JSON.stringify({ data: parsedData, lastModified, modifiedCollections, modifiedKeys });
     console.log(`[performSave] Payload size: ${(payload.length / 1024).toFixed(2)} KB`);
 
-
+    console.log(`[performSave] MODIFIED KEYS:`, modifiedKeys);
+    console.log(`[performSave] MODIFIED COLLECTIONS:`, modifiedCollections);
     const res = await fetch('/api/store', {
       method: 'POST',
       headers: {
@@ -1342,7 +1343,10 @@ export const useDashboardStore = create<DashboardState>()(
                 workStartedTime: (state.dailyTimes[dateKey] || {}).workStartedTime || Date.now(),
                 bedTime: Date.now()
               }
-            }
+            },
+            // 🛡️ CRITICAL ADDITION: Force the timestamp to right now!
+            // This guarantees the database accepts this offline data when internet reconnects.
+            lastModified: Date.now()
           };
         });
       },

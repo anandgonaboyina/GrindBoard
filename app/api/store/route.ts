@@ -797,13 +797,11 @@ export async function POST(request: Request) {
       if (existingStats && existingStats.history) {
         const incomingHistory = statsDoc.history || {};
         const serverHistory = existingStats.history;
-        const mergedHistory = { ...serverHistory };
 
-        Object.keys(incomingHistory).forEach(date => {
-          const inc = incomingHistory[date] || 0;
-          const srv = serverHistory[date] || 0;
-          mergedHistory[date] = Math.max(inc, srv);
-        });
+        // We merge them so we don't lose old days, but we ALWAYS trust 
+        // the incoming client data for any overlapping days, even if the time was reduced.
+        const mergedHistory = { ...serverHistory, ...incomingHistory };
+
         statsDoc.history = mergedHistory;
       }
 
