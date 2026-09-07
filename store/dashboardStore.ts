@@ -384,7 +384,10 @@ interface DashboardState {
   setPanicWallpaperSwitch: (val: boolean) => void;
   peekModeWallpaper: string | null;
   setPeekModeWallpaper: (url: string | null) => void;
-
+  customPeekModeWallpapers: string[];
+  setCustomPeekModeWallpapers: (urls: string[]) => void;
+  activePeekModeCustomIndex: number | null;
+  setActivePeekModeCustomIndex: (index: number | null) => void;
 
   // Custom Placement
   rightWidgetsOffset: number;
@@ -844,26 +847,23 @@ const fileStorage = createJSONStorage(() => ({
   getItem: async (_name: string): Promise<string | null> => {
     if (typeof window === 'undefined') return null;
 
-    let retries = 0;
-    const maxRetries = 2; // Fast initial load: max 2 retries (prevents 15s loading screen hangs)
     const token = getSyncToken();
-    const isBypassed = bypassCloudSync;
-    bypassCloudSync = false; // Always consume bypass flag for current load so future syncs operate normally!
+    const localDataStr = localStorage.getItem('dashboard-storage');
 
-    while (retries < maxRetries && token) {
-      // Check if user clicked "Load Offline Instantly" — bail out immediately
-      if (abortInstantLoad) {
-        abortInstantLoad = false;
-        console.warn("Instant load requested — aborting cloud fetch.");
-        break;
-      }
-      if (isBypassed || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-        console.warn("Bypassing cloud sync and loading local data instantly.");
-        break;
-      }
+    // 1. OFFLINE OR BYPASS: Instantly load the local cache. No syncing attempted.
+    if (bypassCloudSync || (typeof navigator !== 'undefined' && !navigator.onLine) || abortInstantLoad) {
+      abortInstantLoad = false;
+      bypassCloudSync = false;
+      console.warn("Offline or Bypass: Loading local cache instantly.");
+      lastSavedValue = localDataStr;
+      return localDataStr;
+    }
+
+    // 2. ONLINE: Fetch from Cloud. Cloud is the absolute source of truth.
+    if (token) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s max request timeout
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for stability
 
         const res = await fetch(`/api/store?t=${Date.now()}`, {
           headers: { 'Authorization': `Bearer ${token}` },
@@ -875,311 +875,93 @@ const fileStorage = createJSONStorage(() => ({
         if (res.ok) {
           failedToLoadDB = false;
           const json = await res.json();
-          const localDataStr = localStorage.getItem('dashboard-storage');
 
-          // If cloud data is null (new account), return localData so user progress isn't lost
-          if (json.data === null) {
-            lastSavedValue = localDataStr || "{}";
-            return lastSavedValue;
-          }
-
-          if (json.data) {
-            let localState: any = null;
+          // If cloud has valid data, it completely replaces local settings, 
+          // EXCEPT for stats, sleep logs, and running timers.
+          if (json.data && json.data.state) {
+            let localState: any = {};
             if (localDataStr) {
-              try {
-                localState = JSON.parse(localDataStr).state || {};
-              } catch (e) {
-                console.warn("Failed to parse local storage in getItem", e);
-              }
+              try { localState = JSON.parse(localDataStr).state || {}; } catch (e) { }
             }
 
-            const cloudState = json.data.state || {};
-
-            // Sanitize: strip any base64/data-URL strings from local media arrays.
-            // These may have been saved to the DB by an older version of the app.
-            // They should only ever exist in IndexedDB — not in the cloud-synced state.
-            const CLOUD_LOCAL_MEDIA_KEYS = [
-              'customDesktopWallpapers', 'customMobileWallpapers',
-              'manifestationDesktopPhotos', 'manifestationMobilePhotos',
-            ];
-            CLOUD_LOCAL_MEDIA_KEYS.forEach(key => {
-              if (Array.isArray(cloudState[key])) {
-                cloudState[key] = cloudState[key].filter(
-                  (v: string) => typeof v === 'string' && !v.startsWith('data:')
-                );
-              }
-            });
-
-            // Perform deep smart merge to guarantee NO LOCAL DATA (tasks, deadlines, sleep logs, settings) IS EVER WIPED
-
-            if (localState) {
-              // 1. History (stats)
-              const localHistory = localState.history || {};
-              const cloudHistory = cloudState.history || {};
-              const mergedHistory = { ...cloudHistory };
-              for (const date in localHistory) {
-                mergedHistory[date] = Math.max(localHistory[date] || 0, cloudHistory[date] || 0);
-              }
-
-              // 2. Daily Times (sleep & wake-up logs) - Merge per date, local wins for conflict
-              const localDailyTimes = localState.dailyTimes || {};
-              const cloudDailyTimes = cloudState.dailyTimes || {};
-              const mergedDailyTimes = mergeDailyTimes(localDailyTimes, cloudDailyTimes);
-
-              const todayStr = getLocalDateString();
-              if (mergedDailyTimes && mergedDailyTimes[todayStr] && Object.keys(mergedDailyTimes[todayStr]).length > 0) {
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem(`grindboard_wakeup_logged_${todayStr}`, 'true');
-                }
-              }
-
-              const localHasSeen = localState?.hasSeenOnboarding || (typeof window !== 'undefined' && localStorage.getItem('grindboard_has_seen_onboarding') === 'true');
-              const cloudHasSeen = cloudState?.hasSeenOnboarding;
-              const mergedHasSeenOnboarding = Boolean(localHasSeen || cloudHasSeen);
-
-              const cloudLastMod = json.lastModified ? Number(json.lastModified) : 0;
-              const isCloudNewer = cloudLastMod > getSyncLastModified();
-
-              // Use union merge for tasks to prevent data loss across devices or during offline syncs
-              const mergedTasks = isCloudNewer ? (cloudState.tasks || []) : (localState.tasks || []);
-              const mergedTomorrowTasks = isCloudNewer ? (cloudState.tomorrowTasks || []) : (localState.tomorrowTasks || []);
-
-              const mergedTasksDate = (localState.tasksDate && cloudState.tasksDate) ?
-                (localState.tasksDate > cloudState.tasksDate ? localState.tasksDate : cloudState.tasksDate) :
-                (cloudState.tasksDate || localState.tasksDate || getLocalDateString());
-              const mergedDeadlines = filterActiveDeadlines(mergeArraysById(localState.deadlines, cloudState.deadlines));
-
-              const mergedRoadmaps = mergeArraysById(localState.roadmaps, cloudState.roadmaps);
-              const mergedPlans = mergeArraysById(localState.plans, cloudState.plans);
-              const mergedCustomAlarmSounds = mergeArraysById(localState.customAlarmSounds, cloudState.customAlarmSounds);
-
-              const baseState = lastSavedValue ? (JSON.parse(lastSavedValue).state || {}) : {};
-              // If the cloud is newer, trust the cloud's list of files absolutely. 
-              // If local is newer (e.g., added offline), trust local. 
-              // This instantly kills the ghost files!
-              const mergedManifestationDesktopPhotos = isCloudNewer ? (cloudState.manifestationDesktopPhotos || []) : (localState.manifestationDesktopPhotos || []);
-              const mergedManifestationMobilePhotos = isCloudNewer ? (cloudState.manifestationMobilePhotos || []) : (localState.manifestationMobilePhotos || []);
-              const mergedCustomDesktopWallpapers = isCloudNewer ? (cloudState.customDesktopWallpapers || []) : (localState.customDesktopWallpapers || []);
-              const mergedCustomMobileWallpapers = isCloudNewer ? (cloudState.customMobileWallpapers || []) : (localState.customMobileWallpapers || []);
-              const mergedCustomQuotes = isCloudNewer ? (cloudState.customQuotes || []) : (localState.customQuotes || []);
-              const mergedManifestationCustomQuotes = isCloudNewer ? (cloudState.manifestationCustomQuotes || []) : (localState.manifestationCustomQuotes || []);
-              const mergedLockedWidgets = isCloudNewer ? (cloudState.lockedWidgets || []) : (localState.lockedWidgets || []);
-              const mergedWeekdayTimes = (Array.isArray(cloudState.weekdayTimes) && cloudState.weekdayTimes.length > 0)
-                ? cloudState.weekdayTimes
-                : (Array.isArray(localState.weekdayTimes) ? localState.weekdayTimes : []);
-              const mergedWeekendTimes = (Array.isArray(cloudState.weekendTimes) && cloudState.weekendTimes.length > 0)
-                ? cloudState.weekendTimes
-                : (Array.isArray(localState.weekendTimes) ? localState.weekendTimes : []);
-
-              const mergedClockOffsets = { ...(localState.clockOffsets || {}), ...(cloudState.clockOffsets || {}) };
-              const mergedWidgetOffsets = { ...(localState.widgetOffsets || {}), ...(cloudState.widgetOffsets || {}) };
-              const mergedHideConfig = { ...(localState.hideConfig || {}), ...(cloudState.hideConfig || {}) };
-              const mergedMobileHideConfig = { ...(localState.mobileHideConfig || {}), ...(cloudState.mobileHideConfig || {}) };
-
-              // Active index: LOCAL wins — the user's current selection on this device takes priority.
-              // Cloud only fills in when local is null (fresh device / no selection yet).
-              // This prevents the debounced cloud save from reverting the user's just-made selection on refresh.
-              const activeDesktopCustomIndex = (localState.activeDesktopCustomIndex !== undefined && localState.activeDesktopCustomIndex !== null)
-                ? localState.activeDesktopCustomIndex
-                : cloudState.activeDesktopCustomIndex;
-              const activeMobileCustomIndex = (localState.activeMobileCustomIndex !== undefined && localState.activeMobileCustomIndex !== null)
-                ? localState.activeMobileCustomIndex
-                : cloudState.activeMobileCustomIndex;
-              const activeManifestationDesktopIndex = (localState.activeManifestationDesktopIndex !== undefined && localState.activeManifestationDesktopIndex !== null)
-                ? localState.activeManifestationDesktopIndex
-                : cloudState.activeManifestationDesktopIndex;
-              const activeManifestationMobileIndex = (localState.activeManifestationMobileIndex !== undefined && localState.activeManifestationMobileIndex !== null)
-                ? localState.activeManifestationMobileIndex
-                : cloudState.activeManifestationMobileIndex;
-
-              const mergedPeekModeWallpaper = (localState.peekModeWallpaper !== undefined && localState.peekModeWallpaper !== null)
-                ? localState.peekModeWallpaper
-                : cloudState.peekModeWallpaper;
-
-              // 4. Construct Merged State
-              //    Cloud wins for settings/data, but LOCAL ALWAYS WINS for timer state.
-              //    Timer is fundamentally device-local — cloud must never override what
-              //    this browser's timer shows (stopped, paused, or running).
-              const mergedState = {
-                ...localState,
-                ...cloudState,
-                activeDesktopCustomIndex,
-                activeMobileCustomIndex,
-                activeManifestationDesktopIndex,
-                activeManifestationMobileIndex,
-                peekModeWallpaper: mergedPeekModeWallpaper,
-                tasksDate: mergedTasksDate,
-                hideConfig: mergedHideConfig,
-                mobileHideConfig: mergedMobileHideConfig,
-                history: mergedHistory,
-                dailyTimes: mergedDailyTimes,
-                hasSeenOnboarding: mergedHasSeenOnboarding,
-                tasks: mergedTasks,
-                tomorrowTasks: mergedTomorrowTasks,
-                countdowns: cloudState.countdowns || localState.countdowns,
-                roadmaps: mergedRoadmaps,
-                plans: mergedPlans,
-                manifestationDesktopPhotos: mergedManifestationDesktopPhotos,
-                manifestationMobilePhotos: mergedManifestationMobilePhotos,
-                customDesktopWallpapers: mergedCustomDesktopWallpapers,
-                customMobileWallpapers: mergedCustomMobileWallpapers,
-                customQuotes: mergedCustomQuotes,
-                manifestationCustomQuotes: mergedManifestationCustomQuotes,
-                customAlarmSounds: mergedCustomAlarmSounds,
-                lockedWidgets: mergedLockedWidgets,
-                weekdayTimes: mergedWeekdayTimes,
-                weekendTimes: mergedWeekendTimes,
-                clockOffsets: mergedClockOffsets,
-                widgetOffsets: mergedWidgetOffsets,
-                // Deadlines are completely decoupled and always take the cloud truth
-                deadlines: cloudState.deadlines || localState.deadlines,
-                syntheticDeadlines: cloudState.syntheticDeadlines || localState.syntheticDeadlines,
-                deadlineAlertDays: cloudState.deadlineAlertDays || localState.deadlineAlertDays,
-                dismissedDeadlineAlerts: cloudState.dismissedDeadlineAlerts || localState.dismissedDeadlineAlerts,
-                // 5. Timer: LOCAL ALWAYS WINS. If user stopped/paused on this device,
-                //    that state is in localStorage. Cloud must never resurrect a ghost timer.
-                timerEndAt: localState.timerEndAt ?? null,
-                timerPausedLeft: localState.timerPausedLeft ?? null,
-                timerInitialMins: localState.timerInitialMins ?? null,
-                timerDeviceId: localState.timerDeviceId ?? null,
-                timerLastUpdated: localState.timerLastUpdated || 0,
-                timerLastSavedChunks: localState.timerLastSavedChunks || 0,
-                timerLastAlertedChunks: localState.timerLastAlertedChunks || 0,
-                activeTaskId: localState.activeTaskId ?? null,
-                activeTaskTitle: localState.activeTaskTitle ?? null,
-              };
-
-              // Safety: clear any expired timer
-              if (mergedState.timerEndAt && mergedState.timerEndAt < Date.now()) {
-                mergedState.timerEndAt = null;
-                mergedState.timerPausedLeft = null;
-                mergedState.timerInitialMins = null;
-                mergedState.timerDeviceId = null;
-                mergedState.timerLastSavedChunks = 0;
-                mergedState.timerLastAlertedChunks = 0;
-                mergedState.activeTaskId = null;
-                mergedState.activeTaskTitle = null;
-              }
-
-              const mergedData = { version: 2, state: mergedState };
-              const mergedStr = JSON.stringify(mergedData);
-
-              const isDifferentFromCloud = JSON.stringify(cloudState) !== JSON.stringify(mergedState);
-              if (isDifferentFromCloud) {
-                pendingValue = mergedStr;
-                hasUnsavedChanges = true;
-                hasUnsavedChanges = true;
-                setSyncLastModified(Date.now());
-                if (!saveTimeout) {
-                  saveTimeout = setTimeout(performSave, 5000);
-                }
-              } else {
-                setSyncLastModified(json.lastModified);
-              }
-
-              try {
-                localStorage.setItem('dashboard-storage', mergedStr);
-              } catch (e) {
-                console.warn("Failed to update localStorage with merged data:", e);
-              }
-
-              // CRITICAL: If there are local changes, lastSavedValue MUST be the cloud state
-              // so that the scheduled performSave() detects the diff and pushes them to the DB.
-              lastSavedValue = isDifferentFromCloud ? JSON.stringify({ version: 2, state: cloudState }) : mergedStr;
-              return mergedStr;
-            } else {
-              // No local state (fresh device/browser) — use cloud as-is but validate timer
-              setSyncLastModified(json.lastModified);
-              const cloudOnlyState = json.data?.state || {};
-              // Safety: never carry a foreign-device timer to a fresh device.
-              // The receiving device is NOT the owner, so the timer should not tick here.
-              // We only keep a cloud timer if it's genuinely still running AND not expired.
-              if (cloudOnlyState.timerEndAt) {
-                if (cloudOnlyState.timerEndAt < Date.now()) {
-                  // Already expired — wipe it
-                  cloudOnlyState.timerEndAt = null;
-                  cloudOnlyState.timerPausedLeft = null;
-                  cloudOnlyState.timerInitialMins = null;
-                  cloudOnlyState.timerDeviceId = null;
-                  cloudOnlyState.timerLastSavedChunks = 0;
-                  cloudOnlyState.timerLastAlertedChunks = 0;
-                  cloudOnlyState.activeTaskId = null;
-                  cloudOnlyState.activeTaskTitle = null;
-                }
-                // Note: if timerEndAt is in the future we DO show it — the user may have
-                // started it on another tab in the same browser and opened this one intentionally.
-                // The timerDeviceId guard in Timer.tsx ensures only the owner saves focus minutes.
-              } else if (cloudOnlyState.timerPausedLeft !== null && cloudOnlyState.timerPausedLeft !== undefined) {
-                // Paused timer from another device — a fresh device should NOT inherit paused state
-                // because the owner device is the only one that can resume it correctly.
-                // Clear it so this fresh device shows a clean slate.
-                cloudOnlyState.timerEndAt = null;
-                cloudOnlyState.timerPausedLeft = null;
-                cloudOnlyState.timerInitialMins = null;
-                cloudOnlyState.timerDeviceId = null;
-                cloudOnlyState.timerLastSavedChunks = 0;
-                cloudOnlyState.timerLastAlertedChunks = 0;
-                cloudOnlyState.activeTaskId = null;
-                cloudOnlyState.activeTaskTitle = null;
-              }
-              const cleaned = { ...json.data, state: cloudOnlyState };
-              const str = JSON.stringify(cleaned);
-              try {
-                localStorage.setItem('dashboard-storage', str);
-              } catch (e) {
-                console.warn("Failed to update localStorage with cloud data:", e);
-              }
-              lastSavedValue = str;
-              return str;
+            // 🛡️ PROTECT OFFLINE HOURS: Always keep the highest accumulated minutes
+            const localHistory = localState.history || {};
+            const cloudHistory = json.data.state.history || {};
+            const mergedHistory = { ...cloudHistory };
+            for (const date in localHistory) {
+              mergedHistory[date] = Math.max(localHistory[date] || 0, cloudHistory[date] || 0);
             }
+
+            // 🛡️ PROTECT OFFLINE WAKE-UP LOGS
+            const localDailyTimes = localState.dailyTimes || {};
+            const cloudDailyTimes = json.data.state.dailyTimes || {};
+            const mergedDailyTimes = mergeDailyTimes(localDailyTimes, cloudDailyTimes);
+
+            const mergedState = {
+              ...json.data.state,
+
+              // 🛡️ Apply the protected offline stats
+              history: mergedHistory,
+              dailyTimes: mergedDailyTimes,
+
+              // 🛡️ PROTECT LOCAL DEVICE MEDIA SELECTIONS
+              // The active index points to a local file on THIS physical device.
+              // The cloud must NEVER overwrite what you've selected on this specific machine.
+              activeDesktopCustomIndex: localState.activeDesktopCustomIndex !== undefined ? localState.activeDesktopCustomIndex : json.data.state.activeDesktopCustomIndex,
+              activeMobileCustomIndex: localState.activeMobileCustomIndex !== undefined ? localState.activeMobileCustomIndex : json.data.state.activeMobileCustomIndex,
+              activeManifestationDesktopIndex: localState.activeManifestationDesktopIndex !== undefined ? localState.activeManifestationDesktopIndex : json.data.state.activeManifestationDesktopIndex,
+              activeManifestationMobileIndex: localState.activeManifestationMobileIndex !== undefined ? localState.activeManifestationMobileIndex : json.data.state.activeManifestationMobileIndex,
+              activePeekModeCustomIndex: localState.activePeekModeCustomIndex !== undefined ? localState.activePeekModeCustomIndex : json.data.state.activePeekModeCustomIndex,
+              peekModeWallpaper: localState.peekModeWallpaper !== undefined ? localState.peekModeWallpaper : json.data.state.peekModeWallpaper,
+
+              // Strictly preserve local timer status so a running timer isn't wiped
+              timerEndAt: localState.timerEndAt ?? null,
+              timerPausedLeft: localState.timerPausedLeft ?? null,
+              timerInitialMins: localState.timerInitialMins ?? null,
+              timerDeviceId: localState.timerDeviceId ?? null,
+              activeTaskId: localState.activeTaskId ?? null,
+              activeTaskTitle: localState.activeTaskTitle ?? null,
+            };
+
+            const cloudStr = JSON.stringify({ version: 2, state: mergedState });
+
+            // Save the merged data to local cache for offline use
+            localStorage.setItem('dashboard-storage', cloudStr);
+            lastSavedValue = cloudStr;
+            return cloudStr;
           }
-        } else {
-          console.warn(`Database API returned ${res.status}, skipping retries.`);
-          break; // Stop retrying on server/auth errors!
         }
       } catch (e) {
-        console.warn(`Database API error, retrying... (${retries + 1}/${maxRetries})`, e);
+        console.warn("Cloud fetch failed (network error), falling back to local cache.");
       }
-      retries++;
-      await new Promise(resolve => setTimeout(resolve, 350));
     }
 
-    console.warn("Failed to fetch store from DB after retries or no token, falling back to localStorage.");
-    const localData = localStorage.getItem('dashboard-storage');
-    // If we have no local cache and we couldn't fetch from DB, we are hydrating defaults.
-    // We MUST set failedToLoadDB to true to permanently disable cloud saves for this session,
-    // otherwise these defaults will overwrite the user's cloud database!
-    if (!localData) {
-      failedToLoadDB = true;
-    }
-    lastSavedValue = localData;
-    return localData;
+    // 3. FALLBACK: If network failed or no token, use local cache
+    console.warn("Using local cache fallback.");
+    if (!localDataStr) failedToLoadDB = true;
+    lastSavedValue = localDataStr;
+    return localDataStr;
   },
+
   setItem: async (_name: string, value: string): Promise<void> => {
     if (typeof window === 'undefined' || isSyncingFromCloud || isAuthTransition) return;
     if (value === lastSavedValue) return;
 
-    // Safety check: NEVER save to DB if hydration hasn't finished
-    if (useDashboardStore.getState && !useDashboardStore.getState()._hasHydrated) {
-      return;
-    }
+    if (useDashboardStore.getState && !useDashboardStore.getState()._hasHydrated) return;
 
+    // 1. Always update local cache so offline mode has the latest UI changes
     try {
       localStorage.setItem('dashboard-storage', value);
     } catch (e) { }
 
-    const newTime = Math.max(Date.now(), getSyncLastModified() + 1);
-    setSyncLastModified(newTime);
-
-    pendingValue = value;
-    hasUnsavedChanges = true;
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-    }
-    if (!isSaving) {
-      saveTimeout = setTimeout(performSave, 5000);
+    // 2. Only push to cloud if online. NO offline queuing.
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      pendingValue = value;
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(performSave, 2000);
     }
   },
+
   removeItem: async (_name: string): Promise<void> => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem('dashboard-storage');
@@ -1974,7 +1756,13 @@ export const useDashboardStore = create<DashboardState>()(
         set({ peekModeWallpaper: url });
         get().forceInstantSave();
       },
-
+      customPeekModeWallpapers: [],
+      setCustomPeekModeWallpapers: (urls) => set({ customPeekModeWallpapers: urls }),
+      activePeekModeCustomIndex: null,
+      setActivePeekModeCustomIndex: (index) => {
+        set({ activePeekModeCustomIndex: index });
+        get().forceInstantSave();
+      },
       rightWidgetsOffset: 48, // Default corresponds to bottom-12 (48px)
       setRightWidgetsOffset: (offset) => set({ rightWidgetsOffset: Math.max(0, offset) }),
 
