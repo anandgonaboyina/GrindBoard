@@ -501,7 +501,6 @@ export default function GuidedTour() {
   };
 
   const handleNext = () => {
-    if (isStepLocked) return;
     ensureWorkspaceVisible();
     if (isLastStep) {
       handleComplete();
@@ -518,7 +517,6 @@ export default function GuidedTour() {
   };
 
   const handleSkipStep = () => {
-    if (isStepLocked) return;
     ensureWorkspaceVisible();
     if (isLastStep) {
       handleComplete();
@@ -863,16 +861,15 @@ export default function GuidedTour() {
   return createPortal(
     <div className={`fixed inset-0 z-[99999] select-none animate-in fade-in duration-300 ${isPanicStep || isFocusStep ? 'pointer-events-none' : 'pointer-events-auto'}`}>
       {/* Floating Exit Button ONLY for Tour Replay Mode (Positioned Top-Right of Screen) */}
-      {isReplaying && (
-        <button
-          onClick={handleCloseTour}
-          className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[100001] px-3 sm:px-3.5 py-1.5 sm:py-2 bg-slate-900/90 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl font-bold flex items-center gap-1.5 text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer hover:shadow-red-500/20 pointer-events-auto"
-          title="Close & Exit Tour"
-        >
-          <X className="w-4 h-4 text-red-400" />
-          <span>Exit Tour</span>
-        </button>
-      )}
+      <button
+        onClick={handleCloseTour}
+        className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[100001] px-3 sm:px-3.5 py-1.5 sm:py-2 bg-slate-900/90 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl font-bold flex items-center gap-1.5 text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 cursor-pointer hover:shadow-red-500/20 pointer-events-auto"
+        title="Close & Exit Tour"
+      >
+        <X className="w-4 h-4 text-red-400" />
+        <span>Exit Tour</span>
+      </button>
+
 
       {/* Tour overlay backdrop - Glassy dark blur for Welcome Step 0 */}
       <div className={`absolute inset-0 transition-all duration-500 ${isFirstStep ? 'bg-slate-950/75 backdrop-blur-md' : 'bg-transparent'}`} />
@@ -990,12 +987,15 @@ export default function GuidedTour() {
           </button>
 
           {/* Skip Current Step */}
-          {!isLastStep && !isStepLocked && (
+          {!isLastStep && isStepLocked && (
+            // Remember to import ChevronsRight from 'lucide-react' if you use the icon
             <button
               onClick={handleSkipStep}
-              className="text-xs font-medium text-white/50 hover:text-white underline underline-offset-4 px-1.5 transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/[0.03] hover:bg-white/10 border border-white/5 hover:border-white/10 text-[10px] sm:text-[11px] font-bold text-white/40 hover:text-white transition-all active:scale-95 group cursor-pointer"
+              title="Skip this step"
             >
-              Skip step
+              <span>Skip step</span>
+              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
             </button>
           )}
 

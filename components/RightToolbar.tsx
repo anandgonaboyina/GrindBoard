@@ -47,6 +47,7 @@ export default function RightToolbar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+
   const hideConfig = isMobile ? mobileHideConfig : baseHideConfig;
 
   const showPlans = useDashboardStore((state) => state.showPlans);
@@ -187,7 +188,10 @@ export default function RightToolbar() {
           <Tooltip text="Settings" position="left">
             <button
               data-tour="settings-btn"
-              onClick={toggleSettings}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleSettings(); // This now forces 'preferences' every time!
+              }}
               className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all glass-btn ${isHidden && hideConfig.settingsBtn ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
               <Settings size={20} className="sm:w-6 sm:h-6" />

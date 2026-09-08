@@ -46,7 +46,7 @@ export default function ConnectionStatusToast() {
   return (
     <div
       style={{ zIndex: 40 }}
-      className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
+      className="fixed z-[99990] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
     >
       <style>{`
         @keyframes scale3DCard {
@@ -60,16 +60,15 @@ export default function ConnectionStatusToast() {
       `}</style>
 
       {/* 3D Scale-Up Floating Card - Transparent Outer Container */}
-      <div className="animate-card-3d flex flex-col items-center justify-center p-4 text-center gap-3 transition-all">
+      <div className="z-[999] animate-card-3d flex flex-col items-center justify-center p-4 text-center gap-3 transition-all">
         {/* Big Icon Centerpiece with Checkmark / Cross Badge */}
         <div className="relative flex items-center justify-center my-1">
           {/* Inner Glass Icon Container */}
           <div
-            className={`w-20 h-20 rounded-2xl flex items-center justify-center border backdrop-blur-xl shadow-2xl ${
-              isOnline
-                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 shadow-emerald-500/30'
-                : 'bg-red-950/40 border-red-500/40 text-red-400 shadow-red-500/30'
-            }`}
+            className={`w-20 h-20 rounded-2xl flex items-center justify-center border backdrop-blur-xl shadow-2xl ${isOnline
+              ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 shadow-emerald-500/30'
+              : 'bg-red-950/40 border-red-500/40 text-red-400 shadow-red-500/30'
+              }`}
           >
             {isOnline ? (
               <Wifi className="w-10 h-10 animate-pulse text-emerald-400" />
@@ -97,11 +96,10 @@ export default function ConnectionStatusToast() {
             {isOnline ? 'Connected to Internet' : 'Offline Mode Active'}
           </h3>
           <span
-            className={`text-[10px] font-mono font-bold uppercase px-3 py-0.5 rounded-full border backdrop-blur-md shadow-md ${
-              isOnline
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-red-500/20 text-red-300 border-red-500/40'
-            }`}
+            className={`text-[10px] font-mono font-bold uppercase px-3 py-0.5 rounded-full border backdrop-blur-md shadow-md ${isOnline
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+              : 'bg-red-500/20 text-red-300 border-red-500/40'
+              }`}
           >
             {isOnline ? 'Online' : 'Offline — Not Connected'}
           </span>

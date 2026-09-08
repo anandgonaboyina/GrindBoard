@@ -480,22 +480,6 @@ export default function SettingsModal() {
     }
   }, [isSettingsOpen, connectInitialTab, setSettingsActiveTab]);
 
-  useEffect(() => {
-    const handleOpenLeaderboard = () => {
-      setSettingsActiveTab('connect');
-      setIsMobileDetailView(true);
-    };
-    const handleOpenConnect = () => {
-      setSettingsActiveTab('connect');
-      setIsMobileDetailView(true);
-    };
-    window.addEventListener('open-leaderboard', handleOpenLeaderboard);
-    window.addEventListener('open-connect', handleOpenConnect);
-    return () => {
-      window.removeEventListener('open-leaderboard', handleOpenLeaderboard);
-      window.removeEventListener('open-connect', handleOpenConnect);
-    };
-  }, [setSettingsActiveTab]);
 
   const processBackupDownload = (data: any, filename: string, typeName: string) => {
     setIsProcessingBackup(true);
@@ -1107,33 +1091,6 @@ export default function SettingsModal() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {/* Guided Tour Banner */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-indigo-900/30 to-purple-900/20 border border-indigo-500/20 gap-2 shadow-sm">
-                      <div className="flex items-start gap-2.5 min-w-0">
-                        <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 shrink-0">
-                          <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <h4 className="text-[11px] md:text-xs font-bold text-white/90 flex items-center gap-1.5 flex-wrap">
-                            <span className="break-words">Guided Tour</span>
-                            <span className="text-[8px] bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 px-1.5 py-0.5 rounded font-bold">Interactive</span>
-                          </h4>
-                          <p className="text-[9px] md:text-[10px] text-white/60 leading-snug mt-0.5 break-words">
-                            Need a refresher? Replay the guided tour to learn dashboard controls.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          useDashboardStore.getState().startTour();
-                          toggleSettings();
-                        }}
-                        className="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-lg font-bold text-[10px] shadow-sm active:scale-95 transition-all w-full sm:w-auto text-center shrink-0"
-                      >
-                        Replay Tour
-                      </button>
-                    </div>
-
                     {/* PC Wallpaper Banner */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-blue-900/30 to-indigo-900/20 border border-blue-500/20 gap-2 shadow-sm">
                       <div className="flex items-start gap-2.5 min-w-0">
@@ -1464,7 +1421,32 @@ export default function SettingsModal() {
                         ))}
                       </div>
                     </div>
-
+                    {/* Guided Tour Banner */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-indigo-900/30 to-purple-900/20 border border-indigo-500/20 gap-2 shadow-sm">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 shrink-0">
+                          <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <h4 className="text-[11px] md:text-xs font-bold text-white/90 flex items-center gap-1.5 flex-wrap">
+                            <span className="break-words">Guided Tour</span>
+                            <span className="text-[8px] bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 px-1.5 py-0.5 rounded font-bold">Interactive</span>
+                          </h4>
+                          <p className="text-[9px] md:text-[10px] text-white/60 leading-snug mt-0.5 break-words">
+                            Need a refresher? Replay the guided tour to learn dashboard controls.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          useDashboardStore.getState().startTour();
+                          toggleSettings();
+                        }}
+                        className="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-lg font-bold text-[10px] shadow-sm active:scale-95 transition-all w-full sm:w-auto text-center shrink-0"
+                      >
+                        Replay Tour
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

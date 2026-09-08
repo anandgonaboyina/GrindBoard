@@ -242,11 +242,11 @@ export default function Countdown({
             </div>
 
             {/* Main Countdown Display Logic */}
-            <div className="flex flex-col items-center justify-center flex-1">
+            <div className="flex flex-col items-center justify-center flex-1 p-2">
               {hasTime && timeLeft.days === 0 && timeLeft.hours < 12 ? (
                 // LESS THAN 12 HOURS - SHOW HUGE TIME
                 <>
-                  <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-pink-400 tracking-tighter drop-shadow-sm font-mono leading-none">
+                  <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-pink-400 tracking-tighter drop-shadow-sm font-mono leading-none pr-1">
                     {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.mins).padStart(2, '0')}
                   </span>
                   <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-amber-400 animate-pulse mt-0.5">
@@ -256,7 +256,7 @@ export default function Countdown({
               ) : timeLeft.days === 0 && !hasTime ? (
                 // NO TIME SPECIFIED, DAY IS 0 -> TARGET TODAY
                 <>
-                  <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-teal-500 tracking-tighter drop-shadow-sm leading-none">
+                  <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-teal-500 tracking-tighter pr-1 drop-shadow-sm leading-none">
                     00
                   </span>
                   <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-emerald-400 animate-pulse mt-0.5">
@@ -266,11 +266,11 @@ export default function Countdown({
               ) : (
                 // DEFAULT SHOW HUGE DAYS (Subtext Time if applicable)
                 <>
-                  <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-cyan-200 tracking-tighter leading-none drop-shadow-sm">
+                  <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-cyan-200 tracking-tighter leading-none drop-shadow-sm pr-1 ">
                     {String(timeLeft.days).padStart(2, '0')}
                   </span>
                   {hasTime ? (
-                    <div className="flex items-center gap-0.5 mt-0.5 bg-black/20 px-1.5 py-0.5 rounded border border-white/5 text-[8px] font-mono text-cyan-200/80">
+                    <div className="flex items-center gap-0.5 mt-0.5 bg-black/20 px-1.5 py-0.5 rounded border border-white/5 text-[8px] font-mono text-cyan-200/80 p-1">
                       <span>{String(timeLeft.hours).padStart(2, '0')}h</span>
                       <span>{String(timeLeft.mins).padStart(2, '0')}m</span>
                     </div>

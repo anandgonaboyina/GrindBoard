@@ -892,7 +892,7 @@ const fileStorage = createJSONStorage(() => ({
               mergedHistory[date] = Math.max(localHistory[date] || 0, cloudHistory[date] || 0);
             }
 
-            // 🛡️ PROTECT OFFLINE WAKE-UP LOGS
+            //PROTECT OFFLINE WAKE-UP LOGS
             const localDailyTimes = localState.dailyTimes || {};
             const cloudDailyTimes = json.data.state.dailyTimes || {};
             const mergedDailyTimes = mergeDailyTimes(localDailyTimes, cloudDailyTimes);
@@ -900,13 +900,16 @@ const fileStorage = createJSONStorage(() => ({
             const mergedState = {
               ...json.data.state,
 
-              // 🛡️ Apply the protected offline stats
+              // FORCE UI RESET ON STARTUP
+              isSettingsOpen: false,
+              settingsActiveTab: 'preferences',
+
+
+              //Apply the protected offline stats
               history: mergedHistory,
               dailyTimes: mergedDailyTimes,
 
-              // 🛡️ PROTECT LOCAL DEVICE MEDIA SELECTIONS
-              // The active index points to a local file on THIS physical device.
-              // The cloud must NEVER overwrite what you've selected on this specific machine.
+              // PROTECT LOCAL DEVICE MEDIA SELECTIONS
               activeDesktopCustomIndex: localState.activeDesktopCustomIndex !== undefined ? localState.activeDesktopCustomIndex : json.data.state.activeDesktopCustomIndex,
               activeMobileCustomIndex: localState.activeMobileCustomIndex !== undefined ? localState.activeMobileCustomIndex : json.data.state.activeMobileCustomIndex,
               activeManifestationDesktopIndex: localState.activeManifestationDesktopIndex !== undefined ? localState.activeManifestationDesktopIndex : json.data.state.activeManifestationDesktopIndex,
@@ -1193,16 +1196,28 @@ export const useDashboardStore = create<DashboardState>()(
       connectInitialTab: undefined,
       toggleSettings: () => set((state) => {
         const willClose = state.isSettingsOpen;
+
         if (willClose && typeof window !== 'undefined') {
           // Push both explicitly to bypass performSave concurrency issues
           useDashboardStore.getState().pushWallpapersToDB();
           useDashboardStore.getState().pushManifestationToDB();
         }
+
         return {
           isSettingsOpen: !state.isSettingsOpen,
           isAlarmPlaying: false,
           isManifestationOpen: false,
-          ...(willClose && { connectInitialTab: undefined })
+
+          ...(willClose
+            ? { connectInitialTab: undefined } // Just clear sub-tab when closing
+            : {
+              // SMART TAB MEMORY:
+              // If it was left on 'connect', reset to 'preferences' to avoid the blank screen.
+              // Otherwise, remember whatever tab they were looking at!
+              settingsActiveTab: state.settingsActiveTab === 'connect' ? 'preferences' : state.settingsActiveTab,
+              connectInitialTab: undefined
+            }
+          )
         };
       }),
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
@@ -1699,7 +1714,7 @@ export const useDashboardStore = create<DashboardState>()(
         return { [key]: !state[key] };
       }),
       hideConfig: {
-        quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
+        quote: true, timer: false, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true
       },
       setHideConfig: (key, value) => set((state) => {
         return { hideConfig: { ...state.hideConfig, [key]: value } };
