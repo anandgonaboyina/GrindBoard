@@ -115,7 +115,7 @@ export default function FeatureCarousel() {
   }, [activeIndex, isDragging, filteredFeatures.length, activeDivision]);
 
   return (
-    <div className="w-full relative flex flex-col items-center select-none touch-pan-y overflow-hidden">
+    <div className="w-full relative flex flex-col items-center select-none touch-pan-y">
 
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -132,8 +132,8 @@ export default function FeatureCarousel() {
       ` }} />
 
       {/* Modern UI: Responsive, Scrollable, Icon-based Division Tabs */}
-      <div className="mb-6 lg:mb-10 z-20 w-full max-w-[95vw] sm:max-w-3xl hide-scrollbar px-2 flex justify-start sm:justify-center">
-        <div className="flex flex-nowrap items-center gap-0.75 sm:gap-3 bg-black/20 p-1 sm:p-2 rounded-full border border-white/10 backdrop-blur-md mx-auto w-max">
+      <div className="mb-4 lg:mb-2 z-20 w-full max-w-[95vw] sm:max-w-3xl hide-scrollbar px-2 flex justify-start sm:justify-center">
+        <div className="flex flex-nowrap items-center gap-1 sm:gap-3 bg-black/20 p-1 sm:p-2 rounded-full border border-white/10 backdrop-blur-md mx-auto w-max">
           {DIVISIONS.map((div) => {
             const Icon = div.icon;
             const isActive = activeDivision === div.id;
@@ -142,7 +142,7 @@ export default function FeatureCarousel() {
               <button
                 key={div.id}
                 onClick={() => setActiveDivision(div.id)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-5 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-sm font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${isActive
+                className={`flex items-center gap-1.5 sm:gap-2 px-1 sm:px-5 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-sm font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${isActive
                   ? `${div.activeBg} ${div.color} ${div.shadow} ${div.border} border`
                   : 'text-white/40 hover:text-white/70 hover:bg-white/5 border border-transparent'
                   }`}
@@ -173,10 +173,10 @@ export default function FeatureCarousel() {
           return (
             <div
               key={feat.id}
-              className="shrink-0 w-[280px] min-[400px]:w-[320px] sm:w-[400px] lg:w-[500px] snap-center flex justify-center items-center transition-transform duration-500"
+              className="shrink-0 w-[280px] min-[350px]:w-[320px] sm:w-[400px] lg:w-[500px] snap-center flex justify-center items-center transition-transform duration-500"
             >
               <div
-                className={`relative w-full p-5 sm:p-6 lg:p-8 rounded-2xl md:rounded-3xl backdrop-blur-xl flex flex-col gap-3 sm:gap-4 transition-all duration-700 overflow-hidden group border
+                className={`relative w-full p-2 sm:p-4 lg:p-6 rounded-2xl md:rounded-3xl backdrop-blur-xl flex flex-col gap-2 sm:gap-4 transition-all duration-700 overflow-hidden group border
                   ${isActive
                     ? `scale-100 lg:scale-105 bg-slate-900/80 ${feat.border} opacity-100 z-10 shadow-2xl ${feat.glow}`
                     : 'scale-[0.90] bg-black/30 border-white/5 opacity-50 z-0 shadow-none'

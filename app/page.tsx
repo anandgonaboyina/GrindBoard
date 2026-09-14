@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Lock, User as UserIcon, Loader2, Eye, EyeOff, BookOpen, ExternalLink, KeyRound, Mail, ArrowLeft } from 'lucide-react';
+import { Shield, Lock, User as UserIcon, Loader2, Eye, EyeOff, BookOpen, ExternalLink, KeyRound, Mail, ArrowLeft, Maximize, Minimize, X } from 'lucide-react';
 
 import FeatureCarousel from '@/components/FeatureCarousel';
 import UserManualModal from '@/components/UserManualModal';
@@ -29,6 +29,10 @@ export default function CloudLogin() {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [demoAuthData, setDemoAuthData] = useState<{token: string, username: string} | null>(null);
 
+  // --- NEW: Video Expand State & Hydration Fix ---
+  const [isVideoExpanded, setIsVideoExpanded] = useState(false);
+  const [isMounted, setIsMounted] = useState(false); // Prevents extension hydration crashes
+
   // --- NEW: Animated Business Taglines ---
   const taglines = [
     "The Ultimate Dashboard for Deep Work.",
@@ -38,6 +42,21 @@ export default function CloudLogin() {
     "Your Personalized Productivity Hub."
   ];
   const [taglineIndex, setTaglineIndex] = useState(0);
+
+  // Hydration Fix: Tell component it is safely mounted on the client
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Prevent background scrolling when video is expanded
+  useEffect(() => {
+    if (isVideoExpanded) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isVideoExpanded]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -63,6 +82,19 @@ export default function CloudLogin() {
       }
     }
   }, [router]);
+
+const videoRef = useRef<HTMLVideoElement>(null);
+
+useEffect(() => {
+  if (videoRef.current) {
+    videoRef.current.defaultMuted = true;
+    videoRef.current.muted = true;
+    videoRef.current.play().catch((err) => {
+      console.warn("Autoplay blocked or failed:", err);
+    });
+  }
+}, [isMounted]);
+
   const handleDemoLogin = async () => {
     setIsLoading(true);
     setError('');
@@ -223,7 +255,7 @@ export default function CloudLogin() {
   };
 
   return (
-    <div className="min-h-[100dvh] text-white flex flex-col lg:flex-row items-center justify-center pt-16 sm:pt-20 lg:pt-0 pb-8 px-4 sm:px-6 lg:p-12 font-sans relative overflow-x-hidden overflow-y-auto lg:overflow-hidden gap-6 lg:gap-16 w-full">
+    <div className="min-h-[100dvh] text-white flex flex-col lg:flex-row items-center justify-center pt-16 sm:pt-16 md:ml-22 lg:pt-2 pb-10 px-4 sm:px-6 md:p-20 lg:p-24 font-sans relative overflow-x-hidden overflow-y-auto lg:overflow-hidden gap-4 w-full">
 
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -241,10 +273,29 @@ export default function CloudLogin() {
           0% { background-position: -200% center; }
           100% { background-position: 200% center; }
         }
-        @keyframes form-enter {
-          0% { opacity: 0; transform: translateY(10px) scale(0.98); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
+
+        /* --- NEW SLIDE KEYFRAMES --- */
+        @keyframes slide-in-left {
+          0% { opacity: 0; transform: translateX(-60px); }
+          100% { opacity: 1; transform: translateX(0); }
         }
+        @keyframes slide-in-right {
+          0% { opacity: 0; transform: translateX(60px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slide-in-up {
+          0% { opacity: 0; transform: translateY(60px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-in-down {
+          0% { opacity: 0; transform: translateY(-60px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes form-enter {
+          0% { opacity: 0; transform: translateX(30px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+
         .animate-bg-pan {
           background-size: 200% 200%;
           animation: bg-pan 20s ease infinite;
@@ -260,8 +311,20 @@ export default function CloudLogin() {
           animation: text-shimmer 6s linear infinite;
         }
         .animate-form-enter {
-          animation: form-enter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+          animation: form-enter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
         }
+
+        /* --- SLIDE UTILITY CLASSES --- */
+        .anim-slide-left { animation: slide-in-left 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .anim-slide-right { animation: slide-in-right 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .anim-slide-up { animation: slide-in-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .anim-slide-down { animation: slide-in-down 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+        .delay-500 { animation-delay: 500ms; }
         `
       }} />
 
@@ -273,51 +336,53 @@ export default function CloudLogin() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_90%)]" />
       </div>
 
-      {/* --- APP NAME & BRANDING HEADER --- */}
-      <div className="fixed top-3 left-3 lg:absolute lg:top-8 lg:left-12 z-50 flex flex-row items-center gap-2 lg:gap-4 animate-in fade-in slide-in-from-top-4 duration-700">
+      {/* --- APP NAME & BRANDING HEADER (Slides down) --- */}
+      <div className="fixed top-3 left-1 lg:absolute lg:top-8 z-50 flex flex-row items-center gap-2 lg:gap-4 anim-slide-down delay-100">
+       
         <div className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg lg:rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-500 animate-pulse" />
           <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-16 lg:h-16 bg-black rounded-lg lg:rounded-2xl border border-white/20 flex items-center justify-center relative z-10 overflow-hidden shadow-2xl">
             <img src="/icon.png" alt="Grind Board" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = '/icon-192x192.png' }} />
           </div>
         </div>
-        <div className="flex flex-col justify-center">
-          <h1 className="text-[17px] sm:text-xl lg:text-4xl font-black tracking-tighter uppercase inline-block text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-white animate-text-shimmer drop-shadow-lg leading-none">
-            Grind Board
-          </h1>
-          <div className="hidden lg:flex items-center gap-1.5 mt-1">
-            <span className="text-[11px] font-mono font-bold tracking-widest text-emerald-400 uppercase flex items-center gap-1">
-              <Shield className="w-3 h-3" /> AES-256 Cloud Sync
-            </span>
+        <div>
+          <div className="flex flex-col justify-center">
+            <h1 className="text-[17px] sm:text-xl lg:text-4xl font-black tracking-tighter uppercase inline-block text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-white animate-text-shimmer drop-shadow-lg leading-none">
+              Grind Board
+            </h1>
+            <div className="hidden lg:flex items-center gap-1.5 mt-1">
+              <span className="text-[11px] font-mono font-bold tracking-widest text-emerald-400 uppercase flex items-center gap-1">
+                <Shield className="w-3 h-3" /> AES-256 Cloud Sync
+              </span>
+            </div>
           </div>
         </div>
-        <div className="fixed top-4 md:top-6 right-2 md:right-8 flex items-center gap-1.5 text-xs md:text-xl font-bold text-rose-200 bg-rose-500/10 border border-rose-500/25 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-md">
-          <span>Made with</span>
-          <span className="text-rose-500 animate-pulse text-sm">❤️</span>
-          <span>by <strong className="text-white font-extrabold tracking-wide">Anand</strong></span>
-        </div>
+
+      </div>
+      <div className="fixed top-4 md:top-6 right-2 anim-slide-right delay-100 flex items-center gap-1.5 text-xs md:text-xl font-bold text-rose-200 bg-rose-500/10 border border-rose-500/25 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-md z-50">
+        <span>Made with</span>
+        <span className="text-rose-500 animate-pulse text-sm">❤️</span>
+        <span>by <strong className="text-white font-extrabold tracking-wide">Anand</strong></span>
       </div>
 
-      {/* Feature Carousel & Dynamic Taglines (Hero Section) */}
-      <div className="w-full lg:w-1/2 max-w-full lg:max-w-xl z-10 animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col justify-center gap-1 shrink-0 mt-4 lg:mt-16 relative">
-
-        <div className="w-full flex justify-center lg:justify-start h-8 sm:h-10 lg:h-16 mb-4 lg:mb-6 relative  text-center lg:text-left">
+      {/* Feature Carousel & Dynamic Taglines (Slides from left) */}
+      <div className="w-full lg:w-1/2 max-w-full lg:max-w-xl z-10 flex flex-col justify-center gap-1 shrink-0 relative anim-slide-left delay-200 order-1 lg:order-1">
+        <div className="w-full flex justify-center lg:justify-start h-8 sm:h-10 lg:h-16 mb-4 lg:mb-6 relative text-center lg:text-left">
           <h2
             key={taglineIndex}
-            className="absolute text-lg sm:text-2xl lg:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400 animate-in slide-in-from-bottom-5 fade-in duration-500 w-full drop-shadow-md"
+            className="absolute text-lg sm:text-2xl lg:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400 animate-in slide-in-from-right-8 fade-in duration-500 w-full drop-shadow-md"
           >
             {taglines[taglineIndex]}
           </h2>
         </div>
-
         <FeatureCarousel />
       </div>
 
       {/* Form and Demo Button Wrapper */}
-      <div className="flex flex-col gap-6 w-full max-w-[400px] shrink-0 mx-auto lg:mx-0 lg:mt-16 z-10">
+      <div className="flex flex-col gap-5 w-full max-w-[400px] shrink-0 mx-auto lg:mx-0 lg:mt-12 z-10 order-2 lg:order-2">
         
-        {/* Form Container */}
-        <div className="order-2 w-full bg-white/[0.02] border border-white/10 rounded-3xl p-4 sm:p-6 lg:p-8 backdrop-blur-2xl relative shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700 group/form">
+        {/* Form Container (Slides from right) */}
+        <div className="w-full bg-white/[0.02] border border-white/10 rounded-3xl p-4 sm:p-6 lg:p-8 backdrop-blur-2xl relative shadow-[0_20px_50px_rgba(0,0,0,0.5)] group/form anim-slide-right delay-300">
 
         {/* Form Inner Glow */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 rounded-3xl pointer-events-none" />
@@ -353,7 +418,7 @@ export default function CloudLogin() {
 
         <form onSubmit={handleLogin} className="flex flex-col gap-3 sm:gap-3.5 relative z-10">
 
-          {/* Animated wrapper for form fields switching */}
+          {/* Animated wrapper for form fields switching (Horizontal slide transitions) */}
           <div key={isRegisterMode ? `reg-${registerStep}` : isForgotMode ? `forgot-${forgotStep}` : 'login'} className="animate-form-enter flex flex-col gap-3 sm:gap-3.5">
 
             {(error || successMsg) && (
@@ -509,16 +574,74 @@ export default function CloudLogin() {
           </div>
         </form>
 
+        </div>
+
+        {/* Demo Button (Slides up from bottom) */}
+        <button
+          onClick={handleDemoLogin}
+          disabled={isLoading}
+          className="w-full py-3 sm:py-3.5 rounded-2xl font-black text-sm tracking-wide bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-2 border border-emerald-400/50 anim-slide-up delay-400"
+        >
+          <Shield className="w-5 h-5" /> Explore Demo
+        </button>
+
       </div>
 
-      <button
-        onClick={handleDemoLogin}
-        disabled={isLoading}
-        className="order-1 lg:order-3 w-full py-3 sm:py-3.5 rounded-2xl font-black text-sm tracking-wide bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-2 border border-emerald-400/50"
-      >
-        <Shield className="w-5 h-5" /> Explore Demo
-      </button>
+      {/* --- INTRO VIDEO (Click to expand overlay) --- */}
+      <div className={`
+        transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)]
+        ${isVideoExpanded 
+          ? 'fixed inset-0 z-[9999] bg-[#050b14]/95 backdrop-blur-2xl p-4 md:p-6 flex flex-col items-center justify-center m-0 rounded-none' 
+          : 'w-full max-w-[400px] mx-auto lg:fixed lg:bottom-8 lg:left-6 lg:w-[320px] lg:m-0 z-40 bg-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-3xl p-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] anim-slide-left delay-500 mt-4 lg:mt-0 order-3 lg:order-none'
+        }
+      `}>
+        
+        {/* Floating Close Button for Expanded Mode */}
+        {isVideoExpanded && (
+          <button 
+            onClick={() => setIsVideoExpanded(false)} 
+            className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-all z-[10000]"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        )}
 
+        <div className={`flex flex-col gap-1.5 px-1 transition-all duration-700 ${isVideoExpanded ? 'mb-6 text-center items-center scale-110' : 'mb-2'}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <h3 className="text-xs font-black text-white uppercase tracking-wider">
+              Grindboard Mobile Intro
+            </h3>
+          </div>
+          <p className="text-[10px] text-white/50 font-medium">
+            See our seamless mobile web app experience in action.
+          </p>
+        </div>
+        
+        <div 
+          onClick={() => setIsVideoExpanded(!isVideoExpanded)}
+          className={`overflow-hidden border border-white/5 relative bg-black/50 shadow-inner group cursor-pointer flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] w-full
+            ${isVideoExpanded ? 'h-full max-h-[85vh] rounded-3xl' : 'aspect-video rounded-2xl'}
+          `}
+        >
+          {isMounted && (
+            <video 
+            ref={videoRef}
+              src="/branding/grindboard-mobile-app-promo.mp4" 
+              preload="auto"
+              autoPlay 
+              loop 
+              muted 
+              playsInline
+              controls
+              className={`w-full h-full transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${isVideoExpanded ? 'object-contain' : 'object-cover'}`}
+            />
+          )}
+          
+          <div className="absolute bottom-3 right-3 p-2 bg-black/60 hover:bg-black/90 rounded-xl text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center shadow-xl">
+            {isVideoExpanded ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+          </div>
+        </div>
       </div>
 
       <ConfirmationModal
