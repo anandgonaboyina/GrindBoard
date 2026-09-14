@@ -293,7 +293,10 @@ export default function ConnectTab() {
       const timer = setTimeout(() => {
         setConnectInitialTab(undefined);
       }, 500);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        setConnectInitialTab(undefined);
+      };
     }
   }, [connectInitialTab, setConnectInitialTab]);
 

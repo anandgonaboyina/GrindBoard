@@ -6,6 +6,7 @@ import { Shield, Lock, User as UserIcon, Loader2, Eye, EyeOff, BookOpen, Externa
 
 import FeatureCarousel from '@/components/FeatureCarousel';
 import UserManualModal from '@/components/UserManualModal';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 export default function CloudLogin() {
   const [username, setUsername] = useState('');
@@ -24,6 +25,9 @@ export default function CloudLogin() {
   const [resetCode, setResetCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [demoAuthData, setDemoAuthData] = useState<{token: string, username: string} | null>(null);
 
   // --- NEW: Animated Business Taglines ---
   const taglines = [
@@ -59,6 +63,31 @@ export default function CloudLogin() {
       }
     }
   }, [router]);
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+    setError('');
+    setSuccessMsg('');
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isDemo: true })
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.token) {
+        setDemoAuthData({ token: data.token, username: data.username });
+        setShowDemoModal(true);
+      } else {
+        setError(data.error || 'Demo login failed');
+      }
+    } catch (err) {
+      setError('Failed to connect to server');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,8 +313,11 @@ export default function CloudLogin() {
         <FeatureCarousel />
       </div>
 
-      {/* Form Container */}
-      <div className="w-full max-w-[400px] bg-white/[0.02] border border-white/10 rounded-3xl p-4 sm:p-6 lg:p-8 backdrop-blur-2xl relative z-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700 shrink-0 mx-auto lg:mx-0 lg:mt-16 group/form">
+      {/* Form and Demo Button Wrapper */}
+      <div className="flex flex-col gap-6 w-full max-w-[400px] shrink-0 mx-auto lg:mx-0 lg:mt-16 z-10">
+        
+        {/* Form Container */}
+        <div className="order-2 w-full bg-white/[0.02] border border-white/10 rounded-3xl p-4 sm:p-6 lg:p-8 backdrop-blur-2xl relative shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700 group/form">
 
         {/* Form Inner Glow */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 rounded-3xl pointer-events-none" />
@@ -478,6 +510,36 @@ export default function CloudLogin() {
         </form>
 
       </div>
+
+      <button
+        onClick={handleDemoLogin}
+        disabled={isLoading}
+        className="order-1 lg:order-3 w-full py-3 sm:py-3.5 rounded-2xl font-black text-sm tracking-wide bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-2 border border-emerald-400/50"
+      >
+        <Shield className="w-5 h-5" /> Explore Demo
+      </button>
+
+      </div>
+
+      <ConfirmationModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+        onConfirm={() => {
+          if (demoAuthData) {
+            localStorage.removeItem('dashboard-storage');
+            localStorage.removeItem('dashboard_last_modified');
+            localStorage.setItem('dashboard_token', demoAuthData.token);
+            localStorage.setItem('dashboard_sync_token', demoAuthData.token);
+            localStorage.setItem('dashboard_username', demoAuthData.username);
+            localStorage.removeItem('dashboard_role');
+            window.location.href = '/dashboard';
+          }
+        }}
+        title="Demo Mode Activated"
+        message="You are exploring the app using demo credentials. You will be automatically logged out when the 25-minute demo period expires."
+        hideCancel={true}
+        confirmText="Understood, Let's Go!"
+      />
     </div>
   );
 }

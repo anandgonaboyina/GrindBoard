@@ -9,6 +9,7 @@ import DraggableWidget from './DraggableWidget';
 import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { getDeviceId } from '@/utils/deviceId';
 import Tooltip from './Tooltip';
+import ConfirmationModal from './ConfirmationModal';
 
 const HR_OPTIONS = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
 const MIN_OPTIONS = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
@@ -135,21 +136,23 @@ export default function Timer() {
     }
   };
 
-  const [lastInteractionTime, setLastInteractionTime] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('timer_last_active');
-      return stored ? parseInt(stored) : Date.now();
-    }
-    return Date.now();
-  });
+  const lastInteractionTimeRef = useRef(
+    typeof window !== 'undefined' && localStorage.getItem('timer_last_active')
+      ? parseInt(localStorage.getItem('timer_last_active') as string)
+      : Date.now()
+  );
 
   const updateInteraction = () => {
     const now = Date.now();
-    setLastInteractionTime(now);
-    localStorage.setItem('timer_last_active', now.toString());
+    lastInteractionTimeRef.current = now;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('timer_last_active', now.toString());
+    }
   };
 
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [pausedAtString, setPausedAtString] = useState<string>('');
 
   // Suppress harmless NotSupportedError unhandled rejections caused by Lively Wallpaper/Chromium forcing play() on invalid media sources before fallback kicks in
   useEffect(() => {
@@ -317,10 +320,11 @@ export default function Timer() {
           return;
         }
 
-        const elapsedSinceInteraction = Math.floor((now - lastInteractionTime) / 1000);
+        const elapsedSinceInteraction = Math.floor((now - lastInteractionTimeRef.current) / 1000);
+        
         if (elapsedSinceInteraction >= 7200 && isOwner) {
-          // Idle for 2 hours while running, auto pause! (Only owner evaluates this to avoid random cross-device pauses)
-          const intendedPauseTime = lastInteractionTime + 7200000;
+          // Pause exactly at the last known heartbeat! No extra hours added.
+          const intendedPauseTime = lastInteractionTimeRef.current;
           // Only pause if the timer wouldn't have finished naturally before the pause time
           if (intendedPauseTime < timerEndAt) {
             const actualRemaining = Math.max(0, Math.floor((timerEndAt - intendedPauseTime) / 1000));
@@ -344,9 +348,7 @@ export default function Timer() {
 
             setTimerPausedLeft(actualRemaining);
             setTimerEndAt(null);
-            if (!wasSleeping && now - intendedPauseTime < 120000) {
-              playAlarm();
-            }
+            setPausedAtString(new Date(lastInteractionTimeRef.current).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             setShowContinuePrompt(true);
             updateInteraction();
             return;
@@ -474,11 +476,18 @@ export default function Timer() {
         } else {
           setLocalTimeLeft(remaining);
         }
+
+        // Heartbeat to prove tab is open and running
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('timer_last_active', now.toString());
+          lastInteractionTimeRef.current = now;
+        }
+
       }, 250); // High frequency check for smooth local UI update
     }
 
     return () => clearInterval(interval);
-  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, timerIntervalMins, isTimerIntervalEnabled, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, lastInteractionTime, isTaskIntervalAlertEnabled, taskIntervalRingSecs, timerDeviceId]);
+  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, timerIntervalMins, isTimerIntervalEnabled, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, isTaskIntervalAlertEnabled, taskIntervalRingSecs, timerDeviceId]);
 
   // Listen for timer triggers from other components
   useEffect(() => {
@@ -1043,23 +1052,16 @@ export default function Timer() {
             {isAlarmPlaying && (
               showContinuePrompt ? (
                 <div className="flex flex-col items-center gap-3 w-full py-2">
-                  <p className="text-sm font-semibold text-blue-300">Are you still working?</p>
+                  <p className="text-sm font-semibold text-amber-300">Session paused (Away)</p>
                   <div className="flex gap-2 w-full">
                     <button
                       onClick={() => {
-                        setShowContinuePrompt(false);
                         setIsAlarmPlaying(false);
-                        // Resume timer
-                        if (timerPausedLeft !== null) {
-                          setTimerEndAt(Date.now() + timerPausedLeft * 1000);
-                          setTimerPausedLeft(null);
-                          setTimerDeviceId(getDeviceId());
-                          updateInteraction();
-                        }
+                        setShowResumeModal(true);
                       }}
-                      className="flex-1 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-lg text-xs font-bold transition-colors"
+                      className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-xs font-bold transition-colors"
                     >
-                      Continue
+                      I was away
                     </button>
                     <button
                       onClick={() => {
@@ -1232,6 +1234,32 @@ export default function Timer() {
           setSelectedMin(m);
           setSelectedAmPm(ampm);
           updateTargetTime(h, m, ampm);
+        }}
+      />
+
+      <ConfirmationModal
+        isOpen={showResumeModal}
+        onClose={() => setShowResumeModal(false)}
+        title="Resume Session"
+        message={
+          <div className="flex flex-col gap-2">
+            <p className="text-white/80">You were away for an extended period of time.</p>
+            <p className="text-white">Your session was automatically paused precisely at the time you left <strong className="text-blue-300">({pausedAtString || 'your last active time'})</strong>, so <strong className="text-amber-400 font-bold">no extra focus hours were added</strong> while you were gone.</p>
+            <p className="text-white/80 mt-2">Do you want to continue your session from exactly where you left off?</p>
+          </div>
+        }
+        confirmText="Yes, Continue"
+        cancelText="Cancel"
+        onConfirm={() => {
+          setShowContinuePrompt(false);
+          setShowResumeModal(false);
+          // Resume timer
+          if (timerPausedLeft !== null) {
+            setTimerEndAt(Date.now() + timerPausedLeft * 1000);
+            setTimerPausedLeft(null);
+            setTimerDeviceId(getDeviceId());
+            updateInteraction();
+          }
         }}
       />
     </DraggableWidget>

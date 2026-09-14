@@ -2630,7 +2630,7 @@ export default function SettingsModal() {
                           </div>
                         </a>
 
-                        <a href="https://my-portfolio-silk-phi-78.vercel.app/" target="_blank" rel="noreferrer" className="sm:col-span-2 flex items-center gap-3 bg-black/40 border border-emerald-500/30 rounded-xl p-2.5 hover:bg-emerald-500/10 hover:border-emerald-500/50 transition-all shadow-sm group justify-center sm:justify-start">
+                        <a href="https://gonaboyina-anand-kumar-portfolio.vercel.app/" target="_blank" rel="noreferrer" className="sm:col-span-2 flex items-center gap-3 bg-black/40 border border-emerald-500/30 rounded-xl p-2.5 hover:bg-emerald-500/10 hover:border-emerald-500/50 transition-all shadow-sm group justify-center sm:justify-start">
                           <div className="p-2 bg-emerald-500/20 rounded-lg shrink-0 group-hover:scale-110 transition-transform">
                             <Briefcase className="text-emerald-400 w-4 h-4" />
                           </div>
@@ -2719,7 +2719,7 @@ export default function SettingsModal() {
                           <h4 className="text-xs md:text-sm font-bold text-white break-words">Sathish Kumar</h4>
                           <p className="text-[9px] md:text-[10px] text-white/60 font-bold uppercase tracking-wider mt-0.5 break-words"><span className="text-blue-300">EEE</span> • NIT Patna</p>
                           <p className="text-[10px] md:text-[11px] text-white/70 mt-1.5 leading-snug break-words">
-                            Tested countless hours to identify bugs and provided invaluable UX suggestions.
+                           I am deeply grateful for your vital feedback and dedication as both a beta tester and an end-user.
                           </p>
                         </div>
                       </div>

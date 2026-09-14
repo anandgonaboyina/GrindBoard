@@ -20,6 +20,8 @@ export default function Stopwatch() {
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSecs, setElapsedSecs] = useState(0);
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [pausedAtString, setPausedAtString] = useState<string>('');
   const [isIntervalRinging, setIsIntervalRinging] = useState(false);
   const [isUnlockingAudio, setIsUnlockingAudio] = useState(false);
 
@@ -115,14 +117,13 @@ export default function Stopwatch() {
       const timeSinceActive = Math.floor((now - lastActive) / 1000);
       const isOwner = stopwatchDeviceId === getDeviceId();
 
-      if (timeSinceActive >= 7200 && isOwner) {
-        const cappedElapsed = Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000);
+      if (timeSinceActive >= 3600 && isOwner && stopwatchAddToStats) {
+        // No extra time added. Pause exactly at the last known active heartbeat.
+        const cappedElapsed = Math.max(0, Math.floor((lastActive - stopwatchStartTime) / 1000));
         setIsRunning(false);
         setElapsedSecs(cappedElapsed);
+        setPausedAtString(new Date(lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         setShowContinuePrompt(true);
-        if (now - (lastActive + 7200000) < 120000) {
-          useDashboardStore.getState().setIsAlarmPlaying(true);
-        }
         useDashboardStore.setState({ isStopwatchOpen: true });
 
         if (typeof window !== 'undefined') {
@@ -131,6 +132,9 @@ export default function Stopwatch() {
         setStopwatchStartTime(null);
         setStopwatchDeviceId(null);
       } else {
+        if (timeSinceActive >= 3600 && isOwner && !stopwatchAddToStats) {
+           if (typeof window !== 'undefined') localStorage.setItem('stopwatch_tainted', 'true');
+        }
         setIsRunning(true);
         setElapsedSecs(Math.max(0, Math.floor((now - stopwatchStartTime) / 1000)));
         // We do NOT update interaction here, otherwise just opening the tab keeps it alive.
@@ -160,18 +164,17 @@ export default function Stopwatch() {
         const timeSinceActive = Math.floor((now - lastActive) / 1000);
         const isOwner = stopwatchDeviceId === getDeviceId();
 
-        if (timeSinceActive >= 7200 && isOwner) {
-          setIsRunning(false);
-          if (!systemJustWoke && now - (lastActive + 7200000) < 120000) {
-            useDashboardStore.getState().setIsAlarmPlaying(true);
-          }
-          useDashboardStore.setState({ isStopwatchOpen: true });
-          setShowContinuePrompt(true);
-          updateInteraction();
-
-          const cappedElapsed = Math.max(0, Math.floor((lastActive + 7200000 - stopwatchStartTime) / 1000));
-          
+        if (timeSinceActive >= 3600 && isOwner) {
           if (stopwatchAddToStats) {
+            setIsRunning(false);
+            useDashboardStore.setState({ isStopwatchOpen: true });
+            setPausedAtString(new Date(lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            setShowContinuePrompt(true);
+            updateInteraction();
+
+            // No extra time added. Pause exactly at the last known active heartbeat.
+            const cappedElapsed = Math.max(0, Math.floor((lastActive - stopwatchStartTime) / 1000));
+            
             const chunks = Math.floor(cappedElapsed / 300);
             if (chunks > stopwatchLastSavedChunks) {
               const diff = chunks - stopwatchLastSavedChunks;
@@ -180,19 +183,26 @@ export default function Stopwatch() {
               addMins(today, minsToSave);
               setStopwatchLastSavedChunks(chunks);
             }
-          }
 
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
+            }
+            setStopwatchStartTime(null);
+            setStopwatchDeviceId(null);
+            setElapsedSecs(cappedElapsed);
+            return;
+          } else {
+            // Unverified session > 1 hour
+            if (typeof window !== 'undefined') localStorage.setItem('stopwatch_tainted', 'true');
           }
-          setStopwatchStartTime(null);
-          setStopwatchDeviceId(null);
-          setElapsedSecs(cappedElapsed);
-          return;
         }
 
         const currentElapsed = Math.max(0, Math.floor((now - stopwatchStartTime) / 1000));
         setElapsedSecs(currentElapsed);
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('stopwatch_last_active', now.toString());
+        }
 
         if (systemJustWoke) {
           // If system slept or just woke up, sync interval alerted chunks without ringing audio
@@ -329,6 +339,7 @@ export default function Stopwatch() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('stopwatch_paused_secs');
       localStorage.removeItem('stopwatch_last_active');
+      localStorage.removeItem('stopwatch_tainted');
     }
     if (intervalAudioRef.current) {
       intervalAudioRef.current.pause();
@@ -340,6 +351,10 @@ export default function Stopwatch() {
 
   const toggleStatsCheckbox = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!stopwatchAddToStats && typeof window !== 'undefined' && localStorage.getItem('stopwatch_tainted') === 'true') {
+      alert('Cannot enable: this session was left running unattended for over 1 hour. Please stop and start a new session to log focus time.');
+      return;
+    }
     setStopwatchAddToStats(!stopwatchAddToStats);
   };
 
@@ -381,25 +396,17 @@ export default function Stopwatch() {
           >
             {showContinuePrompt ? (
               <div className="flex flex-col items-center gap-2 w-full py-1">
-                <p className="text-[10px] font-semibold text-blue-300">Still working?</p>
+                <p className="text-[10px] font-semibold text-amber-300">Session paused (Away)</p>
                 <div className="flex gap-2 w-full">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setShowContinuePrompt(false);
                       useDashboardStore.getState().setIsAlarmPlaying(false);
-
-                      if (typeof window !== 'undefined') {
-                        localStorage.removeItem('stopwatch_paused_secs');
-                      }
-                      updateInteraction();
-                      setStopwatchStartTime(Date.now() - elapsedSecs * 1000);
-                      setStopwatchDeviceId(getDeviceId());
-                      setIsRunning(true);
+                      setShowResumeModal(true);
                     }}
-                    className="flex-1 py-1 bg-blue-500 hover:bg-blue-600 rounded-lg text-[9px] font-bold transition-colors"
+                    className="flex-1 py-1 bg-amber-500 hover:bg-amber-600 rounded-lg text-[9px] font-bold transition-colors"
                   >
-                    Continue
+                    I was away
                   </button>
                   <button
                     onClick={(e) => {
@@ -521,6 +528,32 @@ export default function Stopwatch() {
           )}
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={showResumeModal}
+        onClose={() => setShowResumeModal(false)}
+        title="Resume Session"
+        message={
+          <div className="flex flex-col gap-2">
+            <p className="text-white/80">You were away for an extended period of time.</p>
+            <p className="text-white">Your session was automatically paused precisely at the time you left <strong className="text-blue-300">({pausedAtString || 'your last active time'})</strong>, so <strong className="text-amber-400 font-bold">no extra focus hours were added</strong> while you were gone.</p>
+            <p className="text-white/80 mt-2">Do you want to continue your session from exactly where you left off?</p>
+          </div>
+        }
+        confirmText="Yes, Continue"
+        cancelText="Cancel"
+        onConfirm={() => {
+          setShowContinuePrompt(false);
+          setShowResumeModal(false);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('stopwatch_paused_secs');
+          }
+          updateInteraction();
+          setStopwatchStartTime(Date.now() - elapsedSecs * 1000);
+          setStopwatchDeviceId(getDeviceId());
+          setIsRunning(true);
+        }}
+      />
 
       <ConfirmationModal
         isOpen={confirmModal.isOpen}

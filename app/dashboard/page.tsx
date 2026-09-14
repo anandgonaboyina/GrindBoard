@@ -433,7 +433,6 @@ export default function Dashboard() {
             </div>)}
 
             {/* Edge Peek Tab for Leaderboard */}
-            {/* Make sure you have isSettingsOpen pulled from your store in this file! */}
             <div
               data-tour="leaderboard-drawer"
               className={`fixed left-0 top-[calc(26vh+46px)] sm:top-[28vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] 

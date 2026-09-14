@@ -57,7 +57,7 @@
         <h1 id="title">Preparing Download...</h1>
         <p id="message">Your file will download automatically in a moment. You can safely close this tab afterwards.</p>
     </div>
-    <script>
+<script>
         window.onload = function() {
             const params = new URLSearchParams(window.location.search);
             const dataStr = params.get('data');
@@ -69,37 +69,56 @@
                 fileName += '.json';
             }
 
-            if (apiId) {
-                // Fetch from the Next.js API
-                document.getElementById('title').innerText = type + " Downloaded!";
-                document.getElementById('message').innerText = "Check your browser's download folder. You can close this tab now.";
+            if (apiId || dataStr) {
+                let timeLeft = 10;
+                const titleEl = document.getElementById('title');
+                const messageEl = document.getElementById('message');
                 
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = '/api/download-echo?id=' + apiId;
-                document.body.appendChild(iframe);
-            } else if (dataStr) {
-                document.getElementById('title').innerText = type + " Downloaded!";
-                document.getElementById('message').innerText = "Check your browser's download folder. You can close this tab now.";
-                
-                try {
-                    const dataUri = "data:text/json;charset=utf-8," + dataStr;
-                    const downloadAnchorNode = document.createElement('a');
-                    downloadAnchorNode.setAttribute("href", dataUri);
-                    downloadAnchorNode.setAttribute("download", fileName);
-                    document.body.appendChild(downloadAnchorNode);
-                    downloadAnchorNode.click();
-                    downloadAnchorNode.remove();
-                } catch(e) {
-                    document.getElementById('title').innerText = "Download Failed";
-                    document.getElementById('message').innerText = "Your browser blocked the automatic download.";
+                // Set initial downloading state
+                titleEl.innerText = "Downloading " + type + "...";
+                messageEl.innerText = `Please wait, completing in ${timeLeft} seconds...`;
+
+                // Trigger download immediately
+                if (apiId) {
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = '/api/download-echo?id=' + apiId;
+                    document.body.appendChild(iframe);
+                } else if (dataStr) {
+                    try {
+                        const dataUri = "data:text/json;charset=utf-8," + dataStr;
+                        const a = document.createElement('a');
+                        a.href = dataUri;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    } catch(e) {
+                        titleEl.innerText = "Download Failed";
+                        messageEl.innerText = "Your browser blocked the automatic download.";
+                        return; // Stop execution if download fails
+                    }
                 }
+
+                // Handle the 10-second UI countdown
+                const countdown = setInterval(() => {
+                    timeLeft -= 1;
+                    messageEl.innerText = `Please wait, completing in ${timeLeft} seconds...`;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(countdown);
+                        titleEl.innerText = type + " Downloaded!";
+                        messageEl.innerText = "Check your browser's download folder. You can close this tab now.";
+                    }
+                }, 1000);
+
             } else {
                 document.getElementById('title').innerText = "Invalid Request";
                 document.getElementById('message').innerText = "No data was provided to download.";
-                document.querySelector('.success-icon').innerText = "!";
-                document.querySelector('.success-icon').style.color = "#f87171";
-                document.querySelector('.success-icon').style.background = "rgba(248, 113, 113, 0.2)";
+                const icon = document.querySelector('.success-icon');
+                icon.innerText = "!";
+                icon.style.color = "#f87171";
+                icon.style.background = "rgba(248, 113, 113, 0.2)";
             }
         };
     </script>
