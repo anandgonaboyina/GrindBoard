@@ -3,8 +3,8 @@
 // 1. Separate the imports
 import { useDashboardStore } from "@/store/dashboardStore";
 import { useTimetableStore, pushTimetableToDB } from "@/store/timetableStore"; // Import your new store
-import { CalendarDays, Edit2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Check, Settings, Plus, Trash, Clock, ArrowUp, ArrowDown, X, Sun, Moon, Copy, ClipboardPaste, Download, Upload } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { CalendarDays, Edit2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Check, Settings, Plus, Trash, Clock, ArrowUp, ArrowDown, X, Sun, Moon, Copy, ClipboardPaste, Download, Upload, BarChart2, ArrowRightLeft } from "lucide-react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import ConfirmationModal from './ConfirmationModal';
 import Tooltip from './Tooltip';
 
@@ -25,6 +25,10 @@ export const CELL_COLORS = [
   { name: 'orange', bg: 'bg-orange-500/15', lightBg: 'bg-orange-500/20', active: 'bg-orange-500/30', lightActive: 'bg-orange-500/30', text: 'text-orange-300', lightText: 'text-orange-700', solidBg: 'bg-orange-500/80', lightSolidBg: 'bg-orange-500' },
   { name: 'cyan', bg: 'bg-cyan-500/15', lightBg: 'bg-cyan-500/20', active: 'bg-cyan-500/30', lightActive: 'bg-cyan-500/30', text: 'text-cyan-300', lightText: 'text-cyan-700', solidBg: 'bg-cyan-500/80', lightSolidBg: 'bg-cyan-500' },
   { name: 'pink', bg: 'bg-fuchsia-500/15', lightBg: 'bg-fuchsia-500/20', active: 'bg-fuchsia-500/30', lightActive: 'bg-fuchsia-500/30', text: 'text-fuchsia-300', lightText: 'text-fuchsia-700', solidBg: 'bg-fuchsia-500/80', lightSolidBg: 'bg-fuchsia-500' },
+  { name: 'stone', bg: 'bg-stone-500/15', lightBg: 'bg-stone-500/20', active: 'bg-stone-500/30', lightActive: 'bg-stone-500/30', text: 'text-stone-300', lightText: 'text-stone-700', solidBg: 'bg-stone-500/80', lightSolidBg: 'bg-stone-500' },
+  { name: 'gray', bg: 'bg-zinc-500/15', lightBg: 'bg-zinc-500/20', active: 'bg-zinc-500/30', lightActive: 'bg-zinc-500/30', text: 'text-zinc-300', lightText: 'text-zinc-700', solidBg: 'bg-zinc-500/80', lightSolidBg: 'bg-zinc-500' },
+  { name: 'yellow-bright', bg: 'bg-yellow-400/15', lightBg: 'bg-yellow-400/20', active: 'bg-yellow-400/30', lightActive: 'bg-yellow-400/30', text: 'text-yellow-300', lightText: 'text-yellow-600', solidBg: 'bg-yellow-400/80', lightSolidBg: 'bg-yellow-400' },
+  { name: 'navy', bg: 'bg-blue-600/15', lightBg: 'bg-blue-600/20', active: 'bg-blue-600/30', lightActive: 'bg-blue-600/30', text: 'text-blue-400', lightText: 'text-blue-800', solidBg: 'bg-blue-600/80', lightSolidBg: 'bg-blue-600' },
 ];
 
 const formatTime = (totalMins: number) => {
@@ -76,6 +80,8 @@ export default function Timetable() {
     useTimetableRange,
     toggleTimetableRange,
     renameTimetableKeys,
+    copyTimetableDay,
+    swapTimetableDays,
   } = useTimetableStore();
 
   const effectiveTheme = timetableThemeOverride || (globalTheme === 'light' ? 'light' : 'dark');
@@ -113,7 +119,11 @@ export default function Timetable() {
   );
   const [editingCell, setEditingCell] = useState<{ day: string, time: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSwapDaysModal, setShowSwapDaysModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const timetableRef = useRef<HTMLDivElement>(null);
   const [globalEditingIndex, setGlobalEditingIndex] = useState<number | null>(null);
   const [copiedDay, setCopiedDay] = useState<string | null>(null);
   const [isCopyMode, setIsCopyMode] = useState(false);
@@ -122,6 +132,49 @@ export default function Timetable() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleExportImage = async () => {
+    if (!timetableRef.current) return;
+    try {
+      setIsExporting(true);
+
+      
+      await new Promise(r => setTimeout(r, 100));
+
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(timetableRef.current, {
+        backgroundColor: isDark ? '#0a0a0c' : '#f8fafc',
+        pixelRatio: 2,
+        style: {
+           borderRadius: '0px'
+        }
+      });
+
+      // Send to server to bypass Lively download restrictions
+      const response = await fetch('/api/download-echo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: dataUrl,
+          name: `timetable-${viewMode}.png`,
+          type: 'Image'
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to prepare download');
+      const result = await response.json();
+
+      // Open the custom download page
+      window.open(`/download.html?apiId=${result.id}&name=timetable-${viewMode}.png&type=Timetable`, '_blank');
+      
+      showToast("Timetable exported!");
+    } catch (error) {
+      console.error("Export failed:", error);
+      showToast("Failed to export image");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const [confirmModal, setConfirmModal] = useState<{
@@ -244,31 +297,7 @@ export default function Timetable() {
 
   const executeCopy = (sourceDay: string, targetDay: string) => {
     if (viewingFriend) return;
-
-    // Create new maps to avoid mutation
-    const newGrid = { ...myTimetableGrid };
-    const newColors = { ...myTimetableColors };
-
-    // Copy content
-    if (myTimetableGrid[sourceDay]) {
-      newGrid[targetDay] = { ...myTimetableGrid[sourceDay] };
-    } else {
-      delete newGrid[targetDay];
-    }
-
-    // Copy colors
-    if (myTimetableColors[sourceDay]) {
-      newColors[targetDay] = { ...myTimetableColors[sourceDay] };
-    } else {
-      delete newColors[targetDay];
-    }
-
-    useDashboardStore.setState({
-      timetableGrid: newGrid,
-      timetableColors: newColors
-    });
-
-    useDashboardStore.getState().forceInstantSave();
+    copyTimetableDay(sourceDay, targetDay);
   };
 
   const isWeekendMode = viewMode === "weekends";
@@ -325,6 +354,39 @@ export default function Timetable() {
     });
     currentAccumulatedMins += dur;
   }
+
+  // Subject Stats Calculation
+  const subjectStats = useMemo(() => {
+    const stats: Record<string, { mins: number, colorName: string }> = {};
+    
+    const processDays = (days: string[], timesArr: any[], baseStart: number) => {
+      const times: { startStr: string, dur: number }[] = [];
+      let currentMins = baseStart;
+      for (let i = 0; i < timesArr.length; i++) {
+        const dur = typeof timesArr[i] === 'number' ? timesArr[i] : 60;
+        times.push({ startStr: formatTime(currentMins), dur });
+        currentMins += dur;
+      }
+      
+      days.forEach(day => {
+        times.forEach(t => {
+          const subject = timetableGrid?.[day]?.[t.startStr];
+          if (subject && subject.trim() !== "" && subject.trim().toLowerCase() !== "free") {
+            const subjName = subject.trim();
+            if (!stats[subjName]) {
+              stats[subjName] = { mins: 0, colorName: timetableColors?.[day]?.[t.startStr] || 'default' };
+            }
+            stats[subjName].mins += t.dur;
+          }
+        });
+      });
+    };
+
+    processDays(WEEKDAYS, weekdayTimes, friendStartTime);
+    processDays(WEEKENDS, weekendTimes, friendWeekendStartTime);
+
+    return Object.entries(stats).sort((a, b) => b[1].mins - a[1].mins);
+  }, [timetableGrid, timetableColors, weekdayTimes, weekendTimes, friendStartTime, friendWeekendStartTime]);
 
   // Active Time Detection
   const [activeTimeIndex, setActiveTimeIndex] = useState(-1);
@@ -549,7 +611,7 @@ export default function Timetable() {
   };
 
   return (
-    <div suppressHydrationWarning className={` transition-colors duration-500 rounded-[20px] md:rounded-[24px] p-1.5 md:p-2.5 w-full max-w-[100vw] md:w-fit overflow-hidden md:overflow-visible relative mx-auto
+    <div ref={timetableRef} suppressHydrationWarning className={` transition-colors duration-500 rounded-[20px] md:rounded-[24px] p-1.5 md:p-2.5 w-full max-w-[100vw] md:w-fit overflow-hidden md:overflow-visible relative mx-auto
         ${isDark ? 'bg-gradient-to-br from-[#12121a] to-[#0a0a0c] border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.4)] text-white/90'
         : 'bg-gradient-to-br from-slate-50 to-slate-100 border border-black/10 shadow-[0_8px_30px_rgb(0,0,0,0.1)] text-slate-800'}`}>
 
@@ -591,14 +653,46 @@ export default function Timetable() {
             </button>
           )}
 
-          <Tooltip text="Toggle Theme" position="top">
+          <Tooltip text="Weekly Totals" position="top">
             <button
-              onClick={toggleTheme}
+              onClick={() => setShowStatsModal(true)}
               className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
             >
-              {isDark ? <Sun size={14} /> : <Moon size={14} />}
+              <BarChart2 size={14} />
             </button>
           </Tooltip>
+
+          {!viewingFriend && (
+            <>
+              <Tooltip text="Swap Days" position="top">
+                <button
+                  onClick={() => setShowSwapDaysModal(true)}
+                  className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
+                >
+                  <ArrowRightLeft size={14} />
+                </button>
+              </Tooltip>
+
+              <Tooltip text="Export Image" position="top">
+                <button
+                  onClick={handleExportImage}
+                  disabled={isExporting}
+                  className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''} ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
+                >
+                  <Download size={14} className={isExporting ? "animate-bounce" : ""} />
+                </button>
+              </Tooltip>
+
+              <Tooltip text="Toggle Theme" position="top">
+                <button
+                  onClick={toggleTheme}
+                  className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
+                >
+                  {isDark ? <Sun size={14} /> : <Moon size={14} />}
+                </button>
+              </Tooltip>
+            </>
+          )}
 
           {showSettings && (
             <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 rounded-xl shadow-2xl py-1 z-50 flex flex-col min-w-[160px] animate-in slide-in-from-top-2 fade-in duration-200 backdrop-blur-xl border ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-black/10'}`}>
@@ -693,7 +787,7 @@ export default function Timetable() {
             }}
             className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm active:scale-95 ${isCopyMode ? (isDark ? 'text-white bg-red-500 border-red-500' : 'text-white bg-red-500 border-red-600') : (isDark ? 'text-white/40 bg-white/5 border-white/10 hover:bg-white/10' : 'text-slate-500 bg-slate-100 border-slate-200 hover:bg-slate-200')}`}
           >
-            <Copy size={10} className="shrink-0" />
+            <Copy size={10} className="shrink-0 " />
             <span className="whitespace-nowrap">{!isCopyMode ? 'Copy Day' : 'Cancel Copy'}</span>
           </button>
         )}
@@ -759,25 +853,25 @@ export default function Timetable() {
               : (isToday ? 'bg-violet-100 text-violet-800 border-violet-300 shadow-[0_0_10px_rgba(139,92,246,0.2)]' : colorMap[day].light);
 
             return (
-              <div key={day} className={`flex flex-col p-0.5 rounded-xl transition-all duration-300 ${isToday ? (isDark ? 'bg-white/[0.04] ring-2 ring-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.15)]' : 'bg-violet-50/80 ring-2 ring-violet-400/60 shadow-[0_0_20px_rgba(139,92,246,0.2)]') : ''}`}>
+              <div key={day} className={`flex flex-col min-w-0 p-0.5 rounded-xl transition-all duration-300 ${isToday ? (isDark ? 'bg-white/[0.04] ring-2 ring-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.15)]' : 'bg-violet-50/80 ring-2 ring-violet-400/60 shadow-[0_0_20px_rgba(139,92,246,0.2)]') : ''}`}>
                 <div className={`relative h-6 md:h-8 flex items-center justify-center text-center font-bold uppercase tracking-widest text-[9px] md:text-[10px] mb-1 rounded-lg border backdrop-blur-sm ${headerStyle}`}>
                   {day}
                   {!viewingFriend && isCopyMode && (
                     copiedDay === day ? (
-                      <Tooltip text="Cancel copy" position="left">
+                      <Tooltip text="Cancel copy" position="left" className="absolute bg-red-300 rounded-full -right-1">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setCopiedDay(null);
                             setIsCopyMode(!isCopyMode);
                           }}
-                          className={`absolute right-1 p-0.5 rounded transition-all hover:scale-110 active:scale-95 ${isDark ? 'text-rose-400 hover:bg-rose-500/20' : 'text-rose-600 hover:bg-rose-500/10'}`}
+                          className={`p-0.5 rounded transition-all hover:scale-110 active:scale-95 ${isDark ? 'text-rose-400 hover:bg-rose-500/20' : 'text-rose-600 hover:bg-rose-500/10'}`}
                         >
                           <X size={10} strokeWidth={3} />
                         </button>
                       </Tooltip>
                     ) : copiedDay ? (
-                      <Tooltip text={`Paste ${copiedDay}'s schedule here`} position="left">
+                      <Tooltip text={`Paste ${copiedDay}'s schedule here`} position="left" className="absolute bg-red-300 rounded-full -right-1">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -791,22 +885,22 @@ export default function Timetable() {
                               }
                             });
                           }}
-                          className={`absolute right-1 p-0.5 rounded transition-all hover:scale-110 active:scale-95 animate-pulse ${isDark ? 'text-emerald-400 hover:bg-emerald-500/20' : 'text-emerald-600 hover:bg-emerald-500/10'}`}
+                          className={`p-0.5 rounded transition-all hover:scale-110 active:scale-95 animate-pulse ${isDark ? 'text-emerald-400 hover:bg-emerald-500/20' : 'text-emerald-600 hover:bg-emerald-500/10'}`}
                         >
-                          <ClipboardPaste size={10} />
+                          <ClipboardPaste size={10} className=" text-black" />
                         </button>
                       </Tooltip>
                     ) : (
-                      <Tooltip text={`Copy ${day}'s schedule`} position="left">
+                      <Tooltip text={`Copy ${day}'s schedule`} position="left" className="absolute bg-red-300 rounded-full -right-1">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setCopiedDay(day);
                             showToast(`Copied ${day}. Click on another column to paste there.`);
                           }}
-                          className={`absolute right-1 p-0.5 rounded transition-all hover:scale-110 active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-black/30 hover:text-black hover:bg-black/10'}`}
+                          className={`p-0.5 rounded transition-all hover:scale-110 active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-black/30 hover:text-black hover:bg-black/10'}`}
                         >
-                          <Copy size={10} />
+                          <Copy size={10} className=" text-black" />
                         </button>
                       </Tooltip>
                     )
@@ -925,10 +1019,52 @@ export default function Timetable() {
         </div>
       </div>
 
+      {/* Weekly Subject Stats Modal */}
+      {showStatsModal && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowStatsModal(false)}>
+          <div className={`border rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-5 w-full max-w-[320px] flex flex-col gap-4 relative animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 backdrop-blur-xl border-white/10' : 'bg-white/95 backdrop-blur-xl border-black/10'}`} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setShowStatsModal(false)} className={`absolute top-3 right-3 p-1.5 transition-all rounded-full active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-800 hover:bg-black/5'}`}>
+              <X size={16} />
+            </button>
+
+            <div className="text-center mt-1">
+              <h3 className={`font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 ${isDark ? 'text-gray-100' : 'text-slate-800'}`}>
+                <BarChart2 size={16} className={isDark ? "text-violet-400" : "text-violet-600"} /> Weekly Totals
+              </h3>
+              <p className={`text-[10px] mt-1 uppercase font-semibold tracking-wide ${isDark ? 'text-white/40' : 'text-slate-500'}`}>Total scheduled time</p>
+            </div>
+
+            <div className={`flex flex-col gap-2 max-h-[50vh] overflow-y-auto custom-scrollbar pr-1 ${subjectStats.length === 0 ? 'items-center justify-center py-4' : ''}`}>
+              {subjectStats.map(([subj, data]) => {
+                const colorObj = CELL_COLORS.find(c => c.name === data.colorName) || CELL_COLORS[0];
+                const hrs = Math.floor(data.mins / 60);
+                const mins = data.mins % 60;
+                const timeStr = hrs > 0 ? (mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`) : `${mins}m`;
+                
+                return (
+                  <div key={subj} className={`flex items-center justify-between px-3 py-2 rounded-xl border ${isDark ? colorObj.bg + ' border-white/5' : colorObj.lightBg + ' border-black/5'}`}>
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-2 h-2 rounded-full shadow-sm ${isDark ? colorObj.solidBg : colorObj.lightSolidBg}`} />
+                      <span className={`text-[12px] font-bold ${isDark ? colorObj.text : colorObj.lightText}`}>{subj}</span>
+                    </div>
+                    <span className={`text-[11px] font-bold opacity-90 ${isDark ? colorObj.text : colorObj.lightText}`}>{timeStr}</span>
+                  </div>
+                );
+              })}
+              {subjectStats.length === 0 && <span className={`text-xs italic ${isDark ? 'text-white/30' : 'text-slate-400'}`}>No subjects scheduled.</span>}
+            </div>
+            
+            <button onClick={() => setShowStatsModal(false)} className={`w-full py-2.5 mt-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-black/5 hover:bg-black/10 text-slate-800'}`}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Centered Cell Editor Modal */}
       {editingCell && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={handleCloseEditor}>
-          <div className={`border rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-4 w-full max-w-[260px] flex flex-col gap-3 relative animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 backdrop-blur-xl border-white/10' : 'bg-white/95 backdrop-blur-xl border-black/10'}`} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[10000] overflow-hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={handleCloseEditor}>
+          <div className={`border rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-4 w-full max-w-[260px] flex flex-col gap-3 relative animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 backdrop-blur-xl border-white/10' : 'bg-white/95 backdrop-blur-xl border-black/10'}`} onClick={e => e.stopPropagation()}>
             <button onClick={handleCloseEditor} className={`absolute top-2.5 right-2.5 p-1 transition-all rounded-full active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-800 hover:bg-black/5'}`}><X size={14} /></button>
 
             <div className="text-center mt-1">
@@ -936,24 +1072,75 @@ export default function Timetable() {
               <p className={`text-[9px] mt-0.5 uppercase font-semibold tracking-wide ${isDark ? 'text-white/40' : 'text-slate-500'}`}>Edit Subject & Color</p>
             </div>
 
-            <textarea
-              value={timetableGrid?.[editingCell.day]?.[editingCell.time] || ""}
-              onChange={(e) => updateTimetableCell(editingCell.day, editingCell.time, e.target.value)}
-              autoFocus
-              data-gramm="false"
-              data-gramm_editor="false"
-              data-enable-grammarly="false"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleCloseEditor();
-                }
-              }}
-              rows={2}
-              placeholder="e.g. Math, Free, Break..."
-              spellCheck={false}
-              className={`w-full text-center rounded-xl outline-none text-xs leading-snug resize-none overflow-hidden break-words p-2.5 transition-all shadow-inner ${isDark ? 'bg-black/30 border border-white/10 text-white focus:bg-black/50 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 placeholder:text-white/20' : 'bg-slate-100 border border-black/10 text-slate-900 focus:bg-white focus:border-violet-400 focus:ring-1 focus:ring-violet-400 placeholder:text-slate-400'}`}
-            />
+            {(() => {
+              const currentVal = timetableGrid?.[editingCell.day]?.[editingCell.time] || "";
+              
+              // Smart Memory: Find suggestions based on current input
+              const trimmedVal = currentVal.trim().toLowerCase();
+              const suggestions = subjectStats
+                .filter(([s]) => s.toLowerCase().includes(trimmedVal) && s.toLowerCase() !== trimmedVal)
+                .map(([s, data]) => ({ name: s, colorName: data.colorName }));
+                
+              return (
+                <div className="flex flex-col gap-2 w-full">
+                  <textarea
+                    value={currentVal}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateTimetableCell(editingCell.day, editingCell.time, val);
+                      
+                      // Auto-assign color if exactly matches existing subject
+                      const exactMatch = subjectStats.find(([s]) => s.toLowerCase() === val.trim().toLowerCase());
+                      if (exactMatch) {
+                        updateTimetableColor(editingCell.day, editingCell.time, exactMatch[1].colorName);
+                      }
+                    }}
+                    autoFocus
+                    data-gramm="false"
+                    data-gramm_editor="false"
+                    data-enable-grammarly="false"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleCloseEditor();
+                      }
+                    }}
+                    rows={2}
+                    placeholder="e.g. Math, Free, Break..."
+                    spellCheck={false}
+                    className={`w-full text-center rounded-xl outline-none text-xs leading-snug resize-none overflow-hidden break-words p-2.5 transition-all shadow-inner ${isDark ? 'bg-black/30 border border-white/10 text-white focus:bg-black/50 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 placeholder:text-white/20' : 'bg-slate-100 border border-black/10 text-slate-900 focus:bg-white focus:border-violet-400 focus:ring-1 focus:ring-violet-400 placeholder:text-slate-400'}`}
+                  />
+                  
+                  {/* Suggestions List */}
+                  {trimmedVal.length > 0 && suggestions.length > 0 && (
+                    <div className={`flex flex-col w-full rounded-lg overflow-hidden border shadow-lg -mt-1 z-10 animate-in fade-in slide-in-from-top-1 ${isDark ? 'bg-gray-800 border-white/10' : 'bg-white border-black/10'}`}>
+                      <div className={`px-2 py-1 text-[8px] uppercase tracking-wider font-bold border-b ${isDark ? 'bg-black/20 text-white/40 border-white/5' : 'bg-slate-50 text-slate-400 border-black/5'}`}>
+                        Suggested Subjects
+                      </div>
+                      <div className="max-h-[120px] overflow-y-auto custom-scrollbar flex flex-col">
+                        {suggestions.map(s => {
+                          const colorObj = CELL_COLORS.find(c => c.name === s.colorName) || CELL_COLORS[0];
+                          return (
+                            <button
+                              key={s.name}
+                              onClick={() => {
+                                updateTimetableCell(editingCell.day, editingCell.time, s.name);
+                                updateTimetableColor(editingCell.day, editingCell.time, s.colorName);
+                              }}
+                              className={`flex items-center gap-2 px-2.5 py-2 w-full text-left transition-colors active:bg-violet-500/20 ${isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
+                            >
+                              <div className={`w-2 h-2 rounded-full shrink-0 shadow-sm ${isDark ? colorObj.solidBg : colorObj.lightSolidBg}`} />
+                              <span className={`text-xs font-semibold truncate ${isDark ? 'text-gray-200' : 'text-slate-700'}`}>{s.name}</span>
+                              <span className={`text-[9px] ml-auto uppercase tracking-wider font-bold ${isDark ? 'text-white/30' : 'text-black/30'}`}>Click to fill</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className={`flex flex-wrap gap-1.5 rounded-lg justify-center mx-auto p-1.5 ${isDark ? 'bg-white/5 border border-white/5' : 'bg-slate-100 border border-black/5'}`}>
               {CELL_COLORS.map(c => {
@@ -976,6 +1163,17 @@ export default function Timetable() {
             </button>
           </div>
         </div>
+      )}
+
+      {showSwapDaysModal && (
+        <SwapDaysEditor
+          isDark={isDark}
+          onSave={(d1, d2) => {
+            swapTimetableDays(d1, d2);
+            showToast(`Swapped ${d1} and ${d2}`);
+          }}
+          onCancel={() => setShowSwapDaysModal(false)}
+        />
       )}
 
       <ConfirmationModal
@@ -1019,7 +1217,7 @@ function StartTimeEditor({ currentMins, isDark, onSave, onCancel }: { currentMin
   return (
     <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div
-        className={`backdrop-blur-xl border rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.6)] p-5 flex flex-col items-center gap-4 w-full max-w-[220px] animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-black/10'}`}
+        className={`backdrop-blur-xl border rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.6)] p-5 flex flex-col items-center gap-4 w-full max-w-[220px] animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-black/10'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col items-center gap-1">
@@ -1143,6 +1341,84 @@ function DurationCell({
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// Component for Swap Days (Modal Overlay)
+// -------------------------------------------------------------
+function SwapDaysEditor({ isDark, onSave, onCancel }: { isDark: boolean, onSave: (day1: string, day2: string) => void, onCancel: () => void }) {
+  const [day1, setDay1] = useState("Mon");
+  const [day2, setDay2] = useState("Tue");
+
+  const save = () => {
+    if (day1 !== day2) {
+      onSave(day1, day2);
+    }
+    onCancel();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div
+        className={`backdrop-blur-xl border rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.6)] p-5 flex flex-col items-center gap-4 w-full max-w-[240px] animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-black/10'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col items-center gap-1">
+          <h3 className={`font-bold text-sm tracking-wide ${isDark ? 'text-gray-100' : 'text-slate-800'}`}>Swap Days</h3>
+          <p className={`text-[10px] text-center leading-tight ${isDark ? 'text-white/50' : 'text-slate-500'}`}>Swap the complete schedules of two days.</p>
+        </div>
+
+        <div className="flex w-full items-center justify-between gap-2">
+          <div className="flex flex-col gap-1 w-full">
+            <span className={`text-[9px] font-bold uppercase tracking-wider ml-1 ${isDark ? 'text-white/40' : 'text-slate-400'}`}>Day 1</span>
+            <div className={`flex items-center justify-between p-1 rounded-lg border ${isDark ? 'bg-black/30 border-white/10' : 'bg-slate-100 border-black/10'}`}>
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
+                <button
+                  key={d}
+                  onClick={() => setDay1(d)}
+                  className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold transition-all ${day1 === d ? (isDark ? 'bg-violet-600 text-white shadow-md' : 'bg-violet-500 text-white shadow-md') : (isDark ? 'text-white/40 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-black/5 hover:text-slate-800')}`}
+                >
+                  {d[0]}
+                </button>
+              ))}
+            </div>
+            
+            <div className="flex justify-center my-1">
+              <ArrowRightLeft size={14} className={`rotate-90 ${isDark ? 'text-violet-400/50' : 'text-violet-500/50'}`} />
+            </div>
+
+            <span className={`text-[9px] font-bold uppercase tracking-wider ml-1 ${isDark ? 'text-white/40' : 'text-slate-400'}`}>Day 2</span>
+            <div className={`flex items-center justify-between p-1 rounded-lg border ${isDark ? 'bg-black/30 border-white/10' : 'bg-slate-100 border-black/10'}`}>
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
+                <button
+                  key={d}
+                  onClick={() => setDay2(d)}
+                  className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold transition-all ${day2 === d ? (isDark ? 'bg-sky-600 text-white shadow-md' : 'bg-sky-500 text-white shadow-md') : (isDark ? 'text-white/40 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-black/5 hover:text-slate-800')}`}
+                >
+                  {d[0]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex w-full gap-2 mt-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); onCancel(); }}
+            className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all active:scale-95 ${isDark ? 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white' : 'bg-black/5 hover:bg-black/10 text-slate-600 hover:text-slate-900'}`}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); save(); }}
+            className="flex-1 py-2 bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-bold rounded-lg shadow-[0_0_10px_rgba(139,92,246,0.3)] transition-all active:scale-95"
+          >
+            Swap
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -65,12 +65,12 @@
             let fileName = params.get('name') || 'backup';
             const type = params.get('type') || 'Backup';
 
-            if (!fileName.endsWith('.json')) {
+            if (!fileName.endsWith('.json') && !fileName.endsWith('.png')) {
                 fileName += '.json';
             }
 
             if (apiId || dataStr) {
-                let timeLeft = 10;
+                let timeLeft = 15;
                 const titleEl = document.getElementById('title');
                 const messageEl = document.getElementById('message');
                 
@@ -108,7 +108,7 @@
                     if (timeLeft <= 0) {
                         clearInterval(countdown);
                         titleEl.innerText = type + " Downloaded!";
-                        messageEl.innerText = "Check your browser's download folder. You can close this tab now.";
+                        messageEl.innerText = "Check your browser's download section/folder. If it is downloaded You can close this tab now. or else wait few seconds";
                     }
                 }, 1000);
 

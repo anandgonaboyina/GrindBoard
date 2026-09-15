@@ -37,6 +37,8 @@ interface TimetableState {
     resetTimetable: () => void;
     addTimetableRow: (isWeekend: boolean, prepend?: boolean) => void;
     deleteTimetableRow: (isWeekend: boolean, index: number) => void;
+    copyTimetableDay: (sourceDay: string, targetDay: string) => void;
+    swapTimetableDays: (day1: string, day2: string) => void;
 }
 
 // Helper to push to our new isolated API
@@ -84,6 +86,48 @@ export const useTimetableStore = create<TimetableState>()(
                     const newColors = { ...state.timetableColors, [day]: { ...(state.timetableColors[day] || {}), [time]: color } };
                     pushTimetableToDB({ timetableColors: newColors });
                     return { timetableColors: newColors };
+                });
+            },
+
+            copyTimetableDay: (sourceDay, targetDay) => {
+                set((state) => {
+                    const newGrid = { ...state.timetableGrid };
+                    const newColors = { ...state.timetableColors };
+                    
+                    if (state.timetableGrid[sourceDay]) {
+                        newGrid[targetDay] = { ...state.timetableGrid[sourceDay] };
+                    } else {
+                        delete newGrid[targetDay];
+                    }
+                    
+                    if (state.timetableColors[sourceDay]) {
+                        newColors[targetDay] = { ...state.timetableColors[sourceDay] };
+                    } else {
+                        delete newColors[targetDay];
+                    }
+                    
+                    pushTimetableToDB({ timetableGrid: newGrid, timetableColors: newColors });
+                    return { timetableGrid: newGrid, timetableColors: newColors };
+                });
+            },
+
+            swapTimetableDays: (day1, day2) => {
+                set((state) => {
+                    const newGrid = { ...state.timetableGrid };
+                    const newColors = { ...state.timetableColors };
+                    
+                    const tempGridDay1 = newGrid[day1] ? { ...newGrid[day1] } : undefined;
+                    const tempGridDay2 = newGrid[day2] ? { ...newGrid[day2] } : undefined;
+                    if (tempGridDay2) newGrid[day1] = tempGridDay2; else delete newGrid[day1];
+                    if (tempGridDay1) newGrid[day2] = tempGridDay1; else delete newGrid[day2];
+                    
+                    const tempColorDay1 = newColors[day1] ? { ...newColors[day1] } : undefined;
+                    const tempColorDay2 = newColors[day2] ? { ...newColors[day2] } : undefined;
+                    if (tempColorDay2) newColors[day1] = tempColorDay2; else delete newColors[day1];
+                    if (tempColorDay1) newColors[day2] = tempColorDay1; else delete newColors[day2];
+                    
+                    pushTimetableToDB({ timetableGrid: newGrid, timetableColors: newColors });
+                    return { timetableGrid: newGrid, timetableColors: newColors };
                 });
             },
 

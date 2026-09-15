@@ -53,10 +53,22 @@ export async function GET(req: Request) {
     // Optionally delete after single use to save space
     await db.collection('TempExports').deleteOne({ _id: new ObjectId(id) });
 
-    return new Response(record.data, {
+    const isImage = record.name.endsWith('.png');
+    const contentType = isImage ? 'image/png' : 'application/json';
+
+    // Parse the data if it's base64 for images (removing the data:image/png;base64, prefix if stored like that, but maybe it's just raw base64 string, or the client passed it as a blob?)
+    // If the client sends it as raw base64 string for images:
+    let responseData = record.data;
+    if (isImage && typeof record.data === 'string' && record.data.startsWith('data:image')) {
+       // Convert base64 to buffer
+       const base64Data = record.data.replace(/^data:image\/\w+;base64,/, "");
+       responseData = Buffer.from(base64Data, 'base64');
+    }
+
+    return new Response(responseData, {
       status: 200,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${record.name}"`,
         'Cache-Control': 'no-store, no-cache, must-revalidate'
       }

@@ -887,12 +887,30 @@ const fileStorage = createJSONStorage(() => ({
               try { localState = JSON.parse(localDataStr).state || {}; } catch (e) { }
             }
 
-            // 🛡️ PROTECT OFFLINE HOURS: Always keep the highest accumulated minutes
+            // 🛡️ PROTECT OFFLINE HOURS: Strictly trust the most recently modified device!
+            const localModified = localState.lastModified || 0;
+            const cloudModified = json.lastModified || 0;
+            const isLocalNewer = localModified > cloudModified;
+
             const localHistory = localState.history || {};
             const cloudHistory = json.data.state.history || {};
-            const mergedHistory = { ...cloudHistory };
-            for (const date in localHistory) {
-              mergedHistory[date] = Math.max(localHistory[date] || 0, cloudHistory[date] || 0);
+            
+            // If local is newer, it overwrites cloud. If cloud is newer/equal, cloud overwrites local.
+            const mergedHistory = isLocalNewer 
+              ? { ...cloudHistory, ...localHistory }
+              : { ...localHistory, ...cloudHistory };
+              
+            // AVOID STALE STATE BUG: If a device was offline for a while and just had a setting changed,
+            // its lastModified will be newest, but its hours for today will be 0.
+            // We must prevent this "stale 0" from wiping out the actual earned hours on the other device!
+            const todayKey = getLocalDateString();
+            const localToday = localHistory[todayKey] || 0;
+            const cloudToday = cloudHistory[todayKey] || 0;
+            
+            if (isLocalNewer && localToday === 0 && cloudToday > 0) {
+                mergedHistory[todayKey] = cloudToday;
+            } else if (!isLocalNewer && cloudToday === 0 && localToday > 0) {
+                mergedHistory[todayKey] = localToday;
             }
 
             //PROTECT OFFLINE WAKE-UP LOGS
@@ -929,7 +947,23 @@ const fileStorage = createJSONStorage(() => ({
 
             // Save the merged data to local cache for offline use
             localStorage.setItem('dashboard-storage', cloudStr);
-            lastSavedValue = cloudStr;
+            
+            // Check if we merged any offline stats that the cloud didn't have
+            const hasOfflineStatsToPush = 
+              JSON.stringify(mergedHistory) !== JSON.stringify(cloudHistory) || 
+              JSON.stringify(mergedDailyTimes) !== JSON.stringify(cloudDailyTimes);
+              
+            if (hasOfflineStatsToPush) {
+              console.log("Protecting offline stats and syncing UP to fix cloud.");
+              // Set the baseline to the original cloud state so performSave detects the diff
+              lastSavedValue = JSON.stringify({ version: 2, state: json.data.state });
+              pendingValue = cloudStr;
+              hasUnsavedChanges = true;
+              if (!saveTimeout) saveTimeout = setTimeout(performSave, 5000); // Wait for hydration
+            } else {
+              lastSavedValue = cloudStr;
+            }
+            
             return cloudStr;
           }
         }
