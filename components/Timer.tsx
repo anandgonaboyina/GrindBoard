@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Pause, Square, VolumeX, Check, ListTodo, ChevronUp, ChevronDown, BarChart2, StickyNote, Map, Settings, BellRing, Clock, X } from 'lucide-react';
+import { Play, Pause, Square, VolumeX, Check, ListTodo, ChevronUp, ChevronDown, BarChart2, StickyNote, Map, Settings, BellRing, Clock, X, Loader2 } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { useTaskStore } from '@/store/taskStore';
 import { fetchQuote } from '@/utils/quoteEngine';
@@ -156,6 +156,8 @@ export default function Timer() {
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [pausedAtString, setPausedAtString] = useState<string>('');
+  const [isCheckingCloudStop, setIsCheckingCloudStop] = useState(false);
+  const [showAlreadyEndedModal, setShowAlreadyEndedModal] = useState(false);
 
   // Suppress harmless NotSupportedError unhandled rejections caused by Lively Wallpaper/Chromium forcing play() on invalid media sources before fallback kicks in
   useEffect(() => {
@@ -370,16 +372,56 @@ export default function Timer() {
               if (isOwner) {
                 const diff = chunks - savedChunksRef.current;
                 const minsToSave = diff * 5;
-                const today = getLocalDateString();
-                addMins(today, minsToSave);
-                if (activeTaskId) {
-                  updateTaskDuration(activeTaskId, minsToSave);
-                  updateLocalTaskDuration(activeTaskId, minsToSave);
-                  incrementGroupTaskTimeSpent(activeTaskId, minsToSave);
+                const targetChunks = chunks;
+                const capturedTaskId = activeTaskId; // Capture in closure
+                
+                // Immediately update ref to prevent duplicate interval triggers
+                savedChunksRef.current = targetChunks;
+
+                const applyMinsLocally = () => {
+                  const today = getLocalDateString();
+                  addMins(today, minsToSave);
+                  if (capturedTaskId) {
+                    updateTaskDuration(capturedTaskId, minsToSave);
+                    updateLocalTaskDuration(capturedTaskId, minsToSave);
+                    incrementGroupTaskTimeSpent(capturedTaskId, minsToSave);
+                  }
+                  setTimerLastSavedChunks(targetChunks);
+                };
+                
+                const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
+                if (token && navigator.onLine) {
+                  fetch(`/api/store?t=${Date.now()}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  }).then(res => res.ok ? res.json() : null)
+                    .then(json => {
+                      const cloudState = json?.data?.state;
+                      if (cloudState && cloudState.timerEndAt === null) {
+                        // The timer was ended in the cloud by another device!
+                        setShowAlreadyEndedModal(true);
+                        
+                        // Clear local timer WITHOUT adding time
+                        savedChunksRef.current = 0;
+                        alertedChunksRef.current = 0;
+                        lastIntervalAlertMinsRef.current = 0;
+                        lastIsIntervalEnabledRef.current = false;
+                        useDashboardStore.getState().setActiveTask(null, null);
+                        setTimerLastSavedChunks(0);
+                        setTimerLastAlertedChunks(0);
+                        setTimerInitialMins(null);
+                        clearTimerState();
+                        stopAlarm();
+                        stopIntervalBeep();
+                      } else {
+                        applyMinsLocally();
+                      }
+                    }).catch(() => applyMinsLocally());
+                } else {
+                  applyMinsLocally();
                 }
-                setTimerLastSavedChunks(chunks);
+              } else {
+                savedChunksRef.current = chunks;
               }
-              savedChunksRef.current = chunks;
             }
 
             if (remaining > 5 && !wasSleeping) {
@@ -797,6 +839,52 @@ export default function Timer() {
     stopIntervalBeep();
   };
 
+  const handleStopClick = async () => {
+    // Only check if we are online, have a sync token, and timer is tracking unsaved hours
+    if (!timerInitialMins || typeof window === 'undefined') {
+      resetTimer();
+      return;
+    }
+
+    const token = localStorage.getItem('dashboard_sync_token');
+    if (token && navigator.onLine) {
+      setIsCheckingCloudStop(true);
+      try {
+        const res = await fetch(`/api/store?t=${Date.now()}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const cloudState = json.data?.state;
+          // If the cloud explicitly says the timer is ended (null) but our local timer is running
+          if (cloudState && cloudState.timerEndAt === null) {
+            setIsCheckingCloudStop(false);
+            setShowAlreadyEndedModal(true);
+            
+            // Clear local timer WITHOUT calling saveAndClearActiveTaskTimer to prevent double-counting
+            savedChunksRef.current = 0;
+            alertedChunksRef.current = 0;
+            lastIntervalAlertMinsRef.current = 0;
+            lastIsIntervalEnabledRef.current = false;
+            useDashboardStore.getState().setActiveTask(null, null);
+            setTimerLastSavedChunks(0);
+            setTimerLastAlertedChunks(0);
+            setTimerInitialMins(null);
+            clearTimerState();
+            stopAlarm();
+            stopIntervalBeep();
+            return;
+          }
+        }
+      } catch (e) {
+        // network error, fallback to normal stop
+      }
+      setIsCheckingCloudStop(false);
+    }
+    
+    resetTimer();
+  };
+
   const handleCustomStart = () => {
     let mins = parseInt(customMins);
     if (!isNaN(mins) && mins > 0) {
@@ -1104,10 +1192,11 @@ export default function Timer() {
                 </Tooltip>
                 <Tooltip text="Stop Timer" position="top">
                   <button
-                    onClick={resetTimer}
-                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                    onClick={handleStopClick}
+                    disabled={isCheckingCloudStop}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50"
                   >
-                    <Square size={20} className="fill-current" />
+                    {isCheckingCloudStop ? <Loader2 size={20} className="animate-spin text-white/50" /> : <Square size={20} className="fill-current" />}
                   </button>
                 </Tooltip>
               </div>
@@ -1270,6 +1359,20 @@ export default function Timer() {
             updateInteraction();
           }
         }}
+      />
+
+      <ConfirmationModal
+        isOpen={showAlreadyEndedModal}
+        onClose={() => setShowAlreadyEndedModal(false)}
+        title="Timer Already Ended"
+        message={
+          <div className="flex flex-col gap-2">
+            <p className="text-white/80">This timer was already ended on another device.</p>
+            <p className="text-white">To prevent double-counting, <strong className="text-amber-400 font-bold">no additional focus hours were added</strong> from this device.</p>
+          </div>
+        }
+        confirmText="Got it"
+        onConfirm={() => setShowAlreadyEndedModal(false)}
       />
     </DraggableWidget>
   );
