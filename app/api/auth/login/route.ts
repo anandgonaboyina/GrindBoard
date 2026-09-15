@@ -41,10 +41,15 @@ export async function POST(request: Request) {
       );
 
       // 2. Reset them in Settings where they are actually mapped (generalSettings), and make sure they always see the onboarding tour
+      // Also reset peek mode (isPanicHidden) and focus mode (isHidden) so new users aren't confused
       await db.collection('Settings').updateOne(
         { userId: user._id.toString() },
         { 
-          $set: { hasSeenOnboarding: false },
+          $set: { 
+            hasSeenOnboarding: false,
+            "displaySettings.isPanicHidden": false,
+            "displaySettings.isHidden": false
+          },
           $unset: {
             "generalSettings.timerEndAt": "",
             "generalSettings.timerPausedLeft": "",
@@ -52,8 +57,96 @@ export async function POST(request: Request) {
             "generalSettings.stopwatchLastSavedChunks": "",
             "generalSettings.stopwatchDeviceId": "",
             "generalSettings.activeTimerSecs": "",
-            "generalSettings.activeStopwatchSecs": ""
+            "generalSettings.activeStopwatchSecs": "",
+            "displaySettings.showQuote": "",
+            "displaySettings.showTimer": "",
+            "displaySettings.showCountdowns": "",
+            "displaySettings.showVideoControls": "",
+            "displaySettings.showClock": "",
+            "displaySettings.showTasks": "",
+            "displaySettings.showCalendar": "",
+            "displaySettings.showTodayWork": "",
+            "displaySettings.showStats": "",
+            "displaySettings.showPlans": "",
+            "displaySettings.showNotes": "",
+            "displaySettings.showTimetable": "",
+            "displaySettings.showDock": "",
+            "displaySettings.showDeadlineAlerts": "",
+            "displaySettings.showBgSwitcher": "",
+            "displaySettings.showSettingsBtn": "",
+            "displaySettings.showStopwatch": ""
           }
+        },
+        { upsert: true }
+      );
+
+      // 3. Set 4 hardcoded deadlines based on the current date, so demo users always see upcoming deadlines
+      const todayDate = new Date();
+      const tomorrowDate = new Date(); tomorrowDate.setDate(todayDate.getDate() + 1);
+      const dayAfterDate = new Date(); dayAfterDate.setDate(todayDate.getDate() + 2);
+      
+      const demoDeadlines = [
+        {
+          id: 'demo-deadline-1',
+          text: 'Project Submission',
+          date: todayDate.toISOString().split('T')[0],
+          isPinned: true
+        },
+        {
+          id: 'demo-deadline-2',
+          text: 'Team Sync Meeting',
+          date: todayDate.toISOString().split('T')[0],
+          isPinned: true
+        },
+        {
+          id: 'demo-deadline-3',
+          text: 'Code Review',
+          date: tomorrowDate.toISOString().split('T')[0],
+          isPinned: true
+        },
+        {
+          id: 'demo-deadline-4',
+          text: 'Client Presentation',
+          date: dayAfterDate.toISOString().split('T')[0],
+          isPinned: true
+        }
+      ];
+
+      await db.collection('Deadlines').updateOne(
+        { userId: user._id.toString() },
+        { 
+          $set: { 
+            deadlines: demoDeadlines,
+            lastModified: Date.now()
+          } 
+        },
+        { upsert: true }
+      );
+
+      // 4. Set 2 hardcoded countdowns based on current date
+      const nextWeekDate = new Date(todayDate); nextWeekDate.setDate(todayDate.getDate() + 7);
+      const nextMonthDate = new Date(todayDate); nextMonthDate.setDate(todayDate.getDate() + 30);
+      
+      const demoCountdowns = [
+        {
+          id: 'demo-countdown-1',
+          title: 'Product Launch',
+          endDate: nextWeekDate.toISOString()
+        },
+        {
+          id: 'demo-countdown-2',
+          title: 'Vacation',
+          endDate: nextMonthDate.toISOString()
+        }
+      ];
+
+      await db.collection('Countdowns').updateOne(
+        { userId: user._id.toString() },
+        { 
+          $set: { 
+            countdowns: demoCountdowns,
+            lastModified: Date.now()
+          } 
         },
         { upsert: true }
       );

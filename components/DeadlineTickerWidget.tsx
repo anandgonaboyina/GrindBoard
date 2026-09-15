@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Flame, Calendar, ChevronDown, ChevronUp, X, AlertTriangle, Clock, Info, CheckCircle2, Check, Trash2, Lock } from 'lucide-react';
 import Tooltip from './Tooltip';
-
+import ScrollableWithArrows from '@/components/ScrollableWithArrows'
 export default function DeadlineTickerWidget() {
   const { deadlines, deadlineAlertDays, dismissedDeadlineAlerts, deleteDeadline, toggleDeadlineDone, dockOffset, widgetZIndices, viewingFriend } = useDashboardStore();
   const [mounted, setMounted] = useState(false);
@@ -218,10 +218,11 @@ export default function DeadlineTickerWidget() {
         </div>
       ) : (
         <div
-          className="pointer-events-auto w-[200px] xs:w-[220px] sm:w-[320px] max-h-[170px] xs:max-h-[200px] sm:max-h-[380px] flex flex-col rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
+        className="pointer-events-auto w-[200px] xs:w-[220px] sm:w-[320px] max-h-[170px] xs:max-h-[200px] sm:max-h-[380px] flex flex-col rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
         >
           {/* Header Bar with Today's Date */}
           <div className="flex items-center justify-between px-2 py-1 sm:px-3 sm:py-2 bg-gradient-to-r from-red-500/20 via-slate-900 to-amber-500/10 border-b border-white/10 shrink-0">
+
             <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
               <div className="p-0.5 sm:p-1 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center">
                 <Flame className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-red-400 animate-pulse" />
@@ -265,7 +266,9 @@ export default function DeadlineTickerWidget() {
 
           {/* Content Scroll Box */}
           <div className="p-1.5 sm:p-2.5 overflow-y-auto flex flex-col gap-1 sm:gap-2 custom-scrollbar max-h-[120px] xs:max-h-[150px] sm:max-h-[320px]">
-
+          <ScrollableWithArrows
+          hideArrows={isMobile}
+          >
             {/* TODAY'S DEADLINES SECTION */}
             {todayAlerts.length > 0 && (
               <div className="flex flex-col gap-1 sm:gap-1.5">
@@ -413,6 +416,7 @@ export default function DeadlineTickerWidget() {
               );
             })}
 
+          </ScrollableWithArrows>
           </div>
         </div>
       )}

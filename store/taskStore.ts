@@ -24,9 +24,10 @@ interface TaskState {
     setTasks: (tasks: Task[], tab?: 'today' | 'tomorrow') => void;
     addTask: (title: string, duration: number, tab?: 'today' | 'tomorrow', groupId?: number) => void;
     toggleTask: (id: string, tab?: 'today' | 'tomorrow') => void;
-    deleteTask: (id: string, tab?: 'today' | 'tomorrow') => void;
+    deleteTask: (id: string, tab?: 'today' | 'tomorrow') => Promise<void>;
     moveTaskTab: (id: string, fromTab: 'today' | 'tomorrow') => void;
     updateTaskTitle: (id: string, title: string, tab?: 'today' | 'tomorrow') => void;
+    updateTaskDuration: (id: string, decreaseMins: number) => void;
     editTaskDuration: (id: string, newDuration: number, tab?: 'today' | 'tomorrow') => void;
     editTaskTimeSpent: (id: string, newTimeSpent: number, tab?: 'today' | 'tomorrow') => void;
     reorderTasks: (tab: 'today' | 'tomorrow', startIndex: number, endIndex: number) => void;
@@ -39,7 +40,7 @@ let taskSaveTimeout: NodeJS.Timeout | null = null;
 
 
 // Debounced API sync helper (waits 5000ms after last edit before hitting DB)
-export const pushTasksToDB = async (updates: Partial<TaskState>) => {
+export const pushTasksToDB = async (updates: Partial<TaskState>, immediate: boolean = false) => {
     if (typeof window === 'undefined') return;
 
     // GUARD: Stop save attempts immediately if offline
@@ -50,7 +51,7 @@ export const pushTasksToDB = async (updates: Partial<TaskState>) => {
 
     if (taskSaveTimeout) clearTimeout(taskSaveTimeout);
 
-    taskSaveTimeout = setTimeout(async () => {
+    const performPush = async () => {
         const token = localStorage.getItem('dashboard_sync_token');
         if (!token || !navigator.onLine) return;
         try {
@@ -59,12 +60,17 @@ export const pushTasksToDB = async (updates: Partial<TaskState>) => {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ updates })
             });
-            // FIXED: Added await here so it actually logs the data, not a Promise
             console.log(await res.json());
         } catch (e) {
-            console.error("Failed to sync tasks", e);
+            console.error('Failed to sync tasks to DB', e);
         }
-    }, 5000);
+    };
+
+    if (immediate) {
+        performPush();
+    } else {
+        taskSaveTimeout = setTimeout(performPush, 5000);
+    }
 };
 
 
@@ -185,6 +191,26 @@ export const useTaskStore = create<TaskState>()(
                     return updates;
                 });
             },
+
+            updateTaskDuration: (id, decreaseMins) => set((state) => {
+                const updateTasks = (tasks: Task[]) => tasks.map(t => {
+                    if (t.id === id) {
+                        return {
+                            ...t,
+                            duration: Math.max(0, t.duration - decreaseMins),
+                            timeSpent: (t.timeSpent || 0) + decreaseMins
+                        };
+                    }
+                    return t;
+                });
+
+                const updates = {
+                    tasks: updateTasks(state.tasks),
+                    tomorrowTasks: updateTasks(state.tomorrowTasks)
+                };
+                pushTasksToDB(updates, true);
+                return updates;
+            }),
 
             editTaskDuration: (id, newDuration, tab = 'today') => set((state) => {
                 const updates = tab === 'today'

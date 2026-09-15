@@ -450,8 +450,9 @@ export default function Dashboard() {
             {/* Edge Peek Tab for Groups */}
             <div
               data-tour="groups-drawer"
-              className={`fixed left-0 top-[calc(26vh+92px)] sm:top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group`}
-              onClick={() => {
+              className={`fixed left-0 top-[calc(26vh+92px)] sm:top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen || isSettingsOpen ? '-translate-x-[120%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'} group`}
+              onClick={(e) => {
+                e.stopPropagation();
                 useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'groups' });
               }}
             >

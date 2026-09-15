@@ -155,6 +155,7 @@ interface DashboardState {
   activeTaskTitle: string | null;
   setActiveTask: (id: string | null, title: string | null) => void;
   updateTaskDuration: (id: string, decreaseMins: number) => void;
+  incrementGroupTaskTimeSpent: (id: string, minsToSave: number) => void;
   editTaskDuration: (id: string, newDuration: number, tab?: 'today' | 'tomorrow') => void;
   editTaskTimeSpent: (id: string, newTimeSpent: number, tab?: 'today' | 'tomorrow') => void;
   updateTaskTitle: (id: string, title: string, tab?: 'today' | 'tomorrow') => void;
@@ -581,6 +582,7 @@ const performSave = async () => {
         'isTimetableOpen', 'isPlansOpen', 'isNotesOpen', 'isSettingsOpen', 'isNewsOpen',
         'isStatsOpen', 'isMobileCountdownsVisible', 'isCalendarBusy', 'expandedLeaderboardUserId',
         'pendingValue', 'saveTimeout', 'activeNoteId', 'activeCountdownIndex',
+        'settingsActiveTab', 'connectInitialTab',
         ...DEADLINE_KEYS,  // Deadlines sync is handled entirely by its own real-time endpoint
         ...COUNTDOWN_KEYS  // Countdowns sync is handled entirely by its own real-time endpoint
       ];
@@ -702,16 +704,16 @@ const performSave = async () => {
         plans: mergeArraysById(parsedLocal.state.plans, parsedCloud.state.plans),
         customAlarmSounds: mergeArraysById(parsedLocal.state.customAlarmSounds, parsedCloud.state.customAlarmSounds),
 
-        // Timer state is strictly LOCAL. Cloud should never overwrite the current device's timer during a conflict.
-        timerEndAt: parsedLocal.state.timerEndAt ?? null,
-        timerPausedLeft: parsedLocal.state.timerPausedLeft ?? null,
-        timerInitialMins: parsedLocal.state.timerInitialMins ?? null,
-        timerDeviceId: parsedLocal.state.timerDeviceId ?? null,
-        timerLastUpdated: parsedLocal.state.timerLastUpdated || 0,
-        timerLastSavedChunks: parsedLocal.state.timerLastSavedChunks || 0,
-        timerLastAlertedChunks: parsedLocal.state.timerLastAlertedChunks || 0,
-        activeTaskId: parsedLocal.state.activeTaskId ?? null,
-        activeTaskTitle: parsedLocal.state.activeTaskTitle ?? null,
+        // Timer state syncs based on the most recent update
+        timerEndAt: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerEndAt ?? null) : (parsedCloud.state.timerEndAt ?? null),
+        timerPausedLeft: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerPausedLeft ?? null) : (parsedCloud.state.timerPausedLeft ?? null),
+        timerInitialMins: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerInitialMins ?? null) : (parsedCloud.state.timerInitialMins ?? null),
+        timerDeviceId: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerDeviceId ?? null) : (parsedCloud.state.timerDeviceId ?? null),
+        timerLastUpdated: Math.max(parsedLocal.state.timerLastUpdated || 0, parsedCloud.state.timerLastUpdated || 0),
+        timerLastSavedChunks: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerLastSavedChunks || 0) : (parsedCloud.state.timerLastSavedChunks || 0),
+        timerLastAlertedChunks: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerLastAlertedChunks || 0) : (parsedCloud.state.timerLastAlertedChunks || 0),
+        activeTaskId: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.activeTaskId ?? null) : (parsedCloud.state.activeTaskId ?? null),
+        activeTaskTitle: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.activeTaskTitle ?? null) : (parsedCloud.state.activeTaskTitle ?? null),
 
         manifestationDesktopPhotos: mergeStringArrays(parsedLocal.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos), // In 409, base is cloud so local overrides if different
         manifestationMobilePhotos: mergeStringArrays(parsedLocal.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos),
@@ -822,7 +824,8 @@ if (typeof window !== 'undefined') {
         'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
         'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
         'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
-        'widgetZIndices', 'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen'
+        'widgetZIndices', 'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen',
+        'settingsActiveTab', 'connectInitialTab'
       ];
       transientKeys.forEach(key => delete filteredState[key]);
 
@@ -903,6 +906,7 @@ const fileStorage = createJSONStorage(() => ({
               // FORCE UI RESET ON STARTUP
               isSettingsOpen: false,
               settingsActiveTab: 'preferences',
+              connectInitialTab: undefined,
 
 
               //Apply the protected offline stats
@@ -917,13 +921,8 @@ const fileStorage = createJSONStorage(() => ({
               activePeekModeCustomIndex: localState.activePeekModeCustomIndex !== undefined ? localState.activePeekModeCustomIndex : json.data.state.activePeekModeCustomIndex,
               peekModeWallpaper: localState.peekModeWallpaper !== undefined ? localState.peekModeWallpaper : json.data.state.peekModeWallpaper,
 
-              // Strictly preserve local timer status so a running timer isn't wiped
-              timerEndAt: localState.timerEndAt ?? null,
-              timerPausedLeft: localState.timerPausedLeft ?? null,
-              timerInitialMins: localState.timerInitialMins ?? null,
-              timerDeviceId: localState.timerDeviceId ?? null,
-              activeTaskId: localState.activeTaskId ?? null,
-              activeTaskTitle: localState.activeTaskTitle ?? null,
+              // Timer status now pulls directly from the cloud just like the stopwatch, enabling cross-device sync!
+              // (If local timer is newer, it will sync up on the next save and conflict merge handles it)
             };
 
             const cloudStr = JSON.stringify({ version: 2, state: mergedState });
@@ -1136,6 +1135,7 @@ export const useDashboardStore = create<DashboardState>()(
             lastModified: Date.now()
           };
         });
+        get().forceInstantSave();
       },
       toggleHide: () => set((state) => ({ isHidden: !state.isHidden })),
 
@@ -1254,10 +1254,19 @@ export const useDashboardStore = create<DashboardState>()(
         get().forceInstantSave();
       },
       updateTaskDuration: (id, decreaseMins) => {
-        set((state) => ({
-          tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins) } : t),
-          tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins) } : t)
-        } as any));
+        set((state) => {
+          const newTasks = ((state as any).tasks || []).map((t: any) => 
+            t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins), timeSpent: (t.timeSpent || 0) + decreaseMins } : t
+          );
+          const newTomorrowTasks = ((state as any).tomorrowTasks || []).map((t: any) => 
+            t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins), timeSpent: (t.timeSpent || 0) + decreaseMins } : t
+          );
+          
+          return {
+            tasks: newTasks,
+            tomorrowTasks: newTomorrowTasks
+          } as any;
+        });
         get().forceInstantSave();
       },
       editTaskDuration: (id, newDuration, tab = 'today') => {
@@ -1265,6 +1274,44 @@ export const useDashboardStore = create<DashboardState>()(
           ...(tab === 'today' && { tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, duration: newDuration } : t) }),
           ...(tab === 'tomorrow' && { tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, duration: newDuration } : t) })
         } as any));
+        get().forceInstantSave();
+      },
+      incrementGroupTaskTimeSpent: (id, minsToSave) => {
+        set((state) => {
+          let updatedGroups = state.userGroups;
+          if (updatedGroups) {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            const user = JSON.parse(localStorage.getItem('dashboard-auth-user') || '{}');
+            const userId = user._id || user.username;
+            if (!userId) return state;
+
+            updatedGroups = updatedGroups.map(group => {
+              // Only update if this task belongs to this group (in memberTasks)
+              const hasTask = group.memberTasks?.[userId]?.some((t: any) => t.id === id);
+              if (!hasTask) return group;
+
+              const currentCompletions = group.completions?.[userId]?.[todayStr] || {};
+              const currentTaskComp = currentCompletions[id] || { completed: false, timeSpent: 0 };
+              
+              const newCompletions = {
+                ...group.completions,
+                [userId]: {
+                  ...(group.completions?.[userId] || {}),
+                  [todayStr]: {
+                    ...currentCompletions,
+                    [id]: {
+                      ...currentTaskComp,
+                      timeSpent: (currentTaskComp.timeSpent || 0) + minsToSave
+                    }
+                  }
+                }
+              };
+              
+              return { ...group, completions: newCompletions };
+            });
+          }
+          return { userGroups: updatedGroups };
+        });
         get().forceInstantSave();
       },
       editTaskTimeSpent: (id, newTimeSpent, tab = 'today') => {

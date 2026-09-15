@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Play, Pause, Square, VolumeX, Check, ListTodo, ChevronUp, ChevronDown, BarChart2, StickyNote, Map, Settings, BellRing, Clock, X } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboardStore';
+import { useTaskStore } from '@/store/taskStore';
 import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
 import DraggableWidget from './DraggableWidget';
@@ -31,12 +32,14 @@ export default function Timer() {
     isAlarmPlaying, setIsAlarmPlaying,
     addMins,
     showQuotePopup, isHidden,
-    activeTaskId, activeTaskTitle, setActiveTask, updateTaskDuration,
+    activeTaskId, activeTaskTitle, setActiveTask, updateTaskDuration, incrementGroupTaskTimeSpent,
     alarmSound, alarmVolume,
     enableAlarmSound, enableAlarmVibration,
     isTimerOpen, timerDeviceId, setTimerDeviceId,
     clearTimerState,
   } = useDashboardStore();
+
+  const { updateTaskDuration: updateLocalTaskDuration } = useTaskStore();
 
   const resolvedAlarmUrl = useAudioUrl(alarmSound);
 
@@ -212,6 +215,8 @@ export default function Timer() {
           addMins(today, finalUnsavedMins);
           if (activeTaskId) {
             updateTaskDuration(activeTaskId, finalUnsavedMins);
+            updateLocalTaskDuration(activeTaskId, finalUnsavedMins);
+            incrementGroupTaskTimeSpent(activeTaskId, finalUnsavedMins);
           }
         }
       }
@@ -340,6 +345,8 @@ export default function Timer() {
                 addMins(today, minsToSave);
                 if (activeTaskId) {
                   updateTaskDuration(activeTaskId, minsToSave);
+                  updateLocalTaskDuration(activeTaskId, minsToSave);
+                  incrementGroupTaskTimeSpent(activeTaskId, minsToSave);
                 }
                 setTimerLastSavedChunks(chunksAtPause);
                 savedChunksRef.current = chunksAtPause;
@@ -367,6 +374,8 @@ export default function Timer() {
                 addMins(today, minsToSave);
                 if (activeTaskId) {
                   updateTaskDuration(activeTaskId, minsToSave);
+                  updateLocalTaskDuration(activeTaskId, minsToSave);
+                  incrementGroupTaskTimeSpent(activeTaskId, minsToSave);
                 }
                 setTimerLastSavedChunks(chunks);
               }
@@ -457,15 +466,12 @@ export default function Timer() {
                 addMins(today, finalUnsavedMins);
                 if (activeTaskId) {
                   updateTaskDuration(activeTaskId, finalUnsavedMins);
+                  updateLocalTaskDuration(activeTaskId, finalUnsavedMins);
+                  incrementGroupTaskTimeSpent(activeTaskId, finalUnsavedMins);
                 }
               }
             }
-            setTimerLastSavedChunks(0);
-            setTimerLastAlertedChunks(0);
-            if (activeTaskId) {
-              setActiveTask(null, null);
-            }
-            setTimerInitialMins(null);
+            clearTimerState();
             savedChunksRef.current = 0;
           }
 
@@ -487,7 +493,7 @@ export default function Timer() {
     }
 
     return () => clearInterval(interval);
-  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, timerIntervalMins, isTimerIntervalEnabled, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, isTaskIntervalAlertEnabled, taskIntervalRingSecs, timerDeviceId]);
+  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, timerIntervalMins, isTimerIntervalEnabled, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, updateLocalTaskDuration, incrementGroupTaskTimeSpent, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, isTaskIntervalAlertEnabled, taskIntervalRingSecs, timerDeviceId]);
 
   // Listen for timer triggers from other components
   useEffect(() => {
@@ -1156,43 +1162,46 @@ export default function Timer() {
                     </button>
                   </Tooltip>
                 </div>
+              </div>
+            )}
 
-                <div className="flex items-center justify-start gap-1 pt-1 border-t border-white/5 w-full">
-                  <div className="flex items-center gap-1 cursor-pointer" onClick={() => setIsTimerIntervalEnabled(!isTimerIntervalEnabled)}>
-                    <BellRing size={12} className={isTimerIntervalEnabled ? "text-sky-300" : "text-white/40"} />
-                    <span className="text-[9px] font-medium text-white/70">Interval</span>
-                    <button
-                      className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTimerIntervalEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
-                    >
-                      <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isTimerIntervalEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
-                    </button>
-                  </div>
-                  {isTimerIntervalEnabled ? (
-                    <div className="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-white/10">
-                      <input
-                        type="number"
-                        value={timerIntervalMins || ''}
-                        onChange={(e) => {
-                          if (e.target.value === '') {
-                            setTimerIntervalMins(0);
-                          } else {
-                            const parsed = parseInt(e.target.value);
-                            if (!isNaN(parsed) && parsed >= 0) {
-                              setTimerIntervalMins(parsed);
-                            }
-                          }
-                        }}
-                        className="w-7 bg-black/40 border border-white/20 rounded px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
-                        min="1"
-                      />
-                      <span className="text-[8px] font-bold text-white/40">min</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center pl-1.5 ml-0.5 border-l border-white/10">
-                      <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
-                    </div>
-                  )}
+            {/* Interval settings (show for normal timers always) */}
+            {!activeTaskId && !isEditingTime && !isAlarmPlaying && !isIntervalRinging && (
+              <div className="flex items-center justify-start gap-1 pt-1 mt-1 border-t border-white/10 w-full">
+                <div className="flex items-center gap-1 cursor-pointer" onClick={() => setIsTimerIntervalEnabled(!isTimerIntervalEnabled)}>
+                  <BellRing size={12} className={isTimerIntervalEnabled ? "text-sky-300" : "text-white/40"} />
+                  <span className="text-[9px] font-medium text-white/70">Interval</span>
+                  <button
+                    className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTimerIntervalEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
+                  >
+                    <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isTimerIntervalEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
+                  </button>
                 </div>
+                {isTimerIntervalEnabled ? (
+                  <div className="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-white/10">
+                    <input
+                      type="number"
+                      value={timerIntervalMins || ''}
+                      onChange={(e) => {
+                        if (e.target.value === '') {
+                          setTimerIntervalMins(0);
+                        } else {
+                          const parsed = parseInt(e.target.value);
+                          if (!isNaN(parsed) && parsed >= 0) {
+                            setTimerIntervalMins(parsed);
+                          }
+                        }
+                      }}
+                      className="w-7 bg-black/40 border border-white/20 rounded px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
+                      min="1"
+                    />
+                    <span className="text-[8px] font-bold text-white/40">min</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center pl-1.5 ml-0.5 border-l border-white/10">
+                    <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
