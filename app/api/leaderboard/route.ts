@@ -65,45 +65,52 @@ export async function GET(request: Request) {
       userDailyTimes[routine.userId] = routine.dailyTimes || {};
     });
 
-    const getLocalDateString = (d: Date) => {
-      const offset = d.getTimezoneOffset();
-      const localDate = new Date(d.getTime() - (offset * 60 * 1000));
-      return localDate.toISOString().split('T')[0];
-    };
+    const url = new URL(request.url);
+    const clientOffsetParam = url.searchParams.get('offset');
+    const clientOffset = clientOffsetParam ? parseInt(clientOffsetParam, 10) : new Date().getTimezoneOffset();
 
-    const todayDate = new Date();
-    const todayStr = getLocalDateString(todayDate);
+    // Shift current time by client offset so that UTC methods return client's local time
+    // clientOffset is (UTC - Local) in minutes
+    const now = Date.now();
+    const localMs = now - (clientOffset * 60 * 1000);
+
+    const getStr = (ms: number) => new Date(ms).toISOString().split('T')[0];
+
+    const todayStr = getStr(localMs);
+
+    const localDate = new Date(localMs);
+    const year = localDate.getUTCFullYear();
+    const month = localDate.getUTCMonth();
+    const date = localDate.getUTCDate();
+    const day = localDate.getUTCDay();
 
     // This Week (Mon-Sun)
     const thisWeekDays: string[] = [];
-    let currentDayOfWeek = todayDate.getDay() === 0 ? 7 : todayDate.getDay();
-    let mondayDate = new Date(todayDate);
-    mondayDate.setDate(todayDate.getDate() - currentDayOfWeek + 1);
+    let currentDayOfWeek = day === 0 ? 7 : day;
+    const mondayMs = Date.UTC(year, month, date - currentDayOfWeek + 1);
     for (let i = 0; i < 7; i++) {
-      const d = new Date(mondayDate); d.setDate(mondayDate.getDate() + i); thisWeekDays.push(getLocalDateString(d));
+      thisWeekDays.push(getStr(mondayMs + i * 86400000));
     }
 
-    // Last Week (Mon-Sun of previous week)
+    // Last Week (Mon-Sun)
     const lastWeekDays: string[] = [];
-    const lastWeekMonday = new Date(mondayDate);
-    lastWeekMonday.setDate(mondayDate.getDate() - 7);
+    const lastWeekMondayMs = mondayMs - 7 * 86400000;
     for (let i = 0; i < 7; i++) {
-      const d = new Date(lastWeekMonday); d.setDate(lastWeekMonday.getDate() + i); lastWeekDays.push(getLocalDateString(d));
+      lastWeekDays.push(getStr(lastWeekMondayMs + i * 86400000));
     }
 
     // This Month
     const thisMonthDays: string[] = [];
-    let lastDayOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
+    const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
     for (let i = 1; i <= lastDayOfMonth; i++) {
-      const d = new Date(todayDate.getFullYear(), todayDate.getMonth(), i); thisMonthDays.push(getLocalDateString(d));
+      thisMonthDays.push(getStr(Date.UTC(year, month, i)));
     }
 
     // Last Month
     const lastMonthDays: string[] = [];
-    const prevMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() - 1, 1);
-    const lastDayOfPrevMonth = new Date(prevMonth.getFullYear(), prevMonth.getMonth() + 1, 0).getDate();
+    const lastDayOfPrevMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
     for (let i = 1; i <= lastDayOfPrevMonth; i++) {
-      const d = new Date(prevMonth.getFullYear(), prevMonth.getMonth(), i); lastMonthDays.push(getLocalDateString(d));
+      lastMonthDays.push(getStr(Date.UTC(year, month - 1, i)));
     }
 
     const leaderboard = users.map((u, index) => {
@@ -111,9 +118,8 @@ export async function GET(request: Request) {
       const history = userHistories[uIdStr] || {};
       const dailyTimes = userDailyTimes[uIdStr] || {};
       
-      const yesterdayDate = new Date(todayDate);
-      yesterdayDate.setDate(todayDate.getDate() - 1);
-      const yesterdayStr = getLocalDateString(yesterdayDate);
+      const yesterdayMs = localMs - 86400000;
+      const yesterdayStr = getStr(yesterdayMs);
       
       const todayDaily = dailyTimes[todayStr] || {};
       
@@ -128,9 +134,17 @@ export async function GET(request: Request) {
       const yesterdayDaily = dailyTimes[yesterdayStr] || {};
       let yesterdayBedTime = yesterdayDaily.bedTime || null;
       if (!yesterdayBedTime) {
-        const y10pm = new Date(yesterdayDate);
-        y10pm.setHours(22, 0, 0, 0);
-        yesterdayBedTime = y10pm.getTime();
+        // Fallback to yesterday 10 PM local time
+        // Using Date.UTC with the local year, month, date of yesterday
+        const yDate = new Date(yesterdayMs);
+        const yYear = yDate.getUTCFullYear();
+        const yMonth = yDate.getUTCMonth();
+        const yDay = yDate.getUTCDate();
+        
+        // This is 22:00 in "local" time (which is mapped to UTC)
+        const y10pmLocalMapped = Date.UTC(yYear, yMonth, yDay, 22, 0, 0, 0);
+        // Shift back to true epoch: Add the offset
+        yesterdayBedTime = y10pmLocalMapped + (clientOffset * 60 * 1000);
       }
 
       
@@ -181,19 +195,16 @@ export async function GET(request: Request) {
           }
         }
 
-        const streakCheckDate = new Date(todayDate);
-        streakCheckDate.setHours(0,0,0,0);
-        
-        let activeDate = new Date(streakCheckDate);
+        let activeMs = localMs;
         if (!history[todayStr] || history[todayStr] < 60) {
-          activeDate.setDate(activeDate.getDate() - 1);
+          activeMs -= 86400000;
         }
 
         while (true) {
-          const activeStr = `${activeDate.getFullYear()}-${String(activeDate.getMonth() + 1).padStart(2, '0')}-${String(activeDate.getDate()).padStart(2, '0')}`;
+          const activeStr = getStr(activeMs);
           if (history[activeStr] && history[activeStr] >= 60) {
             currentStreak++;
-            activeDate.setDate(activeDate.getDate() - 1);
+            activeMs -= 86400000;
           } else {
             break;
           }

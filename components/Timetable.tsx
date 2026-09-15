@@ -77,6 +77,7 @@ export default function Timetable() {
     updateTimetableTime,
     addTimetableRow,
     deleteTimetableRow,
+    insertTimetableRow,
     useTimetableRange,
     toggleTimetableRange,
     renameTimetableKeys,
@@ -337,7 +338,8 @@ export default function Timetable() {
   // Map old string times to durations (60 mins default) to safely migrate
   const durations = rawTimes.length > 0 ? rawTimes.map((t: any) => {
     if (typeof t === 'number') return t;
-    return 60;
+    if (typeof t === 'string' && !isNaN(Number(t)) && t.trim() !== '') return Number(t);
+    return 60; // old strings default to 60 mins
   }) : [60, 60, 60, 60, 60, 60, 60, 60, 60];
 
   // Calculate actual absolute TIMES based on Start Time + cumulative Durations
@@ -429,6 +431,9 @@ export default function Timetable() {
   }, []);
 
 
+
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [isInsertMode, setIsInsertMode] = useState(false);
 
   const handleBackup = () => {
     setConfirmModal({
@@ -584,20 +589,67 @@ export default function Timetable() {
     setShowSettings(false);
   };
 
-  const handleDeleteTopRow = () => {
+  const handleDeleteRow = (idx: number) => {
     setConfirmModal({
       isOpen: true,
-      title: 'Delete Top Row',
-      message: 'Delete the top row?',
+      title: 'Delete Row',
+      message: 'Delete this row? All subsequent rows will shift up.',
       isDestructive: true,
       onConfirm: () => {
-        const durationToRemove = generatedTimes[0]?.duration || 60;
-        const newStart = startTime + durationToRemove;
-        handleSetStartTime(newStart, true); // skip key renaming
-        deleteTimetableRow(isWeekendMode, 0);
-        setShowSettings(false);
+        let accumulated = startTime;
+        const oldTimesStrs: string[] = [];
+        for (let i = 0; i < durations.length; i++) {
+          oldTimesStrs.push(formatTime(accumulated));
+          accumulated += durations[i];
+        }
+
+        const newDurations = durations.filter((_: number, i: number) => i !== idx);
+
+        let newAccumulated = startTime;
+        const newTimesStrs: string[] = [];
+        for (let i = 0; i < newDurations.length; i++) {
+          newTimesStrs.push(formatTime(newAccumulated));
+          newAccumulated += newDurations[i];
+        }
+
+        const keyMap: Record<string, string | null> = {};
+        keyMap[oldTimesStrs[idx]] = null; // Wipe the deleted row's data
+        for (let i = idx + 1; i < oldTimesStrs.length; i++) {
+           keyMap[oldTimesStrs[i]] = newTimesStrs[i - 1]; // Shift remaining rows up
+        }
+
+        deleteTimetableRow(isWeekendMode, idx, keyMap);
+        setIsDeleteMode(false);
       }
     });
+  };
+
+  const handleInsertRow = (idx: number) => {
+    let accumulated = startTime;
+    const oldTimesStrs: string[] = [];
+    for (let i = 0; i < durations.length; i++) {
+      oldTimesStrs.push(formatTime(accumulated));
+      accumulated += durations[i];
+    }
+
+    const newDurations = [...durations];
+    newDurations.splice(idx + 1, 0, 60);
+
+    let newAccumulated = startTime;
+    const newTimesStrs: string[] = [];
+    for (let i = 0; i < newDurations.length; i++) {
+      newTimesStrs.push(formatTime(newAccumulated));
+      newAccumulated += newDurations[i];
+    }
+
+    const keyMap: Record<string, string | null> = {};
+    // Rows after idx shift down by 1 position in the new times array
+    for (let i = idx + 1; i < oldTimesStrs.length; i++) {
+       keyMap[oldTimesStrs[i]] = newTimesStrs[i + 1];
+    }
+
+    insertTimetableRow(isWeekendMode, idx + 1, 60, keyMap);
+    setIsInsertMode(false);
   };
 
   const handleCloseEditor = () => {
@@ -647,7 +699,15 @@ export default function Timetable() {
               </span>
             )}
           </div>
-          {!viewingFriend && (
+          {(isDeleteMode || isInsertMode) && !viewingFriend ? (
+            <button 
+              onClick={() => { setIsDeleteMode(false); setIsInsertMode(false); }} 
+              className={`ml-2 px-2 py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider rounded-md transition-all 
+                ${isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/40' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+            >
+              Cancel
+            </button>
+          ) : !viewingFriend && (
             <button onClick={() => setShowSettings(!showSettings)} className={`p-0.5 md:p-1 rounded-md transition-all hover:rotate-90 ml-0.5 shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-900'}`}>
               <Settings size={14} />
             </button>
@@ -703,22 +763,11 @@ export default function Timetable() {
               <button onClick={() => { addTimetableRow(isWeekendMode); setShowSettings(false); }} className={`px-2 py-1.5 text-[10px] flex items-center justify-between transition-colors w-full text-left border-b pb-2 mb-0.5 ${isDark ? 'hover:bg-white/10 text-white/80 border-white/5' : 'hover:bg-black/5 text-slate-700 border-black/5'}`}>
                 <span className="flex items-center gap-1.5"><ArrowDown size={12} className={isDark ? "text-sky-400" : "text-sky-600"} /> Add Bottom Row</span>
               </button>
-              <button onClick={handleDeleteTopRow} className={`px-2 py-1.5 text-[10px] flex items-center gap-1.5 transition-colors w-full text-left ${isDark ? 'hover:bg-rose-500/10 text-rose-400' : 'hover:bg-rose-100 text-rose-600'}`}>
-                <Trash size={12} /> Delete Top Row
+              <button onClick={() => { setIsInsertMode(!isInsertMode); setIsDeleteMode(false); setShowSettings(false); }} className={`px-2 py-1.5 text-[10px] flex items-center justify-between transition-colors w-full text-left border-b pb-2 mb-0.5 ${isDark ? 'hover:bg-white/10 text-white/80 border-white/5' : 'hover:bg-black/5 text-slate-700 border-black/5'}`}>
+                <span className="flex items-center gap-1.5"><Plus size={12} className={isDark ? "text-violet-400" : "text-violet-600"} /> Insert Specific Row...</span>
               </button>
-              <button onClick={() => {
-                setConfirmModal({
-                  isOpen: true,
-                  title: 'Delete Bottom Row',
-                  message: 'Delete the bottom row?',
-                  isDestructive: true,
-                  onConfirm: () => {
-                    deleteTimetableRow(isWeekendMode, generatedTimes.length - 1);
-                    setShowSettings(false);
-                  }
-                });
-              }} className={`px-2 py-1.5 text-[10px] flex items-center gap-1.5 transition-colors w-full text-left ${isDark ? 'hover:bg-rose-500/10 text-rose-400' : 'hover:bg-rose-100 text-rose-600'}`}>
-                <Trash size={12} /> Delete Bottom Row
+              <button onClick={() => { setIsDeleteMode(!isDeleteMode); setIsInsertMode(false); setShowSettings(false); }} className={`px-2 py-1.5 text-[10px] flex items-center justify-between transition-colors w-full text-left pb-1 ${isDark ? 'hover:bg-white/10 text-white/80' : 'hover:bg-black/5 text-slate-700'}`}>
+                <span className="flex items-center gap-1.5"><Trash size={12} className={isDark ? "text-rose-400" : "text-rose-600"} /> Delete Specific Row...</span>
               </button>
             </div>
           )}
@@ -816,7 +865,7 @@ export default function Timetable() {
 
             {generatedTimes.map((block, index) => {
               return (
-                <div key={index} style={{ height: `${CELL_HEIGHT}px`, marginBottom: `${CELL_GAP}px` }} className="relative w-full">
+                <div key={index} style={{ height: `${CELL_HEIGHT}px`, marginBottom: `${CELL_GAP}px` }} className="relative w-full group">
                   <DurationCell
                     block={block}
                     index={index}
@@ -828,6 +877,28 @@ export default function Timetable() {
                     setEditingOverride={(state) => !viewingFriend && setGlobalEditingIndex(state ? index : null)}
                     isReadOnly={!!viewingFriend}
                   />
+                  {isDeleteMode && !viewingFriend && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md animate-in fade-in" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}>
+                      <button
+                        onClick={() => handleDeleteRow(index)}
+                        className={`p-1.5 md:p-2 rounded-full shadow-xl transition-all animate-in zoom-in-50 duration-200 hover:scale-110 bg-rose-500 text-white`}
+                        title="Delete this row"
+                      >
+                        <Trash size={14} />
+                      </button>
+                    </div>
+                  )}
+                  {isInsertMode && !viewingFriend && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md animate-in fade-in" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}>
+                      <button
+                        onClick={() => handleInsertRow(index)}
+                        className={`p-1.5 md:p-2 rounded-full shadow-xl transition-all animate-in zoom-in-50 duration-200 hover:scale-110 bg-violet-500 text-white`}
+                        title="Insert a row after this one"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })}

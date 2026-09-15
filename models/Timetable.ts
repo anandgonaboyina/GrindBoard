@@ -4,8 +4,8 @@ export interface ITimetable extends Document {
     userId: mongoose.Types.ObjectId;
     timetableGrid: Record<string, any>;
     timetableColors: Record<string, any>;
-    weekdayTimes: string[];
-    weekendTimes: string[];
+    weekdayTimes: any[];
+    weekendTimes: any[];
     timetableStartTime: number;
     timetableWeekendStartTime: number;
     useTimetableRange: boolean;
@@ -16,8 +16,8 @@ const TimetableSchema: Schema = new Schema({
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
     timetableGrid: { type: Schema.Types.Mixed, default: {} },
     timetableColors: { type: Schema.Types.Mixed, default: {} },
-    weekdayTimes: [{ type: String }],
-    weekendTimes: [{ type: String }],
+    weekdayTimes: [{ type: Schema.Types.Mixed }],
+    weekendTimes: [{ type: Schema.Types.Mixed }],
     timetableStartTime: { type: Number, default: 540 },
     timetableWeekendStartTime: { type: Number, default: 540 },
     useTimetableRange: { type: Boolean, default: true },

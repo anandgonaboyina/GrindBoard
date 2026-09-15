@@ -378,7 +378,8 @@ export default function ConnectTab() {
     setLeaderboardLoading(true);
     try {
       const token = localStorage.getItem('dashboard_sync_token');
-      const res = await fetch('/api/leaderboard', {
+      const offset = new Date().getTimezoneOffset();
+      const res = await fetch(`/api/leaderboard?offset=${offset}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       const data = await res.json();
@@ -1698,7 +1699,14 @@ export default function ConnectTab() {
                                   <div className="flex items-center justify-start gap-0.5 sm:gap-1 bg-indigo-500/15 border border-indigo-500/25 px-1 py-0.5 rounded min-w-0 w-fit">
                                     <span className="text-[8px] sm:text-[9.5px] md:text-xs text-indigo-300/80 font-medium leading-none shrink-0">Last Active:</span>
                                     <span className="text-[8px] sm:text-[9.5px] md:text-xs text-indigo-200 font-bold leading-none whitespace-nowrap">
-                                      {new Date(user.bedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      {(() => {
+                                        const d = new Date(user.bedTime);
+                                        const today = new Date();
+                                        if (d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+                                          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                        }
+                                        return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                                      })()}
                                     </span>
                                   </div>
                                 )}

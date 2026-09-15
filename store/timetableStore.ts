@@ -19,8 +19,8 @@ interface TimetableState {
 
     timetableGrid: TimetableGrid;
     timetableColors: Record<string, Record<string, string>>;
-    weekdayTimes: string[];
-    weekendTimes: string[];
+    weekdayTimes: any[];
+    weekendTimes: any[];
     timetableStartTime: number;
     timetableWeekendStartTime: number;
     useTimetableRange: boolean;
@@ -36,27 +36,70 @@ interface TimetableState {
     renameTimetableKeys: (isWeekend: boolean, keyMap: Record<string, string>) => void;
     resetTimetable: () => void;
     addTimetableRow: (isWeekend: boolean, prepend?: boolean) => void;
-    deleteTimetableRow: (isWeekend: boolean, index: number) => void;
+    deleteTimetableRow: (isWeekend: boolean, index: number, keyMap?: Record<string, string | null>) => void;
+    insertTimetableRow: (isWeekend: boolean, index: number, duration: number, keyMap?: Record<string, string | null>) => void;
     copyTimetableDay: (sourceDay: string, targetDay: string) => void;
     swapTimetableDays: (day1: string, day2: string) => void;
 }
 
-// Helper to push to our new isolated API
-export const pushTimetableToDB = async (updates: Partial<TimetableState>) => {
+let timetableSaveTimeout: NodeJS.Timeout | null = null;
+let pendingTimetableUpdates: Partial<TimetableState> = {};
+
+export const pushTimetableToDB = (updates: Partial<TimetableState>) => {
     if (typeof window === 'undefined') return;
-    const token = localStorage.getItem('dashboard_sync_token');
-    if (token && navigator.onLine) {
+    
+    // Accumulate updates so rapid consecutive changes are merged
+    pendingTimetableUpdates = { ...pendingTimetableUpdates, ...updates };
+
+    if (timetableSaveTimeout) {
+        clearTimeout(timetableSaveTimeout);
+    }
+
+    timetableSaveTimeout = setTimeout(flushTimetableToDB, 5000);
+};
+
+export const flushTimetableToDB = async () => {
+    if (timetableSaveTimeout) {
+        clearTimeout(timetableSaveTimeout);
+        timetableSaveTimeout = null;
+    }
+    const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
+    if (token && typeof navigator !== 'undefined' && navigator.onLine && Object.keys(pendingTimetableUpdates).length > 0) {
+        const updatesToSend = { ...pendingTimetableUpdates };
+        pendingTimetableUpdates = {}; // Clear pending immediately
         try {
             await fetch('/api/timetable', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ updates })
+                body: JSON.stringify({ updates: updatesToSend })
             });
         } catch (e) {
             console.error("Failed to sync timetable", e);
+            // Merge back on failure
+            pendingTimetableUpdates = { ...updatesToSend, ...pendingTimetableUpdates };
         }
     }
 };
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+        if (Object.keys(pendingTimetableUpdates).length > 0) {
+            // Synchronous fetch or keepalive for reliable unload saving
+            const token = localStorage.getItem('dashboard_sync_token');
+            if (token) {
+                const blob = new Blob([JSON.stringify({ updates: pendingTimetableUpdates })], { type: 'application/json' });
+                navigator.sendBeacon('/api/timetable', blob); // Does not use Authorization header easily, wait! sendBeacon doesn't send Bearer.
+                // Best fallback is fetch with keepalive
+                fetch('/api/timetable', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ updates: pendingTimetableUpdates }),
+                    keepalive: true
+                }).catch(() => {});
+            }
+        }
+    });
+}
 
 export const useTimetableStore = create<TimetableState>()(
     persist(
@@ -262,13 +305,108 @@ export const useTimetableStore = create<TimetableState>()(
                 return payload as any;
             }),
 
-            deleteTimetableRow: (isWeekend, index) => set((state) => {
+            insertTimetableRow: (isWeekend, index, duration, keyMap?: Record<string, string | null>) => set((state) => {
+                const targetArray = isWeekend ? state.weekendTimes : state.weekdayTimes;
+                const timesList = targetArray || [];
+                const newTimes = [...timesList];
+                newTimes.splice(index, 0, duration);
+
+                let payload: any = isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
+
+                if (keyMap) {
+                    const newGrid = { ...state.timetableGrid };
+                    const newColors = { ...(state.timetableColors || {}) };
+                    const targetDays = isWeekend ? ["Sat", "Sun"] : ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+                    targetDays.forEach(day => {
+                        if (newGrid[day]) {
+                            const currentDayData = { ...newGrid[day] };
+                            let updatedDayData: Record<string, string> = {};
+                            Object.entries(currentDayData).forEach(([oldKey, value]) => {
+                                if (keyMap[oldKey] !== undefined) {
+                                    if (keyMap[oldKey] !== null) {
+                                        updatedDayData[keyMap[oldKey] as string] = value as string;
+                                    }
+                                } else {
+                                    updatedDayData[oldKey] = value as string;
+                                }
+                            });
+                            newGrid[day] = updatedDayData;
+                        }
+                        if (newColors[day]) {
+                            const currentDayColors = { ...newColors[day] };
+                            let updatedDayColors: Record<string, string> = {};
+                            Object.entries(currentDayColors).forEach(([oldKey, value]) => {
+                                if (keyMap[oldKey] !== undefined) {
+                                    if (keyMap[oldKey] !== null) {
+                                        updatedDayColors[keyMap[oldKey] as string] = value as string;
+                                    }
+                                } else {
+                                    updatedDayColors[oldKey] = value as string;
+                                }
+                            });
+                            newColors[day] = updatedDayColors;
+                        }
+                    });
+                    
+                    payload.timetableGrid = newGrid;
+                    payload.timetableColors = newColors;
+                }
+
+                pushTimetableToDB(payload);
+                return payload;
+            }),
+
+            deleteTimetableRow: (isWeekend, index, keyMap?: Record<string, string | null>) => set((state) => {
                 const targetArray = isWeekend ? state.weekendTimes : state.weekdayTimes;
                 const timesList = targetArray || [];
                 const newTimes = timesList.filter((_, i) => i !== index);
-                const payload = isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
+                
+                let payload: any = isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
+
+                if (keyMap) {
+                    const newGrid = { ...state.timetableGrid };
+                    const newColors = { ...(state.timetableColors || {}) };
+                    const targetDays = isWeekend ? ["Sat", "Sun"] : ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+                    targetDays.forEach(day => {
+                        if (newGrid[day]) {
+                            const currentDayData = { ...newGrid[day] };
+                            let updatedDayData: Record<string, string> = {};
+                            Object.entries(currentDayData).forEach(([oldKey, value]) => {
+                                // If the key is in the map, map it. If it maps to null/undefined, it's deleted.
+                                if (keyMap[oldKey] !== undefined) {
+                                    if (keyMap[oldKey] !== null) {
+                                        updatedDayData[keyMap[oldKey] as string] = value as string;
+                                    }
+                                } else {
+                                    updatedDayData[oldKey] = value as string;
+                                }
+                            });
+                            newGrid[day] = updatedDayData;
+                        }
+                        if (newColors[day]) {
+                            const currentDayColors = { ...newColors[day] };
+                            let updatedDayColors: Record<string, string> = {};
+                            Object.entries(currentDayColors).forEach(([oldKey, value]) => {
+                                if (keyMap[oldKey] !== undefined) {
+                                    if (keyMap[oldKey] !== null) {
+                                        updatedDayColors[keyMap[oldKey] as string] = value as string;
+                                    }
+                                } else {
+                                    updatedDayColors[oldKey] = value as string;
+                                }
+                            });
+                            newColors[day] = updatedDayColors;
+                        }
+                    });
+                    
+                    payload.timetableGrid = newGrid;
+                    payload.timetableColors = newColors;
+                }
+
                 pushTimetableToDB(payload);
-                return payload as any;
+                return payload;
             })
         }),
         {
