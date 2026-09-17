@@ -1426,14 +1426,43 @@ export const useDashboardStore = create<DashboardState>()(
           activeTaskId: null,
           activeTaskTitle: null,
         });
-        // The set() above triggers Zustand persist’s setItem which:
+        // The set() above triggers Zustand persist's setItem which:
         //   1. Saves the cleared state to localStorage synchronously
         //   2. Queues a cloud save via the normal 500ms debounce
         // We accelerate the cloud save by cancelling the debounce and running immediately.
         // We use the pendingValue that Zustand's setItem already prepared (correct partialized format).
         if (typeof window !== 'undefined') {
           if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
-          if (!isSaving && pendingValue) { saveTimeout = setTimeout(performSave, 0); }
+          
+          if (pendingValue) {
+            if (!isSaving) { saveTimeout = setTimeout(performSave, 0); }
+            
+            // INSTANT CLOUD SYNC for timer state so refresh doesn't resurrect ghost timers
+            const token = localStorage.getItem('dashboard_sync_token');
+            if (token && navigator.onLine) {
+              try {
+                // Use the FULL pendingValue to prevent overwriting generalSettings with partial data
+                const parsedData = JSON.parse(pendingValue);
+                const payload = JSON.stringify({
+                  data: parsedData,
+                  lastModified: Date.now(),
+                  modifiedCollections: ['Settings'],
+                  modifiedKeys: ['timerEndAt', 'timerPausedLeft', 'timerInitialMins', 'timerDeviceId', 'timerLastSavedChunks', 'timerLastAlertedChunks', 'timerLastUpdated', 'activeTaskId', 'activeTaskTitle']
+                });
+                fetch('/api/store', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: payload,
+                  keepalive: true
+                }).catch(() => {});
+              } catch (e) {
+                // ignore parse error
+              }
+            }
+          }
         }
       },
       setTimerLastSavedChunks: (chunks) => set({ timerLastSavedChunks: chunks }),
