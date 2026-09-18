@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Search, RefreshCw, BarChart2, Check, X, Calendar, Settings, Sparkles, Users, UserPlus, UserX } from 'lucide-react';
 import { createPortal } from 'react-dom';
@@ -10,51 +10,6 @@ interface FriendsTabProps {
   setPendingRequestsCount: (count: number) => void;
   setConfirmModal: (modal: any) => void;
 }
-
-export default function FriendsTab({ setPendingRequestsCount, setConfirmModal }: FriendsTabProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [hasSearchedFriends, setHasSearchedFriends] = useState(false);
-  const [isFriendsLoading, setIsFriendsLoading] = useState(true);
-  const [isSearchingFriends, setIsSearchingFriends] = useState(false);
-  const [friends, setFriends] = useState<any[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
-  const [sentRequests, setSentRequests] = useState<any[]>([]);
-  
-  const [loadingFriendAction, setLoadingFriendAction] = useState<{ friendId: string; type: 'tasks' | 'timetable' | 'stats' } | null>(null);
-  const [sendingRequestUserId, setSendingRequestUserId] = useState<string | null>(null);
-  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
-
-  // Modals state
-  const [showFriendTimetable, setShowFriendTimetable] = useState(false);
-  const [showFriendTasks, setShowFriendTasks] = useState(false);
-  const [friendTaskTab, setFriendTaskTab] = useState<'today' | 'tomorrow'>('today');
-  const [friendTaskGroupTab, setFriendTaskGroupTab] = useState<number>(0);
-  const [friendSettingsModal, setFriendSettingsModal] = useState<any>(null);
-
-  useEffect(() => {
-    fetchFriendsData();
-  }, []);
-
-  const fetchFriendsData = async () => {
-    setIsFriendsLoading(true);
-    const token = localStorage.getItem('dashboard_sync_token');
-    if (!token) return;
-    try {
-      const res = await fetch('/api/friends', { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store' });
-      const data = await res.json();
-      if (res.ok) {
-        setFriends((data.acceptedFriends || []).filter((f: any) => f && f.user));
-        const pRequests = (data.pendingRequests || []).filter((r: any) => r && r.user);
-        setPendingRequests(pRequests);
-        setSentRequests((data.sentRequests || []).filter((r: any) => r && r.user));
-        
-        // Elevate pending count to the parent nav
-        setPendingRequestsCount(pRequests.length);
-      }
-    } catch (err) {}
-    setIsFriendsLoading(false);
-  };
 
 function FriendsLoadingSkeleton() {
   return (
@@ -94,21 +49,6 @@ function FriendsLoadingSkeleton() {
   );
 }
 
-  const showAlertModal = (title: string, message: React.ReactNode, onConfirm?: () => void) => {
-    setConfirmModal({
-      isOpen: true,
-      title,
-      message,
-      confirmText: 'Done',
-      hideCancel: true,
-      onConfirm: () => {
-        setConfirmModal((prev:any) => ({ ...prev, isOpen: false }));
-        if (onConfirm) onConfirm();
-      },
-    });
-  };
-
-  
 function FriendsSearchLoadingSkeleton() {
   return (
     <div className="flex flex-col gap-2.5 w-full py-2 animate-in fade-in duration-300">
@@ -130,7 +70,7 @@ function FriendsSearchLoadingSkeleton() {
   );
 }
 
-  function EmptyFriendsState() {
+function EmptyFriendsState() {
   return (
     <div className="flex flex-col items-center justify-center p-4 md:p-5 rounded-2xl bg-gradient-to-b from-indigo-950/30 via-black/40 to-black/60 border border-indigo-500/25 text-center shadow-lg relative overflow-hidden my-2 group">
       <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-500"></div>
@@ -179,7 +119,69 @@ function EmptyFriendSearchState({ query }: { query: string }) {
   );
 }
 
-  const handleSearch = async (e: React.FormEvent) => {
+// ==========================================
+// 🚀 OPTIMIZATION: Wrapped in memo to prevent parent renders from trickling down
+// ==========================================
+const FriendsTab = memo(function FriendsTab({ setPendingRequestsCount, setConfirmModal }: FriendsTabProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [hasSearchedFriends, setHasSearchedFriends] = useState(false);
+  const [isFriendsLoading, setIsFriendsLoading] = useState(true);
+  const [isSearchingFriends, setIsSearchingFriends] = useState(false);
+  const [friends, setFriends] = useState<any[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [sentRequests, setSentRequests] = useState<any[]>([]);
+  
+  const [loadingFriendAction, setLoadingFriendAction] = useState<{ friendId: string; type: 'tasks' | 'timetable' | 'stats' } | null>(null);
+  const [sendingRequestUserId, setSendingRequestUserId] = useState<string | null>(null);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+
+  // Modals state
+  const [showFriendTimetable, setShowFriendTimetable] = useState(false);
+  const [showFriendTasks, setShowFriendTasks] = useState(false);
+  const [friendTaskTab, setFriendTaskTab] = useState<'today' | 'tomorrow'>('today');
+  const [friendTaskGroupTab, setFriendTaskGroupTab] = useState<number>(0);
+  const [friendSettingsModal, setFriendSettingsModal] = useState<any>(null);
+
+  const fetchFriendsData = useCallback(async () => {
+    setIsFriendsLoading(true);
+    const token = localStorage.getItem('dashboard_sync_token');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/friends', { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store' });
+      const data = await res.json();
+      if (res.ok) {
+        setFriends((data.acceptedFriends || []).filter((f: any) => f && f.user));
+        const pRequests = (data.pendingRequests || []).filter((r: any) => r && r.user);
+        setPendingRequests(pRequests);
+        setSentRequests((data.sentRequests || []).filter((r: any) => r && r.user));
+        
+        // Elevate pending count to the parent nav
+        setPendingRequestsCount(pRequests.length);
+      }
+    } catch (err) {}
+    setIsFriendsLoading(false);
+  }, [setPendingRequestsCount]);
+
+  useEffect(() => {
+    fetchFriendsData();
+  }, [fetchFriendsData]);
+
+  const showAlertModal = useCallback((title: string, message: React.ReactNode, onConfirm?: () => void) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText: 'Done',
+      hideCancel: true,
+      onConfirm: () => {
+        setConfirmModal((prev: any) => ({ ...prev, isOpen: false }));
+        if (onConfirm) onConfirm();
+      },
+    });
+  }, [setConfirmModal]);
+
+  const handleSearch = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery || searchQuery.length < 1) return;
     setHasSearchedFriends(true); setIsSearchingFriends(true);
@@ -190,9 +192,9 @@ function EmptyFriendSearchState({ query }: { query: string }) {
       setSearchResults(res.ok ? data.users || [] : []);
     } catch (err) { setSearchResults([]); }
     setIsSearchingFriends(false);
-  };
+  }, [searchQuery]);
 
-  const sendFriendRequest = async (receiverId: string) => {
+  const sendFriendRequest = useCallback(async (receiverId: string) => {
     if (sendingRequestUserId) return;
     setSendingRequestUserId(receiverId);
     const token = localStorage.getItem('dashboard_sync_token');
@@ -217,9 +219,9 @@ function EmptyFriendSearchState({ query }: { query: string }) {
     } finally {
       setSendingRequestUserId(null);
     }
-  };
+  }, [sendingRequestUserId, fetchFriendsData, showAlertModal]);
 
-  const handleFriendRequest = async (friendshipId: string, status: 'ACCEPTED' | 'REJECTED') => {
+  const handleFriendRequest = useCallback(async (friendshipId: string, status: 'ACCEPTED' | 'REJECTED') => {
     if (processingRequestId) return;
     setProcessingRequestId(friendshipId);
     const token = localStorage.getItem('dashboard_sync_token');
@@ -237,9 +239,9 @@ function EmptyFriendSearchState({ query }: { query: string }) {
     finally {
       setProcessingRequestId(null);
     }
-  };
+  }, [processingRequestId, fetchFriendsData]);
 
-  const removeFriend = async (friendshipId: string, friendName: string) => {
+  const removeFriend = useCallback(async (friendshipId: string, friendName: string) => {
     setConfirmModal({
       isOpen: true,
       title: 'Remove Friend',
@@ -256,9 +258,9 @@ function EmptyFriendSearchState({ query }: { query: string }) {
         } catch (err) { }
       }
     });
-  };
+  }, [setConfirmModal, fetchFriendsData]);
 
-  const cancelFriendRequest = async (friendshipId: string, friendName: string) => {
+  const cancelFriendRequest = useCallback(async (friendshipId: string, friendName: string) => {
     setConfirmModal({
       isOpen: true,
       title: 'Cancel Request',
@@ -275,9 +277,9 @@ function EmptyFriendSearchState({ query }: { query: string }) {
         } catch (err) { }
       }
     });
-  };
+  }, [setConfirmModal, fetchFriendsData]);
 
-  const viewFriendStats = async (friendId: string, friendUsername: string) => {
+  const viewFriendStats = useCallback(async (friendId: string, friendUsername: string) => {
     if (loadingFriendAction) return;
     setLoadingFriendAction({ friendId, type: 'stats' });
     const token = localStorage.getItem('dashboard_sync_token');
@@ -303,9 +305,9 @@ function EmptyFriendSearchState({ query }: { query: string }) {
     } finally {
       setLoadingFriendAction(null);
     }
-  };
+  }, [loadingFriendAction, showAlertModal]);
 
-  const viewFriendTimetable = async (friendId: string, friendUsername: string) => {
+  const viewFriendTimetable = useCallback(async (friendId: string, friendUsername: string) => {
     if (loadingFriendAction) return;
     setLoadingFriendAction({ friendId, type: 'timetable' });
     const token = localStorage.getItem('dashboard_sync_token');
@@ -326,9 +328,9 @@ function EmptyFriendSearchState({ query }: { query: string }) {
     } finally {
       setLoadingFriendAction(null);
     }
-  };
+  }, [loadingFriendAction, showAlertModal]);
 
-  const viewFriendTasks = async (friendId: string, friendUsername: string) => {
+  const viewFriendTasks = useCallback(async (friendId: string, friendUsername: string) => {
     if (loadingFriendAction) return;
     setLoadingFriendAction({ friendId, type: 'tasks' });
     const token = localStorage.getItem('dashboard_sync_token');
@@ -349,9 +351,9 @@ function EmptyFriendSearchState({ query }: { query: string }) {
     } finally {
       setLoadingFriendAction(null);
     }
-  };
+  }, [loadingFriendAction, showAlertModal]);
 
-  const handleToggleTaskSharing = async (friendshipId: string, currentSharingState: any) => {
+  const handleToggleTaskSharing = useCallback(async (friendshipId: string, currentSharingState: any) => {
     const token = localStorage.getItem('dashboard_sync_token');
     if (!token) return;
     try {
@@ -374,7 +376,7 @@ function EmptyFriendSearchState({ query }: { query: string }) {
     } catch (e) {
       showAlertModal('Sharing Error', 'Error updating sharing settings');
     }
-  };
+  }, [fetchFriendsData, showAlertModal]);
 
 
   return (
@@ -653,4 +655,6 @@ function EmptyFriendSearchState({ query }: { query: string }) {
       )}
     </div>
   );
-}
+});
+
+export default FriendsTab;

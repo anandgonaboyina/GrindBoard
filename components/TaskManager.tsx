@@ -6,7 +6,6 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { useTaskStore } from '@/store/taskStore';
 import { Plus, Play, Trash2, CheckCircle, Circle, Clock, RotateCcw, Filter, BellRing, ClipboardList, Info, X, ArrowRight, ArrowLeft, ChevronDown } from 'lucide-react';
 import { fetchQuote } from '@/utils/quoteEngine';
-import DraggableWidget from './DraggableWidget';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 import GroupTaskManager from './GroupTaskManager';

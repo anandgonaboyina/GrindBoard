@@ -6,7 +6,6 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { useTaskStore } from '@/store/taskStore';
 import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
-import DraggableWidget from './DraggableWidget';
 import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { getDeviceId } from '@/utils/deviceId';
 import Tooltip from './Tooltip';
@@ -993,7 +992,7 @@ export default function Timer() {
   const displayTaskTitle = activeTaskTitle ? activeTaskTitle.replace(/^👥\s*\[Group:[^\]]+\]\s*/i, '') : null;
 
   return (
-    <DraggableWidget id="timer">
+    <>
       <div
         onPointerDown={updateInteraction}
         className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying || isIntervalRinging ? '' : 'hidden'}`}
@@ -1374,7 +1373,7 @@ export default function Timer() {
         confirmText="Got it"
         onConfirm={() => setShowAlreadyEndedModal(false)}
       />
-    </DraggableWidget>
+    </>
   );
 }
 

@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock, Sparkles, Flame, WifiOff, Calendar, Lock, Copy, CopyCheck } from 'lucide-react';
 import ScrollableWithArrows from '../ScrollableWithArrows';
@@ -148,7 +150,8 @@ function GroupSearchLoadingSkeleton() {
   );
 }
 
-export default function ConnectGroupsTab() {
+// 1. Wrap the entire tab in React.memo
+export default React.memo(function ConnectGroupsTab() {
   const { userGroups, setUserGroups, selectedGroupId, setSelectedGroupId } = useDashboardStore();
   const [activeSubTab, setActiveSubTab] = useState<'groups' | 'search'>('groups');
   const [groups, setGroups] = useState<any[]>([]);
@@ -196,6 +199,9 @@ export default function ConnectGroupsTab() {
     targetMember: any | null;
   }>({ isOpen: false, targetMember: null });
 
+  // Extracted user context
+  const myUsername = typeof window !== 'undefined' ? localStorage.getItem('dashboard_username') || '' : '';
+
   useEffect(() => {
     setIsCopyMode(false);
     setCopyConfirmModal({ isOpen: false, targetMember: null });
@@ -238,8 +244,6 @@ export default function ConnectGroupsTab() {
     });
   };
 
-  const userId = localStorage.getItem('dashboard_username'); // Need user ID or just use username to identify
-
   useEffect(() => {
     fetchData(true);
   }, []);
@@ -254,8 +258,6 @@ export default function ConnectGroupsTab() {
       }
     }
   }, [userGroups, viewingGroup]);
-
-
 
   const fetchData = async (showLoading = false) => {
     if (showLoading && groups.length === 0) setLoading(true);
@@ -281,7 +283,6 @@ export default function ConnectGroupsTab() {
       if (requestsData) {
         setRequests(requestsData.requests || []);
         setSentRequests(requestsData.sentRequests || []);
-        // Fire custom event to update ConnectTab badge
         window.dispatchEvent(new CustomEvent('group-requests-updated', { detail: (requestsData.requests || []).length }));
       }
     } catch (e) {
@@ -403,7 +404,6 @@ export default function ConnectGroupsTab() {
         }
         fetchData();
         if (viewingGroup && viewingGroup._id === groupId) {
-          // Refetch viewing group
           const gRes = await fetch(`/api/groups/${groupId}`, { headers: { 'Authorization': `Bearer ${token}` } });
           const gData = await gRes.json();
           if (gData.group) setViewingGroup(gData.group);
@@ -452,7 +452,6 @@ export default function ConnectGroupsTab() {
     if (!copyConfirmModal.targetMember || !viewingGroup) return;
     const targetMember = copyConfirmModal.targetMember;
 
-    // Find source tasks
     let sourceTasks: any[] = [];
     if (viewingGroup.memberTasks) {
       if (targetMember.userId && viewingGroup.memberTasks[targetMember.userId] !== undefined) {
@@ -475,7 +474,6 @@ export default function ConnectGroupsTab() {
       return;
     }
 
-    // Deep clone tasks with unique IDs
     const clonedTasks = sourceTasks.map((t: any) => ({
       ...t,
       id: Date.now().toString() + '_' + Math.random().toString(36).substring(2, 7),
@@ -483,11 +481,9 @@ export default function ConnectGroupsTab() {
       timeSpent: 0
     }));
 
-    // Identify current user's ID
     const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
     const myEffectiveId = myMemberInfo?.userId || myUsername;
 
-    // Local state update
     const updatedMemberTasks = {
       ...(viewingGroup.memberTasks || {}),
       [myEffectiveId]: clonedTasks
@@ -495,13 +491,11 @@ export default function ConnectGroupsTab() {
     const updatedGroup = { ...viewingGroup, memberTasks: updatedMemberTasks };
     setViewingGroup(updatedGroup);
 
-    // Global Zustand store update
     const updatedUserGroups = userGroups.map((g: any) =>
       g._id === viewingGroup._id ? { ...g, memberTasks: updatedMemberTasks } : g
     );
     setUserGroups(updatedUserGroups);
 
-    // Sync to database
     const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
     if (token) {
       try {
@@ -596,13 +590,12 @@ export default function ConnectGroupsTab() {
     if (!viewingGroup) return;
     const membersList = viewingGroup.members || [];
     const myMemberInfo = membersList.find((m: any) => m.isMe || m.username === myUsername);
-    if (!myMemberInfo || myMemberInfo.userId !== targetUserId) return; // Only for myself
+    if (!myMemberInfo || myMemberInfo.userId !== targetUserId) return;
 
     const isCompleted = currentComp?.completed || false;
     const newCompleted = !isCompleted;
     const timeSpent = currentComp?.timeSpent || 0;
 
-    // Optimistic UI update
     const userCompsForDay = viewingGroup.completions?.[myMemberInfo.userId]?.[dateStr] || {};
     const updatedUserComps = {
       ...userCompsForDay,
@@ -868,9 +861,8 @@ export default function ConnectGroupsTab() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ action: 'grant_edit', targetUserId, canEdit })
       });
-      fetchData(); // re-fetch to update members
+      fetchData();
       if (viewingGroup && viewingGroup._id === groupId) {
-        // Update local viewing group to avoid flash
         setViewingGroup({ ...viewingGroup, members: viewingGroup.members.map((m: any) => m.userId === targetUserId ? { ...m, canEdit } : m) });
       }
     } catch (e) { }
@@ -937,26 +929,27 @@ export default function ConnectGroupsTab() {
     }
   };
 
-  const getLocalDateString = (offsetDays = 0) => {
+  // 2. Optimized Data Hooks
+  const getLocalDateString = useCallback((offsetDays = 0) => {
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  };
+  }, []);
 
-  const dateStr = viewingDay === 'today' ? getLocalDateString(0) : getLocalDateString(-1);
+  const dateStr = useMemo(() => viewingDay === 'today' ? getLocalDateString(0) : getLocalDateString(-1), [viewingDay, getLocalDateString]);
 
-  // Parse user info securely (temporary hack to know who I am without passing props)
-  const myUsername = localStorage.getItem('dashboard_username') || '';
+  const isMeMember = useCallback((m: any) => Boolean(m.isMe || (myUsername && m.username?.toLowerCase() === myUsername.toLowerCase())), [myUsername]);
 
-  const isMeMember = (m: any) => Boolean(m.isMe || (myUsername && m.username?.toLowerCase() === myUsername.toLowerCase()));
+  const { myGroupsList, joinedGroupsList } = useMemo(() => {
+    const my = groups.filter(g => g.members?.some((m: any) => isMeMember(m) && (m.role === 'admin' || g.adminId === m.userId)));
+    const joined = groups.filter(g => g.members?.some((m: any) => isMeMember(m) && m.role !== 'admin' && g.adminId !== m.userId));
+    return { myGroupsList: my, joinedGroupsList: joined };
+  }, [groups, isMeMember]);
 
-  const myGroupsList = groups.filter(g => g.members?.some((m: any) => isMeMember(m) && (m.role === 'admin' || g.adminId === m.userId)));
-  const joinedGroupsList = groups.filter(g => g.members?.some((m: any) => isMeMember(m) && m.role !== 'admin' && g.adminId !== m.userId));
-
-  const getGroupStats = (group: any, dayString?: string) => {
+  const getGroupStats = useCallback((group: any, dayString?: string) => {
     const d = new Date();
     const todayStr = dayString || `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -965,13 +958,13 @@ export default function ConnectGroupsTab() {
     const membersList = group.members || [];
     const myMemberInfo = membersList.find((m: any) => isMeMember(m));
     const myUserId = myMemberInfo ? myMemberInfo.userId : null;
-    const myUsername = myMemberInfo ? myMemberInfo.username : null;
+    const myUsernameStr = myMemberInfo ? myMemberInfo.username : null;
 
     let myTasks: any[] = [];
     if (group.memberTasks) {
       if (myUserId && group.memberTasks[myUserId] !== undefined) myTasks = group.memberTasks[myUserId];
-      else if (myUsername && group.memberTasks[myUsername] !== undefined) myTasks = group.memberTasks[myUsername];
-      else if (group.adminId === myUserId || group.adminId === myUsername || myMemberInfo?.role === 'admin') myTasks = group.tasks || [];
+      else if (myUsernameStr && group.memberTasks[myUsernameStr] !== undefined) myTasks = group.memberTasks[myUsernameStr];
+      else if (group.adminId === myUserId || group.adminId === myUsernameStr || myMemberInfo?.role === 'admin') myTasks = group.tasks || [];
     } else {
       myTasks = group.tasks || [];
     }
@@ -1004,7 +997,7 @@ export default function ConnectGroupsTab() {
           }
         }
         if (mDone > highestDone) highestDone = mDone;
-        if ((myUserId && m.userId === myUserId) || (myUsername && m.username === myUsername) || (myUserId === null && m.isMe)) {
+        if ((myUserId && m.userId === myUserId) || (myUsernameStr && m.username === myUsernameStr) || (myUserId === null && m.isMe)) {
           myDone = mDone;
         }
       }
@@ -1012,7 +1005,7 @@ export default function ConnectGroupsTab() {
 
     const myTimeLeft = Math.max(0, myTotalDuration - myDone);
     return { totalDuration: myTotalDuration, myDone, myTimeLeft, highestDone };
-  };
+  }, [isMeMember]);
 
   const globalFormatTime = (mins: number) => {
     if (mins === 0) return '0m';
@@ -1020,11 +1013,111 @@ export default function ConnectGroupsTab() {
     return `${Math.floor(mins / 60)}h ${mins % 60}m`;
   };
 
-  if (viewingGroup) {
+  // 3. Isolated heavy group leader calculations
+  const { sortedMembers, isMember, isAdmin, leftColMembers, rightColMembers, groupTabNames } = useMemo(() => {
+    if (!viewingGroup) return { sortedMembers: [], isMember: false, isAdmin: false, leftColMembers: [], rightColMembers: [], groupTabNames: DEFAULT_UNIVERSAL_TAB_NAMES };
+
     const members = viewingGroup.members || [];
     const meMember = members.find((m: any) => isMeMember(m));
     const isMember = Boolean(meMember);
     const isAdmin = Boolean(meMember?.role === 'admin') || Boolean(viewingGroup.adminId && (meMember?.userId === viewingGroup.adminId || (myUsername && viewingGroup.adminId === myUsername)));
+
+    const getMemberTasks = (m: any) => {
+      if (!m) return [];
+      const uId = m.userId || '';
+      const uName = m.username || '';
+      if (viewingGroup.memberTasks) {
+        if (uId && viewingGroup.memberTasks[uId] !== undefined) return viewingGroup.memberTasks[uId];
+        if (uName && viewingGroup.memberTasks[uName] !== undefined) return viewingGroup.memberTasks[uName];
+      }
+      const isGroupAdmin = viewingGroup.adminId === uId || viewingGroup.adminId === uName || m.role === 'admin';
+      if (isGroupAdmin) return viewingGroup.tasks || [];
+      return [];
+    };
+
+    const getMemberCompletions = (m: any) => {
+      if (!m) return {};
+      const uId = m.userId || '';
+      const uName = m.username || '';
+      if (viewingGroup.completions) {
+        if (uId && viewingGroup.completions[uId]?.[dateStr]) return viewingGroup.completions[uId][dateStr];
+        if (uName && viewingGroup.completions[uName]?.[dateStr]) return viewingGroup.completions[uName][dateStr];
+      }
+      return {};
+    };
+
+    const membersWithStats = members.map((m: any) => {
+      const allGTasks = getMemberTasks(m);
+      const uComps = getMemberCompletions(m);
+      
+      const totalDone = allGTasks.reduce((sum: number, t: any) => {
+        const comp = uComps[t.id];
+        if (!comp) return sum;
+        if (comp.completed) return sum + Math.max(comp.timeSpent || 0, t.duration || 0);
+        return sum + (comp.timeSpent || 0);
+      }, 0);
+
+      const totalLeft = allGTasks.reduce((sum: number, t: any) => {
+        const comp = uComps[t.id];
+        if (comp?.completed) return sum;
+        const spent = comp?.timeSpent || 0;
+        return sum + Math.max(0, (t.duration || 0) - spent);
+      }, 0);
+
+      return { ...m, totalDone, totalLeft };
+    });
+
+    const filteredMembers = membersWithStats.filter((m: any) =>
+      !memberSearchQuery || m.username?.toLowerCase().includes(memberSearchQuery.toLowerCase().trim())
+    );
+
+    const sorted = [...filteredMembers].sort((a: any, b: any) => b.totalDone - a.totalDone);
+
+    const rawTabNames = viewingGroup.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
+    const formattedTabNames = [0, 1, 2].map(i => formatTabName(rawTabNames[i], i));
+
+    return { 
+      sortedMembers: sorted, 
+      isMember, 
+      isAdmin, 
+      leftColMembers: sorted.filter((_, idx) => idx % 2 === 0),
+      rightColMembers: sorted.filter((_, idx) => idx % 2 === 1),
+      groupTabNames: formattedTabNames
+    };
+  }, [viewingGroup, memberSearchQuery, myUsername, isMeMember, dateStr]);
+
+  const viewingGroupStats = useMemo(() => {
+    if (!viewingGroup) return { totalDuration: 0, highestDone: 0, myDone: 0, myTimeLeft: 0 };
+    return getGroupStats(viewingGroup, dateStr);
+  }, [viewingGroup, dateStr, getGroupStats]);
+
+  const activeTabStats = useMemo(() => {
+    if (!viewingGroup) return { done: 0, left: 0, tabName: '' };
+    const myMemberInfo = viewingGroup.members?.find((m: any) => isMeMember(m));
+    const myUserId = myMemberInfo?.userId || '';
+    const myAllTasks = viewingGroup.memberTasks?.[myUserId] || viewingGroup.tasks || [];
+    const myTabTasks = myAllTasks.filter((t: any) => (t.groupId || 0) === activeGroupTab);
+    const myComps = viewingGroup.completions?.[myUserId]?.[dateStr] || {};
+    
+    const done = myTabTasks.reduce((sum: number, t: any) => {
+      const comp = myComps[t.id];
+      if (!comp) return sum;
+      if (comp.completed) return sum + Math.max(comp.timeSpent || 0, t.duration || 0);
+      return sum + (comp.timeSpent || 0);
+    }, 0);
+    
+    const duration = myTabTasks.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
+    const left = Math.max(0, duration - done);
+    
+    const rawMyTabNames = viewingGroup.memberTabNames?.[myUserId] || viewingGroup.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
+    const myTabNames = [0, 1, 2].map(idx => formatTabName(rawMyTabNames[idx], idx));
+    
+    return { done, left, tabName: myTabNames[activeGroupTab] };
+  }, [viewingGroup, activeGroupTab, dateStr, isMeMember]);
+
+  if (viewingGroup) {
+    const members = viewingGroup.members || [];
+    const meMember = members.find((m: any) => isMeMember(m));
 
     return (
       <div className="flex flex-col w-full animate-in fade-in slide-in-from-right-2 gap-2 sm:gap-3">
@@ -1210,54 +1303,33 @@ export default function ConnectGroupsTab() {
               <div className="grid grid-cols-2 gap-1.5 w-full flex-1 font-mono">
                 <div className="flex items-center justify-between px-2 py-1 sm:py-1.5 bg-sky-500/10 rounded-md border border-sky-500/10 text-[9px] sm:text-[10px]">
                   <span className="text-sky-300/80 font-sans font-bold flex items-center gap-1">🎯 Target</span>
-                  <span className="font-bold text-sky-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).totalDuration)}</span>
+                  <span className="font-bold text-sky-300">{globalFormatTime(viewingGroupStats.totalDuration)}</span>
                 </div>
                 <div className="flex items-center justify-between px-2 py-1 sm:py-1.5 bg-amber-500/10 rounded-md border border-amber-500/10 text-[9px] sm:text-[10px]">
                   <span className="text-amber-300/80 font-sans font-bold flex items-center gap-1">🏆 High Time</span>
-                  <span className="font-bold text-amber-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).highestDone)}</span>
+                  <span className="font-bold text-amber-300">{globalFormatTime(viewingGroupStats.highestDone)}</span>
                 </div>
                 <div className="flex items-center justify-between px-2 py-1 sm:py-1.5 bg-emerald-500/10 rounded-md border border-emerald-500/10 text-[9px] sm:text-[10px]">
                   <span className="text-emerald-300/80 font-sans font-bold flex items-center gap-1">✅ Done</span>
-                  <span className="font-bold text-emerald-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).myDone)}</span>
+                  <span className="font-bold text-emerald-300">{globalFormatTime(viewingGroupStats.myDone)}</span>
                 </div>
                 <div className="flex items-center justify-between px-2 py-1 sm:py-1.5 bg-indigo-500/10 rounded-md border border-indigo-500/10 text-[9px] sm:text-[10px]">
                   <span className="text-indigo-300/80 font-sans font-bold flex items-center gap-1">⏳ Left</span>
-                  <span className="font-bold text-indigo-300">{globalFormatTime(getGroupStats(viewingGroup, dateStr).myTimeLeft)}</span>
+                  <span className="font-bold text-indigo-300">{globalFormatTime(viewingGroupStats.myTimeLeft)}</span>
                 </div>
               </div>
             </div>
 
             {/* Tab-specific summary in Header */}
-            {(() => {
-              const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
-              const myUserId = myMemberInfo?.userId || '';
-              const myAllTasks = viewingGroup.memberTasks?.[myUserId] || viewingGroup.tasks || [];
-              const myTabTasks = myAllTasks.filter((t: any) => (t.groupId || 0) === activeGroupTab);
-              const myComps = viewingGroup.completions?.[myUserId]?.[dateStr] || {};
-              const activeTabDone = myTabTasks.reduce((sum: number, t: any) => {
-                const comp = myComps[t.id];
-                if (!comp) return sum;
-                if (comp.completed) return sum + Math.max(comp.timeSpent || 0, t.duration || 0);
-                return sum + (comp.timeSpent || 0);
-              }, 0);
-              const activeTabDuration = myTabTasks.reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
-              const activeTabLeft = Math.max(0, activeTabDuration - activeTabDone);
-              const rawMyTabNames = viewingGroup.memberTabNames?.[myUserId] || viewingGroup.tabNames || DEFAULT_UNIVERSAL_TAB_NAMES;
-              const myTabNames = [0, 1, 2].map(idx => formatTabName(rawMyTabNames[idx], idx));
-              const currentTabName = myTabNames[activeGroupTab];
-
-              return (
-                <div className="flex items-center justify-between text-[9px] sm:text-[10px] px-2.5 py-1.5 bg-white/5 rounded-lg border border-white/10 font-mono w-full shadow-sm">
-                  <span className="text-white/60 font-sans font-medium flex items-center gap-1.5 truncate">
-                    📌 <strong className="text-blue-300 truncate max-w-[80px] xs:max-w-[120px] sm:max-w-none">{currentTabName}</strong> Specific:
-                  </span>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span>Done: <strong className="text-emerald-300">{globalFormatTime(activeTabDone)}</strong></span>
-                    <span>Left: <strong className="text-indigo-300">{globalFormatTime(activeTabLeft)}</strong></span>
-                  </div>
-                </div>
-              );
-            })()}
+            <div className="flex items-center justify-between text-[9px] sm:text-[10px] px-2.5 py-1.5 bg-white/5 rounded-lg border border-white/10 font-mono w-full shadow-sm">
+              <span className="text-white/60 font-sans font-medium flex items-center gap-1.5 truncate">
+                📌 <strong className="text-blue-300 truncate max-w-[80px] xs:max-w-[120px] sm:max-w-none">{activeTabStats.tabName}</strong> Specific:
+              </span>
+              <div className="flex items-center gap-3 shrink-0">
+                <span>Done: <strong className="text-emerald-300">{globalFormatTime(activeTabStats.done)}</strong></span>
+                <span>Left: <strong className="text-indigo-300">{globalFormatTime(activeTabStats.left)}</strong></span>
+              </div>
+            </div>
 
             {/* 3-day Abandonment Claim Banner */}
             {viewingGroup.pendingDeletion && (
@@ -1460,8 +1532,6 @@ export default function ConnectGroupsTab() {
                   {(() => {
                     const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
                     const myUserId = myMemberInfo?.userId || '';
-                    const rawTabNames = viewingGroup.tabNames || ['Core Tasks', 'Daily Routine', 'Milestones'];
-                    const groupTabNames = [0, 1, 2].map(i => formatTabName(rawTabNames[i], i));
 
                     return groupTabNames.map((tabName: string, idx: number) => {
                       const isEditingThisTab = editingTabIdx === idx;
@@ -1569,72 +1639,6 @@ export default function ConnectGroupsTab() {
             {/* Member Leaderboard & Status Overview */}
             <div className="pb-6">
               {(() => {
-                const getMemberTasks = (m: any) => {
-                  if (!m) return [];
-                  const uId = m.userId || '';
-                  const uName = m.username || '';
-                  if (viewingGroup.memberTasks) {
-                    if (uId && viewingGroup.memberTasks[uId] !== undefined) return viewingGroup.memberTasks[uId];
-                    if (uName && viewingGroup.memberTasks[uName] !== undefined) return viewingGroup.memberTasks[uName];
-                  }
-                  const isGroupAdmin = viewingGroup.adminId === uId || viewingGroup.adminId === uName || m.role === 'admin';
-                  if (isGroupAdmin) return viewingGroup.tasks || [];
-                  return [];
-                };
-
-                const getMemberCompletions = (m: any) => {
-                  if (!m) return {};
-                  const uId = m.userId || '';
-                  const uName = m.username || '';
-                  if (viewingGroup.completions) {
-                    if (uId && viewingGroup.completions[uId]?.[dateStr]) return viewingGroup.completions[uId][dateStr];
-                    if (uName && viewingGroup.completions[uName]?.[dateStr]) return viewingGroup.completions[uName][dateStr];
-                  }
-                  return {};
-                };
-
-                const getMemberTotalDoneByMember = (m: any) => {
-                  const allGTasks = getMemberTasks(m);
-                  const uComps = getMemberCompletions(m);
-                  return allGTasks.reduce((sum: number, t: any) => {
-                    const comp = uComps[t.id];
-                    if (!comp) return sum;
-                    if (comp.completed) return sum + Math.max(comp.timeSpent || 0, t.duration || 0);
-                    return sum + (comp.timeSpent || 0);
-                  }, 0);
-                };
-
-                const getMemberTotalLeftByMember = (m: any) => {
-                  const allGTasks = getMemberTasks(m);
-                  const uComps = getMemberCompletions(m);
-                  return allGTasks.reduce((sum: number, t: any) => {
-                    const comp = uComps[t.id];
-                    if (comp?.completed) return sum;
-                    const spent = comp?.timeSpent || 0;
-                    return sum + Math.max(0, (t.duration || 0) - spent);
-                  }, 0);
-                };
-
-                const getMemberTotalDone = (mUserId: string) => {
-                  const m = members.find((mem: any) => mem.userId === mUserId);
-                  return getMemberTotalDoneByMember(m);
-                };
-
-                const getMemberTotalLeft = (mUserId: string) => {
-                  const m = members.find((mem: any) => mem.userId === mUserId);
-                  return getMemberTotalLeftByMember(m);
-                };
-
-                const filteredMembers = members.filter((m: any) =>
-                  !memberSearchQuery || m.username?.toLowerCase().includes(memberSearchQuery.toLowerCase().trim())
-                );
-
-                const sortedMembers = [...filteredMembers].sort((a: any, b: any) => {
-                  const aDone = getMemberTotalDone(a.userId);
-                  const bDone = getMemberTotalDone(b.userId);
-                  return bDone - aDone;
-                });
-
                 if (sortedMembers.length === 0) {
                   return (
                     <div className="w-full text-center py-6 text-[11px] text-white/50 bg-black/20 rounded-xl border border-white/5">
@@ -1647,12 +1651,8 @@ export default function ConnectGroupsTab() {
                   const isMe = member.isMe || member.username === myUsername;
                   const memberTab = memberActiveTabs[member.userId] !== undefined ? memberActiveTabs[member.userId] : activeGroupTab;
 
-                  const allTasks = viewingGroup.memberTasks?.[member.userId] || viewingGroup.tasks || [];
-                  const tasksInMemberTab = allTasks.filter((t: any) => (t.groupId || 0) === memberTab);
-                  const completions = viewingGroup.completions?.[member.userId]?.[dateStr] || {};
-
-                  const totalMemberDone = getMemberTotalDone(member.userId);
-                  const totalMemberLeft = getMemberTotalLeft(member.userId);
+                  const totalMemberDone = member.totalDone || 0;
+                  const totalMemberLeft = member.totalLeft || 0;
                   const isGroupAdmin = member.role === 'admin';
                   const isCoAdmin = member.role === 'co-admin' || (!isGroupAdmin && Boolean(member.canEdit));
                   const viewerIsAdmin = isAdmin;
@@ -1834,19 +1834,13 @@ export default function ConnectGroupsTab() {
                   );
                 };
 
-                const leftColMembers = sortedMembers.filter((_, idx) => idx % 2 === 0);
-                const rightColMembers = sortedMembers.filter((_, idx) => idx % 2 === 1);
-
                 return (
                   <>
-                    {/* Desktop/Tablet Interleaved Snake Masonry (Left-to-Right #1, #2, #3, #4 Order with ZERO vertical gaps) */}
+                    {/* Desktop/Tablet Interleaved Snake Masonry */}
                     <div className="hidden sm:flex flex-row gap-2.5 items-start w-full">
-                      {/* Left Column (#1, #3, #5...) */}
                       <div className="flex flex-col gap-2.5 flex-1 min-w-0">
                         {leftColMembers.map((member, colIdx) => renderMemberCard(member, colIdx * 2))}
                       </div>
-
-                      {/* Right Column (#2, #4, #6...) */}
                       <div className="flex flex-col gap-2.5 flex-1 min-w-0">
                         {rightColMembers.map((member, colIdx) => renderMemberCard(member, colIdx * 2 + 1))}
                       </div>
@@ -1861,8 +1855,8 @@ export default function ConnectGroupsTab() {
               })()}
             </div>
           </>
-        )
-        }
+        )}
+
         <ConfirmationModal
           isOpen={confirmModal.isOpen}
           onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
@@ -1870,6 +1864,8 @@ export default function ConnectGroupsTab() {
           title={confirmModal.title}
           message={confirmModal.message}
           isDestructive={confirmModal.isDestructive}
+          confirmText={confirmModal.confirmText}
+          hideCancel={confirmModal.hideCancel}
         />
 
         {/* Copy Mode Instructional Modal */}
@@ -2312,71 +2308,74 @@ export default function ConnectGroupsTab() {
                 {myGroupsList.length === 0 ? (
                   <EmptyCreatedGroupsState onOpenCreate={() => setIsCreateFormOpen(true)} />
                 ) : (
-                  myGroupsList.map(group => (
-                    <div
-                      key={group._id}
-                      onClick={() => setViewingGroup(group)}
-                      className="relative overflow-hidden bg-slate-900/90 border border-white/15 p-3 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition-all flex flex-col gap-2 shadow-md group/card"
-                    >
+                  myGroupsList.map(group => {
+                    const stats = getGroupStats(group);
+                    return (
+                      <div
+                        key={group._id}
+                        onClick={() => setViewingGroup(group)}
+                        className="relative overflow-hidden bg-slate-900/90 border border-white/15 p-3 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition-all flex flex-col gap-2 shadow-md group/card"
+                      >
 
-                      <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
-                            {group.avatarUrl ? (
-                              <img
-                                src={group.avatarUrl}
-                                alt={group.title}
-                                className="w-full h-full object-cover object-center aspect-square shrink-0 z-10 relative"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                                  if (fallback) fallback.style.display = 'flex';
-                                }}
-                              />
-                            ) : null}
-                            <span
-                              style={{ display: group.avatarUrl ? 'none' : 'flex' }}
-                              className="w-full h-full items-center justify-center text-white font-black text-sm uppercase pointer-events-none"
-                            >
-                              {group.title?.[0] || 'G'}
-                            </span>
+                        <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
+                              {group.avatarUrl ? (
+                                <img
+                                  src={group.avatarUrl}
+                                  alt={group.title}
+                                  className="w-full h-full object-cover object-center aspect-square shrink-0 z-10 relative"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                    if (fallback) fallback.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <span
+                                style={{ display: group.avatarUrl ? 'none' : 'flex' }}
+                                className="w-full h-full items-center justify-center text-white font-black text-sm uppercase pointer-events-none"
+                              >
+                                {group.title?.[0] || 'G'}
+                              </span>
+                            </div>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-sm font-bold text-white flex items-center gap-1.5 truncate group-hover/card:text-blue-300 transition-colors">
+                                <span className="truncate">{group.title}</span>
+                                {group.isPrivate ? (
+                                  <span className="text-[8px] bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">Private</span>
+                                ) : (
+                                  <span className="text-[8px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">Public</span>
+                                )}
+                              </span>
+                              {group.description && <span className="text-[10px] text-white/50 truncate mt-0.5">{group.description}</span>}
+                            </div>
                           </div>
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <span className="text-sm font-bold text-white flex items-center gap-1.5 truncate group-hover/card:text-blue-300 transition-colors">
-                              <span className="truncate">{group.title}</span>
-                              {group.isPrivate ? (
-                                <span className="text-[8px] bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">Private</span>
-                              ) : (
-                                <span className="text-[8px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">Public</span>
-                              )}
-                            </span>
-                            {group.description && <span className="text-[10px] text-white/50 truncate mt-0.5">{group.description}</span>}
-                          </div>
+                          <ArrowRight size={16} className="text-white/40 group-hover/card:text-blue-400 group-hover/card:translate-x-1 transition-all shrink-0" />
                         </div>
-                        <ArrowRight size={16} className="text-white/40 group-hover/card:text-blue-400 group-hover/card:translate-x-1 transition-all shrink-0" />
-                      </div>
 
-                      {/* Clean 4-Item Grid Table for Stats */}
-                      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full pt-0.5">
-                        <div className="bg-black/60 border border-white/10 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
-                          <span className="text-white/50 font-medium">Members</span>
-                          <span className="text-white font-bold">{group.members?.length || 0}</span>
-                        </div>
-                        <div className="bg-sky-950/80 border border-sky-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
-                          <span className="text-sky-300/70 font-medium truncate">Target Time</span>
-                          <span className="text-sky-300 font-bold ml-1 shrink-0">{globalFormatTime(getGroupStats(group).totalDuration)}</span>
-                        </div>
-                        <div className="bg-emerald-950/80 border border-emerald-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
-                          <span className="text-emerald-300/70 font-medium">Done</span>
-                          <span className="text-emerald-300 font-bold ml-1 shrink-0">{globalFormatTime(getGroupStats(group).myDone)}</span>
-                        </div>
-                        <div className="bg-indigo-950/80 border border-indigo-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
-                          <span className="text-indigo-300/70 font-medium">Left</span>
-                          <span className="text-indigo-300 font-bold ml-1 shrink-0">{globalFormatTime(getGroupStats(group).myTimeLeft)}</span>
+                        {/* Clean 4-Item Grid Table for Stats */}
+                        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full pt-0.5">
+                          <div className="bg-black/60 border border-white/10 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
+                            <span className="text-white/50 font-medium">Members</span>
+                            <span className="text-white font-bold">{group.members?.length || 0}</span>
+                          </div>
+                          <div className="bg-sky-950/80 border border-sky-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
+                            <span className="text-sky-300/70 font-medium truncate">Target Time</span>
+                            <span className="text-sky-300 font-bold ml-1 shrink-0">{globalFormatTime(stats.totalDuration)}</span>
+                          </div>
+                          <div className="bg-emerald-950/80 border border-emerald-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
+                            <span className="text-emerald-300/70 font-medium">Done</span>
+                            <span className="text-emerald-300 font-bold ml-1 shrink-0">{globalFormatTime(stats.myDone)}</span>
+                          </div>
+                          <div className="bg-indigo-950/80 border border-indigo-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
+                            <span className="text-indigo-300/70 font-medium">Left</span>
+                            <span className="text-indigo-300 font-bold ml-1 shrink-0">{globalFormatTime(stats.myTimeLeft)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
 
                 <div className="w-full h-px bg-white/10 my-3"></div>
@@ -2386,71 +2385,74 @@ export default function ConnectGroupsTab() {
                 {joinedGroupsList.length === 0 ? (
                   <EmptyJoinedGroupsState onSwitchToSearch={() => setActiveSubTab('search')} />
                 ) : (
-                  joinedGroupsList.map(group => (
-                    <div
-                      key={group._id}
-                      onClick={() => setViewingGroup(group)}
-                      className="relative overflow-hidden bg-slate-900/90 border border-white/15 p-3 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition-all flex flex-col gap-2 shadow-md group/card"
-                    >
+                  joinedGroupsList.map(group => {
+                    const stats = getGroupStats(group);
+                    return (
+                      <div
+                        key={group._id}
+                        onClick={() => setViewingGroup(group)}
+                        className="relative overflow-hidden bg-slate-900/90 border border-white/15 p-3 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition-all flex flex-col gap-2 shadow-md group/card"
+                      >
 
-                      <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
-                            {group.avatarUrl ? (
-                              <img
-                                src={group.avatarUrl}
-                                alt={group.title}
-                                className="w-full h-full object-cover object-center aspect-square shrink-0 z-10 relative"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                                  if (fallback) fallback.style.display = 'flex';
-                                }}
-                              />
-                            ) : null}
-                            <span
-                              style={{ display: group.avatarUrl ? 'none' : 'flex' }}
-                              className="w-full h-full items-center justify-center text-white font-black text-sm uppercase pointer-events-none"
-                            >
-                              {group.title?.[0] || 'G'}
-                            </span>
+                        <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
+                              {group.avatarUrl ? (
+                                <img
+                                  src={group.avatarUrl}
+                                  alt={group.title}
+                                  className="w-full h-full object-cover object-center aspect-square shrink-0 z-10 relative"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                    if (fallback) fallback.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <span
+                                style={{ display: group.avatarUrl ? 'none' : 'flex' }}
+                                className="w-full h-full items-center justify-center text-white font-black text-sm uppercase pointer-events-none"
+                              >
+                                {group.title?.[0] || 'G'}
+                              </span>
+                            </div>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-sm font-bold text-white flex items-center gap-1.5 truncate group-hover/card:text-blue-300 transition-colors">
+                                <span className="truncate">{group.title}</span>
+                                {group.isPrivate ? (
+                                  <span className="text-[8px] bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">Private</span>
+                                ) : (
+                                  <span className="text-[8px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">Public</span>
+                                )}
+                              </span>
+                              {group.description && <span className="text-[10px] text-white/50 truncate mt-0.5">{group.description}</span>}
+                            </div>
                           </div>
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <span className="text-sm font-bold text-white flex items-center gap-1.5 truncate group-hover/card:text-blue-300 transition-colors">
-                              <span className="truncate">{group.title}</span>
-                              {group.isPrivate ? (
-                                <span className="text-[8px] bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">Private</span>
-                              ) : (
-                                <span className="text-[8px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase font-bold shrink-0">Public</span>
-                              )}
-                            </span>
-                            {group.description && <span className="text-[10px] text-white/50 truncate mt-0.5">{group.description}</span>}
-                          </div>
+                          <ArrowRight size={16} className="text-white/40 group-hover/card:text-blue-400 group-hover/card:translate-x-1 transition-all shrink-0" />
                         </div>
-                        <ArrowRight size={16} className="text-white/40 group-hover/card:text-blue-400 group-hover/card:translate-x-1 transition-all shrink-0" />
-                      </div>
 
-                      {/* Clean 4-Item Grid Table for Stats */}
-                      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full pt-0.5">
-                        <div className="bg-black/60 border border-white/10 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
-                          <span className="text-white/50 font-medium">Members</span>
-                          <span className="text-white font-bold">{group.members?.length || 0}</span>
-                        </div>
-                        <div className="bg-sky-950/80 border border-sky-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
-                          <span className="text-sky-300/70 font-medium truncate">Target Time</span>
-                          <span className="text-sky-300 font-bold ml-1 shrink-0">{globalFormatTime(getGroupStats(group).totalDuration)}</span>
-                        </div>
-                        <div className="bg-emerald-950/80 border border-emerald-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
-                          <span className="text-emerald-300/70 font-medium">Done</span>
-                          <span className="text-emerald-300 font-bold ml-1 shrink-0">{globalFormatTime(getGroupStats(group).myDone)}</span>
-                        </div>
-                        <div className="bg-indigo-950/80 border border-indigo-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
-                          <span className="text-indigo-300/70 font-medium">Left</span>
-                          <span className="text-indigo-300 font-bold ml-1 shrink-0">{globalFormatTime(getGroupStats(group).myTimeLeft)}</span>
+                        {/* Clean 4-Item Grid Table for Stats */}
+                        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full pt-0.5">
+                          <div className="bg-black/60 border border-white/10 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
+                            <span className="text-white/50 font-medium">Members</span>
+                            <span className="text-white font-bold">{group.members?.length || 0}</span>
+                          </div>
+                          <div className="bg-sky-950/80 border border-sky-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
+                            <span className="text-sky-300/70 font-medium truncate">Target Time</span>
+                            <span className="text-sky-300 font-bold ml-1 shrink-0">{globalFormatTime(stats.totalDuration)}</span>
+                          </div>
+                          <div className="bg-emerald-950/80 border border-emerald-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
+                            <span className="text-emerald-300/70 font-medium">Done</span>
+                            <span className="text-emerald-300 font-bold ml-1 shrink-0">{globalFormatTime(stats.myDone)}</span>
+                          </div>
+                          <div className="bg-indigo-950/80 border border-indigo-500/30 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
+                            <span className="text-indigo-300/70 font-medium">Left</span>
+                            <span className="text-indigo-300 font-bold ml-1 shrink-0">{globalFormatTime(stats.myTimeLeft)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </>
             )}
@@ -2703,4 +2705,4 @@ export default function ConnectGroupsTab() {
       )}
     </div>
   );
-}
+});

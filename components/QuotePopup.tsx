@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { X, Quote as QuoteIcon, Copy, Check } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { fetchQuote } from '@/utils/quoteEngine';
-import DraggableWidget from './DraggableWidget';
 import Tooltip from './Tooltip';
 
 export default function QuotePopup() {

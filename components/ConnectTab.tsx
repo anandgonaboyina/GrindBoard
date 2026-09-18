@@ -110,12 +110,22 @@ export default function ConnectTab() {
         </button>
       </div>
 
-      {/* Dynamic Tab Rendering */}
-      {activeTab === 'profile' && <ProfileTab username={username} handleLogout={handleLogout} setConfirmModal={setConfirmModal} setSelectedImageOverlay={setSelectedImageOverlay} />}
-      {activeTab === 'friends' && <FriendsTab setPendingRequestsCount={setPendingRequestsCount} setConfirmModal={setConfirmModal} />}
-      {activeTab === 'leaderboard' && <LeaderboardTab setSelectedImageOverlay={setSelectedImageOverlay} />}
-      {activeTab === 'groups' && <ConnectGroupsTab />}
+{/* Dynamic Tab Rendering (Using CSS Hiding to prevent re-fetching) */}
+      <div className={activeTab === 'profile' ? 'contents' : 'hidden'}>
+        <ProfileTab username={username} handleLogout={handleLogout} setConfirmModal={setConfirmModal} setSelectedImageOverlay={setSelectedImageOverlay} />
+      </div>
 
+      <div className={activeTab === 'friends' ? 'contents' : 'hidden'}>
+        <FriendsTab setPendingRequestsCount={setPendingRequestsCount} setConfirmModal={setConfirmModal} />
+      </div>
+
+      <div className={activeTab === 'leaderboard' ? 'contents' : 'hidden'}>
+        <LeaderboardTab setSelectedImageOverlay={setSelectedImageOverlay} />
+      </div>
+
+      <div className={activeTab === 'groups' ? 'contents' : 'hidden'}>
+        <ConnectGroupsTab />
+      </div>
       <ConfirmationModal
         {...confirmModal}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}

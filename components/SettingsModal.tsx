@@ -1044,18 +1044,18 @@ export default function SettingsModal() {
 
               <button
                 onClick={() => handleTabClick('about')}
-                className={`relative overflow-hidden group flex flex-row w-full items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${settingsActiveTab === 'about' && !isMobileDetailView ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-white border border-blue-500/30 shadow-lg' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5'}`}
+                className={`relative overflow-hidden group flex flex-row w-full items-center gap-2 px-2 py-2 rounded-xl transition-all ${settingsActiveTab === 'about' && !isMobileDetailView ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-white border border-blue-500/30 shadow-lg' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5'}`}
               >
                 <div className="absolute top-0 bottom-0 w-[200%] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none glass-sweep-anim" style={{ left: '-100%' }} />
                 <img
                   src="/branding/author.jpeg"
                   alt="Developer"
-                  className="w-8 h-8 rounded-full object-cover shadow-sm border border-white/30 shrink-0"
+                  className="w-10 h-10 rounded-full object-cover shadow-sm border border-white/30 shrink-0"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
                 <div className="flex flex-col items-start text-left min-w-0">
                   <span className="text-[10px] font-bold text-white/90">Anand Kumar</span>
-                  <span className="text-[8px] text-blue-300 font-bold uppercase tracking-wider">Developer</span>
+                  <span className="text-[8px] text-blue-300 font-bold uppercase tracking-wider">about Developer</span>
                 </div>
               </button>
 

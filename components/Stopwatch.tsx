@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Play, Pause, Square, History, Trash2, ChevronLeft, Check, BellRing } from 'lucide-react';
-import DraggableWidget from './DraggableWidget';
 import ConfirmationModal from './ConfirmationModal';
 import { getLocalDateString } from '@/utils/date';
 import { getDeviceId } from '@/utils/deviceId';
@@ -369,7 +368,7 @@ export default function Stopwatch() {
   };
 
   return (
-    <DraggableWidget id="stopwatch">
+    <>
       <div
         className={`relative pointer-events-auto select-none ${isStopwatchOpen ? '' : 'hidden'}`}
       >
@@ -564,6 +563,6 @@ export default function Stopwatch() {
         isDestructive={confirmModal.isDestructive}
         confirmText="Discard Session"
       />
-    </DraggableWidget>
+      </>
   );
 }
