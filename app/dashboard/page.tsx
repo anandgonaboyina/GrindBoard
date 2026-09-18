@@ -14,7 +14,6 @@ import Countdown from "@/components/Countdown";
 import Timetable from "@/components/Timetable";
 import DayStartModal from "@/components/DayStartModal";
 import DraggableClock from "@/components/DraggableClock";
-import DraggableWidget from "@/components/DraggableWidget";
 import SettingsModal from "@/components/SettingsModal";
 import RightToolbar from "@/components/RightToolbar";
 import DeadlineTickerWidget from "@/components/DeadlineTickerWidget";
@@ -33,6 +32,10 @@ import ManifestationBoard from "@/components/ManifestationBoard";
 import { useEffect, useState, useRef } from "react";
 import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users, Hourglass, Sparkles } from "lucide-react";
 import { useDashboardStore, hasUnsavedChanges, setSyncingFromCloud } from "@/store/dashboardStore";
+import { useTaskStore } from "@/store/taskStore";
+import { useTimetableStore } from "@/store/timetableStore";
+import { useNoteStore } from "@/store/noteStore";
+import { useSettingsStore } from "@/store/settingsStore";
 import { fetchQuote } from "@/utils/quoteEngine";
 
 export default function Dashboard() {
@@ -75,7 +78,13 @@ export default function Dashboard() {
   }, []);
 
   const hideConfig = isMobile ? mobileHideConfig : baseHideConfig;
-  const _hasHydrated = useDashboardStore((state) => state._hasHydrated);
+  const _hasHydratedDashboard = useDashboardStore((state) => state._hasHydrated);
+  const _hasHydratedTask = useTaskStore((state) => state._hasHydrated);
+  const _hasHydratedTimetable = useTimetableStore((state) => state._hasHydrated);
+  const _hasHydratedNote = useNoteStore((state) => state._hasHydrated);
+  const _hasHydratedSettings = useSettingsStore((state) => state._hasHydrated);
+  
+  const _hasHydrated = _hasHydratedDashboard && _hasHydratedTask && _hasHydratedTimetable && _hasHydratedNote && _hasHydratedSettings;
   const dashboardScale = useDashboardStore((state) => state.dashboardScale || 1);
   const mobileDashboardScale = useDashboardStore((state) => state.mobileDashboardScale || 1);
   const activeDashboardScale = isMobile ? mobileDashboardScale : dashboardScale;

@@ -1,80 +1,114 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ShieldCheck, Wifi, WifiOff, Zap, ExternalLink, Quote } from 'lucide-react';
 import { setBypassCloudSync, setAbortInstantLoad, useDashboardStore } from '@/store/dashboardStore';
+import { useTaskStore } from '@/store/taskStore';
+import { useTimetableStore } from '@/store/timetableStore';
+import { useNoteStore } from '@/store/noteStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 interface LoadingScreenProps {
   onFinished?: () => void;
 }
 
+interface LoadingState {
+  progress: number;
+  statusText: string;
+}
+
+// Reusable helper to systematically force local hydration states
+const forceHydrateAllStores = () => {
+  useDashboardStore.getState().setHasHydrated(true);
+  useTaskStore.getState().setHasHydrated(true);
+  useTimetableStore.getState().setHasHydrated(true);
+  useNoteStore.getState().setHasHydrated(true);
+  useSettingsStore.getState().setHasHydrated(true);
+};
+
+// Reusable helper to safely fetch instantaneous store hydration evaluations
+const checkAllStoresHydrated = () => {
+  return useDashboardStore.getState()._hasHydrated &&
+         useTaskStore.getState()._hasHydrated &&
+         useTimetableStore.getState()._hasHydrated &&
+         useNoteStore.getState()._hasHydrated &&
+         useSettingsStore.getState()._hasHydrated;
+};
+
 export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
-  const [progress, setProgress] = useState(15);
-  const [statusText, setStatusText] = useState('Connecting to Workspace...');
+  const [loadingState, setLoadingState] = useState<LoadingState>({
+    progress: 15,
+    statusText: 'Connecting to Workspace...',
+  });
   const [isOnline, setIsOnline] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [isDone, setIsDone] = useState(false);
+  const [isExtraDataFetched, setIsExtraDataFetched] = useState(false);
+  const [hasFinishedRendering, setHasFinishedRendering] = useState(false);
 
-  const _hasHydrated = useDashboardStore((state) => state._hasHydrated);
-  const initialHydratedRef = React.useRef(useDashboardStore.getState()._hasHydrated);
+  // Subscribe to hydration states cleanly
+  const _hasHydratedDashboard = useDashboardStore((state) => state._hasHydrated);
+  const _hasHydratedTask = useTaskStore((state) => state._hasHydrated);
+  const _hasHydratedTimetable = useTimetableStore((state) => state._hasHydrated);
+  const _hasHydratedNote = useNoteStore((state) => state._hasHydrated);
+  const _hasHydratedSettings = useSettingsStore((state) => state._hasHydrated);
+  
+  const _hasHydrated = _hasHydratedDashboard && _hasHydratedTask && _hasHydratedTimetable && _hasHydratedNote && _hasHydratedSettings;
+  const initialHydratedRef = useRef(_hasHydrated);
 
+  // Use a mutable ref for data-fetching tracking to prevent stale timeout closures
+  const isExtraDataFetchedRef = useRef(false);
+  useEffect(() => {
+    isExtraDataFetchedRef.current = isExtraDataFetched;
+  }, [isExtraDataFetched]);
+
+  // Main Orchestration & Real-time Fetching
   useEffect(() => {
     const checkOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
     setIsOnline(checkOnline);
 
     if (!checkOnline) {
-      setProgress(100);
-      setStatusText('Offline Mode — Loading Local Workspace...');
+      setLoadingState({ progress: 100, statusText: 'Offline Mode — Loading Local Workspace...' });
       setBypassCloudSync(true);
+      setIsExtraDataFetched(true);
       return;
     }
 
-    // Dynamic progress while waiting for cloud response
-    const timer1 = setTimeout(() => {
-      setProgress(40);
-      setStatusText('Authenticating & Loading Profile...');
-    }, 300);
+    // Step 1: Initial load state
+    setLoadingState({ progress: 30, statusText: 'Authenticating & Loading Profile...' });
 
-    const timer2 = setTimeout(() => {
-      setProgress(75);
-      setStatusText('Decrypting Workspace & Timetable...');
-    }, 700);
-
-    const timer3 = setTimeout(() => {
-      setProgress(85);
-      setStatusText('Synchronizing Cloud Data...');
-    }, 1400);
-
-    // If network is slow and sync takes longer than 2.2 seconds, inform user
-    const timerSlow = setTimeout(() => {
-      if (!useDashboardStore.getState()._hasHydrated) {
-        setStatusText('Slow Connection — Synchronizing Cloud Data...');
+    // Step 2: Fetch tasks and notes dynamically
+    const fetchExtraData = async () => {
+      try {
+        await Promise.allSettled([
+          useTaskStore.getState().fetchTasks(),
+          useNoteStore.getState().fetchNotes()
+        ]);
+      } finally {
+        setIsExtraDataFetched(true);
       }
-    }, 2200);
+    };
+    
+    fetchExtraData();
 
-    // Guaranteed fallback: If sync/hydration is stalled after 3.5s, load local workspace automatically
+    // Fallback: If sync/hydration absolutely stalls after a long time (5s), execute automated local recovery
     const timerSafety = setTimeout(() => {
-      if (!useDashboardStore.getState()._hasHydrated) {
+      if (!checkAllStoresHydrated()) {
         console.warn("Hydration safety trigger activated: bypassing cloud hang.");
         setBypassCloudSync(true);
-        useDashboardStore.getState().setHasHydrated(true);
+        forceHydrateAllStores();
+        setIsExtraDataFetched(true);
       }
-    }, 3500);
+    }, 5000);
 
     return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-      clearTimeout(timerSlow);
       clearTimeout(timerSafety);
     };
   }, []);
 
-  // When store hydration succeeds, complete progress bar & trigger smooth fade-out after settlement
+  // Completion sequence & smooth real-time progress steps
   useEffect(() => {
-    if (_hasHydrated) {
-      setProgress(100);
-      setStatusText('Workspace Ready!');
+    if (_hasHydrated && isExtraDataFetched) {
+      setLoadingState({ progress: 100, statusText: 'Workspace Ready!' });
 
       const settlementDelay = initialHydratedRef.current ? 50 : 150;
 
@@ -83,7 +117,7 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
       }, settlementDelay);
 
       const timerUnmount = setTimeout(() => {
-        setIsDone(true);
+        setHasFinishedRendering(true);
         if (onFinished) onFinished();
       }, settlementDelay + 300);
 
@@ -91,23 +125,31 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
         clearTimeout(timerFade);
         clearTimeout(timerUnmount);
       };
+    } else if (_hasHydrated && !isExtraDataFetched) {
+      setLoadingState({ progress: 75, statusText: 'Synchronizing Cloud Data...' });
+    } else if (!_hasHydrated && isExtraDataFetched) {
+      setLoadingState({ progress: 75, statusText: 'Decrypting Workspace & Timetable...' });
     }
-  }, [_hasHydrated, onFinished]);
+  }, [_hasHydrated, isExtraDataFetched, onFinished]);
 
+  // handler to bypass stalled connections instantly
   const handleLoadOffline = () => {
-    // Signal the in-flight getItem to abort the cloud fetch immediately
     setAbortInstantLoad(true);
     setBypassCloudSync(true);
-    setProgress(100);
-    setStatusText('Loading Offline Instantly...');
-    // Give one tick for abortInstantLoad to be read, then force hydration
+    setLoadingState({ progress: 100, statusText: 'Loading Offline Instantly...' });
+    setIsExtraDataFetched(true);
+
+    // Yield short processing macro-tick before forcefully hydrating
     setTimeout(() => {
-      useDashboardStore.getState().setHasHydrated(true);
+      forceHydrateAllStores();
     }, 50);
   };
 
-  if (isDone) return null;
-
+  if (hasFinishedRendering) return null;
+  
+  // Destructure for the JSX variables
+  const { progress, statusText } = loadingState;
+  
   return (
     <div
       className={`fixed inset-0 h-[100dvh] w-screen bg-[#06060e] z-[99999] flex flex-col justify-between p-5 sm:p-8 md:p-12 text-white font-sans overflow-hidden select-none transition-opacity duration-300 ${isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
@@ -281,8 +323,6 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
           </button>
         </div>
       </footer>
-
     </div>
   );
 }
-

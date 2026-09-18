@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock, Sparkles, Flame, WifiOff, Calendar, Lock, Copy, CopyCheck } from 'lucide-react';
-import ScrollableWithArrows from './ScrollableWithArrows';
-import ConfirmationModal from './ConfirmationModal';
-import GroupTaskManager from './GroupTaskManager';
+import ScrollableWithArrows from '../ScrollableWithArrows';
+import ConfirmationModal from '../ConfirmationModal';
+import GroupTaskManager from '../GroupTaskManager';
 
 const DEFAULT_UNIVERSAL_TAB_NAMES = ['Core Tasks', 'Daily Routine', 'Milestones'];
 const formatTabName = (name: string | undefined | null, idx: number): string => {

@@ -6,7 +6,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { useTimetableStore, pushTimetableToDB } from '@/store/timetableStore';
 import { useTaskStore, pushTasksToDB } from '@/store/taskStore';
 import { useNoteStore } from '@/store/noteStore';
-import { X, Upload, Code, LinkIcon, BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
+import { X, Upload, Code, LinkIcon, Lightbulb , BookOpen, Trash2, Image as ImageIcon, Settings as SettingsIcon, Sliders, MonitorPlay, Clock, Users, Plus, Minus, Eye, EyeOff, Download, UploadCloud, Activity, MessageSquare, Timer as TimerIcon, Hourglass, Film, User, BadgeCheck, Send, Briefcase, Calendar, CheckSquare, Flame, ChevronUp, ChevronDown, ChevronLeft, Database, Bell, RefreshCw, AlertTriangle, AlertCircle, CheckCircle, BarChart2, Map, StickyNote, CalendarDays, Layout, Globe, Star, Info, Play, Pause, Music, Volume2, Maximize2, RotateCcw, Smartphone, Monitor, Sparkles } from 'lucide-react';
 import ConnectTab from './ConnectTab';
 import UserManualModal from './UserManualModal';
 import ScrollableWithArrows from './ScrollableWithArrows';
@@ -2436,15 +2436,34 @@ export default function SettingsModal() {
                     </button>
                   </div>
 
-                  <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl shadow-sm">
+                  <div className="p-3 bg-pink-500/10 border border-blue-500/20 rounded-xl shadow-sm">
                     <div className="flex items-start gap-2.5">
-                      <div className="bg-blue-500/20 p-1.5 rounded-lg shrink-0 mt-0.5">
-                        <Activity className="text-blue-400 w-4 h-4" />
+                      <div className="bg-yellow-500/20 p-1.5 rounded-lg shrink-0 mt-0.5">
+                        <Lightbulb className="text-white-400 w-4 h-4" />
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <h4 className="font-bold text-[11px] md:text-xs text-blue-300 break-words">Important Recommendation</h4>
+                        <h4 className="font-bold text-[11px] md:text-xs text-blue-300 break-words">Pro-Tip:  You can share your schedules!, Plan your day! or Notes together with friends!</h4>
                         <p className="text-[9px] md:text-[10px] text-white/70 mt-1 leading-snug break-words">
-                          Backup your data regularly. <strong className="text-white">Switch to a separate User Profile</strong> before importing a friend's plans to avoid overwriting your own tasks!
+                          <strong className="text-white"> Did you know?</strong> 
+                          You can easily share your timetables and tasks with friends or comrades! 
+                          Whether you want to coordinate a study routine or sync up your holiday schedules, 
+                          just export your setup so they can import it and plan their day exactly like you in one click
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-pink-500/10 border border-blue-500/20 rounded-xl shadow-sm">
+                    <div className="flex items-start gap-2.5">
+                      <div className="bg-yellow-500/20 p-1.5 rounded-lg shrink-0 mt-0.5">
+                        <Lightbulb className="text-white-400 w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <h4 className="font-bold text-[11px] md:text-xs text-blue-300 break-words">Pro-Tip: Use Backup & Restore to switch schedules or Plan your day! </h4>
+                        <p className="text-[9px] md:text-[10px] text-white/70 mt-1 leading-snug break-words">
+                          <strong className="text-white"> Did you know?</strong> 
+                          You can use backups to completely change how you plan your day. 
+                          Save your current college timetable, reset, and create a brand-new routine to organize your tasks for the holidays. 
+                          Simply restore either backup anytime to switch your setup and track your schedule instantly!
                         </p>
                       </div>
                     </div>
