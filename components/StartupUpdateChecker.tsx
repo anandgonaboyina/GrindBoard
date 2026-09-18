@@ -49,11 +49,11 @@ export default function StartupUpdateChecker() {
         <button
           onClick={() => {
             setUpdateMsg('');
-            // Ensure settings is open and switched to update tab
-            useDashboardStore.getState().setSettingsActiveTab('update');
-            if (!useDashboardStore.getState().isSettingsOpen) {
-              useDashboardStore.getState().toggleSettings();
+            const store = useDashboardStore.getState();
+            if (!store.isSettingsOpen) {
+              store.toggleSettings();
             }
+            store.setSettingsActiveTab('update');
           }}
           className="self-start text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/20 border border-blue-500 hover:scale-105"
         >

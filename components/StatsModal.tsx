@@ -39,10 +39,11 @@ export default function StatsModal() {
         useDashboardStore.getState().setConnectInitialTab('friends');
       }
       // Ensure Settings Modal is open and on the connect tab
-      useDashboardStore.getState().setSettingsActiveTab('connect');
-      if (!useDashboardStore.getState().isSettingsOpen) {
-        useDashboardStore.getState().toggleSettings();
+      const store = useDashboardStore.getState();
+      if (!store.isSettingsOpen) {
+        store.toggleSettings();
       }
+      store.setSettingsActiveTab('connect');
     }
     toggleStats();
   };
@@ -319,51 +320,61 @@ export default function StatsModal() {
                 </button>
               ) : (
                 <div className="flex gap-2 w-full mt-1">
-                  <button
-                    onClick={() => {
-                      if (viewingFriend) setViewingFriend(null);
-                      if (typeof window !== 'undefined') sessionStorage.removeItem('returnToConnect');
-                      toggleStats();
-                      useDashboardStore.getState().setConnectInitialTab('leaderboard');
-                      useDashboardStore.getState().setSettingsActiveTab('connect');
-                      if (!useDashboardStore.getState().isSettingsOpen) {
-                        useDashboardStore.getState().toggleSettings();
-                      }
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new Event('open-leaderboard'));
-                      }
-                    }}
-                    className="flex-1 p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 transition-all flex items-center justify-between group shadow-sm"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Trophy className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                      <h3 className="text-[10px] sm:text-[11px] font-bold text-purple-100 tracking-tight leading-none truncate">Leaderboard</h3>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-purple-400/50 group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all shrink-0" />
-                  </button>
+              <button
+                onClick={() => {
+                  if (viewingFriend) setViewingFriend(null);
+                  if (typeof window !== 'undefined') sessionStorage.removeItem('returnToConnect');
+                  toggleStats();
 
-                  <button
-                    onClick={() => {
-                      if (viewingFriend) setViewingFriend(null);
-                      if (typeof window !== 'undefined') sessionStorage.removeItem('returnToConnect');
-                      toggleStats();
-                      useDashboardStore.getState().setConnectInitialTab('friends');
-                      useDashboardStore.getState().setSettingsActiveTab('connect');
-                      if (!useDashboardStore.getState().isSettingsOpen) {
-                        useDashboardStore.getState().toggleSettings();
-                      }
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new Event('open-leaderboard'));
-                      }
-                    }}
-                    className="flex-1 p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex items-center justify-between group shadow-sm"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <h3 className="text-[10px] sm:text-[11px] font-bold text-emerald-100 tracking-tight leading-none truncate">Friends</h3>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-emerald-400/50 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all shrink-0" />
-                  </button>
+                  const store = useDashboardStore.getState();
+                  
+                  if (!store.isSettingsOpen) {
+                    store.toggleSettings();
+                  }
+
+                  store.setConnectInitialTab('leaderboard');
+                  store.setSettingsActiveTab('connect');
+                  
+                  // Force mobile view drill-down and tab sync via custom event
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('force-settings-tab', { detail: 'connect' }));
+                  }
+                }}
+                className="flex-1 p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 transition-all flex items-center justify-between group shadow-sm cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <h3 className="text-[10px] sm:text-[11px] font-bold text-purple-100 tracking-tight leading-none truncate">Leaderboard</h3>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-purple-400/50 group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+              </button>
+
+              <button
+                onClick={() => {
+                  if (viewingFriend) setViewingFriend(null);
+                  if (typeof window !== 'undefined') sessionStorage.removeItem('returnToConnect');
+                  toggleStats();
+                  
+                  const store = useDashboardStore.getState();
+                  if (!store.isSettingsOpen) {
+                    store.toggleSettings();
+                  }
+                  
+                  // 1. Set initial tab to friends
+                  store.setConnectInitialTab('friends');
+                  // 2. Point settings active tab strictly to connect
+                  store.setSettingsActiveTab('connect');
+                  
+                  // NOTE: Removed the accidental 'open-leaderboard' event dispatch here so it stays on Friends!
+                }}
+                className="flex-1 p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex items-center justify-between group shadow-sm cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <h3 className="text-[10px] sm:text-[11px] font-bold text-emerald-100 tracking-tight leading-none truncate">Friends</h3>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-emerald-400/50 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all shrink-0" />
+              </button>
                 </div>
               )}
             </ScrollableWithArrows>
