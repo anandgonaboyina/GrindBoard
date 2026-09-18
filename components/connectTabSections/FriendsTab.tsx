@@ -5,6 +5,9 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { Search, RefreshCw, BarChart2, Check, X, Calendar, Settings, Sparkles, Users, UserPlus, UserX } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import Timetable from '../Timetable'; // Adjust import paths
+import FriendTimetableModal from '../modals/FriendTimetableModal';
+import FriendTasksModal from '../modals/FriendTasksModal';
+import FriendSettingsModal from '../modals/FriendSettingsModal';
 
 interface FriendsTabProps {
   setPendingRequestsCount: (count: number) => void;
@@ -120,7 +123,7 @@ function EmptyFriendSearchState({ query }: { query: string }) {
 }
 
 // ==========================================
-// 🚀 OPTIMIZATION: Wrapped in memo to prevent parent renders from trickling down
+//OPTIMIZATION: Wrapped in memo to prevent parent renders from trickling down
 // ==========================================
 const FriendsTab = memo(function FriendsTab({ setPendingRequestsCount, setConfirmModal }: FriendsTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -653,7 +656,32 @@ const FriendsTab = memo(function FriendsTab({ setPendingRequestsCount, setConfir
           </div>
         </div>
       )}
+
+
+      {/* Modals  */}
+      <FriendTimetableModal
+        isOpen={showFriendTimetable}
+        onClose={() => {
+          setShowFriendTimetable(false);
+          useDashboardStore.getState().setViewingFriend(null);
+        }}
+      />
+      <FriendTasksModal
+        isOpen={showFriendTasks}
+        onClose={() => {
+          setShowFriendTasks(false);
+          useDashboardStore.getState().setViewingFriend(null);
+        }}
+      />
+      <FriendSettingsModal
+        friend={friendSettingsModal}
+        onClose={() => setFriendSettingsModal(null)}
+        onToggleTaskSharing={handleToggleTaskSharing}
+      />
+
+     
     </div>
+
   );
 });
 

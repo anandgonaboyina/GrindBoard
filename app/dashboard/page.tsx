@@ -12,7 +12,7 @@ import RoadmapManager from "@/components/RoadmapManager";
 import MiniCalendar from "@/components/MiniCalendar";
 import Countdown from "@/components/Countdown";
 import Timetable from "@/components/Timetable";
-import DayStartModal from "@/components/DayStartModal";
+import DayStartModal from "@/components/modals/DayStartModal";
 import DraggableClock from "@/components/DraggableClock";
 import SettingsModal from "@/components/SettingsModal";
 import RightToolbar from "@/components/RightToolbar";

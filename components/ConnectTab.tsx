@@ -80,34 +80,51 @@ export default function ConnectTab() {
 
   return (
     <div className="flex flex-col w-full h-full max-h-[80vh] min-w-0 relative max-w-lg mx-auto pt-2 px-2">
-      {/* Pinned sticky Navbar */}
-      <div className="sticky top-0 z-30 flex justify-between items-center bg-black/90 backdrop-blur-xl border border-white/10 rounded-full p-1 mb-2 shadow-lg w-full shrink-0">
-        <button onClick={() => setActiveTab('profile')} className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-all ${activeTab === 'profile' ? 'bg-blue-500 text-white shadow-md' : 'text-white/50 hover:text-white/90'}`}>
-          <UserCircle size={16} />
-          <span className="text-[9px] font-bold">Profile</span>
+{/* Pinned sticky Navbar */}
+      <div className="sticky top-0 z-30 flex justify-between items-center bg-black/50 backdrop-blur-2xl border border-white/10 rounded-full p-1 mb-2 shadow-xl shadow-black/40 w-full shrink-0 ring-1 ring-white/5 relative">
+        
+        {/* Animated Sliding Background Pill */}
+        <div className="absolute inset-y-1 left-1 right-1 pointer-events-none z-0">
+          <div 
+            className={`h-full w-1/4 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-[0_0_12px_rgba(59,130,246,0.4)] transition-transform duration-500 ease-out
+              ${activeTab === 'profile' ? 'translate-x-0' : ''}
+              ${activeTab === 'friends' ? 'translate-x-full' : ''}
+              ${activeTab === 'leaderboard' ? 'translate-x-[200%]' : ''}
+              ${activeTab === 'groups' ? 'translate-x-[300%]' : ''}
+            `}
+          />
+        </div>
+
+        <button onClick={() => setActiveTab('profile')} className={`group relative z-10 flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-colors duration-300 ${activeTab === 'profile' ? 'text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
+          <UserCircle size={16} className={`transition-transform duration-300 ${activeTab === 'profile' ? 'scale-110 drop-shadow-md' : 'group-hover:-translate-y-0.5'}`} />
+          <span className="text-[9px] font-bold tracking-wide">Profile</span>
         </button>
-        <button onClick={() => setActiveTab('friends')} className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-all ${activeTab === 'friends' ? 'bg-blue-500 text-white shadow-md' : 'text-white/50 hover:text-white/90'}`}>
-          <Users size={16} />
-          <span className="text-[9px] font-bold">Friends</span>
+
+        <button onClick={() => setActiveTab('friends')} className={`group relative z-10 flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-colors duration-300 ${activeTab === 'friends' ? 'text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
+          <Users size={16} className={`transition-transform duration-300 ${activeTab === 'friends' ? 'scale-110 drop-shadow-md' : 'group-hover:-translate-y-0.5'}`} />
+          <span className="text-[9px] font-bold tracking-wide">Friends</span>
           {pendingRequestsCount > 0 && (
-            <span className="absolute top-1 right-3 sm:right-6 bg-red-500 text-white text-[8px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full shadow-md">
+            <span className="absolute top-1 right-3 sm:right-6 bg-gradient-to-br from-rose-500 to-red-600 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(225,29,72,0.6)] border border-white/20 animate-in zoom-in duration-300">
               {pendingRequestsCount}
             </span>
           )}
         </button>
-        <button onClick={() => setActiveTab('leaderboard')} className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-all ${activeTab === 'leaderboard' ? 'bg-blue-500 text-white shadow-md' : 'text-white/50 hover:text-white/90'}`}>
-          <Trophy size={16} />
-          <span className="text-[9px] font-bold">Ranks</span>
+
+        <button onClick={() => setActiveTab('leaderboard')} className={`group relative z-10 flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-colors duration-300 ${activeTab === 'leaderboard' ? 'text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
+          <Trophy size={16} className={`transition-transform duration-300 ${activeTab === 'leaderboard' ? 'scale-110 drop-shadow-md' : 'group-hover:-translate-y-0.5'}`} />
+          <span className="text-[9px] font-bold tracking-wide">Ranks</span>
         </button>
-        <button onClick={() => setActiveTab('groups')} className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-all ${activeTab === 'groups' ? 'bg-blue-500 text-white shadow-md' : 'text-white/50 hover:text-white/90'}`}>
-          <Users size={16} />
-          <span className="text-[9px] font-bold">Groups</span>
+
+        <button onClick={() => setActiveTab('groups')} className={`group relative z-10 flex-1 flex flex-col items-center justify-center gap-1 py-1.5 rounded-full transition-colors duration-300 ${activeTab === 'groups' ? 'text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
+          <Users size={16} className={`transition-transform duration-300 ${activeTab === 'groups' ? 'scale-110 drop-shadow-md' : 'group-hover:-translate-y-0.5'}`} />
+          <span className="text-[9px] font-bold tracking-wide">Groups</span>
           {groupRequestsCount > 0 && (
-            <span className="absolute top-1 right-3 sm:right-6 bg-red-500 text-white text-[8px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full shadow-md">
+            <span className="absolute top-1 right-3 sm:right-6 bg-gradient-to-br from-rose-500 to-red-600 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full shadow-[0_0_10px_rgba(225,29,72,0.6)] border border-white/20 animate-in zoom-in duration-300">
               {groupRequestsCount}
             </span>
           )}
         </button>
+        
       </div>
 
 {/* Dynamic Tab Rendering (Using CSS Hiding to prevent re-fetching) */}
