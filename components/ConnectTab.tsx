@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useDashboardStore, setAuthTransition } from '@/store/dashboardStore';
+import { useDashboardStore } from "@/store/dashboardStore";
+import { setAuthTransition } from "@/store/dashboardStore/sync";
 import { UserCircle, Users, Trophy, X } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import ConnectGroupsTab from './connectTabSections/ConnectGroupsTab';

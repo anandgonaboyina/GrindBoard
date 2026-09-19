@@ -1,5 +1,12 @@
 "use client";
 
+import { useEffect, useState, useRef } from "react";
+import { 
+  ChevronDown, CalendarDays, Calendar, ListTodo, 
+  ImageIcon, Newspaper, Trophy, Users, Hourglass, Sparkles 
+} from "lucide-react";
+
+// Components
 import Dock from "@/components/Navbar";
 import BigClock from "@/components/BigClock";
 import Timer from "@/components/Timer";
@@ -29,100 +36,66 @@ import Tooltip from "@/components/Tooltip";
 import GuidedTour from "@/components/GuidedTour";
 import ManifestationBoard from "@/components/ManifestationBoard";
 
-import { useEffect, useState, useRef } from "react";
-import { ChevronDown, ChevronUp, CalendarDays, Calendar, Settings, ChevronLeft, ListTodo, ChevronRight, EyeOff, Image as ImageIcon, Newspaper, Trophy, Users, Hourglass, Sparkles } from "lucide-react";
-import { useDashboardStore, hasUnsavedChanges, setSyncingFromCloud } from "@/store/dashboardStore";
+// Logic & Stores
+import { useDashboardStore } from "@/store/dashboardStore";
 import { useTaskStore } from "@/store/taskStore";
 import { useTimetableStore } from "@/store/timetableStore";
 import { useNoteStore } from "@/store/noteStore";
 import { useSettingsStore } from "@/store/settingsStore";
-import { fetchQuote } from "@/utils/quoteEngine";
+import { useDashboardLogic } from "@/hooks/useDashboardLogic";
 
 export default function Dashboard() {
-  const showQuotePopup = useDashboardStore((state) => state.showQuotePopup);
-  const isHidden = useDashboardStore((state) => state.isHidden);
-  const baseHideConfig = useDashboardStore((state) => state.hideConfig);
-  const mobileHideConfig = useDashboardStore((state) => state.mobileHideConfig);
   const [isMobile, setIsMobile] = useState(false);
+  const [activeCountdownIndex, setActiveCountdownIndex] = useState(1);
+  const dragStartX = useRef<number | null>(null);
+  const [isOverlayVisible, setIsOverlayVisible] = useState(true);
 
-  useEffect(() => {
-    // State Healer: Remove massive base64 strings that break localStorage and API quotas (5MB limit)
-    const state = useDashboardStore.getState();
-    let healed = false;
-    const healArray = (arr: string[]) => {
-      if (!Array.isArray(arr)) return arr;
-      const originalLength = arr.length;
-      const newArr = arr.filter(item => !(typeof item === 'string' && item.startsWith('data:image') && item.length > 500000));
-      if (newArr.length !== originalLength) healed = true;
-      return newArr;
-    };
-
-    const healedDesktop = healArray(state.customDesktopWallpapers);
-    const healedMobile = healArray(state.customMobileWallpapers);
-
-    if (healed) {
-      useDashboardStore.setState({
-        customDesktopWallpapers: healedDesktop,
-        customMobileWallpapers: healedMobile
-      });
-      console.warn("Healed dashboard state by removing oversized base64 wallpapers.");
-      setTimeout(() => useDashboardStore.getState().forceInstantSave(), 1000);
-    }
-  }, []);
-
-  useEffect(() => {
-    setIsMobile(window.innerWidth <= 768);
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const hideConfig = isMobile ? mobileHideConfig : baseHideConfig;
+  // Hydration - MUST BE AT THE TOP AND UNCONDITIONAL
   const _hasHydratedDashboard = useDashboardStore((state) => state._hasHydrated);
   const _hasHydratedTask = useTaskStore((state) => state._hasHydrated);
   const _hasHydratedTimetable = useTimetableStore((state) => state._hasHydrated);
   const _hasHydratedNote = useNoteStore((state) => state._hasHydrated);
   const _hasHydratedSettings = useSettingsStore((state) => state._hasHydrated);
-  
+
   const _hasHydrated = _hasHydratedDashboard && _hasHydratedTask && _hasHydratedTimetable && _hasHydratedNote && _hasHydratedSettings;
+
+  // Inject decoupled background logic
+  const { cycleWallpaper, handleCalendarExpand } = useDashboardLogic(isMobile, _hasHydrated);
+
+  // Configuration
+  const isHidden = useDashboardStore((state) => state.isHidden);
+  const isPanicHidden = useDashboardStore((state) => state.isPanicHidden);
+  const mobileHideConfig = useDashboardStore((state) => state.mobileHideConfig);
+  const baseHideConfig = useDashboardStore((state) => state.hideConfig);
+  const hideConfig = isMobile ? mobileHideConfig : baseHideConfig;
+
+  // Layout & Visibility
   const dashboardScale = useDashboardStore((state) => state.dashboardScale || 1);
   const mobileDashboardScale = useDashboardStore((state) => state.mobileDashboardScale || 1);
   const activeDashboardScale = isMobile ? mobileDashboardScale : dashboardScale;
   const dockScale = useDashboardStore((state) => state.dockScale || 1);
   const dockOffset = useDashboardStore((state) => state.dockOffset || 0);
-
-  const toggleHide = useDashboardStore((state) => state.toggleHide);
+  const rightWidgetsOffset = useDashboardStore((state) => state.rightWidgetsOffset);
+  const widgetZIndices = useDashboardStore((state) => state.widgetZIndices) || {};
   const currentBgType = useDashboardStore((state) => state.currentBgType);
   const countdowns = useDashboardStore((state) => state.countdowns);
-  const [activeCountdownIndex, setActiveCountdownIndex] = useState(1);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
-  const calendarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const showBgSwitcher = useDashboardStore((state) => state.showBgSwitcher);
-  const customDesktopWallpapers = useDashboardStore((state) => state.customDesktopWallpapers);
-  const activeDesktopCustomIndex = useDashboardStore((state) => state.activeDesktopCustomIndex);
-  const setActiveDesktopCustomIndex = useDashboardStore((state) => state.setActiveDesktopCustomIndex);
-  const customMobileWallpapers = useDashboardStore((state) => state.customMobileWallpapers);
-  const activeMobileCustomIndex = useDashboardStore((state) => state.activeMobileCustomIndex);
-  const setActiveMobileCustomIndex = useDashboardStore((state) => state.setActiveMobileCustomIndex);
-  const showManifestationBoard = useDashboardStore((state) => state.showManifestationBoard);
-  const setShowManifestationBoard = useDashboardStore((state) => state.setShowManifestationBoard);
-  const toggleManifestationOpen = useDashboardStore((state) => state.toggleManifestationOpen);
-  const isSettingsOpen = useDashboardStore((state) => state.isSettingsOpen)
-
-
-  const isMobileCountdownsVisible = useDashboardStore((state) => state.isMobileCountdownsVisible);
+  // Modals & Drawers
+  const isSettingsOpen = useDashboardStore((state) => state.isSettingsOpen);
   const isTimetableOpen = useDashboardStore((state) => state.isTimetableOpen);
-  const setIsTimetableOpen = useDashboardStore((state) => state.setIsTimetableOpen);
   const isCalendarOpen = useDashboardStore((state) => state.isCalendarOpen);
-  const isCalendarBusy = useDashboardStore((state) => state.isCalendarBusy);
   const isTaskManagerOpen = useDashboardStore((state) => state.isTaskManagerOpen);
   const isNewsOpen = useDashboardStore((state) => state.isNewsOpen);
+  const isMobileCountdownsVisible = useDashboardStore((state) => state.isMobileCountdownsVisible);
   const hasUnreadNews = useDashboardStore((state) => state.hasUnreadNews);
-  const [edgeTouchStartX, setEdgeTouchStartX] = useState<number | null>(null);
-  const [isMobileToolbarOpen, setIsMobileToolbarOpen] = useState(false);
+  const isAlarmPlaying = useDashboardStore((state) => state.isAlarmPlaying);
 
+  // Toggles & Actions
+  const toggleManifestationOpen = useDashboardStore((state) => state.toggleManifestationOpen);
+  const setIsTimetableOpen = useDashboardStore((state) => state.setIsTimetableOpen);
+  const bringToFront = useDashboardStore((state) => state.bringToFront);
+
+  // Component Visibilities
   const showQuote = useDashboardStore((state) => state.showQuote);
   const showTimer = useDashboardStore((state) => state.showTimer);
   const showStopwatch = useDashboardStore((state) => state.showStopwatch);
@@ -137,209 +110,38 @@ export default function Dashboard() {
   const showTimetable = useDashboardStore((state) => state.showTimetable);
   const showDock = useDashboardStore((state) => state.showDock);
   const showDeadlineAlerts = useDashboardStore((state) => state.showDeadlineAlerts);
+  const showBgSwitcher = useDashboardStore((state) => state.showBgSwitcher);
+  const showManifestationBoard = useDashboardStore((state) => state.showManifestationBoard);
   const showSettingsBtn = useDashboardStore((state) => state.showSettingsBtn);
-  const rightWidgetsOffset = useDashboardStore((state) => state.rightWidgetsOffset);
-  const toggleSettings = useDashboardStore((state) => state.toggleSettings);
-  const widgetZIndices = useDashboardStore((state) => state.widgetZIndices) || {};
-  const bringToFront = useDashboardStore((state) => state.bringToFront);
-
-  const isPanicHidden = useDashboardStore((state) => state.isPanicHidden);
-  const togglePanicHide = useDashboardStore((state) => state.togglePanicHide);
-  const panicShortcutKey = useDashboardStore((state) => state.panicShortcutKey);
-  const focusShortcutKey = useDashboardStore((state) => state.focusShortcutKey);
-  const enablePanicButton = useDashboardStore((state) => state.enablePanicButton);
-  const panicButtonMode = useDashboardStore((state) => state.panicButtonMode);
-  const isAlarmPlaying = useDashboardStore((state) => state.isAlarmPlaying);
-  const cycleBackground = useDashboardStore((state) => state.cycleBackground);
-  const setIsManifestationOpen = useDashboardStore((state) => state.setIsManifestationOpen);
-
-  const handlePanic = () => {
-    if (isHidden) {
-      toggleHide();
-      return;
-    }
-    if (panicButtonMode === 'hide') {
-      toggleHide();
-    } else {
-      const urls = ['tg://resolve?domain=telegram', 'flipkart://'];
-      window.location.href = urls[Math.floor(Math.random() * urls.length)];
-    }
-  };
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as HTMLElement).isContentEditable) return;
-      if (e.altKey && (e.key?.toLowerCase() === 'f4' || e.code === 'F4' || e.keyCode === 115)) return; // NEVER block Alt+F4
-
-      let fKey = focusShortcutKey;
-      if (!fKey.includes('+') && fKey.length === 1) fKey = 'ctrl+' + fKey;
-      let pKey = panicShortcutKey;
-      if (!pKey.includes('+') && pKey.length === 1) pKey = 'ctrl+' + pKey;
-
-      const checkShortcut = (ev: KeyboardEvent, shortcut: string) => {
-        const parts = shortcut.split('+');
-        const key = parts.pop();
-        const ctrl = parts.includes('ctrl');
-        const alt = false; // Alt removed from custom combinations to prevent Alt+F4 and Windows OS conflicts
-        const shift = parts.includes('shift');
-        return ev.ctrlKey === ctrl && ev.altKey === alt && ev.shiftKey === shift && ev.key?.toLowerCase() === key;
-      };
-
-      if (checkShortcut(e, fKey)) {
-        e.preventDefault();
-        setIsManifestationOpen(false);
-        toggleHide();
-      }
-
-      if (checkShortcut(e, pKey)) {
-        e.preventDefault();
-        setIsManifestationOpen(false);
-        togglePanicHide();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleHide, isHidden, hideConfig, togglePanicHide, isPanicHidden, panicShortcutKey, focusShortcutKey]);
-
-  const handleCalendarExpand = () => {
-    useDashboardStore.setState({ isCalendarOpen: true });
-    if (calendarTimeoutRef.current) clearTimeout(calendarTimeoutRef.current);
-    calendarTimeoutRef.current = setTimeout(() => {
-      if (!useDashboardStore.getState().isCalendarBusy) {
-        useDashboardStore.setState({ isCalendarOpen: false });
-      }
-    }, 8000);
-  };
-
-  const cycleWallpaper = async () => {
-    const list = isMobile ? customMobileWallpapers : customDesktopWallpapers;
-    const activeIndex = isMobile ? activeMobileCustomIndex : activeDesktopCustomIndex;
-    const setIndex = isMobile ? setActiveMobileCustomIndex : setActiveDesktopCustomIndex;
-
-    if (!list || list.length === 0) {
-      cycleBackground();
-      return;
-    }
-
-    let nextIndex = activeIndex === null ? 0 : (activeIndex + 1) % list.length;
-    let foundValid = false;
-    let attempts = 0;
-
-    while (attempts < list.length) {
-      const url = list[nextIndex];
-      if (url.startsWith('custom-')) {
-        const { getWallpaperFromDB } = await import('@/lib/indexedDB');
-        let blob = await getWallpaperFromDB(url);
-        if (!blob) {
-          await new Promise(r => setTimeout(r, 200));
-          blob = await getWallpaperFromDB(url);
-        }
-        if (blob) {
-          foundValid = true;
-          break;
-        }
-      } else {
-        foundValid = true;
-        break;
-      }
-      nextIndex = (nextIndex + 1) % list.length;
-      attempts++;
-    }
-
-    if (foundValid) {
-      setIndex(nextIndex);
-    } else {
-      setIndex(null);
-      cycleBackground();
-    }
-  };
-
-
-  useEffect(() => {
-    if (!_hasHydrated) return;
-    if (isCalendarOpen) {
-      if (isCalendarBusy) {
-        if (calendarTimeoutRef.current) clearTimeout(calendarTimeoutRef.current);
-      } else {
-        handleCalendarExpand();
-      }
-    }
-  }, [isCalendarBusy, isCalendarOpen]);
-
-  useEffect(() => {
-    return () => {
-      if (calendarTimeoutRef.current) clearTimeout(calendarTimeoutRef.current);
-    };
+    setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  useEffect(() => {
-    if (!_hasHydrated) return;
-    const initialTimer = setTimeout(async () => {
-      const q = await fetchQuote();
-      showQuotePopup(q);
-    }, 5000);
-
-    const interval = setInterval(async () => {
-      const q = await fetchQuote();
-      showQuotePopup(q);
-    }, 30 * 60 * 1000);
-
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(interval);
-    };
-  }, [_hasHydrated, showQuotePopup]);
-
-  useEffect(() => {
-    // Auto-open Countdowns widget on every refresh / app load if enabled in preferences
-    if (!_hasHydrated) return;
-    const autoOpen = useDashboardStore.getState().autoOpenCountdowns;
-    if (autoOpen !== false) {
-      useDashboardStore.getState().setIsMobileCountdownsVisible(true);
-    }
-  }, [_hasHydrated]);
-
-
-
-
 
   useEffect(() => {
     const token = localStorage.getItem('dashboard_sync_token');
-    if (!token || token === 'null') {
-      window.location.href = '/';
-    }
+    if (!token || token === 'null') window.location.href = '/';
   }, []);
 
-  const [isOverlayVisible, setIsOverlayVisible] = useState(true);
+  // ALL HOOKS MUST BE ABOVE THIS LINE
+  if (!_hasHydrated) return <LoadingScreen />;
 
-  if (!_hasHydrated) {
-    return <LoadingScreen />;
-  }
-
-  const tasksZ = widgetZIndices.tasks || 50;
-  const stopwatchZ = widgetZIndices.stopwatch || 50;
-  const timerZ = widgetZIndices.timer || 50;
-  const toolbarZ = widgetZIndices.toolbar || 50;
-  const bottomRightZ = Math.max(50, tasksZ, stopwatchZ, timerZ, toolbarZ);
+  const bottomRightZ = Math.max(50, widgetZIndices.tasks || 50, widgetZIndices.stopwatch || 50, widgetZIndices.timer || 50, widgetZIndices.toolbar || 50);
 
   return (
     <>
-      {isOverlayVisible && (
-        <LoadingScreen onFinished={() => setIsOverlayVisible(false)} />
-      )}
+      {isOverlayVisible && <LoadingScreen onFinished={() => setIsOverlayVisible(false)} />}
       <main className="relative overflow-hidden w-full flex-1" style={{ zoom: activeDashboardScale }}>
         <ConnectionStatusToast />
-
         <VideoBackground />
 
-        {/* Background Switcher Controls (Top Left) */}
+        {/* Background Switcher Controls */}
         {!isPanicHidden && (!isHidden || !hideConfig.bgSwitcher) && showBgSwitcher && (
           <div className="fixed top-10 left-3 z-[40] flex flex-col items-center gap-2">
-            <button
-              data-tour="wallpaper-btn"
-              onClick={cycleWallpaper}
-              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/20 shadow-xl transition-all glass-btn hidden md:flex items-center justify-center group"
-            >
+            <button data-tour="wallpaper-btn" onClick={cycleWallpaper} className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/20 shadow-xl transition-all glass-btn hidden md:flex items-center justify-center group">
               <ImageIcon className="w-4 h-4" />
               <Tooltip text="Next Wallpaper" position="right" />
             </button>
@@ -347,349 +149,157 @@ export default function Dashboard() {
         )}
 
         <div className={isPanicHidden ? 'hidden' : 'block'}>
-          {/* Manifestation Board Toggle Control (Top Right on PC, Left Edge on Mobile) */}
+          
           {showManifestationBoard && (
-            <div
-              data-tour="manifestation-toggle"
-              className={`fixed z-[90] sm:z-[40]  ${(!isHidden || !hideConfig.manifestation) ? 'block' : 'hidden'}
-                       left-0 top-[calc(26vh-46px)] sm:left-auto sm:top-10 sm:right-3 
-                       glass-btn sm:bg-transparent sm:glass-btn-none border-l-0 sm:border-l sm:border sm:border-amber-500/40 
-                       rounded-l-none rounded-r-xl sm:rounded-xl 
-                       p-1.5 py-2 sm:p-2 
-                       cursor-pointer flex flex-col items-center justify-center transition-all duration-700
-                       text-amber-300 hover:bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.2)] group
-                       ${isCalendarOpen ? 'max-sm:-translate-x-[120%]' : 'translate-x-0'}
-            `}
-              onClick={toggleManifestationOpen}
-            >
+            <div data-tour="manifestation-toggle"
+              className={`fixed z-[90] sm:z-[40] cursor-pointer flex flex-col items-center justify-center transition-all duration-700 text-amber-300 hover:bg-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.2)] group left-0 top-[calc(26vh-46px)] sm:left-auto sm:top-10 sm:right-3 glass-btn sm:bg-transparent sm:glass-btn-none border-l-0 sm:border-l sm:border sm:border-amber-500/40 rounded-l-none rounded-r-xl sm:rounded-xl p-1.5 py-2 sm:p-2 ${(!isHidden || !hideConfig.manifestation) ? 'block' : 'hidden'} ${isCalendarOpen ? 'max-sm:-translate-x-[120%]' : 'translate-x-0'}`}
+              onClick={toggleManifestationOpen}>
               <Sparkles className="w-5 h-5 sm:w-4 sm:h-4 animate-pulse text-amber-300" />
-              <div className="hidden sm:block w-0 h-0"><Tooltip text="Open Vision Board" position="left" /></div>
-              <div className="block sm:hidden w-0 h-0"><Tooltip text="Open Vision Board" position="right" /></div>
             </div>
           )}
 
-          {/* Quote Popup */}
-          {showQuote && <div className={(!isHidden || !hideConfig.quote) ? 'block' : 'hidden'}>   <QuotePopup /></div>}
-
-          {/* Stats Modal */}
-          {showStats && <div className={(!isHidden || !hideConfig.stats) ? 'block' : 'hidden'}> <StatsModal /> </div>}
-
-          {/* Day Start Modal / Indicator */}
+          {/* Independent UI Components */}
+          {showQuote && <div className={(!isHidden || !hideConfig.quote) ? 'block' : 'hidden'}><QuotePopup /></div>}
+          {showStats && <div className={(!isHidden || !hideConfig.stats) ? 'block' : 'hidden'}><StatsModal /></div>}
           <DayStartModal />
+          {showNotes && <div className={(!isHidden || !hideConfig.notes) ? 'block' : 'hidden'}><NotesManager /></div>}
+          {showPlans && <div className={(!isHidden || !hideConfig.plans) ? 'block' : 'hidden'}><RoadmapManager /></div>}
 
-          {/* Quick Notes */}
-          {showNotes && <div className={(!isHidden || !hideConfig.notes) ? 'block' : 'hidden'}>  <NotesManager /> </div>}
-
-          {/* Roadmap & Plans */}
-          {showPlans && <div className={(!isHidden || !hideConfig.plans) ? 'block' : 'hidden'}>  <RoadmapManager /> </div>}
-
-          {/* Bottom Left Stacked Column Container: Target Countdowns (Top) & Deadlines Modal (Bottom) */}
-          <div
-            style={{
-              bottom: isMobile ? `${148 + dockOffset}px` : `${80 + dockOffset}px`,
-              zIndex: 50
-            }}
-            className="fixed left-1.5 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300"
-          >
-            {/* Top Item: Target Countdowns */}
-            {showCountdowns && (
-              <div
+          {/* Bottom Left Stack: Target Countdowns & Deadline Ticker */}
+          <div style={{ bottom: isMobile ? `${148 + dockOffset}px` : `${80 + dockOffset}px`, zIndex: 50 }} className="fixed left-1.5 sm:left-4 flex flex-col items-start gap-2.5 pointer-events-none transition-all duration-300">
+{showCountdowns && (
+              <div 
                 className={(!isHidden || !hideConfig.countdowns) ? `pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isMobileCountdownsVisible ? '-translate-x-[150%] opacity-0 pointer-events-none h-0 overflow-hidden mb-0' : 'translate-x-0 opacity-100'}` : 'hidden'}
+                onTouchStart={(e) => { dragStartX.current = e.touches[0].clientX; }}
+                onTouchEnd={(e) => {
+                  if (dragStartX.current !== null && dragStartX.current - e.changedTouches[0].clientX > 30) {
+                    useDashboardStore.setState({ isMobileCountdownsVisible: false });
+                  }
+                  dragStartX.current = null;
+                }}
+                onTouchCancel={() => { dragStartX.current = null; }}
+                onMouseDown={(e) => { dragStartX.current = e.clientX; }}
+                onMouseUp={(e) => {
+                  if (dragStartX.current !== null && dragStartX.current - e.clientX > 30) {
+                    useDashboardStore.setState({ isMobileCountdownsVisible: false });
+                  }
+                  dragStartX.current = null;
+                }}
+                onMouseLeave={(e) => {
+                  if (dragStartX.current !== null && dragStartX.current - e.clientX > 30) {
+                    useDashboardStore.setState({ isMobileCountdownsVisible: false });
+                  }
+                  dragStartX.current = null;
+                }}
               >
                 {countdowns.length > 0 ? (() => {
                   const safeIndex = Math.min(activeCountdownIndex, Math.max(0, countdowns.length - 1));
-                  return (
-                    <Countdown
-                      key={countdowns[safeIndex].id}
-                      id={countdowns[safeIndex].id}
-                      hasPrev={safeIndex > 0}
-                      hasNext={safeIndex < countdowns.length - 1}
-                      onPrev={() => setActiveCountdownIndex(p => p - 1)}
-                      onNext={() => setActiveCountdownIndex(p => p + 1)}
-                      onAddNew={() => setActiveCountdownIndex(countdowns.length)}
-                      currentIndex={safeIndex}
-                      totalCount={countdowns.length}
-                    />
-                  );
-                })() : (
-                  <Countdown totalCount={0} onAddNew={() => setActiveCountdownIndex(0)} />
-                )}
+                  return <Countdown key={countdowns[safeIndex].id} id={countdowns[safeIndex].id} hasPrev={safeIndex > 0} hasNext={safeIndex < countdowns.length - 1} onPrev={() => setActiveCountdownIndex(p => p - 1)} onNext={() => setActiveCountdownIndex(p => p + 1)} onAddNew={() => setActiveCountdownIndex(countdowns.length)} currentIndex={safeIndex} totalCount={countdowns.length} />;
+                })() : (<Countdown totalCount={0} onAddNew={() => setActiveCountdownIndex(0)} />)}
+              </div>
+            )}
+            {showDeadlineAlerts && (
+              <div className={(!isHidden || !hideConfig.deadlineAlerts) ? "pointer-events-auto" : "hidden"}><DeadlineTickerWidget /></div>
+            )}
+          </div>
+
+          <div className="absolute inset-0 pointer-events-none z-50"></div>
+
+          {/* Left Drawers */}
+          <>
+            {showCalendar && (
+              <div data-tour="calendar-drawer" onClick={handleCalendarExpand} className={`fixed left-0 top-[26vh] sm:top-[20vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group ${(!isHidden || !hideConfig.calendar) ? 'block' : 'hidden'} ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'}`}>
+                <Calendar size={20} className="sm:w-6 sm:h-6" /><Tooltip text="Open Calendar" position="right" />
               </div>
             )}
 
-            {/* Bottom Item: Deadline Ticker Widget */}
-            {showDeadlineAlerts && (
-              <div className={(!isHidden || !hideConfig.deadlineAlerts) ? "pointer-events-auto" : "hidden"}>
-                <DeadlineTickerWidget />
-              </div>)
-            }
-          </div>
-
-          {/* Draggable Widgets */}
-          <div className="absolute inset-0 pointer-events-none z-50">
-          </div>
-
-          {/* Left Side Drawer: Calendar */}
-          <>
-            {/* Edge Peek Tab for Calendar */}
-            {showCalendar && (<div
-              data-tour="calendar-drawer"
-              className={(!isHidden || !hideConfig.calendar) ? `fixed left-0 top-[26vh] sm:top-[20vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen ? '-translate-x-[120%]' : 'translate-x-0'} group` : 'hidden'}
-              onClick={handleCalendarExpand}
-            >
-              <Calendar size={20} className="sm:w-6 sm:h-6" />
-              <Tooltip text="Open Calendar" position="right" />
-            </div>)}
-
-            {/* Edge Peek Tab for Leaderboard */}
-            <div
-              data-tour="leaderboard-drawer"
-              className={`fixed left-0 top-[calc(26vh+46px)] sm:top-[28vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] 
-                ${isCalendarOpen || isSettingsOpen ? '-translate-x-[120%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'} 
-                z-40 group`}
-              onClick={(e) => {
-                e.stopPropagation(); // Prevents click from bleeding through
-                useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'leaderboard' });
-              }}
-            >
-              <Trophy size={20} className="sm:w-6 sm:h-6" />
-              <Tooltip text="Open Leaderboard" position="right" />
+            <div data-tour="leaderboard-drawer" onClick={(e) => { e.stopPropagation(); useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'leaderboard' }); }} className={`fixed left-0 top-[calc(26vh+46px)] sm:top-[28vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 cursor-pointer shadow-xl flex items-center justify-center z-40 group transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen || isSettingsOpen ? '-translate-x-[120%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'} `}>
+              <Trophy size={20} className="sm:w-6 sm:h-6" /><Tooltip text="Open Leaderboard" position="right" />
             </div>
 
-            {/* Edge Peek Tab for Groups */}
-            <div
-              data-tour="groups-drawer"
-              className={`fixed left-0 top-[calc(26vh+92px)] sm:top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen || isSettingsOpen ? '-translate-x-[120%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'} group`}
-              onClick={(e) => {
-                e.stopPropagation();
-                useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'groups' });
-              }}
-            >
-              <Users size={20} className="sm:w-6 sm:h-6" />
-              <Tooltip text="Open Groups" position="right" />
+            <div data-tour="groups-drawer" onClick={(e) => { e.stopPropagation(); useDashboardStore.setState({ isSettingsOpen: true, settingsActiveTab: 'connect', connectInitialTab: 'groups' }); }} className={`fixed left-0 top-[calc(26vh+92px)] sm:top-[36vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center group transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isCalendarOpen || isSettingsOpen ? '-translate-x-[120%] opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
+              <Users size={20} className="sm:w-6 sm:h-6" /><Tooltip text="Open Groups" position="right" />
             </div>
 
-            {/* Edge Peek Tab for Target Countdowns */}
-            <div
-              className={((!isHidden || !hideConfig.countdowns) && showCountdowns) ? `fixed left-0 top-[calc(26vh+138px)] sm:top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[50] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'} group` : 'hidden'}
-              onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(true)}
-            >
-              <Hourglass size={20} className="sm:w-6 sm:h-6 text-indigo-400 animate-pulse" />
-              <Tooltip text="Open Target Countdowns" position="right" />
+            <div onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(true)} className={`fixed left-0 top-[calc(26vh+138px)] sm:top-[44vh] glass-btn border-l-0 rounded-l-none rounded-r-xl sm:rounded-r-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[50] cursor-pointer shadow-xl flex items-center justify-center group transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${((!isHidden || !hideConfig.countdowns) && showCountdowns) ? 'block' : 'hidden'} ${isMobileCountdownsVisible ? '-translate-x-[120%]' : 'translate-x-0'}`}>
+              <Hourglass size={20} className="sm:w-6 sm:h-6 text-indigo-400 animate-pulse" /><Tooltip text="Open Target Countdowns" position="right" />
             </div>
 
-
-            <div
-              className={`fixed top-[100px] left-0 h-auto max-h-[calc(100vh-140px)] w-auto max-w-[85vw] pb-4 pl-2 pr-0 sm:pl-4 flex flex-col transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] group pointer-events-auto select-none ${isCalendarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-[calc(100%+20px)] pointer-events-none'}`}
-              onTouchStart={(e) => setEdgeTouchStartX(e.touches[0].clientX)}
-              onTouchEnd={(e) => {
-                if (edgeTouchStartX !== null && edgeTouchStartX - e.changedTouches[0].clientX > 15) {
-                  if (isCalendarOpen) useDashboardStore.setState({ isCalendarOpen: false });
-                }
-                setEdgeTouchStartX(null);
-              }}
-              onTouchCancel={() => setEdgeTouchStartX(null)}
-              onMouseDown={(e) => setEdgeTouchStartX(e.clientX)}
-              onMouseUp={(e) => {
-                if (edgeTouchStartX !== null && edgeTouchStartX - e.clientX > 15) {
-                  if (isCalendarOpen) useDashboardStore.setState({ isCalendarOpen: false });
-                }
-                setEdgeTouchStartX(null);
-              }}
-              onMouseLeave={(e) => {
-                if (edgeTouchStartX !== null && edgeTouchStartX - e.clientX > 15) {
-                  if (isCalendarOpen) useDashboardStore.setState({ isCalendarOpen: false });
-                }
-                setEdgeTouchStartX(null);
-              }}
-            >
-              {/* When closed, disable clicks on the calendar so you don't accidentally press its buttons when tapping the edge */}
-              <div className={`w-full h-full relative ${!isCalendarOpen ? 'pointer-events-none' : ''}`}>
-                <MiniCalendar />
-              </div>
+            <div onTouchStart={(e) => { dragStartX.current = e.touches[0].clientX; }} onTouchEnd={(e) => { if (dragStartX.current !== null && dragStartX.current - e.changedTouches[0].clientX > 30) { useDashboardStore.setState({ isCalendarOpen: false }); } dragStartX.current = null; }} onTouchCancel={() => { dragStartX.current = null; }} onMouseDown={(e) => { dragStartX.current = e.clientX; }} onMouseUp={(e) => { if (dragStartX.current !== null && dragStartX.current - e.clientX > 30) { useDashboardStore.setState({ isCalendarOpen: false }); } dragStartX.current = null; }} onMouseLeave={(e) => { if (dragStartX.current !== null && dragStartX.current - e.clientX > 30) { useDashboardStore.setState({ isCalendarOpen: false }); } dragStartX.current = null; }} className={`fixed top-[100px] left-0 h-auto max-h-[calc(100vh-140px)] w-auto max-w-[85vw] pb-4 pl-2 pr-0 sm:pl-4 flex flex-col transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] group select-none ${isCalendarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-[calc(100%+20px)] pointer-events-none'}`}>
+              <div className={`w-full h-full relative ${!isCalendarOpen ? 'pointer-events-none' : ''}`}><MiniCalendar /></div>
             </div>
           </>
 
-          {/* Right Side Drawer: Tasks */}
+          {/* Right Drawers */}
           {showTasks && (
             <>
-              {/* Edge Peek Tab for Task Manager */}
-              <div
-                data-tour="task-drawer"
-                className={(!isHidden || !hideConfig.tasks) ? `fixed right-0 top-[20vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTaskManagerOpen ? 'translate-x-[120%]' : 'translate-x-0'} group` : 'hidden'}
-                onClick={() => { if (!isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: true }) }}
-              >
-                <ListTodo size={20} className="sm:w-6 sm:h-6" />
-                <Tooltip text="Open Tasks" position="left" />
+              <div data-tour="task-drawer" onClick={() => { if (!isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: true }) }} className={`fixed right-0 top-[20vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center group transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${(!isHidden || !hideConfig.tasks) ? 'block' : 'hidden'} ${isTaskManagerOpen ? 'translate-x-[120%]' : 'translate-x-0'}`}>
+                <ListTodo size={20} className="sm:w-6 sm:h-6" /><Tooltip text="Open Tasks" position="left" />
               </div>
-
-              <div
-                className={`fixed top-[140px] right-0 h-auto max-h-[calc(100vh-200px)] w-[320px] sm:w-[340px] max-w-[85vw] pb-4 pr-2 pl-0 sm:pr-4 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] ${isTaskManagerOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}
-                onTouchStart={(e) => setEdgeTouchStartX(e.touches[0].clientX)}
-                onTouchEnd={(e) => {
-                  if (edgeTouchStartX !== null && e.changedTouches[0].clientX - edgeTouchStartX > 60) {
-                    if (isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: false });
-                  }
-                  setEdgeTouchStartX(null);
-                }}
-                onTouchCancel={() => setEdgeTouchStartX(null)}
-                onMouseDown={(e) => setEdgeTouchStartX(e.clientX)}
-                onMouseUp={(e) => {
-                  if (edgeTouchStartX !== null && e.clientX - edgeTouchStartX > 60) {
-                    if (isTaskManagerOpen) useDashboardStore.setState({ isTaskManagerOpen: false });
-                  }
-                  setEdgeTouchStartX(null);
-                }}
-                onMouseLeave={() => setEdgeTouchStartX(null)}
-              >
-                <div className="w-full h-full relative">
-                  <TaskManager />
-                </div>
+              <div onTouchStart={(e) => { dragStartX.current = e.touches[0].clientX; }} onTouchEnd={(e) => { if (dragStartX.current !== null && e.changedTouches[0].clientX - dragStartX.current > 30) { useDashboardStore.setState({ isTaskManagerOpen: false }); } dragStartX.current = null; }} onTouchCancel={() => { dragStartX.current = null; }} onMouseDown={(e) => { dragStartX.current = e.clientX; }} onMouseUp={(e) => { if (dragStartX.current !== null && e.clientX - dragStartX.current > 30) { useDashboardStore.setState({ isTaskManagerOpen: false }); } dragStartX.current = null; }} onMouseLeave={(e) => { if (dragStartX.current !== null && e.clientX - dragStartX.current > 30) { useDashboardStore.setState({ isTaskManagerOpen: false }); } dragStartX.current = null; }} className={`fixed top-[140px] right-0 h-auto max-h-[calc(100vh-200px)] w-[320px] sm:w-[340px] max-w-[85vw] pb-4 pr-2 pl-0 sm:pr-4 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-[100] ${isTaskManagerOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}>
+                <div className="w-full h-full relative"><TaskManager /></div>
               </div>
             </>
           )}
 
-          {/* Edge Peek Tab for News */}
-          <>
-            <div className={(!isHidden || !hideConfig.settingsBtn) ? 'block' : 'hidden'}>
-              <div
-                data-tour="news-drawer"
-                className={`fixed right-0 top-[28vh] sm:top-[30vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isNewsOpen ? 'translate-x-[120%]' : 'translate-x-0'} group`}
-                onClick={() => useDashboardStore.setState({ isNewsOpen: true })}
-              >
-                <div className="relative flex flex-col items-center">
-                  <Newspaper size={20} className="sm:w-6 sm:h-6 text-blue-400" />
-                  {hasUnreadNews && (
-                    <span className="absolute -top-3 -right-3 bg-blue-500 text-white text-[8px] font-black px-1 py-0.5 rounded shadow-[0_0_10px_rgba(59,130,246,0.8)] animate-pulse border border-black z-10 uppercase tracking-widest">
-                      NEW
-                    </span>
-                  )}
-                </div>
-                <Tooltip text="What's New" position="left" />
+          <div className={(!isHidden || !hideConfig.settingsBtn) ? 'block' : 'hidden'}>
+            <div data-tour="news-drawer" onClick={() => useDashboardStore.setState({ isNewsOpen: true })} className={`fixed right-0 top-[28vh] sm:top-[30vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center group transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isNewsOpen ? 'translate-x-[120%]' : 'translate-x-0'}`}>
+              <div className="relative flex flex-col items-center">
+                <Newspaper size={20} className="sm:w-6 sm:h-6 text-blue-400" />
+                {hasUnreadNews && <span className="absolute -top-3 -right-3 bg-blue-500 text-white text-[8px] font-black px-1 py-0.5 rounded shadow-[0_0_10px_rgba(59,130,246,0.8)] animate-pulse border border-black z-10 uppercase tracking-widest">NEW</span>}
               </div>
-              <NewsModal />
             </div>
-          </>
+            <NewsModal />
+          </div>
 
-          {/* BigClock */}
-          {
-            <div className={(showClock || showTodayWork || showTimer || showStopwatch) ? 'block' : 'hidden'}>
-              <div
-                style={{ zIndex: widgetZIndices.clock || 50 }}
-                className={`absolute pointer-events-none transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTimetableOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100'} ${currentBgType === 'image'
-                  ? 'top-32 left-1/2 -translate-x-1/2 translate-y-0 scale-[0.85] md:scale-100 md:top-40 origin-top'
-                  : 'top-32 left-1/2 -translate-x-1/2 md:top-40 md:left-10 md:translate-x-0 translate-y-0 scale-[0.85] md:scale-100 origin-top md:origin-top-left'
-                  }`}>
-                <DraggableClock>
-                  <BigClock />
-                </DraggableClock>
-              </div>
-            </div>}
+          {/* Center Display Components */}
+          <div className={(showClock || showTodayWork || showTimer || showStopwatch) ? 'block' : 'hidden'}>
+            <div style={{ zIndex: widgetZIndices.clock || 50 }} className={`absolute pointer-events-none transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] origin-top md:origin-top-left ${isTimetableOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100'} ${currentBgType === 'image' ? 'top-32 left-1/2 -translate-x-1/2 translate-y-0 scale-[0.85] md:scale-100 md:top-40 origin-top' : 'top-32 left-1/2 -translate-x-1/2 md:top-40 md:left-10 md:translate-x-0 translate-y-0 scale-[0.85] md:scale-100'}`}>
+              <DraggableClock><BigClock /></DraggableClock>
+            </div>
+          </div>
 
-          {/* Bottom Center (Above Dock): Timetable */}
           {showTimetable && (
             <div className={(!isHidden || !hideConfig.timetable) ? 'block' : 'hidden'}>
-              <div
-                style={{
-                  zIndex: widgetZIndices.timetable || 50,
-                  bottom: isMobile ? `${96 + dockOffset}px` : `${160 + dockOffset}px`
-                }}
-                className={
-                  'block absolute left-1/2 -translate-x-1/2 w-[calc(100vw)] md:w-auto flex flex-col items-center scale-[0.9] md:scale-100 origin-bottom pointer-events-none transition-all duration-300'
-                }
-              >
-                {/* The Expanded Timetable */}
-                <div
-                  onPointerDown={() => bringToFront('timetable')}
-                  className={`flex flex-col items-center gap-2 absolute bottom-0 origin-bottom transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] w-full md:w-auto ${isTimetableOpen ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'}`}
-                >
+              <div style={{ zIndex: widgetZIndices.timetable || 50, bottom: isMobile ? `${96 + dockOffset}px` : `${160 + dockOffset}px` }} className="block absolute left-1/2 -translate-x-1/2 w-[calc(100vw)] md:w-auto flex flex-col items-center scale-[0.9] md:scale-100 origin-bottom pointer-events-none transition-all duration-300">
+                <div onPointerDown={() => bringToFront('timetable')} className={`flex flex-col items-center gap-2 absolute bottom-0 origin-bottom w-full md:w-auto transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isTimetableOpen ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'}`}>
                   <Timetable />
-                  <button
-                    onClick={() => setIsTimetableOpen(false)}
-                    className="bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-3 text-white/60 hover:text-white hover:bg-black/60 transition-colors flex items-center gap-2 shadow-xl"
-                  >
-                    <ChevronDown size={18} />
-                  </button>
+                  <button onClick={() => setIsTimetableOpen(false)} className="bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-3 text-white/60 hover:text-white hover:bg-black/60 transition-colors flex items-center gap-2 shadow-xl"><ChevronDown size={18} /></button>
                 </div>
-
-                {/* The Closed Button */}
-                <div
-                  data-tour="timetable-btn"
-                  onPointerDown={() => bringToFront('timetable')}
-                  className={`absolute bottom-0 origin-bottom transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isTimetableOpen ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto delay-300' : 'opacity-0 translate-y-8 scale-50 pointer-events-none'}`}
-                >
-                  <button
-                    onClick={() => setIsTimetableOpen(true)}
-                    className="bg-black/20 backdrop-blur-md border border-white/10 rounded-full px-3 py-3 text-white/80 hover:text-white hover:bg-black/40 transition-colors flex items-center gap-2 shadow-xl hover:scale-105 group"
-                  >
-                    <CalendarDays size={20} className="text-purple-400" />
-                    <Tooltip text="Timetable" position="top" />
-                  </button>
+                <div data-tour="timetable-btn" onPointerDown={() => bringToFront('timetable')} className={`absolute bottom-0 origin-bottom transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isTimetableOpen ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto delay-300' : 'opacity-0 translate-y-8 scale-50 pointer-events-none'}`}>
+                  <button onClick={() => setIsTimetableOpen(true)} className="bg-black/20 backdrop-blur-md border border-white/10 rounded-full px-3 py-3 text-white/80 hover:text-white hover:bg-black/40 transition-colors flex items-center gap-2 shadow-xl hover:scale-105 group"><CalendarDays size={20} className="text-purple-400" /><Tooltip text="Timetable" position="top" /></button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Bottom Center: Dock */}
           {showDock && (
-            <div
-              style={{
-                bottom: isMobile ? `${8 + dockOffset}px` : `${72 + dockOffset}px`,
-                transform: `translateX(-50%) scale(${isMobile ? mobileDashboardScale : dockScale})`,
-                transformOrigin: 'bottom center',
-              }}
-              className={(!isHidden || !hideConfig.dock) ? "block absolute left-1/2 z-50 transition-all duration-300 w-[calc(100vw-16px)] max-w-md sm:w-auto sm:max-w-none flex justify-center" : 'hidden'}
-            >
+            <div style={{ bottom: isMobile ? `${8 + dockOffset}px` : `${72 + dockOffset}px`, transform: `translateX(-50%) scale(${isMobile ? mobileDashboardScale : dockScale})`, transformOrigin: 'bottom center' }} className={(!isHidden || !hideConfig.dock) ? "block absolute left-1/2 z-50 transition-all duration-300 w-[calc(100vw-16px)] max-w-md sm:w-auto sm:max-w-none flex justify-center" : 'hidden'}>
               <Dock onOpenNotes={() => console.log('Open Notes clicked')} />
             </div>
           )}
 
-
-
           {/* Bottom Right Container */}
-          <div
-            style={{ bottom: `${rightWidgetsOffset + 30}px`, zIndex: bottomRightZ }}
-            className="absolute right-1 sm:right-2 md:right-2 flex items-end transition-all duration-300 pointer-events-none scale-[0.75] sm:scale-85 md:scale-100 origin-bottom-right"
-          >
-            {/* TaskManager & Timer Group */}
+          <div style={{ bottom: `${rightWidgetsOffset + 30}px`, zIndex: bottomRightZ }} className="absolute right-1 sm:right-2 md:right-2 flex items-end transition-all duration-300 pointer-events-none scale-[0.75] sm:scale-85 md:scale-100 origin-bottom-right">
             <div className="flex flex-col items-end gap-2 pointer-events-none mr-1 md:mr-[10px] relative z-20">
               <div className="flex flex-col md:flex-row items-end md:items-start gap-2 md:gap-3 pointer-events-auto">
-                <div className={(!isHidden || !hideConfig.stopwatch) && showStopwatch ? '' : 'hidden'}>
-                  <Stopwatch />
-                </div>
-                <div className={((!isHidden || !hideConfig.timer) && showTimer) || isAlarmPlaying ? '' : 'hidden'}>
-                  <Timer />
-                </div>
+                <div className={(!isHidden || !hideConfig.stopwatch) && showStopwatch ? '' : 'hidden'}><Stopwatch /></div>
+                <div className={((!isHidden || !hideConfig.timer) && showTimer) || isAlarmPlaying ? '' : 'hidden'}><Timer /></div>
               </div>
             </div>
-
-            {/* Vertical Icons Toolbar (Side toggle btns scale with container) */}
-            <div className="pointer-events-none relative z-10">
-              <RightToolbar />
-            </div>
+            <div className="pointer-events-none relative z-10"><RightToolbar /></div>
           </div>
         </div>
 
-        {/* Settings Modal */}
         <SettingsModal />
-
-        {/* Auto Update Checker */}
         <StartupUpdateChecker />
-
-        {/* Full Screen Manifestation Vision Overlay */}
         <ManifestationBoard />
-
-        {/* Global Friend Request Notification */}
         <FriendRequestPopup />
         <GroupRequestPopup />
-
-        {/* Global Developer Broadcast Notification */}
         <GlobalBroadcastPopup />
-
-        {/* Guided Onboarding Tour */}
         <GuidedTour />
 
-      </main >
+      </main>
     </>
   );
 }

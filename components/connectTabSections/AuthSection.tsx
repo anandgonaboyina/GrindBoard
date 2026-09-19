@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { setAuthTransition } from '@/store/dashboardStore';
+import { setAuthTransition } from '@/store/dashboardStore/sync';
 import { ShieldAlert, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthSection() {

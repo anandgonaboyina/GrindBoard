@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { ShieldCheck, Wifi, WifiOff, Zap, ExternalLink, Quote } from 'lucide-react';
-import { setBypassCloudSync, setAbortInstantLoad, useDashboardStore } from '@/store/dashboardStore';
+import { useDashboardStore } from "@/store/dashboardStore";
+import { setBypassCloudSync, setAbortInstantLoad} from "@/store/dashboardStore/sync";
 import { useTaskStore } from '@/store/taskStore';
 import { useTimetableStore } from '@/store/timetableStore';
 import { useNoteStore } from '@/store/noteStore';
