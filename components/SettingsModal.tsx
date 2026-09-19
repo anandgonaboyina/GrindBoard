@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { X, Settings as SettingsIcon, Sliders, MonitorPlay, RefreshCw, Clock, MessageSquare, Bell, EyeOff, Database, Globe, BookOpen, Info, ChevronLeft, BadgeCheck, Send, Briefcase } from 'lucide-react';
+import { X, Settings as SettingsIcon, Sliders, MonitorPlay, RefreshCw, Clock, MessageSquare, Bell, EyeOff, Database, Globe, BookOpen, Info, ChevronLeft, BadgeCheck, Send, Briefcase, Newspaper } from 'lucide-react';
 
 // Global Modals
 import ConnectTab from './ConnectTab';
@@ -21,7 +21,7 @@ import QuotesTab from './settings/QuotesTab';
 import AboutTab from './settings/AboutTab';
 
 export default function SettingsModal() {
-  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab } = useDashboardStore();
+  const { settingsActiveTab, setSettingsActiveTab, isSettingsOpen, toggleSettings, connectInitialTab, hasUnreadNews, toggleNews } = useDashboardStore();
 
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -350,6 +350,21 @@ export default function SettingsModal() {
                   <span className="text-[10px] font-bold text-white/90">Anand Kumar</span>
                   <span className="text-[8px] text-blue-300 font-bold uppercase tracking-wider">about Developer</span>
                 </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  toggleSettings();
+                  setIsMobileDetailView(false);
+                  useDashboardStore.setState({ isNewsOpen: true });
+                }}
+                className={`flex relative w-full items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-xs font-bold text-white/60 hover:bg-white/5 hover:text-white border border-transparent`}
+              >
+                <div className="relative">
+                  <Newspaper className="w-3.5 h-3.5 text-blue-400" />
+                  {hasUnreadNews && <span className="absolute -top-1 -right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(59,130,246,0.8)] z-10" />}
+                </div>
+                What's New
               </button>
 
               <button

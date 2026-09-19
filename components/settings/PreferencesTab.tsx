@@ -16,7 +16,7 @@ export default React.memo(function PreferencesTab({ setInfoModalKey, setIsWallpa
     setTheme,
     is24HourClock, toggle24HourClock,
     autoOpenCountdowns, setAutoOpenCountdowns,
-    deadlineAlertDays, setDeadlineAlertDays,
+    deadlineAlertDays, setDeadlineAlertDays, disableDeadlineLockOnToday, setDisableDeadlineLockOnToday,
     dashboardScale, setDashboardScale,
     mobileDashboardScale, setMobileDashboardScale,
     clockScale, setClockScale,
@@ -189,6 +189,19 @@ export default React.memo(function PreferencesTab({ setInfoModalKey, setIsWallpa
                 />
                 <span className="text-white/60 text-[9px] font-bold uppercase">days before</span>
               </div>
+            </div>
+            {/* Deadline Auto-Lock */}
+            <div className="flex flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
+              <div className="flex items-start gap-2.5 min-w-0">
+                <Bell className="text-yellow-400 w-4 h-4 mt-0.5 shrink-0" />
+                <div className="flex flex-col min-w-0">
+                  <h5 className="font-bold text-[11px] md:text-xs text-white/90 break-words">Unlock Today's Deadlines</h5>
+                  <p className="text-[9px] md:text-[10px] text-white/50 leading-snug mt-0.5 break-words">Allow closing the deadline alert even when a deadline is due today.</p>
+                </div>
+              </div>
+              <button onClick={() => setDisableDeadlineLockOnToday(!disableDeadlineLockOnToday)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${disableDeadlineLockOnToday ? 'bg-yellow-500' : 'bg-white/20'}`}>
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${disableDeadlineLockOnToday ? 'translate-x-4.5' : 'translate-x-1'}`} />
+              </button>
             </div>
           </div>
         </div>

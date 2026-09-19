@@ -243,12 +243,7 @@ export default function Dashboard() {
           )}
 
           <div className={(!isHidden || !hideConfig.settingsBtn) ? 'block' : 'hidden'}>
-            <div data-tour="news-drawer" onClick={() => useDashboardStore.setState({ isNewsOpen: true })} className={`fixed right-0 top-[28vh] sm:top-[30vh] glass-btn border-r-0 rounded-r-none rounded-l-xl sm:rounded-l-2xl p-1.5 py-2 sm:p-2.5 sm:py-3 z-[90] cursor-pointer shadow-xl flex items-center justify-center group transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isNewsOpen ? 'translate-x-[120%]' : 'translate-x-0'}`}>
-              <div className="relative flex flex-col items-center">
-                <Newspaper size={20} className="sm:w-6 sm:h-6 text-blue-400" />
-                {hasUnreadNews && <span className="absolute -top-3 -right-3 bg-blue-500 text-white text-[8px] font-black px-1 py-0.5 rounded shadow-[0_0_10px_rgba(59,130,246,0.8)] animate-pulse border border-black z-10 uppercase tracking-widest">NEW</span>}
-              </div>
-            </div>
+
             <NewsModal />
           </div>
 

@@ -154,7 +154,7 @@ export default function DeadlineAlerts() {
 
                     {/* Delete Button with Confirmation */}
                     <div className="flex items-center gap-1">
-                      <Tooltip text="Delete deadline from calendar" position="left">
+                      <Tooltip text="Delete deadline from calendar" position="right">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

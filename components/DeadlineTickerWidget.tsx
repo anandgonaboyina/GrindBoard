@@ -6,7 +6,7 @@ import { Flame, Calendar, ChevronDown, ChevronUp, X, AlertTriangle, Clock, Info,
 import Tooltip from './Tooltip';
 import ScrollableWithArrows from '@/components/ScrollableWithArrows'
 export default function DeadlineTickerWidget() {
-  const { deadlines, deadlineAlertDays, dismissedDeadlineAlerts, deleteDeadline, toggleDeadlineDone, dockOffset, widgetZIndices, viewingFriend } = useDashboardStore();
+  const { deadlines, deadlineAlertDays, dismissedDeadlineAlerts, deleteDeadline, toggleDeadlineDone, dockOffset, widgetZIndices, viewingFriend, disableDeadlineLockOnToday, setDisableDeadlineLockOnToday } = useDashboardStore();
   const [mounted, setMounted] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false); // Always expand on app open
   const [showEmptyInfo, setShowEmptyInfo] = useState(false);
@@ -23,6 +23,8 @@ export default function DeadlineTickerWidget() {
     deadlineText: '',
     isDone: false,
   });
+
+  const dragStartX = React.useRef<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -103,7 +105,7 @@ export default function DeadlineTickerWidget() {
                 </div>
                 <span className="text-[10px] sm:text-xs font-bold text-white tracking-wide">No Deadlines Today 🎉</span>
               </div>
-              <Tooltip text="Close" position="left">
+              <Tooltip text="Close" position="right">
                 <button
                   onClick={() => setShowEmptyInfo(false)}
                   className="p-0.5 text-white/40 hover:text-white rounded hover:bg-white/10 transition-colors"
@@ -184,7 +186,7 @@ export default function DeadlineTickerWidget() {
 
   // Check if there are pending (non-done) deadlines for TODAY
   const pendingTodayCount = todayAlerts.filter((d) => !d.isDone).length;
-  const hasPendingToday = pendingTodayCount > 0;
+  const hasPendingToday = pendingTodayCount > 0 && !disableDeadlineLockOnToday;
 
   // Group upcoming by exact days ahead
   const upcomingGrouped: { [days: number]: typeof deadlines } = {};
@@ -218,6 +220,12 @@ export default function DeadlineTickerWidget() {
         </div>
       ) : (
         <div
+        onTouchStart={(e) => { dragStartX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => { 
+          if (dragStartX.current !== null && dragStartX.current - e.changedTouches[0].clientX > 50) {
+            if (!hasPendingToday) setIsMinimized(true);
+          }
+        }}
         className="pointer-events-auto w-[200px] xs:w-[220px] sm:w-[320px] max-h-[170px] xs:max-h-[200px] sm:max-h-[380px] flex flex-col rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
         >
           {/* Header Bar with Today's Date */}
@@ -244,7 +252,7 @@ export default function DeadlineTickerWidget() {
 
               {/* Minimize Toggle: Disabled if any pending deadlines exist for Today */}
               {hasPendingToday ? (
-                <Tooltip text="Cannot contract widget while today deadlines are pending!" position="left">
+                <Tooltip text="you can disable lock in settings" position="right">
                   <div
                     className="p-0.5 rounded-md text-white/30 cursor-not-allowed flex items-center gap-0.5"
                   >
@@ -252,7 +260,7 @@ export default function DeadlineTickerWidget() {
                   </div>
                 </Tooltip>
               ) : (
-                <Tooltip text="Minimize alerts" position="left">
+                <Tooltip text="Minimize alerts" position="right">
                   <button
                     onClick={() => setIsMinimized(true)}
                     className="p-0.5 hover:bg-white/10 rounded-md text-white/50 hover:text-white transition-colors"
@@ -280,9 +288,19 @@ export default function DeadlineTickerWidget() {
                       Today's ({todayAlerts.length})
                     </span>
                   </div>
-                  <span className="text-[7.5px] sm:text-[8.5px] font-mono uppercase bg-red-500 text-white px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded font-bold shadow-sm">
-                    URGENT
-                  </span>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Tooltip text={disableDeadlineLockOnToday ? "Auto-Lock Disabled" : "Auto-Lock Enabled"} position="right">
+                      <button 
+                        onClick={() => setDisableDeadlineLockOnToday(!disableDeadlineLockOnToday)}
+                        className={`p-0.5 rounded transition-colors ${!disableDeadlineLockOnToday ? 'text-red-300 bg-red-500/20 hover:bg-red-500/40' : 'text-white/40 hover:text-white/80 bg-white/5 hover:bg-white/10'}`}
+                      >
+                        <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                      </button>
+                    </Tooltip>
+                    <span className="text-[7.5px] sm:text-[8.5px] font-mono uppercase bg-red-500 text-white px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded font-bold shadow-sm">
+                      URGENT
+                    </span>
+                  </div>
                 </div>
 
                 {/* List of Today's Items */}
@@ -317,7 +335,7 @@ export default function DeadlineTickerWidget() {
                       </div>
 
                       {/* Action Button: Triggers Choice Modal */}
-                      <Tooltip text="Mark as Done or Delete" position="left">
+                      <Tooltip text="Mark as Done or Delete" position="right">
                         <button
                           onClick={() => setActionModal({
                             isOpen: true,
@@ -393,7 +411,7 @@ export default function DeadlineTickerWidget() {
                           </div>
                         </div>
 
-                        <Tooltip text="Mark as Done or Delete" position="left">
+                        <Tooltip text="Mark as Done or Delete" position="right">
                           <button
                             onClick={() => setActionModal({
                               isOpen: true,

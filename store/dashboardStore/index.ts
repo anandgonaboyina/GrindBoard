@@ -563,6 +563,12 @@ export const useDashboardStore = create<DashboardState>()(
         pushDeadlinesToDB(payload);
         return payload;
       }),
+      disableDeadlineLockOnToday: false,
+      setDisableDeadlineLockOnToday: (disabled) => set(() => {
+        const payload = { disableDeadlineLockOnToday: disabled };
+        pushDeadlinesToDB(payload);
+        return payload;
+      }),
 
       isDeadlinesCollapsed: false,
       setIsDeadlinesCollapsed: (collapsed) => set({ isDeadlinesCollapsed: collapsed }),

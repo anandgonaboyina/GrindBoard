@@ -248,6 +248,8 @@ export interface DashboardState {
   setDeadlineAlertDays: (days: number) => void;
   dismissedDeadlineAlerts: string[];
   dismissDeadlineAlert: (id: string) => void;
+  disableDeadlineLockOnToday: boolean;
+  setDisableDeadlineLockOnToday: (disabled: boolean) => void;
   isDeadlinesCollapsed: boolean;
   setIsDeadlinesCollapsed: (collapsed: boolean) => void;
 
