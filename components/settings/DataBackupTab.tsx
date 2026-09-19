@@ -16,6 +16,11 @@ interface DataBackupTabProps {
 export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertModal, setConfirmModal }: DataBackupTabProps) {
   const [isProcessingBackup, setIsProcessingBackup] = useState(false);
   const clearAllData = useDashboardStore((state) => state.clearAllData);
+  const [isDemoUser, setIsDemoUser] = useState(false);
+  
+  React.useEffect(() => {
+    setIsDemoUser(localStorage.getItem('dashboard_username')?.toLowerCase() === 'demo_user');
+  }, []);
 
   const processBackupDownload = useCallback((data: any, filename: string, typeName: string) => {
     setIsProcessingBackup(true);
@@ -499,6 +504,10 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
         </div>
         <button
           onClick={() => {
+            if (isDemoUser) {
+              showAlertModal('Demo Mode', 'This action is disabled in demo mode.');
+              return;
+            }
             setConfirmModal({
               isOpen: true,
               title: 'Clear Tasks & Plans',
@@ -512,7 +521,7 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
               }
             });
           }}
-          className="w-full sm:w-auto justify-center px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-200 rounded-lg text-[10px] font-bold border border-orange-500/40 flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-sm"
+          className={`w-full sm:w-auto justify-center px-4 py-2 ${isDemoUser ? 'bg-gray-500/20 text-gray-400 border-gray-500/40 cursor-not-allowed' : 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-200 border-orange-500/40'} rounded-lg text-[10px] font-bold border flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-sm`}
         >
           Clear Tasks
         </button>
@@ -530,6 +539,10 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
         </div>
         <button
           onClick={() => {
+            if (isDemoUser) {
+              showAlertModal('Demo Mode', 'This action is disabled in demo mode.');
+              return;
+            }
             setConfirmModal({
               isOpen: true,
               title: 'Reset Timetable',
@@ -541,7 +554,7 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
               }
             });
           }}
-          className="w-full sm:w-auto justify-center px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 rounded-lg text-[10px] font-bold border border-purple-500/40 flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-sm"
+          className={`w-full sm:w-auto justify-center px-4 py-2 ${isDemoUser ? 'bg-gray-500/20 text-gray-400 border-gray-500/40 cursor-not-allowed' : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border-purple-500/40'} rounded-lg text-[10px] font-bold border flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-sm`}
         >
           Reset Schedule
         </button>
@@ -559,6 +572,10 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
         </div>
         <button
           onClick={() => {
+            if (isDemoUser) {
+              showAlertModal('Demo Mode', 'This action is disabled in demo mode.');
+              return;
+            }
             setConfirmModal({
               isOpen: true,
               title: 'Factory Reset Profile',
@@ -570,7 +587,7 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
               }
             });
           }}
-          className="w-full sm:w-auto justify-center px-4 py-2 bg-red-600/30 hover:bg-red-600 text-white rounded-lg text-[10px] font-bold border border-red-500/50 flex items-center gap-1.5 whitespace-nowrap transition-all shadow-md active:scale-95"
+          className={`w-full sm:w-auto justify-center px-4 py-2 ${isDemoUser ? 'bg-gray-500/20 text-gray-400 border-gray-500/40 cursor-not-allowed' : 'bg-red-600/30 hover:bg-red-600 text-white border-red-500/50'} rounded-lg text-[10px] font-bold border flex items-center gap-1.5 whitespace-nowrap transition-all shadow-md active:scale-95`}
         >
           <Trash2 className="w-3.5 h-3.5" /> Reset Everything
         </button>

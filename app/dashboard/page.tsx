@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { 
   ChevronDown, CalendarDays, Calendar, ListTodo, 
-  ImageIcon, Newspaper, Trophy, Users, Hourglass, Sparkles 
+  ImageIcon, Newspaper, Trophy, Users, Hourglass, Sparkles, Loader2 
 } from "lucide-react";
 
 // Components
@@ -114,6 +114,9 @@ export default function Dashboard() {
   const showManifestationBoard = useDashboardStore((state) => state.showManifestationBoard);
   const showSettingsBtn = useDashboardStore((state) => state.showSettingsBtn);
 
+  const [showDemoRegisterBtn, setShowDemoRegisterBtn] = useState(false);
+  const [isRedirectingToRegister, setIsRedirectingToRegister] = useState(false);
+  
   useEffect(() => {
     setIsMobile(window.innerWidth <= 768);
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -123,7 +126,49 @@ export default function Dashboard() {
 
   useEffect(() => {
     const token = localStorage.getItem('dashboard_sync_token');
-    if (!token || token === 'null') window.location.href = '/';
+    if (!token || token === 'null') {
+      window.location.href = '/';
+      return;
+    }
+
+    const username = localStorage.getItem('dashboard_username');
+    if (username?.toLowerCase() === 'demo_user') {
+      const demoLogoutTimeout = setTimeout(() => {
+        Object.keys(localStorage).forEach(key => {
+          if (
+            key.startsWith('dashboard') || 
+            key.startsWith('tasks') || 
+            key.startsWith('notes') || 
+            key.startsWith('timetable') || 
+            key.startsWith('settings')
+          ) {
+            localStorage.removeItem(key);
+          }
+        });
+        localStorage.removeItem('stopwatch_paused_secs');
+        localStorage.removeItem('stopwatch_last_active');
+        fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: '', username: '' })
+        }).catch(() => {});
+        
+        import('@/lib/indexedDB').then(({ clearAllMediaFromDB }) => {
+          clearAllMediaFromDB().catch(console.error).finally(() => {
+            window.location.href = '/';
+          });
+        });
+      }, 25 * 60 * 1000); // 25 minutes
+
+      const demoPromptInterval = setInterval(() => {
+        setShowDemoRegisterBtn(true);
+      }, 5 * 60 * 1000); // every 5 minutes
+
+      return () => {
+        clearTimeout(demoLogoutTimeout);
+        clearInterval(demoPromptInterval);
+      };
+    }
   }, []);
 
   // ALL HOOKS MUST BE ABOVE THIS LINE
@@ -294,6 +339,60 @@ export default function Dashboard() {
         <GlobalBroadcastPopup />
         <GuidedTour />
 
+        {showDemoRegisterBtn && (
+          <div className="fixed inset-0 pointer-events-none z-[99999] flex items-center justify-center">
+            <div className="pointer-events-auto flex flex-col items-center p-5 bg-slate-900/90 backdrop-blur-xl rounded-2xl border border-indigo-500/40 shadow-[0_0_50px_rgba(79,70,229,0.25)] animate-in fade-in zoom-in slide-in-from-bottom-10 duration-500">
+              <h3 className="text-white font-bold text-lg mb-2 flex items-center gap-2">
+                <Sparkles className="text-indigo-400 w-5 h-5"/> Like what you see?
+              </h3>
+              <p className="text-slate-300 text-xs text-center max-w-[280px] mb-5 leading-relaxed">
+                You're currently in Demo Mode. Register your own free account to save your progress permanently and unlock all features!
+              </p>
+              <div className="flex gap-3 w-full">
+                <button 
+                  onClick={() => setShowDemoRegisterBtn(false)} 
+                  className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold transition-colors"
+                >
+                  Later
+                </button>
+                <button
+                  disabled={isRedirectingToRegister}
+                  onClick={() => {
+                    setIsRedirectingToRegister(true);
+                    Object.keys(localStorage).forEach(key => {
+                      if (
+                        key.startsWith('dashboard') || 
+                        key.startsWith('tasks') || 
+                        key.startsWith('notes') || 
+                        key.startsWith('timetable') || 
+                        key.startsWith('settings')
+                      ) {
+                        localStorage.removeItem(key);
+                      }
+                    });
+                    localStorage.removeItem('stopwatch_paused_secs');
+                    localStorage.removeItem('stopwatch_last_active');
+                    fetch('/api/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: '', username: '' }) }).catch(() => {});
+                    import('@/lib/indexedDB').then(({ clearAllMediaFromDB }) => {
+                      clearAllMediaFromDB().catch(console.error).finally(() => {
+                        window.location.href = '/?mode=register';
+                      });
+                    });
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl ${isRedirectingToRegister ? 'bg-indigo-700 opacity-70' : 'bg-indigo-500 hover:bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.4)] hover:scale-105'} text-white text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5`}
+                >
+                  {isRedirectingToRegister ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" /> Wait...
+                    </>
+                  ) : (
+                    'Register Now'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );

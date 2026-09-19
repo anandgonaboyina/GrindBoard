@@ -35,7 +35,12 @@ export const useDashboardStore = create<DashboardState>()(
       setLockedWallpaper: (filename) => set({ lockedWallpaper: filename }),
       setWallpaper: (url) => set({ wallpaper: url }),
       cycleBackground: () => set((state) => {
-        const BUILT_IN = ["/wallpapers/naruto.webp"];
+        const BUILT_IN = [
+          "/wallpapers/naruto.webp",
+          "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
+          "https://images4.alphacoders.com/140/1402795.mp4",
+          "https://images4.alphacoders.com/476/thumb-1920-47698.png"
+        ];
         const nextIndex = (state.bgIndex + 1) % BUILT_IN.length;
         return { lockedWallpaper: null, bgIndex: nextIndex, wallpaper: BUILT_IN[nextIndex] };
       }),
@@ -567,6 +572,12 @@ export const useDashboardStore = create<DashboardState>()(
       setDisableDeadlineLockOnToday: (disabled) => set(() => {
         const payload = { disableDeadlineLockOnToday: disabled };
         pushDeadlinesToDB(payload);
+        return payload;
+      }),
+      hideYouInLeaderboard: false,
+      setHideYouInLeaderboard: (hide) => set(() => {
+        const payload = { hideYouInLeaderboard: hide };
+        pushDeadlinesToDB(payload); // saving it alongside deadlines for ease since we just need it in DB
         return payload;
       }),
 

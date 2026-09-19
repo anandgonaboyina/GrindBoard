@@ -66,7 +66,7 @@ export const performSave = async () => {
       const NOTES_KEYS = ['notes'];
       const ROADMAPS_KEYS = ['roadmaps'];
       const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime'];
-      const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
+      const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'disableDeadlineLockOnToday', 'hideYouInLeaderboard'];
       const COUNTDOWN_KEYS = ['countdowns'];
       const TRANSIENT_KEYS = [
         'isSaving', 'hasUnsavedChanges', '_hasHydrated', 'isTaskManagerOpen', 'isCalendarOpen',

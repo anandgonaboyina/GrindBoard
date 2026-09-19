@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { X, Settings as SettingsIcon, Sliders, MonitorPlay, RefreshCw, Clock, MessageSquare, Bell, EyeOff, Database, Globe, BookOpen, Info, ChevronLeft, BadgeCheck, Send, Briefcase, Newspaper } from 'lucide-react';
+import { X, Settings as SettingsIcon, Sliders, MonitorPlay, RefreshCw, Clock, MessageSquare, Bell, EyeOff, Database, Globe, BookOpen, Info, ChevronLeft, BadgeCheck, Send, Briefcase, Newspaper, Loader2 } from 'lucide-react';
 
 // Global Modals
 import ConnectTab from './ConnectTab';
@@ -28,6 +28,12 @@ export default function SettingsModal() {
   const [isWallpaperTutorialOpen, setIsWallpaperTutorialOpen] = useState(false);
   const [isUserManualOpen, setIsUserManualOpen] = useState(false);
   const [infoModalKey, setInfoModalKey] = useState<string | null>(null);
+  const [isRedirectingToRegister, setIsRedirectingToRegister] = useState(false);
+
+  const [isDemoUser, setIsDemoUser] = useState(false);
+  useEffect(() => {
+    setIsDemoUser(localStorage.getItem('dashboard_username')?.toLowerCase() === 'demo_user');
+  }, []);
 
   // Global Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -248,6 +254,42 @@ export default function SettingsModal() {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {isDemoUser && (
+              <button
+                disabled={isRedirectingToRegister}
+                onClick={() => {
+                  setIsRedirectingToRegister(true);
+                  Object.keys(localStorage).forEach(key => {
+                    if (
+                      key.startsWith('dashboard') || 
+                      key.startsWith('tasks') || 
+                      key.startsWith('notes') || 
+                      key.startsWith('timetable') || 
+                      key.startsWith('settings')
+                    ) {
+                      localStorage.removeItem(key);
+                    }
+                  });
+                  localStorage.removeItem('stopwatch_paused_secs');
+                  localStorage.removeItem('stopwatch_last_active');
+                  fetch('/api/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: '', username: '' }) }).catch(() => {});
+                  import('@/lib/indexedDB').then(({ clearAllMediaFromDB }) => {
+                    clearAllMediaFromDB().catch(console.error).finally(() => {
+                      window.location.href = '/?mode=register';
+                    });
+                  });
+                }}
+                className={`flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 ${isRedirectingToRegister ? 'bg-indigo-700 opacity-70' : 'bg-indigo-500 hover:bg-indigo-600 animate-pulse'} text-white font-bold text-[9px] md:text-xs rounded-md md:rounded-lg transition-colors border border-indigo-400 shadow-sm mr-1 md:mr-2 whitespace-nowrap active:scale-95`}
+              >
+                {isRedirectingToRegister ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" /> Wait...
+                  </>
+                ) : (
+                  'Register Now'
+                )}
+              </button>
+            )}
             <div className="flex items-center gap-1.5 mr-1 md:mr-2 border-r border-white/10 pr-1.5 md:pr-2.5 shrink-0">
               <div className="relative group">
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-1.5 bg-[#1a1b26]/90 backdrop-blur-md border border-white/10 rounded-md text-[8px] font-bold tracking-widest text-white/70 uppercase pointer-events-none z-10 transition-colors group-hover:text-blue-300 whitespace-nowrap opacity-0 group-hover:opacity-100">Apply Changes</span>

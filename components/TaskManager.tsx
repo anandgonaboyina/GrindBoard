@@ -122,10 +122,16 @@ export default function TaskManager() {
                                         </button>
                                     </div>
                                     {dashboardStore.isTaskIntervalAlertEnabled ? (
-                                        <div className="flex items-center gap-1 pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
-                                            <input type="number" value={dashboardStore.taskIntervalAlertMins || ''} onChange={(e) => dashboardStore.setTaskIntervalAlertMins(isNaN(parseInt(e.target.value)) ? 0 : parseInt(e.target.value))} className="w-6 md:w-7 bg-black/40 border border-white/20 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none shadow-inner" min="1" />
-                                            <span className="text-[8px] font-medium text-white/40 uppercase">min</span>
-                                        </div>
+                                    <div className="flex items-center gap-1 pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
+                                    <input 
+                                        type="number" 
+                                        value={dashboardStore.taskIntervalAlertMins || ''} 
+                                        onChange={(e) => dashboardStore.setTaskIntervalAlertMins(isNaN(parseInt(e.target.value)) ? 0 : parseInt(e.target.value))} 
+                                        className="w-6 md:w-7 bg-black/40 border border-white/20 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner" 
+                                        min="1" 
+                                    />
+                                    <span className="text-[8px] font-medium text-white/40 uppercase">min</span>
+                                    </div>
                                     ) : (
                                         <div className="flex items-center pl-1 md:pl-1.5 ml-0.5 border-l border-white/10"><span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span></div>
                                     )}
@@ -134,24 +140,34 @@ export default function TaskManager() {
                         </div>
 
                         {!dashboardStore.selectedGroupId && (
-                            <div className="flex items-start gap-1 mt-1">
-                                {[0, 1, 2].map((idx) => {
-                                    const tabTasks = currentTasks.filter(t => (t.groupId || 0) === idx);
-                                    const tabRemaining = tabTasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + (t.duration || 0), 0);
-                                    const timeDisplay = tabRemaining > 0 ? formatRemainingTime(tabRemaining).replace(' left', '') : '';
+                                <div className="flex items-center gap-1">
+                                    {[0, 1, 2].map((idx) => {
+                                        const tabTasks = currentTasks.filter(t => (t.groupId || 0) === idx);
+                                        const tabRemaining = tabTasks.filter(t => !isTaskCompleted(t)).reduce((sum, t) => sum + (t.duration || 0), 0);
+                                        const timeDisplay = tabRemaining > 0 ? formatRemainingTime(tabRemaining).replace(' left', '') : '';
+                                        const isActive = activeGroupTab === idx;
 
-                                    return (
-                                        <div key={idx} className={`relative flex flex-col flex-1 min-w-0 rounded-md border transition-all h-[25px] ${activeGroupTab === idx ? 'bg-blue-500/20 border-blue-500/50 text-blue-200' : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10 hover:text-white/80 cursor-pointer'}`} onClick={() => setActiveGroupTab(idx)}>
-                                            {editingGroupIndex === idx ? (
-                                                <input autoFocus className="absolute inset-0 w-full h-full bg-transparent outline-none px-1.5 py-1 text-[8px] font-bold text-left text-white" defaultValue={taskStore.taskGroupNames?.[idx] || `Tab ${idx + 1}`} onBlur={(e) => { taskStore.setTaskGroupName(idx, e.target.value.trim() || `Tab ${idx + 1}`); setEditingGroupIndex(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { taskStore.setTaskGroupName(idx, e.currentTarget.value.trim() || `Tab ${idx + 1}`); setEditingGroupIndex(null); } }} />
-                                            ) : (
-                                                <div onDoubleClick={() => setEditingGroupIndex(idx)} className="w-full px-1.5 py-1 text-[8px] font-bold uppercase tracking-wider text-left truncate select-none">{taskStore.taskGroupNames?.[idx] || `Tab ${idx + 1}`}</div>
-                                            )}
-                                            {timeDisplay && <div className={`absolute bottom-0 right-0 text-[7.5px] font-bold uppercase tracking-widest px-1 py-[1px] rounded-tl-md rounded-br-md border-t border-l shadow-sm ${activeGroupTab === idx ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-black/60 text-white/40 border-white/20 border-t-white/20 border-l-white/20'}`}>{timeDisplay}</div>}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        return (
+                                            <div key={idx} className={`relative flex items-center flex-1 h-[25px] min-w-0 rounded-md border text-[8px] font-bold uppercase tracking-wider cursor-pointer transition-all ${isActive ? 'bg-blue-500/20 border-blue-500/50 text-blue-200' : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10'}`} onClick={() => setActiveGroupTab(idx)}>
+                                                {editingGroupIndex === idx ? (
+                                                    <input autoFocus className="w-full h-full bg-transparent outline-none px-2 text-white" defaultValue={taskStore.taskGroupNames?.[idx] || `Tab ${idx + 1}`} onBlur={(e) => { taskStore.setTaskGroupName(idx, e.target.value.trim() || `Tab ${idx + 1}`); setEditingGroupIndex(null); }} onKeyDown={(e) => e.key === 'Enter' && (taskStore.setTaskGroupName(idx, e.currentTarget.value.trim() || `Tab ${idx + 1}`), setEditingGroupIndex(null))} />
+                                                ) : (
+                                                    <div onDoubleClick={() => setEditingGroupIndex(idx)} className="w-full px-2 truncate select-none text-left">{taskStore.taskGroupNames?.[idx] || `Tab ${idx + 1}`}</div>
+                                                )}
+                                                {timeDisplay && (
+                                                    <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-extrabold tracking-wide px-1.5  rounded border shadow-md select-none transition-all ${
+                                                        isActive 
+                                                            ? 'bg-emerald-500 text-black border-emerald-400 font-black' 
+                                                            : 'bg-[#141414] text-emerald-400 border-white/20'
+                                                    }`}>
+                                                        <pre>{timeDisplay}</pre>
+                                                    </span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
                         )}
                     </>
                 </div>
@@ -160,12 +176,12 @@ export default function TaskManager() {
                     <GroupTaskManager groupId={dashboardStore.selectedGroupId} />
                 ) : (
                     <>
-                        <ScrollableWithArrows className="p-1.5 max-h-[350px]">
+                        <ScrollableWithArrows className="px-1.5 max-h-[350px]">
                             {filteredTasks.length === 0 ? (
                                 <div className="text-center text-white/40 p-3 text-[10px] italic">No {activeTab} tasks found.</div>
                             ) : (
                                 /* GAP REDUCED TO 1 (4px gap) */
-                                <div className="flex flex-col gap-0.25 pb-2">
+                                <div className="flex flex-col pb-1 mt-1">
                                     {filteredTasks.map((task, index) => (
                                         <TaskItem 
                                             key={task.id} 
@@ -189,17 +205,51 @@ export default function TaskManager() {
                             )}
                         </ScrollableWithArrows>
 
-                        <form onSubmit={handleAddTask} className="p-2 border-t border-white/20 bg-black/20 flex gap-2 items-end mt-1 pt-3">
-                            <div className="relative flex-1 group/task">
-                                <span className="absolute -top-[9px] left-1 px-1 bg-[#1a1a1a] rounded text-[6.5px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/task:text-blue-300">Task Name</span>
-                                <textarea placeholder={`New ${activeTab} task...`} value={newTaskTitle} onChange={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; setNewTaskTitle(e.target.value); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddTask(e); } }} rows={1} className="w-full bg-white/5 border border-white/20 rounded-md px-2 py-1.5 text-[11px] outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 shadow-inner resize-none overflow-hidden min-h-[28px] max-h-[80px]" />
-                            </div>
-                            <div className="relative -top-[5px] flex-col items-center shrink-0 group/duration">
-                                <span className="absolute -top-[9px] left-1 px-1 bg-[#1a1a1a] rounded text-[6.5px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/duration:text-blue-300 whitespace-nowrap">duration(min)</span>
-                                <input type="number" placeholder="min" value={newTaskDuration} onChange={(e) => setNewTaskDuration(e.target.value)} className="w-[50px] bg-white/5 border border-white/20 rounded-md px-1.5 py-1.5 text-[11px] font-semibold text-center outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none shadow-inner" />
-                            </div>
-                            <button type="submit" className="h-[28px] w-[28px] bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/20 flex items-center justify-center mb-px"><Plus className="w-4 h-4" /></button>
+                        <form 
+                        onSubmit={handleAddTask} 
+                        className="p-2 border-t border-white/10 bg-white/[0.02] flex items-center gap-2 backdrop-blur-sm shadow-sm"
+                        >
+                        {/* Task Input Container */}
+                        <div className="relative flex-1 flex items-center">
+                            <textarea 
+                            placeholder={`New ${activeTab} task...`} 
+                            value={newTaskTitle} 
+                            onChange={(e) => { 
+                                e.target.style.height = 'auto'; 
+                                e.target.style.height = e.target.scrollHeight + 'px'; 
+                                setNewTaskTitle(e.target.value); 
+                            }} 
+                            onKeyDown={(e) => { 
+                                if (e.key === 'Enter' && !e.shiftKey) { 
+                                e.preventDefault(); 
+                                handleAddTask(e); 
+                                } 
+                            }} 
+                            rows={1} 
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 resize-none overflow-hidden h-[32px] min-h-[32px] max-h-[80px] flex items-center leading-normal" 
+                            />
+                        </div>
+
+                        {/* Duration Input Container */}
+                        <div className="relative shrink-0 flex items-center">
+                            <input 
+                            type="number" 
+                            placeholder="Min" 
+                            value={newTaskDuration} 
+                            onChange={(e) => setNewTaskDuration(e.target.value)} 
+                            className="w-[60px] h-[32px] bg-white/5 border border-white/10 rounded-lg px-2 text-xs font-medium text-center text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                            />
+                        </div>
+
+                        {/* Submit Button */}
+                        <button 
+                            type="submit" 
+                            className="h-[32px] w-[32px] bg-sky-500/10 hover:bg-sky-500 text-sky-400 hover:text-white border border-sky-500/20 rounded-lg transition-all shrink-0 active:scale-95 flex items-center justify-center shadow-md shadow-sky-500/5"
+                        >
+                            <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
+                        </button>
                         </form>
+
                     </>
                 )}
 

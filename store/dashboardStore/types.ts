@@ -250,6 +250,8 @@ export interface DashboardState {
   dismissDeadlineAlert: (id: string) => void;
   disableDeadlineLockOnToday: boolean;
   setDisableDeadlineLockOnToday: (disabled: boolean) => void;
+  hideYouInLeaderboard: boolean;
+  setHideYouInLeaderboard: (hide: boolean) => void;
   isDeadlinesCollapsed: boolean;
   setIsDeadlinesCollapsed: (collapsed: boolean) => void;
 

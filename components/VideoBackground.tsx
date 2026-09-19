@@ -45,7 +45,7 @@ export default function VideoBackground() {
     if (peekModeWallpaper && peekModeWallpaper.trim() !== '') {
       activePeekWallpaper = peekModeWallpaper;
     } else if (panicWallpaperSwitch) {
-      activePeekWallpaper = isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : "/wallpapers/naruto.webp";
+      activePeekWallpaper = isMobile ? "/wallpapers/defaultWallpaper2.jpeg" : "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg";
     }
   }
 

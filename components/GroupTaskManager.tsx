@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Plus, Play, Trash2, CheckCircle, Circle, Clock, RotateCcw, Filter, BellRing, ClipboardList, Info, X, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react';
+import { Plus, Play, Trash2, CheckCircle, Circle, Clock, RotateCcw, Filter, BellRing, ClipboardList, Info, X, ArrowRight, ArrowLeft, Sparkles, GripVertical } from 'lucide-react';
 import { fetchQuote } from '@/utils/quoteEngine';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
@@ -442,16 +442,16 @@ export default function GroupTaskManager({
                     return (
                         <div
                             key={idx}
-                            className={`relative flex flex-col flex-1 min-w-0 rounded-md border transition-all h-[22px] ${activeGroupTab === idx
+                            className={`relative flex items-center flex-1 h-[25px] min-w-0 rounded-md border text-[8px] font-bold uppercase tracking-wider cursor-pointer transition-all ${activeGroupTab === idx
                                 ? 'bg-blue-500/20 border-blue-500/50 text-blue-200'
-                                : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10 hover:text-white/80 cursor-pointer'
+                                : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10'
                                 }`}
                             onClick={() => setActiveGroupTab(idx)}
                         >
                             {editingGroupIndex === idx && canEdit ? (
                                 <input
                                     autoFocus
-                                    className="absolute inset-0 w-full h-full bg-transparent outline-none px-1 py-0.5 text-[7.5px] font-bold text-left text-white"
+                                    className="w-full h-full bg-transparent outline-none px-2 text-white"
                                     defaultValue={tabNames[idx]}
                                     onBlur={(e) => {
                                         updateTabNameInDB(idx, e.target.value.trim());
@@ -467,16 +467,20 @@ export default function GroupTaskManager({
                             ) : (
                                 <div
                                     onDoubleClick={() => { if (canEdit) setEditingGroupIndex(idx) }}
-                                    className={`w-full px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-wider text-left truncate select-none ${canEdit ? 'cursor-text' : 'cursor-default'}`}
+                                    className={`w-full px-2 truncate select-none text-left ${canEdit ? 'cursor-text' : 'cursor-default'}`}
                                     title={canEdit ? "Double click to rename tab" : ""}
                                 >
                                     {tabNames[idx]}
                                 </div>
                             )}
                             {timeDisplay && (
-                                <div className={`absolute bottom-0 right-0 text-[7px] font-bold uppercase tracking-widest px-1 py-[0px] rounded-tl-md rounded-br-md border-t border-l shadow-sm ${activeGroupTab === idx ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-black/60 text-white/40 border-white/20 border-t-white/20 border-l-white/20'}`}>
-                                    {timeDisplay}
-                                </div>
+                                <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-extrabold tracking-wide px-1.5 rounded border shadow-md select-none transition-all ${
+                                    activeGroupTab === idx
+                                        ? 'bg-emerald-500 text-black border-emerald-400 font-black'
+                                        : 'bg-[#141414] text-emerald-400 border-white/20'
+                                    }`}>
+                                    <pre>{timeDisplay}</pre>
+                                </span>
                             )}
                         </div>
                     );
@@ -490,13 +494,6 @@ export default function GroupTaskManager({
                         >
                             <Info size={14} />
                         </button>
-                        {/* <button
-                            onClick={handleExitGroup}
-                            className="px-2 py-0.5 text-[9px] font-bold bg-rose-500/20 text-rose-300 hover:bg-rose-500 hover:text-white rounded-md transition-colors cursor-pointer border border-rose-500/30 shrink-0 self-center"
-                            title="Exit this group"
-                        >
-                            Exit
-                        </button> */}
                     </>
                 )}
             </div>
@@ -520,7 +517,7 @@ export default function GroupTaskManager({
                     )
                 ) : (
                     <div
-                        className="flex flex-col gap-1 w-full"
+                        className="flex flex-col w-full"
                         onPointerDown={() => setDraggedIndex(null)}
                         onPointerUp={() => setDraggedIndex(null)}
                         onPointerCancel={() => setDraggedIndex(null)}
@@ -548,17 +545,33 @@ export default function GroupTaskManager({
                                             }
                                         }
                                     }}
-                                    className={`group flex items-center justify-between p-1 px-1.5 py-1 rounded-md border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${isTaskDone ? 'opacity-75 grayscale-[30%]' : ''} ${draggedIndex === index ? 'opacity-50 border-sky-500/50 scale-[0.98]' : 'border-white/20 hover:border-white/40'}`}
+                                    className={`group relative flex gap-1.5 sm:gap-2 p-1.5 rounded-[12px] transition-all shadow-sm mt-0.5
+                                        ${isTaskDone ? 'bg-white/[0.02] border-white/5 opacity-60 grayscale-[40%]' : 'bg-[#15171e]/80 border-white/30 hover:border-white/20 hover:bg-[#1a1c24]/90'}
+                                        ${draggedIndex === index ? 'opacity-40 border-sky-500/50 scale-[0.98]' : 'border'}
+                                    `}
                                 >
-                                    <div className="flex items-start gap-1 flex-1 min-w-0 pl-0">
+                                    {/* LEFT COLUMN: Tick (Top) & Grip (Bottom) Only */}
+                                    <div className="flex flex-col items-center justify-between shrink-0 w-6 sm:w-7 py-1 rounded-xl bg-black/20 border border-white/5 shadow-inner">
+                                        {/* 1. TOP: Bigger Checkbox */}
+                                        <button
+                                            onClick={() => handleToggleTask(task.id)}
+                                            className={`p-0.5 rounded-full transition-colors focus:outline-none flex items-center justify-center ${canEdit ? 'text-white/30 hover:text-emerald-400 cursor-pointer' : 'text-white/30 cursor-default'}`}
+                                            disabled={!canEdit}
+                                        >
+                                            {isTaskDone ? (
+                                                <CheckCircle className="w-[18px] h-[18px] text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)] fill-emerald-500/20" />
+                                            ) : (
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+                                            )}
+                                        </button>
+
+                                        {/* 2. BOTTOM: Drag Handle */}
                                         {canEdit && (
                                             <div
-                                                className="flex flex-col items-center opacity-40 hover:opacity-100 transition-opacity justify-center mt-0.5 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none p-0.5"
+                                                className="cursor-grab active:cursor-grabbing text-white/20 hover:text-white transition-colors p-0.5 rounded-md hover:bg-white/10 mt-1 touch-none select-none flex items-center justify-center"
                                                 onPointerDown={(e) => {
                                                     e.stopPropagation();
-                                                    try {
-                                                        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-                                                    } catch { }
+                                                    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
                                                     draggedIndexRef.current = index;
                                                     setDraggedIndex(index);
                                                 }}
@@ -569,61 +582,106 @@ export default function GroupTaskManager({
                                                 }}
                                                 onMouseDown={(e) => e.stopPropagation()}
                                             >
-                                                <svg className="w-3 h-3 text-white/50 hover:text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /></svg>
+                                                <GripVertical size={14} />
                                             </div>
                                         )}
-                                        <div className="flex flex-col items-center justify-center gap-0.5 mt-0.5 shrink-0 px-0">
-                                            <button onClick={() => handleToggleTask(task.id)} className="text-white/50 hover:text-white hover:scale-110 transition-all active:scale-95 flex items-center justify-center">
-                                                {isTaskDone ? (
-                                                    <div className="w-3.5 h-3.5 rounded-[4px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] flex items-center justify-center">
-                                                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-3.5 h-3.5 rounded-[4px] border-[1.5px] border-white/40 group-hover:border-white/70 transition-colors" />
+                                    </div>
+
+                                    {/* RIGHT COLUMN: Content */}
+                                    <div className="flex flex-col flex-1 min-w-0 justify-between py-0.5 pl-0.5">
+                                        {/* Top Row: Title & Options */}
+                                        <div className="flex items-start justify-between gap-1 w-full">
+
+                                            {/* Inline Subtle Number + Title */}
+                                            <div className="flex-1 min-w-0 flex items-start gap-1 mt-[2px]">
+                                                <span className="text-[10px] sm:text-[11px] font-black text-white/30 pt-[1px] select-none shrink-0">
+                                                    {index + 1}.
+                                                </span>
+
+{canEdit && editingTaskId === task.id ? (
+    <textarea
+        autoFocus
+        onBlur={() => setEditingTaskId(null)}
+        onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                setEditingTaskId(null);
+            }
+        }}
+        // ADD THIS REF TO AUTO-EXPAND ON DOUBLE CLICK
+        ref={(el) => { 
+            if (el) { 
+                el.style.height = 'auto'; 
+                el.style.height = el.scrollHeight + 'px'; 
+            } 
+        }}
+        value={task.title}
+        onChange={(e) => {
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+            const newTasks = tasks.map(t => t.id === task.id ? { ...t, title: e.target.value } : t);
+            setTasks(newTasks);
+            updateTasksInDB(newTasks);
+        }}
+        rows={1}
+        spellCheck={false}
+        className="bg-black/60 outline-none w-full text-[12px] sm:text-[13px] leading-snug border-b border-sky-500/70 px-1 -mx-1 resize-none overflow-hidden block text-white rounded-md shadow-inner transition-colors"
+    />
+) : (
+    <div
+        onDoubleClick={() => canEdit && setEditingTaskId(task.id)}
+        title={canEdit ? "Double click to edit title" : ""}
+        className={`w-full text-[12px] sm:text-[13px] font-medium leading-snug whitespace-pre-wrap ${canEdit ? 'cursor-text' : 'cursor-default'} ${isTaskDone ? 'line-through text-white/50' : 'text-white/95'}`}
+    >
+        {task.title}
+    </div>
+)}
+                                            </div>
+
+                                            <div className="relative shrink-0 ml-1 z-[10000]">
+                                                {canEdit && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setConfirmModal({
+                                                                isOpen: true,
+                                                                title: 'Delete Task',
+                                                                message: `Are you sure you want to delete the task "${task.title}"?`,
+                                                                isDestructive: true,
+                                                                onConfirm: () => {
+                                                                    const newTasks = tasks.filter(t => t.id !== task.id);
+                                                                    setTasks(newTasks);
+                                                                    const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, memberTasks: { ...(g.memberTasks || {}), [effectiveUserId]: newTasks } } : g);
+                                                                    setUserGroups(updatedGroups);
+                                                                    updateTasksInDB(newTasks);
+                                                                }
+                                                            });
+                                                        }}
+                                                        className="p-1.5 rounded-lg border transition-all active:scale-95 shadow-sm bg-white/5 border-transparent text-white/30 hover:bg-rose-500/20 hover:border-rose-500/30 hover:text-rose-400"
+                                                        title="Delete task"
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
                                                 )}
-                                            </button>
-                                            <span className="text-[10px] font-black text-sky-300/90 tabular-nums select-none leading-none mt-0.5">{index + 1}</span>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col gap-0.5 flex-1 min-w-0 w-full ml-0.5">
-                                            {canEdit && editingTaskId === task.id ? (
-                                                <textarea
-                                                    autoFocus
-                                                    onBlur={() => setEditingTaskId(null)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                                            e.preventDefault();
-                                                            setEditingTaskId(null);
-                                                        }
-                                                    }}
-                                                    value={task.title}
-                                                    onChange={(e) => {
-                                                        const newTasks = tasks.map(t => t.id === task.id ? { ...t, title: e.target.value } : t);
-                                                        setTasks(newTasks);
-                                                        updateTasksInDB(newTasks);
-                                                    }}
-                                                    rows={1}
-                                                    spellCheck={false}
-                                                    className={`bg-black/40 outline-none w-full text-[11px] leading-snug border-b border-sky-500/50 px-0.5 resize-none overflow-hidden block text-white rounded-md shadow-inner transition-colors`}
-                                                />
-                                            ) : (
-                                                <div
-                                                    onDoubleClick={() => canEdit && setEditingTaskId(task.id)}
-                                                    className={`w-full text-[11px] leading-snug px-0.5 ${canEdit ? 'cursor-text' : 'cursor-default'} whitespace-pre-wrap ${isTaskDone ? 'line-through text-white/60' : 'text-white/90'}`}
-                                                >
-                                                    {task.title}
-                                                </div>
-                                            )}
-                                            <div className="flex items-center gap-1 mt-0.5 overflow-hidden w-full flex-wrap">
+
+                                        {/* Bottom Row: Enhanced Badges & Start Button (Strict Single Line) */}
+                                        <div className="flex items-center justify-between mt-1.5 w-full gap-1">
+                                            {/* flex-nowrap ensures these NEVER drop to a second line */}
+                                            <div className="flex items-center gap-1 flex-nowrap min-w-0 overflow-hidden">
+
+                                                {/* Duration Left Badge */}
                                                 {task.duration > 0 && !isTaskDone && (
                                                     canEdit && editingDurationId === task.id ? (
-                                                        <div className="shrink-0 flex items-center bg-sky-500/30 rounded-full border border-sky-400/30 px-1 py-px shadow-sm">
+                                                        <div className="flex items-center bg-[#0d1b2a] rounded border border-sky-500/40 px-1 py-[1px] shadow-sm shrink-0">
                                                             <input
                                                                 autoFocus
                                                                 type="number"
                                                                 defaultValue={Math.max(0, task.duration - timeSpent)}
                                                                 min="0"
                                                                 max="999"
-                                                                className="w-7 bg-transparent text-[8.5px] font-bold text-white outline-none placeholder:text-white/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                className="w-6 bg-transparent text-[9px] font-bold text-sky-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none"
                                                                 onBlur={(e) => {
                                                                     const dur = parseInt(e.target.value);
                                                                     if (!isNaN(dur) && dur >= 0) {
@@ -640,17 +698,13 @@ export default function GroupTaskManager({
                                                                     }
                                                                 }}
                                                             />
-                                                            <span className="text-[8.5px] font-semibold text-white/80 ml-0.5">m</span>
+                                                            <span className="text-[8.5px] font-semibold text-sky-200/50 pr-0.5">m</span>
                                                         </div>
                                                     ) : (
                                                         <span
-                                                            onDoubleClick={(e) => {
-                                                                if (canEdit) {
-                                                                    e.stopPropagation();
-                                                                    setEditingDurationId(task.id);
-                                                                }
-                                                            }}
-                                                            className={`shrink-0 text-[8.5px] font-semibold tracking-wide text-white/90 bg-sky-500/20 ${canEdit ? 'hover:bg-sky-500/40 cursor-pointer' : 'cursor-default'} px-1.5 py-0.5 rounded-full border border-sky-400/20 transition-colors shadow-sm`}
+                                                            onDoubleClick={(e) => { if (canEdit) { e.stopPropagation(); setEditingDurationId(task.id); } }}
+                                                            className={`whitespace-nowrap text-[8.5px] sm:text-[9px] font-bold tracking-wide text-sky-300 bg-sky-900/30 border border-sky-500/30 px-1.5 py-[2px] rounded shadow-sm transition-colors shrink-0 ${canEdit ? 'hover:bg-sky-800/40 cursor-pointer' : 'cursor-default'}`}
+                                                            title={canEdit ? "Double click to edit planned duration" : ""}
                                                         >
                                                             {(() => {
                                                                 const timeLeft = Math.max(0, task.duration - timeSpent);
@@ -659,104 +713,77 @@ export default function GroupTaskManager({
                                                         </span>
                                                     )
                                                 )}
-                                                {(
-                                                    !isTaskDone && editingTimeSpentId === task.id ? (
-                                                        <div className="shrink-0 flex items-center bg-emerald-500/30 rounded-full border border-emerald-400/30 px-1 py-px shadow-sm">
-                                                            <input
-                                                                autoFocus
-                                                                type="number"
-                                                                defaultValue={timeSpent}
-                                                                min="0"
-                                                                max="999"
-                                                                className="w-7 bg-transparent text-[8.5px] font-bold text-emerald-100 outline-none placeholder:text-emerald-100/50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                onBlur={(e) => {
-                                                                    const dur = parseInt(e.target.value);
-                                                                    if (!isNaN(dur) && dur >= 0) {
-                                                                        const newComps = { ...myCompletions, [task.id]: { completed: false, timeSpent: dur } };
-                                                                        const finalCompletions = { ...completions, [effectiveUserId]: { ...(completions[effectiveUserId] || {}), [todayStr]: newComps } };
-                                                                        setCompletions(finalCompletions);
 
-                                                                        const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, completions: finalCompletions } : g);
-                                                                        setUserGroups(updatedGroups);
-
-                                                                        updateCompletionInDB(task.id, false, dur);
-                                                                    }
-                                                                    setEditingTimeSpentId(null);
-                                                                }}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        e.currentTarget.blur();
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <span className="text-[8.5px] font-semibold text-emerald-100/80 ml-0.5">m done</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span
-                                                            onDoubleClick={(e) => {
-                                                                if (isTaskDone) return;
-                                                                e.stopPropagation();
-                                                                setEditingTimeSpentId(task.id);
+                                                {/* Done Time Badge */}
+                                                {!isTaskDone && editingTimeSpentId === task.id ? (
+                                                    <div className="flex items-center bg-[#061c13] rounded border border-emerald-500/40 px-1 py-[1px] shadow-sm shrink-0">
+                                                        <input
+                                                            autoFocus
+                                                            type="number"
+                                                            defaultValue={timeSpent}
+                                                            min="0"
+                                                            max="999"
+                                                            className="w-6 bg-transparent text-[9px] font-bold text-emerald-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none"
+                                                            onBlur={(e) => {
+                                                                const dur = parseInt(e.target.value);
+                                                                if (!isNaN(dur) && dur >= 0) {
+                                                                    const newComps = { ...myCompletions, [task.id]: { completed: false, timeSpent: dur } };
+                                                                    const finalCompletions = { ...completions, [effectiveUserId]: { ...(completions[effectiveUserId] || {}), [todayStr]: newComps } };
+                                                                    setCompletions(finalCompletions);
+                                                                    const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, completions: finalCompletions } : g);
+                                                                    setUserGroups(updatedGroups);
+                                                                    updateCompletionInDB(task.id, false, dur);
+                                                                }
+                                                                setEditingTimeSpentId(null);
                                                             }}
-                                                            className={`shrink-0 text-[8.5px] font-semibold tracking-wide px-1.5 py-0.5 rounded-full border transition-colors shadow-sm ${isTaskDone ? 'text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20 cursor-default' : 'text-emerald-200 bg-emerald-500/20 hover:bg-emerald-500/40 cursor-pointer border-emerald-400/20'}`}
-                                                        >
-                                                            {(() => {
-                                                                const doneMins = isTaskDone ? Math.max(timeSpent || 0, task.duration || 0) : (timeSpent || 0);
-                                                                return doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m";
-                                                            })()} done
-                                                        </span>
-                                                    )
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.currentTarget.blur();
+                                                                }
+                                                            }}
+                                                        />
+                                                        <span className="text-[8.5px] font-semibold text-emerald-200/50 pr-0.5">m</span>
+                                                    </div>
+                                                ) : (
+                                                    <span
+                                                        onDoubleClick={(e) => { if (!isTaskDone && canEdit) { e.stopPropagation(); setEditingTimeSpentId(task.id); } }}
+                                                        className={`whitespace-nowrap text-[8.5px] sm:text-[9px] font-bold tracking-wide px-1.5 py-[2px] rounded border shadow-sm transition-colors shrink-0 ${isTaskDone ? 'text-emerald-400/60 bg-emerald-900/20 border-emerald-500/20 cursor-default' : `text-emerald-300 bg-emerald-900/30 border-emerald-500/30 ${canEdit ? 'hover:bg-emerald-800/40 cursor-pointer' : 'cursor-default'}`}`}
+                                                    >
+                                                        {(() => {
+                                                            const doneMins = isTaskDone ? Math.max(timeSpent || 0, task.duration || 0) : (timeSpent || 0);
+                                                            return doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m";
+                                                        })()} done
+                                                    </span>
                                                 )}
                                             </div>
-                                        </div>
-                                    </div>
 
-                                    <div className="flex flex-col items-end justify-center shrink-0 ml-1">
-                                        {canEdit && (
-                                            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                {!isTaskDone && (
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                {(isTaskDone || timeSpent > 0) && canEdit && (
                                                     <button
-                                                        onClick={() => {
+                                                        onClick={(e) => { e.stopPropagation(); handleRestartTask(task.id); }}
+                                                        className="p-[4px] bg-orange-500/10 text-orange-300 hover:bg-orange-500 hover:text-white rounded border border-orange-500/20 hover:border-transparent transition-all shadow-md active:scale-95"
+                                                        title="Restart task"
+                                                    >
+                                                        <RotateCcw size={10} />
+                                                    </button>
+                                                )}
+
+                                                {!isTaskDone && canEdit && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
                                                             const timeLeft = Math.max(0, task.duration - timeSpent);
                                                             triggerTimer(timeLeft, task.id, task.title);
                                                         }}
-                                                        className="p-1 bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white rounded-md transition-all active:scale-95"
+                                                        className="flex items-center gap-1 px-2.5 py-[4px] rounded border bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white border-sky-500/30 hover:border-transparent transition-all shadow-md active:scale-95 shrink-0"
                                                         title={`Start ${Math.max(0, task.duration - timeSpent)}m timer`}
                                                     >
-                                                        <Play className="w-3 h-3 fill-current" />
+                                                        <Play size={10} className="fill-current" />
+                                                        <span className="text-[8.5px] font-black uppercase tracking-wider">Start</span>
                                                     </button>
                                                 )}
-                                                {(isTaskDone || timeSpent > 0) && (
-                                                    <button
-                                                        onClick={() => handleRestartTask(task.id)}
-                                                        className="p-1 bg-orange-500/10 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-all active:scale-95 border border-orange-500/20 hover:border-transparent"
-                                                        title="Restart task"
-                                                    >
-                                                        <RotateCcw className="w-3 h-3" />
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => {
-                                                        setConfirmModal({
-                                                            isOpen: true,
-                                                            title: 'Delete Task',
-                                                            message: `Are you sure you want to delete the task "${task.title}"?`,
-                                                            isDestructive: true,
-                                                            onConfirm: () => {
-                                                                const newTasks = tasks.filter(t => t.id !== task.id);
-                                                                setTasks(newTasks);
-                                                                const updatedGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? { ...g, memberTasks: { ...(g.memberTasks || {}), [effectiveUserId]: newTasks } } : g);
-                                                                setUserGroups(updatedGroups);
-                                                                updateTasksInDB(newTasks);
-                                                            }
-                                                        });
-                                                    }}
-                                                    className="p-1 text-white/30 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all active:scale-95 border border-transparent hover:border-rose-500/20"
-                                                >
-                                                    <Trash2 className="w-3 h-3" />
-                                                </button>
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -766,45 +793,51 @@ export default function GroupTaskManager({
             </ScrollableWithArrows>
 
             {canEdit && (
-                <form onSubmit={handleAddTask} className="p-1 border-t border-white/10 bg-black/20 flex gap-1 items-end mt-0.5 pt-2">
-                    <div className="relative flex-1 group/task">
-                        <span className="absolute -top-[8px] left-1 px-1 bg-[#1a1a1a] rounded text-[6px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/task:text-blue-300">
-                            Task Name
-                        </span>
-                        <textarea
-                            placeholder={`New task for ${group?.title}...`}
-                            value={newTaskTitle}
-                            onChange={(e) => {
-                                e.target.style.height = 'auto';
-                                e.target.style.height = e.target.scrollHeight + 'px';
-                                setNewTaskTitle(e.target.value);
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleAddTask(e);
-                                }
-                            }}
-                            rows={1}
-                            className="w-full bg-white/5 border border-white/20 rounded-md px-1.5 py-1 text-[9.5px] outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 shadow-inner resize-none overflow-hidden min-h-[24px] max-h-[70px]"
-                        />
-                    </div>
-                    <div className="relative -top-[4px] flex-col items-center shrink-0 group/duration">
-                        <span className="absolute -top-[8px] left-1 px-1 bg-[#1a1a1a] rounded text-[6px] font-bold tracking-widest text-white/40 uppercase pointer-events-none z-10 transition-colors group-hover/duration:text-blue-300 whitespace-nowrap">
-                            duration(min)
-                        </span>
-                        <input
-                            type="number"
-                            placeholder="min"
-                            value={newTaskDuration}
-                            onChange={(e) => setNewTaskDuration(e.target.value)}
-                            className="w-[45px] bg-white/5 border border-white/20 rounded-md px-1 py-1 text-[9.5px] font-semibold text-center outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner h-[24px]"
-                        />
-                    </div>
-                    <button type="submit" className="h-[24px] w-[24px] bg-white/10 hover:bg-white/20 hover:text-sky-300 rounded-md transition-all shrink-0 active:scale-95 shadow-sm border border-white/20 flex items-center justify-center mb-px">
-                        <Plus className="w-3.5 h-3.5" />
-                    </button>
-                </form>
+<form 
+  onSubmit={handleAddTask} 
+  className="p-1 border-t border-white/10 bg-white/[0.02] flex items-center gap-1.5 mt-0.5 backdrop-blur-sm shadow-sm"
+>
+  {/* Task Input Container */}
+  <div className="relative flex-1 flex items-center">
+    <textarea 
+      placeholder={`New task for ${group?.title}...`} 
+      value={newTaskTitle} 
+      onChange={(e) => { 
+        e.target.style.height = 'auto'; 
+        e.target.style.height = e.target.scrollHeight + 'px'; 
+        setNewTaskTitle(e.target.value); 
+      }} 
+      onKeyDown={(e) => { 
+        if (e.key === 'Enter' && !e.shiftKey) { 
+          e.preventDefault(); 
+          handleAddTask(e); 
+        } 
+      }} 
+      rows={1} 
+      className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[9.5px] text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 resize-none overflow-hidden h-[24px] min-h-[24px] max-h-[70px] flex items-center leading-normal" 
+    />
+  </div>
+
+  {/* Duration Input Container */}
+  <div className="relative shrink-0 flex items-center">
+    <input 
+      type="number" 
+      placeholder="Min" 
+      value={newTaskDuration} 
+      onChange={(e) => setNewTaskDuration(e.target.value)} 
+      className="w-[45px] h-[24px] bg-white/5 border border-white/10 rounded-lg px-1 text-[9.5px] font-medium text-center text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+    />
+  </div>
+
+  {/* Submit Button */}
+  <button 
+    type="submit" 
+    className="h-[24px] w-[24px] bg-sky-500/10 hover:bg-sky-500 text-sky-400 hover:text-white border border-sky-500/20 rounded-lg transition-all shrink-0 active:scale-95 flex items-center justify-center shadow-md shadow-sky-500/5"
+  >
+    <Plus className="w-3.5 h-3.5" />
+  </button>
+</form>
+
             )}
 
             <ConfirmationModal
@@ -821,7 +854,7 @@ export default function GroupTaskManager({
                 onClose={() => setIsInfoOpen(false)}
                 title={`Group Tasks Guide — ${group?.title || 'Group'}`}
                 message={
-                    <ScrollableWithArrows className="max-h-[60vh] pr-2 flex flex-col gap-4 text-sm mt-1">
+                    <ScrollableWithArrows className="max-h-[60vh] pr-2 flex flex-col gap-2 text-sm mt-1">
                         <div className="p-3 bg-purple-500/15 border border-purple-400/30 rounded-xl">
                             <h4 className="font-bold text-purple-300 mb-1 text-base flex items-center gap-1.5">
                                 👥 How Group Tasks Work

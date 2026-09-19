@@ -161,3 +161,32 @@ export const deleteAudioFromDB = (key: string): Promise<boolean> => {
     request.onerror = () => reject(request.error);
   });
 };
+
+export const clearAllMediaFromDB = (): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') return resolve(false);
+
+    const request = indexedDB.open('WallpaperDB', 4);
+    request.onsuccess = (e) => {
+      const db = (e.target as any).result;
+      try {
+        const stores = [];
+        if (db.objectStoreNames.contains('wallpapers')) stores.push('wallpapers');
+        if (db.objectStoreNames.contains('audios')) stores.push('audios');
+        
+        if (stores.length === 0) return resolve(true);
+
+        const tx = db.transaction(stores, 'readwrite');
+        stores.forEach(storeName => {
+          tx.objectStore(storeName).clear();
+        });
+
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    request.onerror = () => reject(request.error);
+  });
+};

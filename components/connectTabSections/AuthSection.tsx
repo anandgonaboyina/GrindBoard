@@ -79,8 +79,12 @@ export default function AuthSection() {
         localStorage.setItem('dashboard_username', data.username);
 
         if (authMode === 'login') {
-          localStorage.removeItem('dashboard-storage');
+          ['dashboard', 'notes', 'settings', 'tasks', 'timetable'].forEach(prefix => {
+            localStorage.removeItem(`${prefix}-storage`);
+          });
           localStorage.removeItem('dashboard_last_modified');
+          localStorage.removeItem('dashboard_alias');
+          localStorage.removeItem('dashboard_profile_picture');
         }
 
         fetch('/api/session', {

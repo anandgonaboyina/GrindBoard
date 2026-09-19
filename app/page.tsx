@@ -43,9 +43,12 @@ export default function CloudLogin() {
   ];
   const [taglineIndex, setTaglineIndex] = useState(0);
 
-  // Hydration Fix: Tell component it is safely mounted on the client
+  // Hydration Fix & Query Params
   useEffect(() => {
     setIsMounted(true);
+    if (window.location.search.includes('mode=register')) {
+      setIsRegisterMode(true);
+    }
   }, []);
 
   // Prevent background scrolling when video is expanded
@@ -649,7 +652,23 @@ useEffect(() => {
         onClose={() => setShowDemoModal(false)}
         onConfirm={() => {
           if (demoAuthData) {
-            localStorage.removeItem('dashboard-storage');
+            const demoState = {
+              state: {
+                wallpaper: "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
+                bgIndex: 1,
+                peekModeWallpaper: "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg",
+                panicWallpaperSwitch: true,
+                customDesktopWallpapers: [
+                  "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
+                  "https://images4.alphacoders.com/140/1402795.mp4",
+                  "https://images4.alphacoders.com/476/thumb-1920-47698.png",
+                  "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg"
+                ],
+                activeDesktopCustomIndex: 0
+              },
+              version: 0
+            };
+            localStorage.setItem('dashboard-storage', JSON.stringify(demoState));
             localStorage.removeItem('dashboard_last_modified');
             localStorage.setItem('dashboard_token', demoAuthData.token);
             localStorage.setItem('dashboard_sync_token', demoAuthData.token);

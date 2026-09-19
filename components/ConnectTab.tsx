@@ -61,10 +61,21 @@ export default function ConnectTab() {
   const handleLogout = async () => {
     setAuthTransition(true);
     Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('dashboard')) localStorage.removeItem(key);
+      if (
+        key.startsWith('dashboard') || 
+        key.startsWith('tasks') || 
+        key.startsWith('notes') || 
+        key.startsWith('timetable') || 
+        key.startsWith('settings')
+      ) {
+        localStorage.removeItem(key);
+      }
     });
     localStorage.removeItem('stopwatch_paused_secs');
     localStorage.removeItem('stopwatch_last_active');
+
+    const username = localStorage.getItem('dashboard_username');
+    const isDemoUser = username?.toLowerCase() === 'demo_user';
 
     fetch('/api/session', {
       method: 'POST',
@@ -72,7 +83,15 @@ export default function ConnectTab() {
       body: JSON.stringify({ token: null })
     }).catch(console.error);
 
-    window.location.href = '/';
+    if (isDemoUser) {
+      import('@/lib/indexedDB').then(({ clearAllMediaFromDB }) => {
+        clearAllMediaFromDB().catch(console.error).finally(() => {
+          window.location.href = '/';
+        });
+      });
+    } else {
+      window.location.href = '/';
+    }
   };
 
   if (!isLoggedIn) {

@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const { username, password, isDemo } = await request.json();
 
     if (isDemo) {
-      const demoUser = process.env.DEMO_USERNAME || 'demo';
+      const demoUser = process.env.DEMO_USERNAME || 'demo_user';
       const demoPass = process.env.DEMO_PASSWORD || 'demo123';
       
       const client = await clientPromise;
@@ -117,15 +117,48 @@ export async function POST(request: Request) {
         { 
           $set: { 
             deadlines: demoDeadlines,
-            lastModified: Date.now()
-          } 
+            lastModified: Date.now(),
+            hideYouInLeaderboard: false
+          }
         },
         { upsert: true }
       );
 
-      // 4. Set 2 hardcoded countdowns based on current date
+      // Reset User profile fields to default
+      await db.collection('User').updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            alias: "demoUser",
+            profilePicture: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQf48actplbaZQTsAVGm8rv1ZmiaFa_P8oYMiLKnzAm4pkcylWmgJ_XKFEI&s=10"
+          }
+        }
+      );
+
       const nextWeekDate = new Date(todayDate); nextWeekDate.setDate(todayDate.getDate() + 7);
       const nextMonthDate = new Date(todayDate); nextMonthDate.setDate(todayDate.getDate() + 30);
+      
+      // Overwrite Dashboard settings for Wallpapers
+      await db.collection('DashboardStorage').updateOne(
+        { userId: user._id.toString() },
+        {
+          $set: {
+            wallpaper: "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
+            bgIndex: 1,
+            peekModeWallpaper: "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg",
+            panicWallpaperSwitch: true,
+            customDesktopWallpapers: [
+              "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
+              "https://images4.alphacoders.com/140/1402795.mp4",
+              "https://images4.alphacoders.com/476/thumb-1920-47698.png",
+              "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg"
+            ],
+            activeDesktopCustomIndex: 0,
+            lastModified: Date.now()
+          }
+        },
+        { upsert: true }
+      );
       
       const demoCountdowns = [
         {
@@ -147,6 +180,80 @@ export async function POST(request: Request) {
             countdowns: demoCountdowns,
             lastModified: Date.now()
           } 
+        },
+        { upsert: true }
+      );
+
+      // 5. Set generic default tasks for the demo user
+      const demoTasks = [
+        { id: 'demo-task-1', title: 'Review pull requests', completed: false, duration:120, timeSpent: 30, groupId: 0, createdAt: Date.now() },
+        { id: 'demo-task-2', title: 'Update project documentation', completed: false, duration:50, timeSpent: 20, groupId: 0, createdAt: Date.now() },
+        { id: 'demo-task-3', title: 'Prepare presentation slides for weekly sync', completed: true, duration:120, timeSpent: 120, groupId: 1, createdAt: Date.now() },
+        { id: 'demo-task-4', title: 'Reply to high-priority emails', completed: false, duration:150, timeSpent: 80, groupId: 1, createdAt: Date.now() },
+        { id: 'demo-task-5', title: 'Plan Q3 Roadmap', completed: false, duration:160, timeSpent: 50, groupId: 2, createdAt: Date.now() },
+        { id: 'demo-task-6', title: 'fix the minor bugs', completed: true, duration:120, timeSpent: 120, groupId: 0, createdAt: Date.now() }
+      ];
+
+      await db.collection('Tasks').updateOne(
+        { userId: user._id.toString() },
+        { 
+          $set: { 
+            tasks: demoTasks,
+            lastModified: Date.now()
+          } 
+        },
+        { upsert: true }
+      );
+
+      const demoYesterdayDate = new Date(todayDate); demoYesterdayDate.setDate(todayDate.getDate() - 1);
+      const demoTomorrowDate = new Date(todayDate); demoTomorrowDate.setDate(todayDate.getDate() + 1);
+
+      const yesterdayStr = demoYesterdayDate.toISOString().split('T')[0];
+      const todayStr = todayDate.toISOString().split('T')[0];
+      const tomorrowStr = demoTomorrowDate.toISOString().split('T')[0];
+
+      // 6. Set generic default notes for the demo user
+      const demoNotes = [
+        {
+          id: 'demo-note-1',
+          title: 'Deep Work Session Log',
+          entries: {
+            [yesterdayStr]: '<p><strong>Morning Block:</strong> Finished drafting the architectural proposal for the new messaging system. The async pattern looks much cleaner.</p><ul><li>Drafted the specs</li><li>Created Mermaid diagrams</li><li>Sent for peer review</li></ul>',
+            [todayStr]: '<p><strong>Afternoon Focus:</strong> Refactoring the legacy state management. It is a bit tangled, but breaking it down into smaller custom hooks is working well.</p><br><p><em>Blocker:</em> Need to figure out the best way to handle concurrent hydration. Will read the Next.js docs tomorrow.</p>',
+            [tomorrowStr]: '<p><strong>Plan for tomorrow:</strong> Finalize hydration bug fixes and prepare for the staging deployment at 3 PM.</p>'
+          }
+        },
+        {
+          id: 'demo-note-2',
+          title: 'Meeting Notes & Action Items',
+          entries: {
+            [yesterdayStr]: '<h3>Weekly Sync (10:00 AM)</h3><p>- Marketing team needs the new assets by Thursday.</p><p>- Discussed the Q3 roadmap and finalized OKRs.</p><br><p><strong>Action Items:</strong></p><ol><li>Ping Sarah about the missing Figma files.</li><li>Schedule 1-on-1 with David.</li></ol>',
+            [todayStr]: '<h3>Design Review (2:30 PM)</h3><p>The new dark mode palette looks fantastic. We decided to dial back the contrast slightly on the secondary text.</p>'
+          }
+        },
+        {
+          id: 'demo-note-3',
+          title: 'Books / Learning Notes',
+          entries: {
+            [todayStr]: '<h3>Atomic Habits - Chapter 3</h3><p>The idea of focusing on <em>systems</em> instead of <em>goals</em> is profound. A goal is a result you want to achieve, but a system is the process that leads to those results.</p><br><p>Quote: <em>"You do not rise to the level of your goals. You fall to the level of your systems."</em></p>'
+          }
+        },
+        {
+          id: 'demo-note-4',
+          title: 'Scratchpad',
+          entries: {
+            [todayStr]: '<p>Quick thoughts:</p><p>- Try using Zustand instead of Context API for the new global state.</p><p>- Grocery list: Milk, Eggs, Coffee beans.</p><p>- Call mom at 6 PM.</p>'
+          }
+        }
+      ];
+
+      await db.collection('Notes').updateOne(
+        { userId: user._id.toString() },
+        {
+          $set: {
+            notes: demoNotes,
+            lastModified: Date.now()
+          }
         },
         { upsert: true }
       );

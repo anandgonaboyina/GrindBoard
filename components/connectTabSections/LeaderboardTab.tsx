@@ -3,12 +3,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Trophy, Info, RefreshCw, WifiOff, ChevronDown, Clock, ShieldAlert, Flame, Search, Sparkles, X } from 'lucide-react';
 import ScrollableWithArrows from '../ScrollableWithArrows';
+import { useDashboardStore } from '@/store/dashboardStore';
 
 interface LeaderboardTabProps {
   setSelectedImageOverlay: (overlay: any) => void;
 }
 
 export default React.memo(function LeaderboardTab({ setSelectedImageOverlay }: LeaderboardTabProps) {
+  const { hideYouInLeaderboard } = useDashboardStore();
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [leaderboardFilter, setLeaderboardFilter] = useState<'today' | 'week' | 'month'>('today');
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<'current' | 'previous'>('current');
@@ -220,9 +222,11 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay }: L
                   const isTop3 = index < 3 && val > 0;
                   const rankColors = ['bg-yellow-500/20 text-yellow-400 border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]', 'bg-gray-300/20 text-gray-300 border-gray-300/30', 'bg-amber-700/20 text-amber-500 border-amber-700/30'];
                   const rankColor = isTop3 ? rankColors[index] : 'bg-white/5 text-white/50 border-white/10';
+                  const isUserMe = user.isMe && !hideYouInLeaderboard;
+                  const displayName = (user.isMe && hideYouInLeaderboard) ? user.displayName.replace(' (You)', '') : user.displayName;
 
                   return (
-                    <div key={user.id} className={`flex flex-col gap-0.5 p-0.5 sm:p-1 rounded-xl border transition-all w-full min-w-0 ${user.isMe ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)] z-10' : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/10'}`}>
+                    <div key={user.id} className={`flex flex-col gap-0.5 p-0.5 sm:p-1 rounded-xl border transition-all w-full min-w-0 ${isUserMe ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)] z-10' : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/10'}`}>
                       <div className={`flex items-center justify-between w-full min-w-0 gap-1 sm:gap-1.5 ${leaderboardFilter === 'today' && leaderboardPeriod === 'current' ? 'cursor-pointer group/row' : ''}`}
                         onClick={() => {
                           if (leaderboardFilter === 'today' && leaderboardPeriod === 'current') {
@@ -240,21 +244,21 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay }: L
                               onClick={(e) => {
                                 if (user.profilePicture) {
                                   e.stopPropagation();
-                                  setSelectedImageOverlay({ url: user.profilePicture, title: user.displayName });
+                                  setSelectedImageOverlay({ url: user.profilePicture, title: displayName });
                                 }
                               }}
                               className={`w-9 h-9 sm:w-8.5 sm:h-8.5 md:w-9.5 md:h-9.5 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-[10px] sm:text-xs md:text-sm shrink-0 overflow-hidden border border-white/10 ${user.profilePicture ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
                               title={user.profilePicture ? "Click to view photo" : ""}
                             >
-                              {user.profilePicture ? <img src={user.profilePicture} alt="" className="w-full h-full object-cover" /> : user.displayName.charAt(0).toUpperCase()}
+                              {user.profilePicture ? <img src={user.profilePicture} alt="" className="w-full h-full object-cover" /> : displayName.charAt(0).toUpperCase()}
                             </div>
                           </div>
 
                           {/* Middle Column: Display name and 4-item grid */}
                           <div className="flex flex-col min-w-0 overflow-hidden justify-center gap-0.5 flex-1">
                             <div className="flex items-center gap-0.5 w-full overflow-hidden">
-                              <span className={`font-bold text-[10px] sm:text-xs md:text-sm tracking-wide truncate leading-none ${user.isMe ? 'text-blue-400 font-extrabold' : 'text-white/90'}`}>
-                                {user.displayName}
+                              <span className={`font-bold text-[10px] sm:text-xs md:text-sm tracking-wide truncate leading-none ${isUserMe ? 'text-blue-400 font-extrabold' : 'text-white/90'}`}>
+                                {displayName}
                               </span>
                             </div>
 

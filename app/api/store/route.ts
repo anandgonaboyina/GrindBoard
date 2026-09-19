@@ -137,7 +137,7 @@ const SETTING_ARRAY_KEYS = [
 
 const TASK_KEYS = ['tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames', 'plans'];
 const COUNTDOWN_KEYS = ['countdowns'];
-const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts'];
+const DEADLINE_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'disableDeadlineLockOnToday', 'hideYouInLeaderboard'];
 const STATS_KEYS = ['history', 'stopwatchSessions'];
 const DAILY_ROUTINE_KEYS = ['dailyTimes'];
 
