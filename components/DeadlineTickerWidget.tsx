@@ -206,7 +206,7 @@ export default function DeadlineTickerWidget() {
         <div className="pointer-events-auto transition-all duration-300">
           <button
             onClick={() => setIsMinimized(false)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-red-500/40 text-white shadow-2xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 border border-red-500/40 border-l-0 rounded-l-none rounded-r-xl text-white shadow-2xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-[1.02] origin-left group -ml-1.5 sm:-ml-4"
           >
             <div className="relative">
               <Flame className="w-3.5 h-3.5 text-red-400 animate-pulse" />
@@ -222,9 +222,24 @@ export default function DeadlineTickerWidget() {
         <div
         onTouchStart={(e) => { dragStartX.current = e.touches[0].clientX; }}
         onTouchEnd={(e) => { 
-          if (dragStartX.current !== null && dragStartX.current - e.changedTouches[0].clientX > 50) {
+          if (dragStartX.current !== null && dragStartX.current - e.changedTouches[0].clientX > 30) {
             if (!hasPendingToday) setIsMinimized(true);
           }
+          dragStartX.current = null;
+        }}
+        onTouchCancel={() => { dragStartX.current = null; }}
+        onMouseDown={(e) => { dragStartX.current = e.clientX; }}
+        onMouseUp={(e) => { 
+          if (dragStartX.current !== null && dragStartX.current - e.clientX > 30) {
+            if (!hasPendingToday) setIsMinimized(true);
+          }
+          dragStartX.current = null;
+        }}
+        onMouseLeave={(e) => { 
+          if (dragStartX.current !== null && dragStartX.current - e.clientX > 30) {
+            if (!hasPendingToday) setIsMinimized(true);
+          }
+          dragStartX.current = null;
         }}
         className="pointer-events-auto w-[200px] xs:w-[220px] sm:w-[320px] max-h-[170px] xs:max-h-[200px] sm:max-h-[380px] flex flex-col rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
         >
