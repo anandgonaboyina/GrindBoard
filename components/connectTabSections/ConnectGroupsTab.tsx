@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock, Sparkles, Flame, WifiOff, Calendar, Lock, Copy, CopyCheck } from 'lucide-react';
+import { Users, Search, Plus, Trash, Trash2, Check, X, ShieldAlert, ArrowLeft, ArrowRight, Edit2, Settings, Info, Clock, Sparkles, Flame, WifiOff, Calendar, Lock, Copy, CopyCheck, ChevronUp, ChevronDown, CheckCircle2 } from 'lucide-react';
 import ScrollableWithArrows from '../ScrollableWithArrows';
 import ConfirmationModal from '../ConfirmationModal';
 import GroupTaskManager from '../GroupTaskManager';
@@ -150,7 +150,6 @@ function GroupSearchLoadingSkeleton() {
   );
 }
 
-// 1. Wrap the entire tab in React.memo
 export default React.memo(function ConnectGroupsTab() {
   const { userGroups, setUserGroups, selectedGroupId, setSelectedGroupId } = useDashboardStore();
   const [activeSubTab, setActiveSubTab] = useState<'groups' | 'search'>('groups');
@@ -170,7 +169,6 @@ export default React.memo(function ConnectGroupsTab() {
   const [newGroupTasks, setNewGroupTasks] = useState<{ id: string, title: string, duration: number, groupId?: number }[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDuration, setNewTaskDuration] = useState('');
-  const [editingGroupTaskDurationId, setEditingGroupTaskDurationId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [viewingGroup, setViewingGroup] = useState<any>(null);
@@ -183,13 +181,10 @@ export default React.memo(function ConnectGroupsTab() {
   const [editGroupAvatarUrl, setEditGroupAvatarUrl] = useState('');
   const [editGroupIsPrivate, setEditGroupIsPrivate] = useState(false);
   const [editGroupAllowRequests, setEditGroupAllowRequests] = useState(true);
-  const [memberNewTaskTitles, setMemberNewTaskTitles] = useState<Record<string, string>>({});
-  const [memberNewTaskDurations, setMemberNewTaskDurations] = useState<Record<string, string>>({});
   const [editingTabIdx, setEditingTabIdx] = useState<number | null>(null);
   const [editingTabName, setEditingTabName] = useState('');
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editingTaskTitle, setEditingTaskTitle] = useState('');
   const [memberActiveTabs, setMemberActiveTabs] = useState<Record<string, number>>({});
+  const [expandedMemberIds, setExpandedMemberIds] = useState<Record<string, boolean>>({});
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
   const [isCopyMode, setIsCopyMode] = useState<boolean>(false);
@@ -199,7 +194,6 @@ export default React.memo(function ConnectGroupsTab() {
     targetMember: any | null;
   }>({ isOpen: false, targetMember: null });
 
-  // Extracted user context
   const myUsername = typeof window !== 'undefined' ? localStorage.getItem('dashboard_username') || '' : '';
 
   useEffect(() => {
@@ -278,7 +272,7 @@ export default React.memo(function ConnectGroupsTab() {
 
       if (groupsData.groups) {
         setGroups(groupsData.groups);
-        setUserGroups(groupsData.groups); // sync to store for TaskManager
+        setUserGroups(groupsData.groups);
       }
       if (requestsData) {
         setRequests(requestsData.requests || []);
@@ -558,147 +552,6 @@ export default React.memo(function ConnectGroupsTab() {
     setNewTaskDuration('');
   };
 
-  const handleEditGroupTaskDuration = async (groupId: string, taskId: string, duration: number) => {
-    if (!viewingGroup) return;
-    const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
-    const myUserId = myMemberInfo?.userId || '';
-
-    const currentMyTasks = viewingGroup.memberTasks?.[myUserId] || viewingGroup.tasks || [];
-    const updatedMyTasks = currentMyTasks.map((t: any) => t.id === taskId ? { ...t, duration } : t);
-    const updatedMemberTasks = {
-      ...(viewingGroup.memberTasks || {}),
-      [myUserId]: updatedMyTasks
-    };
-    setViewingGroup({ ...viewingGroup, memberTasks: updatedMemberTasks });
-
-    const token = localStorage.getItem('dashboard_sync_token');
-    try {
-      const res = await fetch(`/api/groups/${groupId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'edit_group_task_duration', taskId, duration })
-      });
-      if (res.ok) {
-        fetchData();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleToggleGroupTaskCompletion = async (taskId: string, currentComp: any, targetUserId: string) => {
-    if (!viewingGroup) return;
-    const membersList = viewingGroup.members || [];
-    const myMemberInfo = membersList.find((m: any) => m.isMe || m.username === myUsername);
-    if (!myMemberInfo || myMemberInfo.userId !== targetUserId) return;
-
-    const isCompleted = currentComp?.completed || false;
-    const newCompleted = !isCompleted;
-    const timeSpent = currentComp?.timeSpent || 0;
-
-    const userCompsForDay = viewingGroup.completions?.[myMemberInfo.userId]?.[dateStr] || {};
-    const updatedUserComps = {
-      ...userCompsForDay,
-      [taskId]: { completed: newCompleted, timeSpent }
-    };
-    const updatedGroupComps = {
-      ...(viewingGroup.completions || {}),
-      [myMemberInfo.userId]: {
-        ...(viewingGroup.completions?.[myMemberInfo.userId] || {}),
-        [dateStr]: updatedUserComps
-      }
-    };
-
-    setViewingGroup({ ...viewingGroup, completions: updatedGroupComps });
-
-    const token = localStorage.getItem('dashboard_sync_token');
-    try {
-      await fetch(`/api/groups/${viewingGroup._id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          action: 'update_completion',
-          dateStr,
-          taskId,
-          completed: newCompleted,
-          timeSpent
-        })
-      });
-      fetchData();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleAddGroupTaskInView = async (tabIdx: number, title: string, durationMins: number) => {
-    if (!viewingGroup || !title.trim()) return;
-    const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
-    const myUserId = myMemberInfo?.userId || '';
-
-    const currentMyTasks = viewingGroup.memberTasks?.[myUserId] || viewingGroup.tasks || [];
-    const tabTasksCount = currentMyTasks.filter((t: any) => (t.groupId || 0) === tabIdx).length;
-    if (tabTasksCount >= 6) {
-      showAlertModal('Limit Reached', 'Each tab section can have at most 6 tasks.');
-      return;
-    }
-
-    const newTask = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      duration: durationMins || 25,
-      groupId: tabIdx
-    };
-
-    const updatedMyTasks = [...currentMyTasks, newTask];
-    const updatedMemberTasks = {
-      ...(viewingGroup.memberTasks || {}),
-      [myUserId]: updatedMyTasks
-    };
-    setViewingGroup({ ...viewingGroup, memberTasks: updatedMemberTasks });
-
-    const token = localStorage.getItem('dashboard_sync_token');
-    try {
-      const res = await fetch(`/api/groups/${viewingGroup._id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'update_task_list', tasks: updatedMyTasks })
-      });
-      if (res.ok) {
-        fetchData();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleEditGroupTaskTitle = async (groupId: string, taskId: string, newTitle: string) => {
-    if (!newTitle.trim() || !viewingGroup) return;
-    const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
-    const myUserId = myMemberInfo?.userId || '';
-
-    const currentMyTasks = viewingGroup.memberTasks?.[myUserId] || viewingGroup.tasks || [];
-    const updatedMyTasks = currentMyTasks.map((t: any) => t.id === taskId ? { ...t, title: newTitle.trim() } : t);
-    const updatedMemberTasks = {
-      ...(viewingGroup.memberTasks || {}),
-      [myUserId]: updatedMyTasks
-    };
-    setViewingGroup({ ...viewingGroup, memberTasks: updatedMemberTasks });
-
-    const token = localStorage.getItem('dashboard_sync_token');
-    try {
-      const res = await fetch(`/api/groups/${groupId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'edit_group_task_title', taskId, title: newTitle.trim() })
-      });
-      if (res.ok) {
-        fetchData();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const handleUpdateGroupTabNames = async (groupId: string, newTabNames: string[]) => {
     if (!viewingGroup) return;
 
@@ -720,64 +573,6 @@ export default React.memo(function ConnectGroupsTab() {
       if (res.ok) {
         fetchData();
       }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleUpdateTabNames = async (groupId: string, newTabNames: string[]) => {
-    if (!viewingGroup) return;
-    const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
-    const myUserId = myMemberInfo?.userId || '';
-
-    const updatedMemberTabNames = {
-      ...(viewingGroup.memberTabNames || {}),
-      [myUserId]: newTabNames
-    };
-    setViewingGroup((prev: any) => prev ? { ...prev, memberTabNames: updatedMemberTabNames } : prev);
-
-    const updatedUserGroups = useDashboardStore.getState().userGroups.map((g: any) => g._id === groupId ? {
-      ...g,
-      memberTabNames: updatedMemberTabNames
-    } : g);
-    setUserGroups(updatedUserGroups);
-
-    const token = localStorage.getItem('dashboard_sync_token');
-    try {
-      const res = await fetch(`/api/groups/${groupId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'update_tab_names', tabNames: newTabNames, targetUserId: myUserId })
-      });
-      if (res.ok) {
-        fetchData();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteGroupTask = async (groupId: string, taskId: string) => {
-    if (!viewingGroup) return;
-    const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
-    const myUserId = myMemberInfo?.userId || '';
-
-    const currentMyTasks = viewingGroup.memberTasks?.[myUserId] || viewingGroup.tasks || [];
-    const updatedMyTasks = currentMyTasks.filter((t: any) => t.id !== taskId);
-    const updatedMemberTasks = {
-      ...(viewingGroup.memberTasks || {}),
-      [myUserId]: updatedMyTasks
-    };
-    setViewingGroup({ ...viewingGroup, memberTasks: updatedMemberTasks });
-
-    const token = localStorage.getItem('dashboard_sync_token');
-    try {
-      const res = await fetch(`/api/groups/${groupId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'update_task_list', tasks: updatedMyTasks })
-      });
-      if (res.ok) fetchData();
     } catch (e) {
       console.error(e);
     }
@@ -929,7 +724,6 @@ export default React.memo(function ConnectGroupsTab() {
     }
   };
 
-  // 2. Optimized Data Hooks
   const getLocalDateString = useCallback((offsetDays = 0) => {
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
@@ -1013,9 +807,8 @@ export default React.memo(function ConnectGroupsTab() {
     return `${Math.floor(mins / 60)}h ${mins % 60}m`;
   };
 
-  // 3. Isolated heavy group leader calculations
-  const { sortedMembers, isMember, isAdmin, leftColMembers, rightColMembers, groupTabNames } = useMemo(() => {
-    if (!viewingGroup) return { sortedMembers: [], isMember: false, isAdmin: false, leftColMembers: [], rightColMembers: [], groupTabNames: DEFAULT_UNIVERSAL_TAB_NAMES };
+  const { sortedMembers, isMember, isAdmin, groupTabNames } = useMemo(() => {
+    if (!viewingGroup) return { sortedMembers: [], isMember: false, isAdmin: false, groupTabNames: DEFAULT_UNIVERSAL_TAB_NAMES };
 
     const members = viewingGroup.members || [];
     const meMember = members.find((m: any) => isMeMember(m));
@@ -1080,8 +873,6 @@ export default React.memo(function ConnectGroupsTab() {
       sortedMembers: sorted, 
       isMember, 
       isAdmin, 
-      leftColMembers: sorted.filter((_, idx) => idx % 2 === 0),
-      rightColMembers: sorted.filter((_, idx) => idx % 2 === 1),
       groupTabNames: formattedTabNames
     };
   }, [viewingGroup, memberSearchQuery, myUsername, isMeMember, dateStr]);
@@ -1131,7 +922,6 @@ export default React.memo(function ConnectGroupsTab() {
           </div>
         )}
 
-        {/* Sticky Top-Left Floating Rounded Back Button */}
         <div className="sticky top-12 sm:top-14 z-20 py-0.5 flex items-center justify-between w-full pointer-events-none shrink-0">
           <button
             onClick={() => setViewingGroup(null)}
@@ -1143,20 +933,16 @@ export default React.memo(function ConnectGroupsTab() {
           </button>
         </div>
 
-        {/* Group Header Card - Glassmorphic & Compact */}
         <div className="relative overflow-hidden bg-slate-900/40 p-2 sm:p-3 rounded-2xl border border-white/10 shadow-xl backdrop-blur-2xl">
-          {/* Ambient Decorative Glow */}
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-[40px] pointer-events-none z-0" />
 
           <div className="relative z-10 flex flex-col gap-2 w-full">
-            {/* Top Bar: Group Title + Status Badges */}
             <div className="flex items-center justify-between gap-2 w-full flex-wrap">
               <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
                 <h3 className="font-bold text-white text-sm sm:text-base tracking-tight truncate max-w-[180px] xs:max-w-[220px] sm:max-w-xs md:max-w-sm">
                   {viewingGroup.title}
                 </h3>
 
-                {/* Status Badges */}
                 <div className="flex items-center gap-1 shrink-0 flex-wrap">
                   <button
                     type="button"
@@ -1208,7 +994,6 @@ export default React.memo(function ConnectGroupsTab() {
               )}
             </div>
 
-            {/* Dedicated Action Toolbar Strip */}
             <div className="flex items-center justify-between flex-wrap gap-1.5 pt-1 border-t border-white/5 w-full">
               <div className="flex items-center gap-1.5 flex-wrap">
                 {isMember && (
@@ -1281,9 +1066,7 @@ export default React.memo(function ConnectGroupsTab() {
               </div>
             </div>
 
-            {/* Rounded Rectangle Profile Photo + Stats Grid */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 mt-0.5 bg-black/20 p-2 sm:p-2.5 rounded-xl border border-white/5 shadow-inner w-full">
-              {/* Rounded Rectangle Group Profile Photo */}
               <div className="relative group/avatar shrink-0 hidden sm:block">
                 {viewingGroup.avatarUrl ? (
                   <img
@@ -1299,7 +1082,6 @@ export default React.memo(function ConnectGroupsTab() {
                 )}
               </div>
 
-              {/* 2x2 Table Grid of 4 Metrics */}
               <div className="grid grid-cols-2 gap-1.5 w-full flex-1 font-mono">
                 <div className="flex items-center justify-between px-2 py-1 sm:py-1.5 bg-sky-500/10 rounded-md border border-sky-500/10 text-[9px] sm:text-[10px]">
                   <span className="text-sky-300/80 font-sans font-bold flex items-center gap-1">🎯 Target</span>
@@ -1320,7 +1102,6 @@ export default React.memo(function ConnectGroupsTab() {
               </div>
             </div>
 
-            {/* Tab-specific summary in Header */}
             <div className="flex items-center justify-between text-[9px] sm:text-[10px] px-2.5 py-1.5 bg-white/5 rounded-lg border border-white/10 font-mono w-full shadow-sm">
               <span className="text-white/60 font-sans font-medium flex items-center gap-1.5 truncate">
                 📌 <strong className="text-blue-300 truncate max-w-[80px] xs:max-w-[120px] sm:max-w-none">{activeTabStats.tabName}</strong> Specific:
@@ -1331,7 +1112,6 @@ export default React.memo(function ConnectGroupsTab() {
               </div>
             </div>
 
-            {/* 3-day Abandonment Claim Banner */}
             {viewingGroup.pendingDeletion && (
               <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-[10px] flex items-center justify-between gap-2 shadow-sm my-0.5">
                 <div className="flex flex-col min-w-0">
@@ -1351,7 +1131,6 @@ export default React.memo(function ConnectGroupsTab() {
               </div>
             )}
 
-            {/* Editing Form or Description Strip */}
             {editingGroupId === viewingGroup._id ? (
               <form onSubmit={handleUpdateGroupInfo} className="flex flex-col gap-2 bg-black/30 p-2.5 rounded-xl border border-white/10 mt-1 w-full shadow-inner">
                 <div className="flex flex-col gap-1 w-full">
@@ -1384,7 +1163,6 @@ export default React.memo(function ConnectGroupsTab() {
                   />
                 </div>
                 <div className="flex flex-col gap-2 p-2.5 bg-black/40 border border-white/5 rounded-lg mt-1 w-full">
-                  {/* Private vs Public Toggle */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-col min-w-0">
                       <span className="text-[10px] font-bold text-white/90">Group Visibility</span>
@@ -1403,7 +1181,6 @@ export default React.memo(function ConnectGroupsTab() {
 
                   <div className="h-px bg-white/5 w-full" />
 
-                  {/* Request Access / Instant Join Toggle */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-[10px] font-bold text-white/90">
@@ -1462,7 +1239,6 @@ export default React.memo(function ConnectGroupsTab() {
           </div>
         </div>
 
-        {/* Join Requests (Admin Only) */}
         {requests.filter(r => String(r.groupId) === String(viewingGroup._id)).length > 0 && members.find((m: any) => m.isMe)?.role === 'admin' && (
           <div className="px-2 py-2.5 border border-blue-500/20 bg-blue-500/10 rounded-xl backdrop-blur-md">
             <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-300/80 mb-2 px-1 flex items-center gap-1.5">
@@ -1489,7 +1265,6 @@ export default React.memo(function ConnectGroupsTab() {
           </div>
         )}
 
-        {/* Content Body: Private Shield or Tabs+Search */}
         {(!members.find((m: any) => m.isMe) && !groups.some(g => String(g._id) === String(viewingGroup._id))) && viewingGroup.isPrivate ? (
           <div className="flex flex-col items-center justify-center p-6 sm:p-10 bg-slate-900/40 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl mx-1 animate-in fade-in zoom-in-95 mt-2">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-black/40 rounded-full flex items-center justify-center mb-4 border border-white/5 shadow-inner">
@@ -1506,10 +1281,7 @@ export default React.memo(function ConnectGroupsTab() {
         ) : (
           <>
             <div className="flex flex-col gap-2.5 w-full bg-slate-900/40 p-2 sm:p-2.5 rounded-2xl border border-white/10 backdrop-blur-xl shadow-lg mt-1">
-              {/* Row 1: Day Switcher + Group Header Tab Selector */}
               <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 w-full">
-
-                {/* Day Switcher */}
                 <div className="flex bg-black/40 rounded-lg overflow-hidden border border-white/5 p-0.5 w-full lg:w-auto shrink-0 shadow-inner">
                   <button
                     type="button"
@@ -1527,7 +1299,6 @@ export default React.memo(function ConnectGroupsTab() {
                   </button>
                 </div>
 
-                {/* Group Header Tab Selector */}
                 <div className="flex bg-black/40 rounded-lg overflow-hidden border border-white/5 w-full lg:flex-1 max-w-full p-0.5 gap-0.5 shadow-inner">
                   {(() => {
                     const myMemberInfo = viewingGroup.members?.find((m: any) => m.isMe || m.username === myUsername);
@@ -1593,7 +1364,6 @@ export default React.memo(function ConnectGroupsTab() {
                 </div>
               </div>
 
-              {/* Row 2: Member Search Bar */}
               <div className="relative w-full group">
                 <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-blue-400 transition-colors pointer-events-none sm:w-3.5 sm:h-3.5" />
                 <input
@@ -1615,7 +1385,6 @@ export default React.memo(function ConnectGroupsTab() {
               </div>
             </div>
 
-            {/* Copy Mode Interactive Instruction Banner */}
             {isCopyMode && (
               <div className="w-full p-2.5 my-1.5 rounded-xl bg-gradient-to-r from-sky-950/80 via-blue-950/80 to-purple-950/80 border-2 border-sky-400 text-white flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(56,189,248,0.25)] animate-pulse">
                 <div className="flex items-center gap-2 min-w-0">
@@ -1636,7 +1405,6 @@ export default React.memo(function ConnectGroupsTab() {
               </div>
             )}
 
-            {/* Member Leaderboard & Status Overview */}
             <div className="pb-6">
               {(() => {
                 if (sortedMembers.length === 0) {
@@ -1665,9 +1433,11 @@ export default React.memo(function ConnectGroupsTab() {
                       onClick={() => {
                         if (canSelectInCopyMode) {
                           setCopyConfirmModal({ isOpen: true, targetMember: member });
+                        } else {
+                          setExpandedMemberIds(prev => ({ ...prev, [member.userId]: !prev[member.userId] }));
                         }
                       }}
-                      className={`relative bg-black/40 border p-1.5 pt-2.5 rounded-xl flex flex-col gap-1 shadow-sm transition-all w-full h-fit ${canSelectInCopyMode
+                      className={`relative bg-black/40 border p-1.5 pt-2.5 rounded-xl flex flex-col gap-1 shadow-sm transition-all w-full h-fit cursor-pointer ${canSelectInCopyMode
                         ? 'ring-2 ring-sky-400 border-sky-400 cursor-pointer bg-sky-950/40 hover:bg-sky-900/60 shadow-[0_0_20px_rgba(56,189,248,0.35)] scale-[1.01]'
                         : isGroupAdmin
                           ? 'border-amber-500/40 bg-gradient-to-b from-amber-500/10 via-black/40 to-black/40 shadow-[0_0_12px_rgba(245,158,11,0.12)]'
@@ -1677,7 +1447,6 @@ export default React.memo(function ConnectGroupsTab() {
                         }`}
                       style={{ zoom: 0.85 }}
                     >
-                      {/* Top Border Role / Self Badge */}
                       {isGroupAdmin ? (
                         <span className="absolute -top-2.5 left-2 px-1.5 py-0.5 bg-black/90 rounded-md text-[8px] font-black tracking-widest text-amber-400 uppercase z-20 shadow-sm border border-amber-500/40 backdrop-blur-md flex items-center gap-1">
                           <ShieldAlert size={8.5} /> {isMe ? 'ADMIN (YOU)' : 'ADMIN'}
@@ -1696,7 +1465,6 @@ export default React.memo(function ConnectGroupsTab() {
                         </span>
                       )}
 
-                      {/* Top Right Border Rank Badge */}
                       <span className={`absolute -top-2.5 right-2 px-2 py-0.5 bg-black/90 rounded-md text-[11px] font-black tracking-wider uppercase z-20 shadow-md border backdrop-blur-md ${rankIdx === 0
                         ? 'text-amber-300 border-amber-500/60 shadow-amber-500/20'
                         : rankIdx === 1
@@ -1709,7 +1477,6 @@ export default React.memo(function ConnectGroupsTab() {
                       </span>
 
                       <div className="flex flex-col gap-1 border-b border-white/5 pb-1">
-                        {/* Upper Row: Avatar, Username, You Tag & Admin Controls */}
                         <div className="flex items-center justify-between gap-1 min-w-0">
                           <div className="flex items-center gap-1 min-w-0 flex-1">
                             {(() => {
@@ -1750,35 +1517,57 @@ export default React.memo(function ConnectGroupsTab() {
                             </div>
                           </div>
 
-                          {viewerIsAdmin && !isMe && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <label className="text-[7.5px] text-amber-300/90 font-bold flex items-center gap-0.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-1 py-0.5 rounded transition-colors" title="Grant Co-Admin Rights">
-                                <ShieldAlert size={7.5} className={isCoAdmin ? "text-amber-400" : "text-white/40"} />
-                                <span>Co-Admin</span>
-                                <input
-                                  type="checkbox"
-                                  checked={isCoAdmin || false}
-                                  onChange={(e) => handleGrantEdit(viewingGroup._id, member.userId, e.target.checked)}
-                                  className="accent-amber-500 scale-75 cursor-pointer"
-                                />
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveMember(viewingGroup._id, member.userId, member.username)}
-                                className="px-1 py-0.5 text-[8px] font-bold bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white rounded border border-red-500/30 flex items-center gap-0.5 transition-colors cursor-pointer"
-                                title="Remove member from group"
-                              >
-                                <X size={8.5} />
-                                <span>Remove</span>
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {viewerIsAdmin && !isMe && (
+                              <div className="flex items-center gap-1 shrink-0 mr-1" onClick={(e) => e.stopPropagation()}>
+                                <label className="text-[7.5px] text-amber-300/90 font-bold flex items-center gap-0.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-1 py-0.5 rounded transition-colors" title="Grant Co-Admin Rights">
+                                  <ShieldAlert size={7.5} className={isCoAdmin ? "text-amber-400" : "text-white/40"} />
+                                  <span>Co-Admin</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={isCoAdmin || false}
+                                    onChange={(e) => handleGrantEdit(viewingGroup._id, member.userId, e.target.checked)}
+                                    className="accent-amber-500 scale-75 cursor-pointer"
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveMember(viewingGroup._id, member.userId, member.username);
+                                  }}
+                                  className="px-1 py-0.5 text-[8px] font-bold bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white rounded border border-red-500/30 flex items-center gap-0.5 transition-colors cursor-pointer"
+                                  title="Remove member from group"
+                                >
+                                  <X size={8.5} />
+                                  <span>Remove</span>
+                                </button>
+                              </div>
+                            )}
+                            
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedMemberIds(prev => ({ ...prev, [member.userId]: !prev[member.userId] }));
+                              }}
+                              className="p-0.5 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors"
+                              title={expandedMemberIds[member.userId] ? "Collapse tasks" : "Expand tasks"}
+                            >
+                              {expandedMemberIds[member.userId] ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Dedicated Stats Row */}
-                        <div className="flex items-center justify-between text-[7.5px] font-mono bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/5">
-                          <span className="text-white/60">Done: <strong className="text-emerald-300">{globalFormatTime(totalMemberDone)}</strong></span>
-                          <span className="text-white/60">Left: <strong className="text-indigo-300">{globalFormatTime(totalMemberLeft)}</strong></span>
+                        <div className="flex items-center justify-between text-[10px] font-mono bg-black/40 px-3 py-1.5 rounded-lg border border-white/10 shadow-inner mt-1">
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 size={12} className="text-emerald-400" />
+                            <span className="text-white/60">Done: <strong className="text-emerald-300 text-xs">{globalFormatTime(totalMemberDone)}</strong></span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={12} className="text-indigo-400" />
+                            <span className="text-white/60">Left: <strong className="text-indigo-300 text-xs">{globalFormatTime(totalMemberLeft)}</strong></span>
+                          </div>
                         </div>
 
                         {canSelectInCopyMode && (
@@ -1797,8 +1586,10 @@ export default React.memo(function ConnectGroupsTab() {
                         )}
                       </div>
 
-                      {/* Direct rendering of GroupTaskManager for each member */}
-                      <div className="mt-0.5 relative min-h-[50px]">
+                      <div 
+                        className="mt-0.5 relative min-h-[40px] cursor-default"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className={!isMember ? "filter blur-sm select-none pointer-events-none opacity-20" : ""}>
                           <GroupTaskManager
                             groupId={viewingGroup._id}
@@ -1807,6 +1598,7 @@ export default React.memo(function ConnectGroupsTab() {
                             onTabChange={(idx) => setMemberActiveTabs(prev => ({ ...prev, [member.userId]: idx }))}
                             dateStrProp={dateStr}
                             hideHeader={true}
+                            isCollapsed={!expandedMemberIds[member.userId]}
                           />
                         </div>
 
@@ -1831,27 +1623,30 @@ export default React.memo(function ConnectGroupsTab() {
                           </div>
                         )}
                       </div>
+                      
+                      {!canSelectInCopyMode && (
+                          <div className="w-full flex justify-center -mb-1.5 pt-1 border-t border-white/5 mt-0.5">
+                              <button
+                                  type="button"
+                                  onClick={(e) => {
+                                      e.stopPropagation();
+                                      setExpandedMemberIds(prev => ({ ...prev, [member.userId]: !prev[member.userId] }));
+                                  }}
+                                  className="p-1 px-4 text-white/30 hover:text-white bg-transparent hover:bg-white/5 rounded-full transition-colors flex items-center justify-center cursor-pointer"
+                                  title={expandedMemberIds[member.userId] ? "Collapse tasks" : "Expand tasks"}
+                              >
+                                  {expandedMemberIds[member.userId] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </button>
+                          </div>
+                      )}
                     </div>
                   );
                 };
 
                 return (
-                  <>
-                    {/* Desktop/Tablet Interleaved Snake Masonry */}
-                    <div className="hidden sm:flex flex-row gap-2.5 items-start w-full">
-                      <div className="flex flex-col gap-2.5 flex-1 min-w-0">
-                        {leftColMembers.map((member, colIdx) => renderMemberCard(member, colIdx * 2))}
-                      </div>
-                      <div className="flex flex-col gap-2.5 flex-1 min-w-0">
-                        {rightColMembers.map((member, colIdx) => renderMemberCard(member, colIdx * 2 + 1))}
-                      </div>
-                    </div>
-
-                    {/* Mobile Single Column Layout */}
-                    <div className="flex sm:hidden flex-col gap-2.5 w-full">
-                      {sortedMembers.map((member, rankIdx) => renderMemberCard(member, rankIdx))}
-                    </div>
-                  </>
+                  <div className="flex flex-col gap-2.5 w-full">
+                    {sortedMembers.map((member, rankIdx) => renderMemberCard(member, rankIdx))}
+                  </div>
                 );
               })()}
             </div>
@@ -1869,7 +1664,6 @@ export default React.memo(function ConnectGroupsTab() {
           hideCancel={confirmModal.hideCancel}
         />
 
-        {/* Copy Mode Instructional Modal */}
         {copyNoticeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
             <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-sky-500/50 rounded-2xl p-5 max-w-sm w-full shadow-[0_0_35px_rgba(56,189,248,0.25)] flex flex-col gap-3 text-center">
@@ -1906,7 +1700,6 @@ export default React.memo(function ConnectGroupsTab() {
           </div>
         )}
 
-        {/* Copy Confirm Modal */}
         {copyConfirmModal.isOpen && copyConfirmModal.targetMember && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
             <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-sky-500/50 rounded-2xl p-5 max-w-sm w-full shadow-[0_0_35px_rgba(56,189,248,0.25)] flex flex-col gap-3 text-center">
@@ -1941,27 +1734,25 @@ export default React.memo(function ConnectGroupsTab() {
           </div>
         )}
 
-        {/* Member Onboarding & Controls Guide Modal */}
         {showWelcomeModal && viewingGroup && (
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[110] p-4 animate-in fade-in"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[110] p-2.5 sm:p-4 overflow-y-auto animate-in fade-in"
             onClick={dismissWelcomeModal}
           >
             <div
-              className="bg-[#121216] border border-blue-500/35 rounded-2xl w-full max-w-md overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.25)] flex flex-col animate-in zoom-in-95 duration-200"
+              className="bg-[#121216] border border-blue-500/35 rounded-2xl w-full max-w-md max-h-[85vh] sm:max-h-[80vh] overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.25)] flex flex-col my-auto animate-in zoom-in-95 duration-200"
               onClick={e => e.stopPropagation()}
             >
-              {/* Header Banner */}
-              <div className="relative p-4 bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border-b border-white/10 flex items-center justify-between">
+              <div className="relative p-3 sm:p-4 bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border-b border-white/10 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0 shadow-inner">
-                    <Sparkles className="w-5 h-5 animate-pulse text-blue-400" />
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0 shadow-inner">
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse text-blue-400" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <h3 className="text-sm font-bold text-white tracking-wide truncate">
+                    <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide truncate">
                       Welcome to {viewingGroup.title}!
                     </h3>
-                    <span className="text-[10px] text-blue-300/80 font-medium">
+                    <span className="text-[9px] sm:text-[10px] text-blue-300/80 font-medium truncate">
                       Member Quick Guide & Task Controls
                     </span>
                   </div>
@@ -1974,80 +1765,61 @@ export default React.memo(function ConnectGroupsTab() {
                 </button>
               </div>
 
-              {/* Guide Content */}
-              <div className="p-4 flex flex-col gap-3 max-h-[70vh] overflow-y-auto">
-                <p className="text-[11px] text-white/70 leading-relaxed">
+              <div className="p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                <p className="text-[10px] sm:text-[11px] text-white/70 leading-relaxed">
                   Here is what you can do in <strong className="text-white">{viewingGroup.title}</strong> to track your focus & rank up on the leaderboard:
                 </p>
 
-                {/* Feature 1: Add & Edit Tasks */}
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0 mt-0.5">
-                    <Plus size={14} />
+                <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                  <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0 mt-0.5">
+                    <Plus size={13} className="sm:w-3.5 sm:h-3.5" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-emerald-300">1. Add & Edit Your Tasks</span>
-                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                    <span className="text-[11px] sm:text-xs font-bold text-emerald-300">1. Add & Edit Your Tasks</span>
+                    <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
                       Use the input box at the bottom of your member card to add tasks with custom target durations (minutes). Double-click task titles or duration tags anytime to edit them.
                     </span>
                   </div>
                 </div>
 
-                {/* Feature 2: Run Timers & Track Time */}
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0 mt-0.5">
-                    <Clock size={14} />
+                <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                  <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0 mt-0.5">
+                    <Clock size={13} className="sm:w-3.5 sm:h-3.5" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-sky-300">2. Run Timers & Track Time</span>
-                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                    <span className="text-[11px] sm:text-xs font-bold text-sky-300">2. Run Timers & Track Time</span>
+                    <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
                       Click the Play ▶ button on your tasks to start live timing. As you work, your logged time automatically updates your stats!
                     </span>
                   </div>
                 </div>
 
-                {/* Feature 3: Delete & Manage */}
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
-                    <Trash2 size={14} />
+                <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                  <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
+                    <Trash2 size={13} className="sm:w-3.5 sm:h-3.5" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-purple-300">3. Complete, Restart & Delete</span>
-                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                    <span className="text-[11px] sm:text-xs font-bold text-purple-300">3. Complete, Restart & Delete</span>
+                    <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
                       Check off tasks as done, click restart ↺ to clear elapsed time, or click the trash 🗑 icon to delete a task.
                     </span>
                   </div>
                 </div>
 
-                {/* Feature 4: Copy Member Tasks */}
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-400/30 flex items-center justify-center text-blue-300 shrink-0 mt-0.5">
-                    <Copy size={14} />
+                <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
+                  <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
+                    <Flame size={13} className="sm:w-3.5 sm:h-3.5" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-blue-300">4. Copy Member Tasks</span>
-                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
-                      Click "Copy Member Tasks" in the top toolbar to enable Copy Mode, then select any member's card to copy all their tasks across all tabs into your personal task list!
-                    </span>
-                  </div>
-                </div>
-
-                {/* Feature 5: Leaderboard Rank */}
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
-                    <Flame size={14} />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-amber-300">5. Leaderboard Ranking</span>
-                    <span className="text-[10px] text-white/60 leading-normal mt-0.5">
+                    <span className="text-[11px] sm:text-xs font-bold text-amber-300">4. Leaderboard Ranking</span>
+                    <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
                       Your member card rank badge (#1, #2, #3...) updates live based on your total completed focus time in this group!
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="p-3 bg-white/5 border-t border-white/10 flex justify-end">
+              <div className="p-2.5 sm:p-3 bg-white/5 border-t border-white/10 flex justify-end shrink-0">
                 <button
                   type="button"
                   onClick={dismissWelcomeModal}
@@ -2059,14 +1831,12 @@ export default React.memo(function ConnectGroupsTab() {
             </div>
           </div>
         )}
-      </div >
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col w-full animate-in fade-in slide-in-from-bottom-2">
-
-      {/* Sub Tabs */}
       <div className="flex justify-between items-center bg-white/5 rounded-xl p-1 mb-3 border border-white/10">
         <button
           onClick={() => setActiveSubTab('groups')}
@@ -2145,7 +1915,6 @@ export default React.memo(function ConnectGroupsTab() {
               </div>
             )}
 
-            {/* My Groups Section */}
             <div className="flex items-center justify-between mb-1 px-1 mt-2">
               <div className="flex items-center gap-2">
                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-white/40">Your Groups</h4>
@@ -2187,7 +1956,6 @@ export default React.memo(function ConnectGroupsTab() {
                     className="bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 text-white placeholder:text-white/30 font-mono"
                   />
                   <div className="flex flex-col gap-2 p-2 bg-black/40 border border-white/10 rounded-lg my-1 w-full">
-                    {/* Private vs Public Toggle */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex flex-col min-w-0">
                         <span className="text-[10px] font-bold text-white/90">Group Visibility</span>
@@ -2206,7 +1974,6 @@ export default React.memo(function ConnectGroupsTab() {
 
                     <div className="h-px bg-white/10 w-full" />
 
-                    {/* Request Access / Instant Join Toggle */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex flex-col min-w-0 flex-1">
                         <span className="text-[10px] font-bold text-white/90">
@@ -2317,7 +2084,6 @@ export default React.memo(function ConnectGroupsTab() {
                         onClick={() => setViewingGroup(group)}
                         className="relative overflow-hidden bg-slate-900/90 border border-white/15 p-3 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition-all flex flex-col gap-2 shadow-md group/card"
                       >
-
                         <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
@@ -2355,7 +2121,6 @@ export default React.memo(function ConnectGroupsTab() {
                           <ArrowRight size={16} className="text-white/40 group-hover/card:text-blue-400 group-hover/card:translate-x-1 transition-all shrink-0" />
                         </div>
 
-                        {/* Clean 4-Item Grid Table for Stats */}
                         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full pt-0.5">
                           <div className="bg-black/60 border border-white/10 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
                             <span className="text-white/50 font-medium">Members</span>
@@ -2381,7 +2146,6 @@ export default React.memo(function ConnectGroupsTab() {
 
                 <div className="w-full h-px bg-white/10 my-3"></div>
 
-                {/* Joined Groups Section */}
                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1 px-1">Groups you joined</h4>
                 {joinedGroupsList.length === 0 ? (
                   <EmptyJoinedGroupsState onSwitchToSearch={() => setActiveSubTab('search')} />
@@ -2394,7 +2158,6 @@ export default React.memo(function ConnectGroupsTab() {
                         onClick={() => setViewingGroup(group)}
                         className="relative overflow-hidden bg-slate-900/90 border border-white/15 p-3 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition-all flex flex-col gap-2 shadow-md group/card"
                       >
-
                         <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
@@ -2432,7 +2195,6 @@ export default React.memo(function ConnectGroupsTab() {
                           <ArrowRight size={16} className="text-white/40 group-hover/card:text-blue-400 group-hover/card:translate-x-1 transition-all shrink-0" />
                         </div>
 
-                        {/* Clean 4-Item Grid Table for Stats */}
                         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full pt-0.5">
                           <div className="bg-black/60 border border-white/10 px-2 py-1 rounded-lg flex items-center justify-between text-[8.5px] xs:text-[9.5px]">
                             <span className="text-white/50 font-medium">Members</span>
@@ -2489,7 +2251,6 @@ export default React.memo(function ConnectGroupsTab() {
                       onClick={() => setViewingGroup(groups.find(g => String(g._id) === String(group._id)) || group)}
                       className="relative overflow-hidden bg-slate-900/90 border border-white/15 p-2.5 sm:p-3 rounded-2xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition-all flex flex-col gap-2 shadow-md group/card"
                     >
-
                       <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
@@ -2593,112 +2354,6 @@ export default React.memo(function ConnectGroupsTab() {
             <div className="p-3 border-t border-white/5 bg-black/20 flex justify-end">
               <button onClick={() => setIsInfoOpen(false)} className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-bold transition-colors">
                 Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Member Onboarding & Controls Guide Modal */}
-      {showWelcomeModal && viewingGroup && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[110] p-2.5 sm:p-4 overflow-y-auto animate-in fade-in"
-          onClick={dismissWelcomeModal}
-        >
-          <div
-            className="bg-[#121216] border border-blue-500/35 rounded-2xl w-full max-w-md max-h-[85vh] sm:max-h-[80vh] overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.25)] flex flex-col my-auto animate-in zoom-in-95 duration-200"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header Banner */}
-            <div className="relative p-3 sm:p-4 bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border-b border-white/10 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0 shadow-inner">
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse text-blue-400" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide truncate">
-                    Welcome to {viewingGroup.title}!
-                  </h3>
-                  <span className="text-[9px] sm:text-[10px] text-blue-300/80 font-medium truncate">
-                    Member Quick Guide & Task Controls
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={dismissWelcomeModal}
-                className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-white/60 hover:text-white flex items-center justify-center transition-colors shrink-0"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* Guide Content */}
-            <div className="p-3 sm:p-4 flex flex-col gap-2.5 sm:gap-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-              <p className="text-[10px] sm:text-[11px] text-white/70 leading-relaxed">
-                Here is what you can do in <strong className="text-white">{viewingGroup.title}</strong> to track your focus & rank up on the leaderboard:
-              </p>
-
-              {/* Feature 1: Add & Edit Tasks */}
-              <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0 mt-0.5">
-                  <Plus size={13} className="sm:w-3.5 sm:h-3.5" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] sm:text-xs font-bold text-emerald-300">1. Add & Edit Your Tasks</span>
-                  <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
-                    Use the input box at the bottom of your member card to add tasks with custom target durations (minutes). Double-click task titles or duration tags anytime to edit them.
-                  </span>
-                </div>
-              </div>
-
-              {/* Feature 2: Run Timers & Track Time */}
-              <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0 mt-0.5">
-                  <Clock size={13} className="sm:w-3.5 sm:h-3.5" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] sm:text-xs font-bold text-sky-300">2. Run Timers & Track Time</span>
-                  <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
-                    Click the Play ▶ button on your tasks to start live timing. As you work, your logged time automatically updates your stats!
-                  </span>
-                </div>
-              </div>
-
-              {/* Feature 3: Delete & Manage */}
-              <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
-                  <Trash2 size={13} className="sm:w-3.5 sm:h-3.5" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] sm:text-xs font-bold text-purple-300">3. Complete, Restart & Delete</span>
-                  <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
-                    Check off tasks as done, click restart ↺ to clear elapsed time, or click the trash 🗑 icon to delete a task.
-                  </span>
-                </div>
-              </div>
-
-              {/* Feature 4: Leaderboard Rank */}
-              <div className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-2.5">
-                <div className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-lg bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
-                  <Flame size={13} className="sm:w-3.5 sm:h-3.5" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] sm:text-xs font-bold text-amber-300">4. Leaderboard Ranking</span>
-                  <span className="text-[9.5px] sm:text-[10px] text-white/60 leading-tight sm:leading-normal mt-0.5">
-                    Your member card rank badge (#1, #2, #3...) updates live based on your total completed focus time in this group!
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-2.5 sm:p-3 bg-white/5 border-t border-white/10 flex justify-end shrink-0">
-              <button
-                type="button"
-                onClick={dismissWelcomeModal}
-                className="w-full py-2 bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <span>Got It! Let's Start Grinding</span> 🚀
               </button>
             </div>
           </div>

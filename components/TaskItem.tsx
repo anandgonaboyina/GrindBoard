@@ -37,12 +37,12 @@ export default function TaskItem({
         <div
             data-task-index={index}
             className={`group relative flex gap-1 sm:gap-1 p-1 rounded-[12px] transition-all shadow-sm mt-0.5
-                ${isTaskDone ? 'bg-white/[0.02] border-white/5 opacity-60 grayscale-[40%]' : 'bg-[#15171e]/80 border-white/30 hover:border-white/20 hover:bg-[#1a1c24]/90'}
+                ${isTaskDone ? 'bg-black/[0.4] border-white/20 opacity-100 grayscale-[40%]' : 'bg-[#121318]/20 border-white/30 hover:border-white/60 hover:bg-[#121318]/40'}
                 ${draggedIndex === index ? 'opacity-40 border-sky-500/50 scale-[0.98]' : 'border'}
             `}
         >
             {/* LEFT COLUMN: Tick (Top) & Grip (Bottom) Only */}
-            <div className="flex flex-col items-center justify-between shrink-0 w-6 sm:w-7 py-1 rounded-xl bg-gray-900/60 backdrop-blur-2xl border border-white/10 shadow-inner">
+            <div className="flex flex-col items-center justify-between shrink-0 w-6 sm:w-7 py-1 rounded-xl bg-black/20  border border-white/10">
                 {/* 1. TOP: Checkbox */}
                 <button 
                     onClick={() => handleToggleTask(task.id)} 
@@ -76,7 +76,7 @@ export default function TaskItem({
             </div>
 
             {/* RIGHT COLUMN: Content */}
-            <div className="flex flex-col flex-1 min-w-0 justify-between py-0.5 pl-0.5">
+            <div className="flex flex-col flex-1 min-w-0 justify-between pl-0.5">
                 {/* Top Row: Title & Options Menu */}
                 <div className="flex items-start justify-between gap-1 w-full">
                     
@@ -95,7 +95,7 @@ export default function TaskItem({
                                 value={task.title}
                                 onChange={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; updateTaskTitle(task.id, e.target.value); }}
                                 rows={1} spellCheck={false}
-                                className="bg-gray-900/40 backdrop-blur-2xl outline-none w-full text-[12px] sm:text-[13px] leading-snug border-b border-sky-500/70 px-1 -mx-1 resize-none overflow-hidden block text-white rounded-md shadow-inner transition-colors"
+                                className="bg-black/20 backdrop-blur-2xl outline-none w-full text-[12px] sm:text-[13px] leading-snug border-b border-sky-500/70 px-1 -mx-1 resize-none overflow-hidden block text-white rounded-md shadow-inner transition-colors"
                             />
                         ) : (
                             <div
@@ -135,7 +135,7 @@ export default function TaskItem({
                             <>
                                 <div className="fixed inset-0 z-[10000]" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); }} onWheel={(e) => { e.stopPropagation(); setOpenMenuId(null); }} />
                                 <div 
-                                    className="w-36 bg-[#121318]/95 backdrop-blur-2xl border border-white/60 rounded-xl shadow-[0_15px_40px_rgba(0,0,0,0.8)] z-[10001] flex flex-col p-1 gap-0.5 animate-in fade-in zoom-in-95 duration-200"
+                                    className="w-36 bg-[#121318]/20 backdrop-blur-2xl border border-white/60 rounded-xl shadow-[0_15px_40px_rgba(0,0,0,0.8)] z-[10001] flex flex-col p-1 gap-0.5 animate-in fade-in zoom-in-95 duration-200"
                                     style={{ ...menuStyle, transformOrigin: menuStyle.bottom ? 'bottom right' : 'top right' }}
                                 >
                                     {!isTaskDone && (

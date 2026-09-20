@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserCircle, ShieldAlert, Eye, EyeOff, Trash, EyeOff as EyeOffIcon, Info } from 'lucide-react';
+import { UserCircle, ShieldAlert, Eye, EyeOff, Trash, EyeOff as EyeOffIcon, Info, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import Link from 'next/link';
 
@@ -75,7 +75,25 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
     setProfilePictureLoading(true);
     setProfilePictureSuccess('');
     try {
+      const oldUrl = typeof window !== 'undefined' ? localStorage.getItem('dashboard_profile_picture') : null;
       const token = localStorage.getItem('dashboard_sync_token');
+
+      // If the old URL is a Cloudinary URL and it's being replaced with a different URL, delete the old one
+      if (oldUrl && oldUrl.includes('res.cloudinary.com') && oldUrl !== url) {
+        try {
+          const formData = new FormData();
+          formData.append('action', 'delete');
+          formData.append('oldUrl', oldUrl);
+          await fetch('/api/upload/avatar', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+          });
+        } catch (err) {
+          console.error("Failed to cleanup old Cloudinary avatar:", err);
+        }
+      }
+
       const res = await fetch('/api/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -89,6 +107,101 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
       }
     } catch (err) {}
     setProfilePictureLoading(false);
+  };
+
+  const handleAvatarFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image must be smaller than 10MB");
+      return;
+    }
+
+    setProfilePictureLoading(true);
+    setProfilePictureSuccess('');
+
+    try {
+      let finalFile = file;
+
+      // Compress if > 1MB
+      if (file.size > 1024 * 1024 && file.type.startsWith('image/')) {
+        const compressedFile = await new Promise<File | null>((resolve) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              
+              // Max dimensions
+              const MAX_WIDTH = 800;
+              const MAX_HEIGHT = 800;
+              let width = img.width;
+              let height = img.height;
+
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height *= MAX_WIDTH / width;
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width *= MAX_HEIGHT / height;
+                  height = MAX_HEIGHT;
+                }
+              }
+              canvas.width = width;
+              canvas.height = height;
+              ctx?.drawImage(img, 0, 0, width, height);
+
+              canvas.toBlob((blob) => {
+                if (blob) {
+                  resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                } else {
+                  resolve(null);
+                }
+              }, 'image/jpeg', 0.7); // 70% quality
+            };
+          };
+        });
+        if (compressedFile) {
+          finalFile = compressedFile;
+        }
+      }
+
+      const token = localStorage.getItem('dashboard_sync_token');
+      const formData = new FormData();
+      formData.append('file', finalFile);
+      formData.append('action', 'upload');
+
+      const res = await fetch('/api/upload/avatar', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.url) {
+        // Automatically save to profile
+        await updateProfilePicture(data.url);
+      } else {
+        alert("Upload failed: " + (data.error || "Unknown error"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error uploading image");
+    } finally {
+      setProfilePictureLoading(false);
+      if (e.target) e.target.value = ''; // Reset input
+    }
+  };
+
+  const handleRemoveAvatarCloudinary = async () => {
+    // Deletion logic is now centralized inside updateProfilePicture
+    await updateProfilePicture('');
   };
 
   const handleDeleteAccount = async () => {
@@ -212,20 +325,82 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
       </div>
 
       {/* Avatar Settings */}
-      <div className="bg-white/5 border border-white/10 p-3 rounded-xl w-full flex flex-col gap-2 shadow-sm">
+      <div className="bg-white/5 border border-white/10 p-3 rounded-xl w-full flex flex-col gap-2.5 shadow-sm">
         <div className="flex items-center justify-between w-full">
-          <label className="text-[10px] md:text-xs font-bold text-white/60 flex items-center gap-1.5 uppercase tracking-wider"><UserCircle className="text-blue-400 w-3.5 h-3.5" /> Avatar URL</label>
-          {profilePictureSuccess && <span className="text-green-400 text-[10px] font-bold animate-pulse">{profilePictureSuccess}</span>}
+          <label className="text-[10px] md:text-xs font-bold text-white/60 flex items-center gap-1.5 uppercase tracking-wider">
+            <UserCircle className="text-blue-400 w-3.5 h-3.5" /> Avatar Image
+          </label>
+          {profilePictureSuccess && (
+            <span className="text-green-400 text-[10px] font-bold animate-pulse">
+              {profilePictureSuccess}
+            </span>
+          )}
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full">
-          <input type="url" placeholder="https://.../img.png" value={profilePicture} onChange={e => setProfilePicture(e.target.value)} className="flex-1 min-w-0 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 transition-colors text-[10px] md:text-xs text-white/90 placeholder:text-white/30" />
-          <div className="flex gap-1.5 shrink-0">
-            <button onClick={() => updateProfilePicture(profilePicture)} disabled={profilePictureLoading} className="flex-1 sm:flex-none px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-semibold text-[10px] md:text-xs shadow-md">
-              {profilePictureLoading ? '...' : 'Save'}
-            </button>
-            <button onClick={() => setConfirmModal({ isOpen: true, title: 'Remove Avatar', message: 'Remove profile picture?', isDestructive: true, onConfirm: () => updateProfilePicture('') })} disabled={profilePictureLoading || !profilePicture} className="flex-1 sm:flex-none px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/20 rounded-lg transition-colors font-semibold text-[10px] md:text-xs disabled:opacity-50">
-              Remove
-            </button>
+
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full mt-1">
+          {/* Avatar Preview */}
+          <div className="relative w-14 h-14 rounded-full overflow-hidden bg-black/50 border border-white/15 shrink-0 flex items-center justify-center shadow-inner">
+            {profilePicture ? (
+              <img src={profilePicture} alt="Avatar Preview" className="w-full h-full object-cover" />
+            ) : (
+              <ImageIcon className="w-5 h-5 text-white/30" />
+            )}
+            {profilePictureLoading && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <Loader2 className="w-4 h-4 text-white animate-spin" />
+              </div>
+            )}
+          </div>
+
+          {/* Options Container */}
+          <div className="flex flex-col flex-1 w-full gap-2">
+            {/* Option 1: Direct URL Input */}
+            <div className="flex gap-2 w-full">
+              <input 
+                type="url" 
+                placeholder="Paste direct image URL..." 
+                value={profilePicture} 
+                onChange={e => setProfilePicture(e.target.value)} 
+                className="flex-1 min-w-0 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500 transition-colors text-[10px] md:text-xs text-white/90 placeholder:text-white/30" 
+              />
+              <button 
+                onClick={() => updateProfilePicture(profilePicture)} 
+                disabled={profilePictureLoading} 
+                className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-semibold text-[10px] md:text-xs shadow-md shrink-0 cursor-pointer disabled:opacity-50"
+              >
+                {profilePictureLoading ? '...' : 'Save URL'}
+              </button>
+            </div>
+
+            {/* Styled "OR" Divider */}
+            <div className="relative flex items-center justify-center my-0.5">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+              <span className="relative px-2 bg-[#141416] text-[12px] font-bold uppercase tracking-widest text-white/40">OR</span>
+            </div>
+
+            {/* Option 2: File Upload & Remove Actions */}
+            <div className="flex flex-wrap gap-2 items-center justify-between">
+              <label className="flex-1 relative overflow-hidden px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors font-semibold text-[10px] md:text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer border border-white/10">
+                <Upload className="w-3.5 h-3.5 text-sky-400" />
+                <span>Upload Image File</span>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleAvatarFileSelect}
+                  disabled={profilePictureLoading}
+                  className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                />
+              </label>
+
+              <button 
+                onClick={() => setConfirmModal({ isOpen: true, title: 'Remove Avatar', message: 'Remove profile picture?', isDestructive: true, onConfirm: handleRemoveAvatarCloudinary })} 
+                disabled={profilePictureLoading || !profilePicture} 
+                className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/20 rounded-lg transition-colors font-semibold text-[10px] md:text-xs disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Trash className="w-3.5 h-3.5" />
+                <span>Remove</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -239,7 +414,7 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
             <label className="text-[10px] md:text-xs font-bold text-white/80 flex items-center gap-1.5 tracking-wide">
               <EyeOffIcon className="text-indigo-400 w-3.5 h-3.5" /> Leaderboard Stealth
             </label>
-            <p className="text-white/40 text-[9px] leading-tight mt-0.5">Don't highlight me or add "(You)" on my device's leaderboard so friends won't know it's me.</p>
+            <p className="text-white/80 text-[9px] leading-tight mt-0.5">Don't highlight me or add "(You)" on my device's leaderboard so friends won't know it's me.</p>
           </div>
           <button onClick={() => setHideYouInLeaderboard(!hideYouInLeaderboard)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${hideYouInLeaderboard ? 'bg-indigo-500' : 'bg-white/20'}`}>
             <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${hideYouInLeaderboard ? 'translate-x-4.5' : 'translate-x-1'}`} />
@@ -265,7 +440,7 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
               {aliasLoading ? 'Wait' : 'Save'}
             </button>
           </div>
-          <p className="text-white/40 text-[9px] leading-tight">Shown on the global leaderboard instead of your real username.</p>
+          <p className="text-white/80 text-[9px] leading-tight">Shown on the global leaderboard instead of User10XX and your real username.</p>
         </div>
       </div>
 

@@ -89,7 +89,7 @@ export default function TaskManager() {
                                 </div>
                             )}
                             {currentTasks.filter(t => (t.groupId || 0) === activeGroupTab).some(isTaskCompleted) && (
-                                <button onClick={handleRestartAllCompleted} className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-500/20 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-colors active:scale-95 text-[10px] sm:text-md font-bold uppercase tracking-wider border border-orange-500/30 shadow-sm"><RotateCcw size={12} /> <span className="hidden sm:inline">Reset</span></button>
+                                <button onClick={handleRestartAllCompleted} className="flex items-center px-1.5 py-0.5 bg-orange-500/20 text-orange-300 hover:bg-orange-500 hover:text-white rounded-md transition-colors active:scale-95 text-[10px] sm:text-md font-bold uppercase tracking-wider border border-orange-500/30 shadow-sm"><RotateCcw size={12} /></button>
                             )}
                         </div>
                         <div className="flex items-center gap-1.5 text-[8px] font-bold tracking-widest text-white/60 uppercase">
@@ -177,8 +177,22 @@ export default function TaskManager() {
                 ) : (
                     <>
                         <ScrollableWithArrows className="px-1.5 max-h-[350px]">
-                            {filteredTasks.length === 0 ? (
-                                <div className="text-center text-white/40 p-3 text-[10px] italic">No {activeTab} tasks found.</div>
+                           {filteredTasks.length === 0 ? (
+                                <div className="text-center text-white/50 p-4 text-[11px] sm:text-xs flex flex-col gap-2.5 items-center justify-center">
+                                    <p className="italic font-medium text-white/60">No {activeTab} tasks found.</p>
+                                    
+                                    <div className="text-[11px] sm:text-[12px] bg-white/[0.04] border border-white/10 rounded-xl p-3 leading-relaxed text-left w-full space-y-1.5 text-white/80 shadow-inner">
+                                        {activeTab === 'tomorrow' ? (
+                                            <>
+                                                📅 <strong className="text-purple-300">Plan Ahead & Rollover:</strong> Add your upcoming goals here to reduce today's load. When tomorrow arrives, these tasks will automatically shift over to Today so your workflow is seamless and nothing ever gets lost unless you delete it!
+                                            </>
+                                        ) : (
+                                            <>
+                                                💡 <strong className="text-sky-300">Quick Tip:</strong> Set a task title & duration to add it to your list, then hit <strong className="text-sky-300">Start</strong> to launch the timer with interval beeps. Focus time automatically increments in <strong className="text-emerald-300">5-minute spans</strong>, updates your daily focus hours, and saves to your history. Today's tasks are always safe and never lost unless you delete them!
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
                             ) : (
                                 /* GAP REDUCED TO 1 (4px gap) */
                                 <div className="flex flex-col pb-1 mt-1">
@@ -207,7 +221,7 @@ export default function TaskManager() {
 
                         <form 
                         onSubmit={handleAddTask} 
-                        className="p-2 border-t border-white/10 bg-white/[0.02] flex items-center gap-2 backdrop-blur-sm shadow-sm"
+                        className="p-1 border-t border-white/10 bg-white/[0.02] flex items-center gap-2 backdrop-blur-sm shadow-sm"
                         >
                         {/* Task Input Container */}
                         <div className="relative flex-1 flex items-center">
@@ -226,7 +240,7 @@ export default function TaskManager() {
                                 } 
                             }} 
                             rows={1} 
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 resize-none overflow-hidden h-[32px] min-h-[32px] max-h-[80px] flex items-center leading-normal" 
+                            className="w-full bg-white/5 border border-white/30 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 resize-none overflow-hidden h-[32px] min-h-[32px] max-h-[80px] flex items-center leading-normal" 
                             />
                         </div>
 
@@ -237,7 +251,7 @@ export default function TaskManager() {
                             placeholder="Min" 
                             value={newTaskDuration} 
                             onChange={(e) => setNewTaskDuration(e.target.value)} 
-                            className="w-[60px] h-[32px] bg-white/5 border border-white/10 rounded-lg px-2 text-xs font-medium text-center text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                            className="w-[60px] h-[32px] bg-white/5 border border-white/30 rounded-lg px-1 text-xs font-medium text-center text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                             />
                         </div>
 

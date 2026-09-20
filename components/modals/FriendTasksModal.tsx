@@ -171,7 +171,7 @@ export default function FriendTasksModal({ isOpen, onClose }: FriendTasksModalPr
                   <div
                     key={task.id || index}
                     className={`group relative flex gap-1.5 sm:gap-2 p-1.5 rounded-[12px] transition-all shadow-sm mt-0.5 border ${
-                      done ? 'bg-white/[0.02] border-white/5 opacity-60 grayscale-[40%]' : 'bg-[#15171e]/80 border-white/30'
+                      done ? 'bg-black/[0.2] border-white/20 opacity-60 grayscale-[40%]' : 'bg-[#121318]/20 border-white/30'
                     }`}
                   >
                     {/* Read-only Checkbox Box */}

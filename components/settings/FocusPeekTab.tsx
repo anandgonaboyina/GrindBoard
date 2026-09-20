@@ -96,10 +96,14 @@ export default React.memo(function FocusPeekTab({ setInfoModalKey, showAlertModa
 
         <div className="p-2 md:p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 mt-1">
           <p className="text-[9px] md:text-[10px] text-red-200/90 leading-relaxed break-words">
-            <strong className="text-red-400">Mobile Triggers:</strong> Tap the <strong className="text-white">Eye Icon</strong> on the right edge of your screen! & to get out tap on the <strong className="text-white">Lock Icon</strong> button at bottom for mobile 
+            <strong className="text-blue-400">Mobile Triggers:</strong> Tap the <strong className="text-white">Eye Icon</strong> on the right edge of your screen! & to get out tap on the <strong className="text-white">Lock Icon</strong> button at bottom for mobile / again shortcut for pc
           </p>
         </div>
-
+          <div className="p-2 md:p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+          <p className="text-[9px] md:text-[10px] text-red-200/90 leading-relaxed break-words">
+            <strong className="text-blue-400">Alt + f4</strong> shortcut to shutdown <strong className="text-white">not works</strong>  due to lively wallpaper shortcut keys you have to manually do <pre> <strong className="text-white">Tip :  once click on windows button and do alt+f4 it works</strong></pre>
+          </p>
+        </div>
         <div className="flex flex-col gap-2">
           {/* Peek Mode Trigger */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3 shadow-inner">

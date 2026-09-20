@@ -15,6 +15,7 @@ interface GroupTaskManagerProps {
     dateStrProp?: string;
     hideHeader?: boolean;
     compactMode?: boolean;
+    isCollapsed?: boolean;
 }
 
 export default function GroupTaskManager({
@@ -24,7 +25,8 @@ export default function GroupTaskManager({
     onTabChange,
     dateStrProp,
     hideHeader = false,
-    compactMode = false
+    compactMode = false,
+    isCollapsed = false
 }: GroupTaskManagerProps) {
     const { userGroups, setUserGroups, triggerTimer, isTaskManagerOpen, showQuotePopup, activeTaskId, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, taskIntervalAlertMins, setTaskIntervalAlertMins } = useDashboardStore();
     const group = userGroups.find(g => g._id === groupId);
@@ -416,12 +418,12 @@ export default function GroupTaskManager({
         <div className="flex flex-col h-full w-full">
             {/* 3-day Abandonment / Deletion Notice Banner */}
             {!hideHeader && group?.pendingDeletion && (
-                <div className="mx-2 mt-2 p-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-[10px] flex items-center justify-between gap-2 shadow-md animate-in fade-in">
+                <div className="mx-1 mt-2 p-1 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-[10px] flex items-center justify-between gap-2 shadow-md animate-in fade-in">
                     <div className="flex flex-col min-w-0">
                         <span className="font-bold flex items-center gap-1 text-amber-300">
                             <Clock size={12} className="animate-spin" style={{ animationDuration: '6s' }} /> Admin Abandonment Grace Period
                         </span>
-                        <span className="text-[9px] text-white/70 truncate">
+                        <span className="text-[9px] text-white/70">
                             Admin left group. Auto-deletes in 3 days unless claimed!
                         </span>
                     </div>
@@ -469,7 +471,7 @@ export default function GroupTaskManager({
                             ) : (
                                 <div
                                     onDoubleClick={() => { if (canEdit) setEditingGroupIndex(idx) }}
-                                    className={`w-full px-2 truncate select-none text-left ${canEdit ? 'cursor-text' : 'cursor-default'}`}
+                                    className={`w-full px-2 select-none text-left ${canEdit ? 'cursor-text' : 'cursor-default'}`}
                                     title={canEdit ? "Double click to rename tab" : ""}
                                 >
                                     {tabNames[idx]}
@@ -500,8 +502,10 @@ export default function GroupTaskManager({
                 )}
             </div>
 
-            <ScrollableWithArrows className={`p-1 ${hideHeader ? 'max-h-[210px] sm:max-h-[230px]' : 'max-h-[350px]'}`}>
-                {filteredTasks.length === 0 ? (
+            {!isCollapsed && (
+                <>
+                    <ScrollableWithArrows className={`p-1 ${hideHeader ? 'max-h-[210px] sm:max-h-[230px]' : 'max-h-[350px]'}`}>
+                        {filteredTasks.length === 0 ? (
                     canEdit ? (
                         <div className="flex flex-col items-center justify-center p-2 text-center border border-dashed border-sky-500/30 rounded-lg bg-sky-500/5 my-0.5 gap-0.5 shadow-inner">
                             <div className="w-5 h-5 rounded-full bg-sky-500/20 border border-sky-400/35 flex items-center justify-center text-sky-300 shadow-sm mb-0.5">
@@ -548,7 +552,7 @@ export default function GroupTaskManager({
                                         }
                                     }}
                                     className={`group relative flex gap-1.5 sm:gap-2 p-1.5 rounded-[12px] transition-all shadow-sm mt-0.5
-                                        ${isTaskDone ? 'bg-white/[0.02] border-white/5 opacity-60 grayscale-[40%]' : 'bg-[#15171e]/80 border-white/30 hover:border-white/20 hover:bg-[#1a1c24]/90'}
+                                        ${isTaskDone ? 'bg-black/[0.2] border-white/20 opacity-100 grayscale-[40%]' : 'bg-[#121318]/20 border-white/30 hover:border-white/60 hover:bg-[#121318]/40'}
                                         ${draggedIndex === index ? 'opacity-40 border-sky-500/50 scale-[0.98]' : 'border'}
                                     `}
                                 >
@@ -590,7 +594,7 @@ export default function GroupTaskManager({
                                     </div>
 
                                     {/* RIGHT COLUMN: Content */}
-                                    <div className="flex flex-col flex-1 min-w-0 justify-between py-0.5 pl-0.5">
+                                    <div className="flex flex-col flex-1 min-w-0 justify-between ">
                                         {/* Top Row: Title & Options */}
                                         <div className="flex items-start justify-between gap-1 w-full">
 
@@ -840,6 +844,8 @@ export default function GroupTaskManager({
   </button>
 </form>
 
+            )}
+                </>
             )}
 
             <ConfirmationModal
