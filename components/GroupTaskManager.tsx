@@ -9,11 +9,12 @@ import ConfirmationModal from './ConfirmationModal';
 
 interface GroupTaskManagerProps {
     groupId: string;
-    targetUserId?: string;
+    targetUserId?: string; // If not provided, assumes current user's tasks
     activeTabProp?: number;
-    onTabChange?: (tabIdx: number) => void;
+    onTabChange?: (idx: number) => void;
     dateStrProp?: string;
     hideHeader?: boolean;
+    compactMode?: boolean;
 }
 
 export default function GroupTaskManager({
@@ -22,7 +23,8 @@ export default function GroupTaskManager({
     activeTabProp,
     onTabChange,
     dateStrProp,
-    hideHeader = false
+    hideHeader = false,
+    compactMode = false
 }: GroupTaskManagerProps) {
     const { userGroups, setUserGroups, triggerTimer, isTaskManagerOpen, showQuotePopup, activeTaskId, isTaskIntervalAlertEnabled, setIsTaskIntervalAlertEnabled, taskIntervalAlertMins, setTaskIntervalAlertMins } = useDashboardStore();
     const group = userGroups.find(g => g._id === groupId);

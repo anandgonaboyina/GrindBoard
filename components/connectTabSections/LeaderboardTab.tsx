@@ -4,12 +4,14 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Trophy, Info, RefreshCw, WifiOff, ChevronDown, Clock, ShieldAlert, Flame, Search, Sparkles, X } from 'lucide-react';
 import ScrollableWithArrows from '../ScrollableWithArrows';
 import { useDashboardStore } from '@/store/dashboardStore';
+import { getLocalDateString } from '@/utils/date';
 
 interface LeaderboardTabProps {
   setSelectedImageOverlay: (overlay: any) => void;
+  isActive?: boolean;
 }
 
-export default React.memo(function LeaderboardTab({ setSelectedImageOverlay }: LeaderboardTabProps) {
+export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isActive = false }: LeaderboardTabProps) {
   const { hideYouInLeaderboard } = useDashboardStore();
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [leaderboardFilter, setLeaderboardFilter] = useState<'today' | 'week' | 'month'>('today');
@@ -20,8 +22,10 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay }: L
   const [showInfoModal, setShowInfoModal] = useState(false);
 
   useEffect(() => {
-    fetchLeaderboard();
-  }, []);
+    if (isActive) {
+      fetchLeaderboard();
+    }
+  }, [isActive]);
 
   const fetchLeaderboard = async () => {
     setLeaderboardLoading(true);
@@ -34,6 +38,25 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay }: L
       const data = await res.json();
       if (res.ok && data.leaderboard) {
         setLeaderboardData(data.leaderboard);
+        
+        // Sync local today's hours if they diverge from the server (e.g. manual DB edit)
+        const me = data.leaderboard.find((u: any) => u.isMe);
+        if (me) {
+          const store = useDashboardStore.getState();
+          const todayKey = getLocalDateString();
+          const localToday = store.history[todayKey] || 0;
+          
+          if (localToday !== me.todayFocused) {
+            const { hasUnsavedChanges, isSaving } = await import('@/store/dashboardStore/sync');
+            
+            // Only overwrite if:
+            // 1. Server has MORE hours (e.g. synced from another device)
+            // 2. Server has FEWER hours AND we have no pending offline saves (meaning user manually deleted hours in DB)
+            if (me.todayFocused > localToday || (!hasUnsavedChanges && !isSaving)) {
+              useDashboardStore.setState({ history: { ...store.history, [todayKey]: me.todayFocused } });
+            }
+          }
+        }
       }
     } catch (e) {} finally {
       setLeaderboardLoading(false);

@@ -18,6 +18,8 @@ interface ConfirmationModalProps {
   requireText?: string;
   isPrompt?: boolean;
   promptPlaceholder?: string;
+  inputType?: string;
+  inputFooter?: React.ReactNode;
   hideCancel?: boolean;
 }
 
@@ -33,6 +35,8 @@ export default function ConfirmationModal({
   requireText,
   isPrompt = false,
   promptPlaceholder = "Enter text...",
+  inputType = "text",
+  inputFooter,
   onCancel,
   hideCancel = false,
 }: ConfirmationModalProps) {
@@ -108,7 +112,7 @@ export default function ConfirmationModal({
                 </label>
               )}
               <input
-                type="text"
+                type={inputType}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={isPrompt ? promptPlaceholder : requireText}
@@ -121,6 +125,11 @@ export default function ConfirmationModal({
                   : "bg-white/50 border-slate-200 focus:border-blue-400 text-slate-800 placeholder:text-slate-400"
                   }`}
               />
+              {inputFooter && (
+                <div className="mt-2">
+                  {inputFooter}
+                </div>
+              )}
             </div>
           )}
         </div>

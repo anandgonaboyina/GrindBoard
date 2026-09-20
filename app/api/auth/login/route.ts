@@ -154,6 +154,8 @@ export async function POST(request: Request) {
               "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg"
             ],
             activeDesktopCustomIndex: 0,
+            isHidden: false,
+            isPanicHidden: false,
             lastModified: Date.now()
           }
         },

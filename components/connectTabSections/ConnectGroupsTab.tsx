@@ -1675,6 +1675,7 @@ export default React.memo(function ConnectGroupsTab() {
                             ? 'border-sky-500/40 bg-gradient-to-b from-sky-500/10 via-black/40 to-black/40 shadow-[0_0_10px_rgba(56,189,248,0.1)]'
                             : 'border-white/10'
                         }`}
+                      style={{ zoom: 0.85 }}
                     >
                       {/* Top Border Role / Self Badge */}
                       {isGroupAdmin ? (

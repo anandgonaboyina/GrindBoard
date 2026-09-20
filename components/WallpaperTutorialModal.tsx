@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, X, Download, ExternalLink, Sparkles, MonitorPlay, CheckCircle2, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Download, ExternalLink, Sparkles, MonitorPlay, CheckCircle2, Eye, Search } from 'lucide-react';
 
 export interface WallpaperTutorialStep {
   step: number;
@@ -64,7 +64,8 @@ interface WallpaperTutorialModalProps {
 
 export default function WallpaperTutorialModal({ isOpen, onClose, initialStep = 0 }: WallpaperTutorialModalProps) {
   const [activeStepIndex, setActiveStepIndex] = useState(initialStep);
-  const [isZoomed, setIsZoomed] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isInnerZoomed, setIsInnerZoomed] = useState(false);
 
   if (!isOpen) return null;
 
@@ -124,14 +125,14 @@ export default function WallpaperTutorialModal({ isOpen, onClose, initialStep = 
           <img
             src={currentStepData.image}
             alt={currentStepData.title}
-            className={`w-full h-auto max-h-[380px] object-contain transition-transform duration-300 ${isZoomed ? 'scale-125 cursor-zoom-out' : 'cursor-zoom-in'}`}
-            onClick={() => setIsZoomed(!isZoomed)}
+            className="w-full h-auto max-h-[380px] object-contain transition-transform duration-300 cursor-zoom-in hover:scale-105"
+            onClick={() => setIsFullscreen(true)}
           />
 
           {/* Zoom Hint Badge */}
           <div className="absolute top-2.5 right-2.5 bg-black/70 backdrop-blur-md border border-white/20 px-2 py-1 rounded-lg text-[10px] font-semibold text-white/80 flex items-center gap-1 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
             <Eye size={11} className="text-blue-400" />
-            <span>{isZoomed ? 'Click to Reset Zoom' : 'Click Image to Zoom'}</span>
+            <span>Click to view Full Screen</span>
           </div>
 
           {/* Left Arrow Navigation Button */}
@@ -232,6 +233,41 @@ export default function WallpaperTutorialModal({ isOpen, onClose, initialStep = 
         </div>
 
       </div>
+
+      {isFullscreen && (
+        <div 
+          className="fixed inset-0 z-[100005] bg-black/95 flex items-center justify-center p-4 backdrop-blur-lg cursor-zoom-out"
+          onClick={() => setIsFullscreen(false)}
+        >
+          <div className="relative w-full h-full flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setIsFullscreen(false)}
+              className="absolute top-4 right-4 z-[100006] p-2.5 bg-white/10 hover:bg-red-500/80 text-white rounded-full transition-colors border border-white/20 shadow-xl cursor-pointer"
+              title="Close Full Screen"
+            >
+              <X size={26} />
+            </button>
+            <div className="w-full h-full overflow-auto flex items-center justify-center custom-scrollbar">
+              <img 
+                src={currentStepData.image} 
+                alt={currentStepData.title} 
+                className={`transition-all duration-300 ${isInnerZoomed ? 'min-w-[150vw] sm:min-w-[120vw] h-auto object-cover cursor-zoom-out' : 'max-w-full max-h-[95vh] object-contain cursor-zoom-in'}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsInnerZoomed(!isInnerZoomed);
+                }}
+              />
+            </div>
+            
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 text-white/80 text-[11px] pointer-events-none shadow-lg">
+                <span className="flex items-center gap-2 font-semibold tracking-wide">
+                    <Search size={14} className="text-blue-400" />
+                    {isInnerZoomed ? 'Click to Reset Zoom • Scroll/Drag to Pan' : 'Click to Zoom In'}
+                </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

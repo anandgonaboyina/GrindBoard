@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check } from 'lucide-react';
+import { X, Check, Play } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboardStore';
 
 interface FriendTasksModalProps {
@@ -62,13 +62,13 @@ export default function FriendTasksModal({ isOpen, onClose }: FriendTasksModalPr
       onClick={onClose}
     >
       <div
-        className="bg-[#0f0f13]/95 backdrop-blur-xl w-full max-w-sm md:w-[360px] max-h-[80vh] md:max-h-[85vh] h-auto rounded-2xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300"
+        className="bg-[#0f0f13]/95 backdrop-blur-xl w-full max-w-sm md:w-[380px] max-h-[80vh] md:max-h-[85vh] h-auto rounded-2xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
           <button
             onClick={onClose}
-            className="p-2 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl backdrop-blur-md transition-all shadow-lg"
+            className="p-2 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl backdrop-blur-md transition-all shadow-lg cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -89,7 +89,7 @@ export default function FriendTasksModal({ isOpen, onClose }: FriendTasksModalPr
         {/* Header Controls: Today/Tomorrow Tabs & Total Left */}
         <div className="border-b border-white/5 bg-black/20 p-3 flex flex-col gap-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shrink-0">
+            <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shrink-0 shadow-inner">
               <button
                 onClick={() => setFriendTaskTab('today')}
                 className={`px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors ${
@@ -117,35 +117,33 @@ export default function FriendTasksModal({ isOpen, onClose }: FriendTasksModalPr
             )}
           </div>
 
-          {/* Sub-tabs for grouping (Tab 1, Tab 2, Tab 3) */}
-          <div className="flex items-start gap-1 mt-1">
+          {/* Sub-tabs for grouping */}
+          <div className="flex items-start gap-1 mt-2 mb-1">
             {[0, 1, 2].map((idx) => {
               const tabTasks = friendTasksList.filter((t: any) => (t.groupId || 0) === idx);
               const tabRemaining = tabTasks.filter((t: any) => !isTaskDone(t)).reduce((sum: number, t: any) => sum + (t.duration || 0), 0);
+              const timeDisplay = tabRemaining > 0 ? formatDuration(tabRemaining) : '';
+              const isActive = friendTaskGroupTab === idx;
 
               return (
                 <div
                   key={idx}
-                  className={`relative flex flex-col flex-1 min-w-0 rounded-md border transition-all h-[28px] cursor-pointer ${
-                    friendTaskGroupTab === idx
-                      ? 'bg-blue-500/20 border-blue-500/50 text-blue-200'
-                      : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10 hover:text-white/80'
+                  className={`relative flex items-center flex-1 h-[25px] min-w-0 rounded-md border text-[8px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                    isActive ? 'bg-blue-500/20 border-blue-500/50 text-blue-200' : 'bg-white/5 border-white/20 text-white/50 hover:bg-white/10'
                   }`}
                   onClick={() => setFriendTaskGroupTab(idx)}
                 >
-                  <div className="w-full px-2 py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-left truncate select-none">
+                  <div className="w-full px-2 truncate select-none text-left">
                     {friendGroupNames[idx] || `Tab ${idx + 1}`}
                   </div>
-                  {tabRemaining > 0 && (
-                    <div
-                      className={`absolute bottom-0 right-0 text-[7.5px] font-bold uppercase tracking-widest px-1 py-[1px] rounded-tl-md rounded-br-md border-t border-l shadow-sm ${
-                        friendTaskGroupTab === idx
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                          : 'bg-black/60 text-white/40 border-white/20'
-                      }`}
-                    >
-                      {formatDuration(tabRemaining)}
-                    </div>
+                  {timeDisplay && (
+                    <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-extrabold tracking-wide px-1.5 rounded border shadow-md select-none transition-all z-10 ${
+                      isActive 
+                        ? 'bg-emerald-500 text-black border-emerald-400 font-black' 
+                        : 'bg-[#141414] text-emerald-400 border-white/20'
+                    }`}>
+                      <pre>{timeDisplay}</pre>
+                    </span>
                   )}
                 </div>
               );
@@ -153,53 +151,67 @@ export default function FriendTasksModal({ isOpen, onClose }: FriendTasksModalPr
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto custom-scrollbar p-4">
+        {/* Task List (Using the identical compact single-line layout) */}
+        <div className="flex-1 overflow-auto custom-scrollbar p-2">
           {sortedTasks.length > 0 ? (
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1 pb-2">
               {sortedTasks.map((task: any, index: number) => {
                 const done = isTaskDone(task);
+                const durationMins = task.duration || 0;
+                const timeSpentMins = task.timeSpent || 0;
+                
+                const formatTimeBadge = (mins: number) => {
+                  if (mins < 60) return `${mins}m`;
+                  const h = Math.floor(mins / 60);
+                  const m = mins % 60;
+                  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+                };
+
                 return (
                   <div
                     key={task.id || index}
-                    className={`flex items-center justify-between p-3 rounded-lg border bg-white/[0.02] hover:bg-white/10 transition-all shadow-sm ${
-                      done ? 'opacity-75 grayscale-[30%] border-white/10' : 'border-white/20'
+                    className={`group relative flex gap-1.5 sm:gap-2 p-1.5 rounded-[12px] transition-all shadow-sm mt-0.5 border ${
+                      done ? 'bg-white/[0.02] border-white/5 opacity-60 grayscale-[40%]' : 'bg-[#15171e]/80 border-white/30'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                      <div className="flex items-center justify-center shrink-0">
+                    {/* Read-only Checkbox Box */}
+                    <div className="flex flex-col items-center justify-center shrink-0 w-6 py-1 rounded-xl bg-black/20 border border-white/5 shadow-inner">
+                      <div className="p-0.5 flex items-center justify-center text-white/30">
                         {done ? (
-                          <div className="w-4 h-4 rounded-[4px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] flex items-center justify-center">
-                            <Check size={11} className="text-white stroke-[3]" />
-                          </div>
+                          <Check className="w-[16px] h-[16px] text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                         ) : (
-                          <div className="w-4 h-4 rounded-[4px] border-[1.5px] border-white/40" />
+                          <div className="w-[14px] h-[14px] rounded-full border border-white/30" />
                         )}
                       </div>
-                      <span className="text-[11px] font-black text-sky-300/90 tabular-nums select-none shrink-0">
-                        {index + 1}
-                      </span>
-                      <span className={`text-xs md:text-sm font-semibold truncate ${done ? 'text-white/40 line-through' : 'text-white/90'}`}>
-                        {task.title}
-                      </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {task.duration > 0 && !done && (
-                        <span className="text-[9px] md:text-[10px] font-semibold tracking-wide text-white/90 bg-sky-500/20 px-2 py-0.5 rounded-full border border-sky-400/20 shadow-sm">
-                          {formatDuration(task.duration)} left
-                        </span>
-                      )}
-                      <span
-                        className={`text-[9px] md:text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full border shadow-sm ${
-                          done
-                            ? 'text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20'
-                            : 'text-emerald-200 bg-emerald-500/20 border-emerald-400/20'
-                        }`}
-                      >
-                        {done
-                          ? formatDuration(Math.max(task.timeSpent || 0, task.duration || 0)) + ' done'
-                          : formatDuration(task.timeSpent || 0) + ' done'}
-                      </span>
+                    {/* Content Column */}
+                    <div className="flex flex-col flex-1 min-w-0 justify-between py-0.5 pl-0.5">
+                      {/* Top Row: Inline Number + Title */}
+                      <div className="flex items-start justify-between gap-1 w-full">
+                        <div className="flex-1 min-w-0 flex items-start gap-1 mt-[2px]">
+                          <span className="text-[10px] sm:text-[11px] font-black text-white/30 pt-[1px] select-none shrink-0">
+                            {index + 1}.
+                          </span>
+                          <div className={`w-full text-[12px] sm:text-[13px] font-medium leading-snug whitespace-pre-wrap ${done ? 'line-through text-white/50' : 'text-white/95'}`}>
+                            {task.title}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Time Badges (Strict Single-Line Layout) */}
+                      <div className="flex items-center justify-between mt-1.5 w-full gap-1">
+                        <div className="flex items-center gap-1 flex-nowrap min-w-0 overflow-hidden">
+                          {durationMins > 0 && !done && (
+                            <span className="whitespace-nowrap text-[8.5px] sm:text-[9px] font-bold tracking-wide text-sky-300 bg-sky-900/30 border border-sky-500/30 px-1.5 py-[2px] rounded shadow-sm shrink-0">
+                              {formatTimeBadge(durationMins)} left
+                            </span>
+                          )}
+                          <span className={`whitespace-nowrap text-[8.5px] sm:text-[9px] font-bold tracking-wide px-1.5 py-[2px] rounded border shadow-sm shrink-0 ${done ? 'text-emerald-400/60 bg-emerald-900/20 border-emerald-500/20' : 'text-emerald-300 bg-emerald-900/30 border-emerald-500/30'}`}>
+                            {done ? formatTimeBadge(timeSpentMins + durationMins) : formatTimeBadge(timeSpentMins)} done
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -216,4 +228,3 @@ export default function FriendTasksModal({ isOpen, onClose }: FriendTasksModalPr
     document.body
   );
 }
-

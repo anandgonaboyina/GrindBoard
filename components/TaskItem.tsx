@@ -36,14 +36,14 @@ export default function TaskItem({
     return (
         <div
             data-task-index={index}
-            className={`group relative flex gap-1.5 sm:gap-2 p-1.5 rounded-[12px] transition-all shadow-sm mt-0.5
+            className={`group relative flex gap-1 sm:gap-1 p-1 rounded-[12px] transition-all shadow-sm mt-0.5
                 ${isTaskDone ? 'bg-white/[0.02] border-white/5 opacity-60 grayscale-[40%]' : 'bg-[#15171e]/80 border-white/30 hover:border-white/20 hover:bg-[#1a1c24]/90'}
                 ${draggedIndex === index ? 'opacity-40 border-sky-500/50 scale-[0.98]' : 'border'}
             `}
         >
             {/* LEFT COLUMN: Tick (Top) & Grip (Bottom) Only */}
-            <div className="flex flex-col items-center justify-between shrink-0 w-6 sm:w-7 py-1 rounded-xl bg-black/20 border border-white/5 shadow-inner">
-                {/* 1. TOP: Bigger Checkbox */}
+            <div className="flex flex-col items-center justify-between shrink-0 w-6 sm:w-7 py-1 rounded-xl bg-gray-900/60 backdrop-blur-2xl border border-white/10 shadow-inner">
+                {/* 1. TOP: Checkbox */}
                 <button 
                     onClick={() => handleToggleTask(task.id)} 
                     className="p-0.5 rounded-full transition-colors text-white/30 hover:text-emerald-400 focus:outline-none flex items-center justify-center"
@@ -95,7 +95,7 @@ export default function TaskItem({
                                 value={task.title}
                                 onChange={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; updateTaskTitle(task.id, e.target.value); }}
                                 rows={1} spellCheck={false}
-                                className="bg-black/60 outline-none w-full text-[12px] sm:text-[13px] leading-snug border-b border-sky-500/70 px-1 -mx-1 resize-none overflow-hidden block text-white rounded-md shadow-inner transition-colors"
+                                className="bg-gray-900/40 backdrop-blur-2xl outline-none w-full text-[12px] sm:text-[13px] leading-snug border-b border-sky-500/70 px-1 -mx-1 resize-none overflow-hidden block text-white rounded-md shadow-inner transition-colors"
                             />
                         ) : (
                             <div
@@ -116,7 +116,7 @@ export default function TaskItem({
                                     setOpenMenuId(null);
                                 } else {
                                     const rect = e.currentTarget.getBoundingClientRect();
-                                    const isNearBottom = rect.bottom > window.innerHeight - 220; // 220px is rough height of the menu
+                                    const isNearBottom = rect.bottom > window.innerHeight - 220;
                                     setMenuStyle({
                                         position: 'fixed',
                                         right: `${window.innerWidth - rect.right}px`,
@@ -130,35 +130,35 @@ export default function TaskItem({
                             <LayoutGrid size={13} />
                         </button>
 
-                        {/* Enhanced Cool Popup Menu */}
+                        {/* Enhanced Cool Popup Menu rendered via Portal */}
                         {openMenuId === task.id && typeof window !== 'undefined' && createPortal(
                             <>
                                 <div className="fixed inset-0 z-[10000]" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); }} onWheel={(e) => { e.stopPropagation(); setOpenMenuId(null); }} />
                                 <div 
-                                    className="w-44 bg-[#121318]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_15px_40px_rgba(0,0,0,0.8)] z-[10001] flex flex-col p-1.5 gap-1 animate-in fade-in zoom-in-95 duration-200"
+                                    className="w-36 bg-[#121318]/95 backdrop-blur-2xl border border-white/60 rounded-xl shadow-[0_15px_40px_rgba(0,0,0,0.8)] z-[10001] flex flex-col p-1 gap-0.5 animate-in fade-in zoom-in-95 duration-200"
                                     style={{ ...menuStyle, transformOrigin: menuStyle.bottom ? 'bottom right' : 'top right' }}
                                 >
                                     {!isTaskDone && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); triggerTimer(task.duration, task.id, task.title); }}
-                                            className="flex items-center gap-2.5 px-2.5 py-2 text-[11px] font-bold text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-transparent hover:border-sky-500/20 rounded-lg transition-all text-left"
+                                            className="flex items-center gap-2 px-1.5 py-1 text-[10.5px] font-bold text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-transparent hover:border-sky-500/20 rounded-lg transition-all text-left"
                                         >
-                                            <Play size={12} className="fill-current shrink-0" /> Start Focus Timer
+                                            <Play size={11} className="fill-current shrink-0" /> Start Focus Timer
                                         </button>
                                     )}
                                     {(isTaskDone || (task.timeSpent !== undefined && task.timeSpent > 0)) && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleRestartTask(task.id); }}
-                                            className="flex items-center gap-2.5 px-2.5 py-2 text-[11px] font-bold text-orange-300 bg-orange-500/10 hover:bg-orange-500/20 border border-transparent hover:border-orange-500/20 rounded-lg transition-colors text-left"
+                                            className="flex items-center gap-2 px-1.5 py-1 text-[10.5px] font-bold text-orange-300 bg-orange-500/10 hover:bg-orange-500/20 border border-transparent hover:border-orange-500/20 rounded-lg transition-colors text-left"
                                         >
-                                            <RotateCcw size={12} className="shrink-0" /> Restart Task
+                                            <RotateCcw size={11} className="shrink-0" /> Restart Task
                                         </button>
                                     )}
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); moveTaskTab(task.id, activeTab); }}
-                                        className="flex items-center gap-2.5 px-2.5 py-2 text-[11px] font-bold text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-transparent hover:border-purple-500/20 rounded-lg transition-colors text-left"
+                                        className="flex items-center gap-2 px-1.5 py-1 text-[10.5px] font-bold text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-transparent hover:border-purple-500/20 rounded-lg transition-colors text-left"
                                     >
-                                        {activeTab === 'today' ? <ArrowRight size={12} className="shrink-0" /> : <ArrowLeft size={12} className="shrink-0" />}
+                                        {activeTab === 'today' ? <ArrowRight size={11} className="shrink-0" /> : <ArrowLeft size={11} className="shrink-0" />}
                                         Move to {activeTab === 'today' ? 'Tomorrow' : 'Today'}
                                     </button>
                                     <div className="h-px w-full bg-white/10 my-0.5" />
@@ -170,9 +170,9 @@ export default function TaskItem({
                                                 onConfirm: () => deleteTask(task.id, activeTab)
                                             });
                                         }}
-                                        className="flex items-center gap-2.5 px-2.5 py-2 text-[11px] font-bold text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 rounded-lg transition-colors text-left"
+                                        className="flex items-center gap-2 px-1.5 py-1 text-[10.5px] font-bold text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 rounded-lg transition-colors text-left"
                                     >
-                                        <Trash2 size={12} className="shrink-0" /> Delete Task
+                                        <Trash2 size={11} className="shrink-0" /> Delete Task
                                     </button>
                                 </div>
                             </>,
@@ -181,9 +181,8 @@ export default function TaskItem({
                     </div>
                 </div>
 
-                {/* Bottom Row: Enhanced Badges & Start Button (Strict Single Line) */}
-                <div className="flex items-center justify-between mt-1.5 w-full gap-1">
-                    {/* flex-nowrap ensures these NEVER drop to a second line */}
+                {/* Bottom Row: Badges & Start Button (Strict Single-Line Layout) */}
+                <div className="flex items-center justify-between mt-1.5 w-full">
                     <div className="flex items-center gap-1 flex-nowrap min-w-0 overflow-hidden">
                         
                         {/* Duration Left Badge */}
@@ -237,7 +236,7 @@ export default function TaskItem({
                     {!isTaskDone && (
                         <button
                             onClick={(e) => { e.stopPropagation(); triggerTimer(task.duration, task.id, task.title); }}
-                            className="flex items-center gap-1 px-2.5 py-[4px] rounded border bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white border-sky-500/30 hover:border-transparent transition-all shadow-md active:scale-95 shrink-0"
+                            className="flex items-center gap-1 px-1 py-[2px] rounded border bg-sky-500/20 text-sky-300 hover:bg-sky-500 hover:text-white border-sky-500/30 hover:border-transparent transition-all shadow-md active:scale-95 shrink-0"
                             title={`Start ${task.duration}m timer`}
                         >
                             <Play size={10} className="fill-current" />

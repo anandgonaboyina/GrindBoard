@@ -73,6 +73,7 @@ export default function ConnectTab() {
     });
     localStorage.removeItem('stopwatch_paused_secs');
     localStorage.removeItem('stopwatch_last_active');
+    localStorage.removeItem('demo_session_start');
 
     const username = localStorage.getItem('dashboard_username');
     const isDemoUser = username?.toLowerCase() === 'demo_user';
@@ -157,7 +158,7 @@ export default function ConnectTab() {
       </div>
 
       <div className={activeTab === 'leaderboard' ? 'contents' : 'hidden'}>
-        <LeaderboardTab setSelectedImageOverlay={setSelectedImageOverlay} />
+        <LeaderboardTab isActive={activeTab === 'leaderboard'} setSelectedImageOverlay={setSelectedImageOverlay} />
       </div>
 
       <div className={activeTab === 'groups' ? 'contents' : 'hidden'}>

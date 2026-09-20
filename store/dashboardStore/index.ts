@@ -101,7 +101,10 @@ export const useDashboardStore = create<DashboardState>()(
         get().forceInstantSave();
       },
 
-      toggleHide: () => set((state) => ({ isHidden: !state.isHidden })),
+      toggleHide: () => set((state) => {
+        if (state.isPanicHidden) return {}; // Exclusive with Peek Mode
+        return { isHidden: !state.isHidden };
+      }),
 
       isTaskManagerOpen: false,
       toggleTaskManager: () => set((state) => {
@@ -713,7 +716,10 @@ export const useDashboardStore = create<DashboardState>()(
       },
 
       isPanicHidden: false,
-      togglePanicHide: () => set((state) => ({ isPanicHidden: !state.isPanicHidden })),
+      togglePanicHide: () => set((state) => {
+        if (state.isHidden) return {}; // Exclusive with Focus Mode
+        return { isPanicHidden: !state.isPanicHidden };
+      }),
       panicShortcutKey: 'ctrl+z',
       setPanicShortcutKey: (key) => {
         set({ panicShortcutKey: key.toLowerCase() });

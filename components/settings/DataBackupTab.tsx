@@ -480,10 +480,19 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
               >
                 <Download className="w-3.5 h-3.5 text-white/60" /> {isProcessingBackup ? '...' : 'Backup'}
               </button>
-              <label className={`flex-1 sm:flex-none justify-center px-3 py-2 bg-${item.color}-500/10 hover:bg-${item.color}-500/20 text-${item.color}-200 rounded-lg text-[9px] md:text-[10px] font-bold border border-${item.color}-500/20 flex items-center gap-1.5 transition-all shadow-sm ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                <Upload className="w-3.5 h-3.5" /> {isProcessingBackup ? '...' : 'Restore'}
-                <input type="file" className="hidden" accept=".json" onChange={(e) => { setIsProcessingBackup(true); item.onRestore(e); }} disabled={isProcessingBackup} />
-              </label>
+              {isDemoUser && item.title === 'Timetable' ? (
+                <button
+                  onClick={() => showAlertModal('Demo Mode', 'Restoring Timetable is disabled in demo mode to prevent overwriting demo data.')}
+                  className={`flex-1 sm:flex-none justify-center px-3 py-2 bg-gray-500/10 text-gray-400 rounded-lg text-[9px] md:text-[10px] font-bold border border-gray-500/20 flex items-center gap-1.5 transition-all shadow-sm cursor-not-allowed`}
+                >
+                  <Upload className="w-3.5 h-3.5" /> Restore
+                </button>
+              ) : (
+                <label className={`flex-1 sm:flex-none justify-center px-3 py-2 bg-${item.color}-500/10 hover:bg-${item.color}-500/20 text-${item.color}-200 rounded-lg text-[9px] md:text-[10px] font-bold border border-${item.color}-500/20 flex items-center gap-1.5 transition-all shadow-sm ${isProcessingBackup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                  <Upload className="w-3.5 h-3.5" /> {isProcessingBackup ? '...' : 'Restore'}
+                  <input type="file" className="hidden" accept=".json" onChange={(e) => { setIsProcessingBackup(true); item.onRestore(e); }} disabled={isProcessingBackup} />
+                </label>
+              )}
             </div>
           </div>
         ))}

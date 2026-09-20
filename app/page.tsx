@@ -664,7 +664,9 @@ useEffect(() => {
                   "https://images4.alphacoders.com/476/thumb-1920-47698.png",
                   "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg"
                 ],
-                activeDesktopCustomIndex: 0
+                activeDesktopCustomIndex: 0,
+                isHidden: false,
+                isPanicHidden: false
               },
               version: 0
             };
@@ -673,6 +675,7 @@ useEffect(() => {
             localStorage.setItem('dashboard_token', demoAuthData.token);
             localStorage.setItem('dashboard_sync_token', demoAuthData.token);
             localStorage.setItem('dashboard_username', demoAuthData.username);
+            localStorage.setItem('demo_session_start', Date.now().toString());
             localStorage.removeItem('dashboard_role');
             window.location.href = '/dashboard';
           }

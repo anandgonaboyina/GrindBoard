@@ -162,7 +162,20 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
           }} disabled={aliasUnlockLoading || !aliasPassword} className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors font-bold text-xs shadow-md">
             {aliasUnlockLoading ? 'Unlocking...' : 'Unlock Profile'}
           </button>
-          {aliasUnlockError && <p className="text-red-400 text-[10px] mt-1 text-center font-medium">{aliasUnlockError}</p>}
+          <div className="flex justify-between items-center mt-1">
+            <span className="text-red-400 text-[10px] font-medium">{aliasUnlockError || ''}</span>
+            <button 
+              type="button" 
+              onClick={() => {
+                if (window.confirm("You will be signed out to reset your password. Continue?")) {
+                  handleLogout();
+                }
+              }} 
+              className="text-[10px] text-blue-400 hover:text-blue-300 underline ml-auto"
+            >
+              Forgot Password?
+            </button>
+          </div>
         </div>
       </div>
     );

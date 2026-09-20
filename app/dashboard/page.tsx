@@ -133,7 +133,17 @@ export default function Dashboard() {
 
     const username = localStorage.getItem('dashboard_username');
     if (username?.toLowerCase() === 'demo_user') {
-      const demoLogoutTimeout = setTimeout(() => {
+      const now = Date.now();
+      let sessionStart = parseInt(localStorage.getItem('demo_session_start') || '0', 10);
+      if (!sessionStart || isNaN(sessionStart)) {
+        sessionStart = now;
+        localStorage.setItem('demo_session_start', sessionStart.toString());
+      }
+      
+      const timeElapsed = now - sessionStart;
+      const timeRemaining = Math.max(0, (25 * 60 * 1000) - timeElapsed);
+
+      const performDemoLogout = () => {
         Object.keys(localStorage).forEach(key => {
           if (
             key.startsWith('dashboard') || 
@@ -147,6 +157,7 @@ export default function Dashboard() {
         });
         localStorage.removeItem('stopwatch_paused_secs');
         localStorage.removeItem('stopwatch_last_active');
+        localStorage.removeItem('demo_session_start');
         fetch('/api/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -158,7 +169,14 @@ export default function Dashboard() {
             window.location.href = '/';
           });
         });
-      }, 25 * 60 * 1000); // 25 minutes
+      };
+
+      if (timeRemaining === 0) {
+        performDemoLogout();
+        return;
+      }
+
+      const demoLogoutTimeout = setTimeout(performDemoLogout, timeRemaining);
 
       const demoPromptInterval = setInterval(() => {
         setShowDemoRegisterBtn(true);
@@ -318,17 +336,17 @@ export default function Dashboard() {
               <Dock onOpenNotes={() => console.log('Open Notes clicked')} />
             </div>
           )}
-
-          {/* Bottom Right Container */}
-          <div style={{ bottom: `${rightWidgetsOffset + 30}px`, zIndex: bottomRightZ }} className="absolute right-1 sm:right-2 md:right-2 flex items-end transition-all duration-300 pointer-events-none scale-[0.75] sm:scale-85 md:scale-100 origin-bottom-right">
-            <div className="flex flex-col items-end gap-2 pointer-events-none mr-1 md:mr-[10px] relative z-20">
-              <div className="flex flex-col md:flex-row items-end md:items-start gap-2 md:gap-3 pointer-events-auto">
-                <div className={(!isHidden || !hideConfig.stopwatch) && showStopwatch ? '' : 'hidden'}><Stopwatch /></div>
-                <div className={((!isHidden || !hideConfig.timer) && showTimer) || isAlarmPlaying ? '' : 'hidden'}><Timer /></div>
-              </div>
+        </div>
+        
+        {/* Bottom Right Container */}
+        <div style={{ bottom: `${rightWidgetsOffset + 30}px`, zIndex: bottomRightZ }} className="absolute right-1 sm:right-2 md:right-2 flex items-end transition-all duration-300 pointer-events-none scale-[0.75] sm:scale-85 md:scale-100 origin-bottom-right">
+          <div className={`flex flex-col items-end gap-2 pointer-events-none mr-1 md:mr-[10px] relative z-20 ${isPanicHidden ? 'hidden' : ''}`}>
+            <div className="flex flex-col md:flex-row items-end md:items-start gap-2 md:gap-3 pointer-events-auto">
+              <div className={(!isHidden || !hideConfig.stopwatch) && showStopwatch ? '' : 'hidden'}><Stopwatch /></div>
+              <div className={((!isHidden || !hideConfig.timer) && showTimer) || isAlarmPlaying ? '' : 'hidden'}><Timer /></div>
             </div>
-            <div className="pointer-events-none relative z-10"><RightToolbar /></div>
           </div>
+          <div className="pointer-events-none relative z-10"><RightToolbar /></div>
         </div>
 
         <SettingsModal />

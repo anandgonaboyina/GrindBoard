@@ -118,6 +118,10 @@ export default function Timetable() {
   const [viewMode, setViewMode] = useState<"weekdays" | "weekends">(
     () => (new Date().getDay() === 0 || new Date().getDay() === 6) ? "weekends" : "weekdays"
   );
+  const [isDemoUser, setIsDemoUser] = useState(false);
+  useEffect(() => {
+    setIsDemoUser(localStorage.getItem('dashboard_username')?.toLowerCase() === 'demo_user');
+  }, []);
   const [editingCell, setEditingCell] = useState<{ day: string, time: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showSwapDaysModal, setShowSwapDaysModal] = useState(false);
@@ -795,13 +799,24 @@ export default function Timetable() {
             >
               <Download size={10} /> <span className="whitespace-nowrap">Backup</span>
             </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm active:scale-95 ${isDark ? 'text-violet-300 bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/20 hover:shadow-[0_0_10px_rgba(139,92,246,0.15)]' : 'text-violet-700 bg-violet-100 border-violet-200 hover:bg-violet-200'}`}
-            >
-              <Upload size={10} /> <span className="whitespace-nowrap">Restore</span>
-            </button>
-            <input type="file" accept=".json" ref={fileInputRef} onChange={handleRestore} className="hidden" />
+            {isDemoUser ? (
+              <button
+                onClick={() => showAlertModal('Demo Mode', 'Restoring Timetable is disabled in demo mode.')}
+                className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm cursor-not-allowed ${isDark ? 'text-gray-400 bg-gray-500/10 border-gray-500/20' : 'text-gray-500 bg-gray-100 border-gray-200'}`}
+              >
+                <Upload size={10} /> <span className="whitespace-nowrap">Restore</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`text-[8px] md:text-[9px] px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-semibold shadow-sm active:scale-95 ${isDark ? 'text-violet-300 bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/20 hover:shadow-[0_0_10px_rgba(139,92,246,0.15)]' : 'text-violet-700 bg-violet-100 border-violet-200 hover:bg-violet-200'}`}
+                >
+                  <Upload size={10} /> <span className="whitespace-nowrap">Restore</span>
+                </button>
+                <input type="file" accept=".json" ref={fileInputRef} onChange={handleRestore} className="hidden" />
+              </>
+            )}
           </>
         )}
 

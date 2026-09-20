@@ -96,7 +96,7 @@ export default React.memo(function FocusPeekTab({ setInfoModalKey, showAlertModa
 
         <div className="p-2 md:p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 mt-1">
           <p className="text-[9px] md:text-[10px] text-red-200/90 leading-relaxed break-words">
-            <strong className="text-red-400">Mobile Triggers:</strong> Tap the <strong className="text-white">Eye Icon</strong> on the right edge of your screen!
+            <strong className="text-red-400">Mobile Triggers:</strong> Tap the <strong className="text-white">Eye Icon</strong> on the right edge of your screen! & to get out tap on the <strong className="text-white">Lock Icon</strong> button at bottom for mobile 
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export default React.memo(function FocusPeekTab({ setInfoModalKey, showAlertModa
                   placeholder="Keys..."
                   className="w-full sm:w-28 h-7 md:h-8 px-2 bg-black/60 border border-white/10 rounded-md text-center text-white/90 outline-none focus:border-red-400/50 font-bold uppercase text-[9px] md:text-[10px]"
                 />
-                <p className="text-[8px] text-white/40 italic break-words">Click & press keys</p>
+                <p className="text-[8px] text-white/40 italic break-words">Click & press combination of keys</p>
               </div>
               <button
                 onClick={() => togglePanicHide()}
@@ -144,7 +144,7 @@ export default React.memo(function FocusPeekTab({ setInfoModalKey, showAlertModa
                   placeholder="Keys..."
                   className="w-full sm:w-28 h-7 md:h-8 px-2 bg-black/60 border border-white/10 rounded-md text-center text-white/90 outline-none focus:border-blue-400/50 font-bold uppercase text-[9px] md:text-[10px]"
                 />
-                <p className="text-[8px] text-white/40 italic break-words">Click & press keys</p>
+                <p className="text-[8px] text-white/40 italic break-words">Click & press combination of keys</p>
               </div>
               <button
                 onClick={() => toggleHide()}

@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Map, ListTodo, BarChart2, StickyNote, Settings, Clock, Timer as TimerIcon, Calendar, EyeOff, Image as ImageIcon } from 'lucide-react';
+import { Map, ListTodo, BarChart2, StickyNote, Settings, Clock, Timer as TimerIcon, Calendar, EyeOff, Image as ImageIcon, Lock, Eye } from 'lucide-react';
 import Tooltip from './Tooltip';
+import ConfirmationModal from './ConfirmationModal';
 
 export default function RightToolbar() {
   const isHidden = useDashboardStore((state) => state.isHidden);
+  const isPanicHidden = useDashboardStore((state) => state.isPanicHidden);
 
   const isPlansOpen = useDashboardStore((state) => state.isPlansOpen);
   const togglePlans = useDashboardStore((state) => state.togglePlans);
@@ -59,21 +61,61 @@ export default function RightToolbar() {
   const toggleHide = useDashboardStore((state) => state.toggleHide);
 
   const handlePanic = () => {
-    if (isHidden) {
-      // If dashboard is currently hidden, ALWAYS unhide it instead of redirecting
-      toggleHide();
-      return;
-    }
+    togglePanicHide();
+  };
 
-    if (panicButtonMode === 'hide') {
-      toggleHide();
-    } else {
-      // Use deep links to open apps instantly without network loading
-      const urls = [
-        'tg://resolve?domain=telegram',
-        'flipkart://'
-      ];
-      window.location.href = urls[Math.floor(Math.random() * urls.length)];
+  const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
+  const [unlockLoading, setUnlockLoading] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+
+  const handleUnlockSubmit = async (pass?: string) => {
+    if (!pass) return;
+    const username = localStorage.getItem('dashboard_username');
+    setUnlockLoading(true);
+    setUnlockError('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: pass })
+      });
+      if (res.ok) {
+        useDashboardStore.getState().togglePanicHide();
+        setIsUnlockModalOpen(false);
+      } else {
+        setUnlockError("Incorrect password!");
+        // Keep modal open so they can try again
+      }
+    } catch(err) {
+      setUnlockError("Error verifying password");
+    } finally {
+      setUnlockLoading(false);
+    }
+  };
+
+  const handleForgotPasswordLogout = () => {
+    if (window.confirm("You will be signed out to reset your password. Continue?")) {
+      Object.keys(localStorage).forEach(key => {
+        if (
+          key.startsWith('dashboard') || 
+          key.startsWith('tasks') || 
+          key.startsWith('notes') || 
+          key.startsWith('timetable') || 
+          key.startsWith('settings')
+        ) {
+          localStorage.removeItem(key);
+        }
+      });
+      localStorage.removeItem('stopwatch_paused_secs');
+      localStorage.removeItem('stopwatch_last_active');
+      localStorage.removeItem('demo_session_start');
+      fetch('/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: null })
+      }).catch(console.error);
+      
+      window.location.href = '/';
     }
   };
 
@@ -81,33 +123,76 @@ export default function RightToolbar() {
     <div
       className="relative flex flex-col gap-2 md:gap-3 pointer-events-auto transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] translate-x-0"
     >
-
       <div
         className={`relative z-20 flex flex-col gap-2 md:gap-3`}
       >
-        {/* Panic Button - Mobile Only */}
-        <Tooltip text={isHidden ? "Unhide Interface" : (panicButtonMode === 'redirect' ? "Panic! Launch App" : "Panic! Hide Interface")} position="left">
-          <button
-            data-tour="eye-toggle"
-            onClick={handlePanic}
-            className={`lg:hidden p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-red-500/30 bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 shadow-xl shadow-red-500/10 transition-all backdrop-blur-xl ${isHidden && panicButtonMode === 'hide' ? 'opacity-0' : 'opacity-100'}`}
-          >
-            <EyeOff size={20} className="sm:w-6 sm:h-6" />
-          </button>
-        </Tooltip>
+        {isPanicHidden ? (
+          <>
+            <Tooltip text="Unlock Peek Mode" position="left">
+              <button
+                onClick={() => {
+                  const username = localStorage.getItem('dashboard_username');
+                  if (username?.toLowerCase() === 'demo_user') {
+                    useDashboardStore.getState().togglePanicHide();
+                  } else {
+                    setIsUnlockModalOpen(true);
+                  }
+                }}
+                className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-red-500/30 bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 shadow-xl shadow-red-500/10 transition-all backdrop-blur-xl opacity-100 pointer-events-auto`}
+              >
+                <Lock size={20} className="sm:w-6 sm:h-6" />
+              </button>
+            </Tooltip>
+            
+            <ConfirmationModal
+              isOpen={isUnlockModalOpen}
+              onClose={() => setIsUnlockModalOpen(false)}
+              onConfirm={handleUnlockSubmit}
+              title="Unlock Dashboard"
+              message="Enter your password to unlock the dashboard."
+              isPrompt={true}
+              inputType="password"
+              promptPlaceholder="Password"
+              confirmText={unlockLoading ? "Verifying..." : "Unlock"}
+              inputFooter={
+                <div className="flex justify-between items-center mt-1">
+                  {unlockError && <span className="text-red-400 text-xs">{unlockError}</span>}
+                  <button 
+                    type="button" 
+                    onClick={handleForgotPasswordLogout} 
+                    className="text-[10px] text-blue-400 hover:text-blue-300 underline ml-auto"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              }
+            />
+          </>
+        ) : (
+          <>
+            {/* Panic Button - Mobile Only */}
+            <Tooltip text={isHidden ? "Unhide Interface" : (panicButtonMode === 'redirect' ? "Panic! Launch App" : "Panic! Hide Interface")} position="left">
+              <button
+                data-tour="eye-toggle"
+                onClick={handlePanic}
+                className={`lg:hidden p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-red-500/30 bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 shadow-xl shadow-red-500/10 transition-all backdrop-blur-xl ${isHidden && panicButtonMode === 'hide' ? 'opacity-0' : 'opacity-100'}`}
+              >
+                <Eye size={20} className="sm:w-6 sm:h-6" />
+              </button>
+            </Tooltip>
 
-        {/* Plans Toggle Button */}
-        {showPlans && (
-          <Tooltip text="Roadmap & Plans" position="left">
-            <button
-              data-tour="plans-btn"
-              onClick={togglePlans}
-              className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isPlansOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.plans ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-            >
-              <Map size={20} className="sm:w-6 sm:h-6" />
-            </button>
-          </Tooltip>
-        )}
+            {/* Plans Toggle Button */}
+            {showPlans && (
+              <Tooltip text="Roadmap & Plans" position="left">
+                <button
+                  data-tour="plans-btn"
+                  onClick={togglePlans}
+                  className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isPlansOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.plans ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                >
+                  <Map size={20} className="sm:w-6 sm:h-6" />
+                </button>
+              </Tooltip>
+            )}
         {/* removed as from right toolbar since kept as edge peek toggle */}
         {/* Calendar Toggle Button */}
         {/* {showCalendar && (
@@ -197,6 +282,8 @@ export default function RightToolbar() {
               <Settings size={20} className="sm:w-6 sm:h-6" />
             </button>
           </Tooltip>
+        )}
+        </>
         )}
       </div>
     </div>
