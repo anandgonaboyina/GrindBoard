@@ -85,6 +85,15 @@ export const useDashboardStore = create<DashboardState>()(
             pushStreakToDB(dateKey, newTotal);
           }
 
+          if (typeof window !== 'undefined') {
+            try {
+              const queueStr = localStorage.getItem('unsaved_focus_mins');
+              const queue = queueStr ? JSON.parse(queueStr) : {};
+              queue[dateKey] = (queue[dateKey] || 0) + mins;
+              localStorage.setItem('unsaved_focus_mins', JSON.stringify(queue));
+            } catch (e) {}
+          }
+
           return {
             history: { ...state.history, [dateKey]: newTotal },
             dailyTimes: {

@@ -127,7 +127,23 @@ export const performSave = async () => {
       }
     }
 
-    const payload = JSON.stringify({ data: parsedData, lastModified, modifiedCollections, modifiedKeys });
+    let incrementHistory = null;
+    if (typeof window !== 'undefined') {
+      try {
+        const queueStr = localStorage.getItem('unsaved_focus_mins');
+        if (queueStr) {
+          incrementHistory = JSON.parse(queueStr);
+        }
+      } catch (e) {}
+    }
+
+    const payload = JSON.stringify({ 
+      data: parsedData, 
+      lastModified, 
+      modifiedCollections, 
+      modifiedKeys,
+      incrementHistory
+    });
     
     const res = await fetch('/api/store', {
       method: 'POST',
@@ -246,6 +262,21 @@ export const performSave = async () => {
     setSyncLastModified(json.lastModified);
     success = true;
     lastSavedValue = valueToSave;
+    if (json.updatedHistory) {
+      useDashboardStore.setState((state: any) => ({
+        history: { ...state.history, ...json.updatedHistory }
+      }));
+      // Update pendingValue to prevent an immediate re-save trigger
+      const currentPending = JSON.parse(pendingValue || lastSavedValue);
+      if (currentPending.state) {
+        currentPending.state.history = { ...currentPending.state.history, ...json.updatedHistory };
+        pendingValue = JSON.stringify(currentPending);
+        lastSavedValue = pendingValue;
+      }
+    }
+    if (typeof window !== 'undefined' && incrementHistory) {
+      localStorage.removeItem('unsaved_focus_mins');
+    }
   } catch (err) {
     console.warn("Failed to save to DB, storing locally:", err);
   } finally {
@@ -443,10 +474,20 @@ export const fileStorage = createJSONStorage(() => ({
             const cloudHistory = json.data.state.history || {};
             const mergedHistory = isLocalNewer ? { ...cloudHistory, ...localHistory } : { ...localHistory, ...cloudHistory };
             
+            let queue: any = {};
+            try {
+              const queueStr = localStorage.getItem('unsaved_focus_mins');
+              if (queueStr) queue = JSON.parse(queueStr);
+            } catch (e) {}
+            
+            for (const dateKey in queue) {
+              mergedHistory[dateKey] = (cloudHistory[dateKey] || 0) + queue[dateKey];
+            }
+
             const todayKey = getLocalDateString();
             const localToday = localHistory[todayKey] || 0;
             const cloudToday = cloudHistory[todayKey] || 0;
-            if (isLocalNewer && localToday === 0 && cloudToday > 0) mergedHistory[todayKey] = cloudToday;
+            if (isLocalNewer && localToday === 0 && cloudToday > 0 && !queue[todayKey]) mergedHistory[todayKey] = cloudToday;
             else if (!isLocalNewer && cloudToday === 0 && localToday > 0) mergedHistory[todayKey] = localToday;
 
             const localDailyTimes = localState.dailyTimes || {};

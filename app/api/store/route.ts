@@ -329,7 +329,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const payload = await request.json();
-    const { data: body, lastModified: incomingLastModified, modifiedCollections = [], modifiedKeys = [], isFullSync = false } = payload;
+    const { data: body, lastModified: incomingLastModified, modifiedCollections = [], modifiedKeys = [], isFullSync = false, incrementHistory } = payload;
 
     const client = await clientPromise;
     const db = client.db();
@@ -791,19 +791,26 @@ export async function POST(request: Request) {
     }
 
     // 6. Save Stats to the isolated Stats collection
-    if ((isFullSync || modifiedCollections.includes('Stats')) && Object.keys(statsSpecificData).length > 0) {
+    if (incrementHistory && Object.keys(incrementHistory).length > 0) {
+      if (!modifiedCollections.includes('Stats')) modifiedCollections.push('Stats');
+    }
+
+    if ((isFullSync || modifiedCollections.includes('Stats')) && (Object.keys(statsSpecificData).length > 0 || incrementHistory)) {
       const statsDoc: any = { ...statsSpecificData, lastModified: newLastModified };
 
-      if (existingStats && existingStats.history) {
-        const incomingHistory = statsDoc.history || {};
-        const serverHistory = existingStats.history;
+      const serverHistory = (existingStats && existingStats.history) ? existingStats.history : {};
+      const incomingHistory = statsDoc.history || {};
+      
+      const mergedHistory = { ...serverHistory, ...incomingHistory };
 
-        // We merge them so we don't lose old days, but we ALWAYS trust 
-        // the incoming client data for any overlapping days, even if the time was reduced.
-        const mergedHistory = { ...serverHistory, ...incomingHistory };
-
-        statsDoc.history = mergedHistory;
+      if (incrementHistory) {
+        for (const dateKey in incrementHistory) {
+          // Add the queued minutes directly to the server's truth! Ignore the incoming absolute value.
+          mergedHistory[dateKey] = (serverHistory[dateKey] || 0) + incrementHistory[dateKey];
+        }
       }
+
+      statsDoc.history = mergedHistory;
 
       await db.collection('Stats').updateOne(
         { userId: user.userId },
@@ -867,7 +874,15 @@ export async function POST(request: Request) {
     );
 
 
-    return NextResponse.json({ success: true, lastModified: newLastModified });
+    const responseObj: any = { success: true, lastModified: newLastModified };
+    if (incrementHistory) {
+      // Re-fetch the updated history to ensure the client gets the merged truth immediately
+      const latestStats = await db.collection('Stats').findOne({ userId: user.userId });
+      if (latestStats && latestStats.history) {
+        responseObj.updatedHistory = latestStats.history;
+      }
+    }
+    return NextResponse.json(responseObj);
   } catch (error) {
     console.error('Error writing store to DB:', error);
     return NextResponse.json({ error: 'Failed to write store' }, { status: 500 });
