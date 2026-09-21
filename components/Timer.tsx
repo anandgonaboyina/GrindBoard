@@ -1,157 +1,55 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Pause, Square, VolumeX, Check, ListTodo, ChevronUp, ChevronDown, BarChart2, StickyNote, Map, Settings, BellRing, Clock, X, Loader2 } from 'lucide-react';
+import { Play, Pause, Square, VolumeX, Check, ChevronUp, ChevronDown, BellRing, Clock, X, Loader2 } from 'lucide-react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { useTaskStore } from '@/store/taskStore';
 import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
 import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { getDeviceId } from '@/utils/deviceId';
+import { triggerInstantSave } from '@/store/dashboardStore/sync';
 import Tooltip from './Tooltip';
 import ConfirmationModal from './ConfirmationModal';
-import { triggerInstantSave } from '@/store/dashboardStore/sync';
 
-const HR_OPTIONS = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
-const MIN_OPTIONS = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
-const AMPM_OPTIONS = ['AM', 'PM'];
+// Helper to safely stop audio and update OS media session state
+const haltAudio = (audioEl: HTMLAudioElement | null) => {
+  if (!audioEl) return;
+  try { audioEl.pause(); audioEl.currentTime = 0; audioEl.removeAttribute('src'); audioEl.load(); } catch (e) {}
+  if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+    try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+  }
+};
 
 export default function Timer() {
-  const {
-    timerTrigger, toggleTaskManager, isTaskManagerOpen,
-    toggleStats, isStatsOpen,
-    toggleNotes, isNotesOpen,
-    togglePlans, isPlansOpen,
-    timerEndAt, setTimerEndAt,
-    timerPausedLeft, setTimerPausedLeft,
-    timerInitialMins, setTimerInitialMins,
-    timerLastSavedChunks, setTimerLastSavedChunks,
-    timerLastAlertedChunks, setTimerLastAlertedChunks, taskIntervalAlertMins,
-    taskIntervalRingSecs, isTaskIntervalAlertEnabled,
-    isTimerIntervalEnabled, setIsTimerIntervalEnabled, timerIntervalMins, setTimerIntervalMins,
-    isAlarmPlaying, setIsAlarmPlaying,
-    addMins,
-    showQuotePopup, isHidden,
-    activeTaskId, activeTaskTitle, setActiveTask, updateTaskDuration, incrementGroupTaskTimeSpent,
-    alarmSound, alarmVolume,
-    enableAlarmSound, enableAlarmVibration,
-    isTimerOpen, timerDeviceId, setTimerDeviceId,
-    clearTimerState,
-  } = useDashboardStore();
-
+  const store = useDashboardStore();
   const { updateTaskDuration: updateLocalTaskDuration } = useTaskStore();
-
-  const resolvedAlarmUrl = useAudioUrl(alarmSound);
+  const resolvedAlarmUrl = useAudioUrl(store.alarmSound);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
-  const [customMins, setCustomMins] = useState<any>('');
+  
+  const [customMins, setCustomMins] = useState<string>('');
   const [isIntervalRinging, setIsIntervalRinging] = useState(false);
-  const [isUnlockingAudio, setIsUnlockingAudio] = useState(false);
-
-  // Local state for UI updates (does not spam DB)
   const [localTimeLeft, setLocalTimeLeft] = useState(0);
 
-  // Ref mirror of timerLastSavedChunks so the interval callback always
-  // reads the up-to-date value within the same tick (state updates are async).
-  const savedChunksRef = useRef(timerLastSavedChunks);
-  const alertedChunksRef = useRef(timerLastAlertedChunks);
-  const isUnlockingAudioRef = useRef(false);
+  const savedChunksRef = useRef(store.timerLastSavedChunks);
+  const alertedChunksRef = useRef(store.timerLastAlertedChunks);
   const isIntervalRingingRef = useRef(false);
-  const lastIntervalAlertMinsRef = useRef(taskIntervalAlertMins);
-  const lastIsIntervalEnabledRef = useRef(isTaskIntervalAlertEnabled);
+  const lastIntervalAlertMinsRef = useRef(store.taskIntervalAlertMins);
+  const lastIsIntervalEnabledRef = useRef(store.isTaskIntervalAlertEnabled);
+  const lastTickTimeRef = useRef<number>(Date.now());
+  const systemWakeTimeRef = useRef<number>(0);
+  const lastInteractionTimeRef = useRef(typeof window !== 'undefined' ? parseInt(localStorage.getItem('timer_last_active') || Date.now().toString()) : Date.now());
 
-  // Inline editing state
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [editHours, setEditHours] = useState('00');
   const [editMins, setEditMins] = useState('25');
   const [selectedHr, setSelectedHr] = useState('12');
   const [selectedMin, setSelectedMin] = useState('00');
   const [selectedAmPm, setSelectedAmPm] = useState('AM');
-  const [openDropdown, setOpenDropdown] = useState<'hr' | 'min' | 'ampm' | null>(null);
   const [highlightedField, setHighlightedField] = useState<'clock' | 'minutes' | null>(null);
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
-
-  useEffect(() => {
-    const now = new Date();
-    let h = now.getHours();
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    if (h === 0) h = 12;
-    setSelectedHr(h.toString().padStart(2, '0'));
-    setSelectedMin(now.getMinutes().toString().padStart(2, '0'));
-    setSelectedAmPm(ampm);
-  }, []);
-
-  const updateTargetTime = (hStr: string, mStr: string, ampm: string) => {
-    let h = parseInt(hStr);
-    if (ampm === 'PM' && h < 12) h += 12;
-    if (ampm === 'AM' && h === 12) h = 0;
-    const m = parseInt(mStr);
-
-    const now = new Date();
-    const targetDate = new Date();
-    targetDate.setHours(h, m, 0, 0);
-    if (targetDate < now) {
-      targetDate.setDate(targetDate.getDate() + 1);
-    }
-    const diffInMs = targetDate.getTime() - now.getTime();
-    let diffInMins = Math.floor(diffInMs / 1000 / 60);
-    if (diffInMins > 720) diffInMins = 720; // Cap at 12 hours
-    setCustomMins(diffInMins);
-
-    const hMins = Math.floor(diffInMins / 60);
-    const mMins = diffInMins % 60;
-    setEditHours(hMins.toString().padStart(2, '0'));
-    setEditMins(mMins.toString().padStart(2, '0'));
-
-    // Highlight the minutes field
-    setHighlightedField('minutes');
-    setTimeout(() => setHighlightedField(null), 1800);
-  };
-
-  const handleCustomMinsChange = (val: string) => {
-    let m = parseInt(val);
-    if (!isNaN(m) && m > 720) m = 720; // Cap at 12 hours
-
-    const finalVal = isNaN(m) ? '' : m.toString();
-    setCustomMins(finalVal);
-
-    if (!isNaN(m) && m > 0) {
-      const hMins = Math.floor(m / 60);
-      const mMins = m % 60;
-      setEditHours(hMins.toString().padStart(2, '0'));
-      setEditMins(mMins.toString().padStart(2, '0'));
-
-      const targetDate = new Date();
-      targetDate.setMinutes(targetDate.getMinutes() + m);
-      let h = targetDate.getHours();
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      h = h % 12;
-      if (h === 0) h = 12;
-      setSelectedHr(h.toString().padStart(2, '0'));
-      setSelectedMin(targetDate.getMinutes().toString().padStart(2, '0'));
-      setSelectedAmPm(ampm);
-
-      // Highlight the clock fields
-      setHighlightedField('clock');
-      setTimeout(() => setHighlightedField(null), 1800);
-    }
-  };
-
-  const lastInteractionTimeRef = useRef(
-    typeof window !== 'undefined' && localStorage.getItem('timer_last_active')
-      ? parseInt(localStorage.getItem('timer_last_active') as string)
-      : Date.now()
-  );
-
-  const updateInteraction = () => {
-    const now = Date.now();
-    lastInteractionTimeRef.current = now;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('timer_last_active', now.toString());
-    }
-  };
 
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
@@ -159,289 +57,178 @@ export default function Timer() {
   const [isCheckingCloudStop, setIsCheckingCloudStop] = useState(false);
   const [showAlreadyEndedModal, setShowAlreadyEndedModal] = useState(false);
 
-  // Suppress harmless NotSupportedError unhandled rejections caused by Lively Wallpaper/Chromium forcing play() on invalid media sources before fallback kicks in
   useEffect(() => {
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      const errStr = String(event.reason?.name || event.reason?.message || event.reason);
-      if (errStr.includes('NotSupportedError') || errStr.includes('no supported sources') || errStr.includes('The element has no supported sources')) {
-        event.preventDefault(); // Suppresses the console error
-        event.stopImmediatePropagation(); // Prevents Next.js Dev overlay from catching it and spamming the terminal
-      }
-    };
-    if (typeof window !== 'undefined') {
-      window.addEventListener('unhandledrejection', handleUnhandledRejection, { capture: true });
-      return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection, { capture: true });
-    }
+    const d = new Date();
+    let h = d.getHours();
+    setSelectedAmPm(h >= 12 ? 'PM' : 'AM');
+    setSelectedHr((h % 12 || 12).toString().padStart(2, '0'));
+    setSelectedMin(d.getMinutes().toString().padStart(2, '0'));
   }, []);
 
-  // Keep the ref mirror in sync with timerLastSavedChunks to prevent double-saving chunks on tab updates/rehydrations
+  // Suppress harmless Web Audio play() NotSupported errors
   useEffect(() => {
-    savedChunksRef.current = timerLastSavedChunks;
-  }, [timerLastSavedChunks]);
-
-  useEffect(() => {
-    alertedChunksRef.current = timerLastAlertedChunks;
-  }, [timerLastAlertedChunks]);
-
-  // Ensure local time immediately reflects store changes
-  useEffect(() => {
-    if (timerEndAt) {
-      const remaining = Math.max(0, Math.floor((timerEndAt - Date.now()) / 1000));
-      setLocalTimeLeft(remaining);
-    } else if (timerPausedLeft !== null) {
-      setLocalTimeLeft(timerPausedLeft);
-    } else {
-      setLocalTimeLeft(0);
-    }
-  }, [timerEndAt, timerPausedLeft]);
-
-  // Helper to clear timer state and save partial minutes IF minimum 5-min span is reached
-  const saveAndClearActiveTaskTimer = () => {
-    // Only calculate elapsed time if timer was actually running or paused!
-    if (timerInitialMins && (timerEndAt || timerPausedLeft !== null)) {
-      let currentRemaining = localTimeLeft;
-      if (timerEndAt) {
-        currentRemaining = Math.max(0, Math.floor((timerEndAt - Date.now()) / 1000));
-      } else if (timerPausedLeft !== null) {
-        currentRemaining = timerPausedLeft;
+    const handler = (e: PromiseRejectionEvent) => {
+      const err = String(e.reason?.name || e.reason?.message || e.reason);
+      if (err.includes('NotSupportedError') || err.includes('no supported sources')) {
+        e.preventDefault(); e.stopImmediatePropagation();
       }
+    };
+    if (typeof window !== 'undefined') window.addEventListener('unhandledrejection', handler, { capture: true });
+    return () => window.removeEventListener('unhandledrejection', handler, { capture: true });
+  }, []);
 
-      const elapsedSeconds = (timerInitialMins * 60) - currentRemaining;
-      if (elapsedSeconds >= 300) {
-        const elapsedMins = Math.floor(elapsedSeconds / 60);
-        const savedMins = savedChunksRef.current * 5;
-        const finalUnsavedMins = Math.max(0, elapsedMins - savedMins);
+  useEffect(() => { savedChunksRef.current = store.timerLastSavedChunks; }, [store.timerLastSavedChunks]);
+  useEffect(() => { alertedChunksRef.current = store.timerLastAlertedChunks; }, [store.timerLastAlertedChunks]);
 
-        if (finalUnsavedMins > 0) {
-          const today = getLocalDateString();
-          addMins(today, finalUnsavedMins);
-          if (activeTaskId) {
-            updateTaskDuration(activeTaskId, finalUnsavedMins);
-            updateLocalTaskDuration(activeTaskId, finalUnsavedMins);
-            incrementGroupTaskTimeSpent(activeTaskId, finalUnsavedMins);
-          }
-          triggerInstantSave();
-        }
-      }
+  useEffect(() => {
+    setLocalTimeLeft(store.timerEndAt ? Math.max(0, Math.floor((store.timerEndAt - Date.now()) / 1000)) : (store.timerPausedLeft || 0));
+  }, [store.timerEndAt, store.timerPausedLeft]);
+
+  const updateInteraction = () => {
+    const now = Date.now();
+    lastInteractionTimeRef.current = now;
+    if (typeof window !== 'undefined') localStorage.setItem('timer_last_active', now.toString());
+  };
+
+  const stopAlarm = async () => {
+    store.setIsAlarmPlaying(false);
+    haltAudio(audioRef.current);
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      try { (await navigator.serviceWorker.ready).getNotifications({ tag: 'alarm-alert' } as any).then(n => n.forEach(x => x.close())); } catch (e) {}
     }
+  };
 
-    savedChunksRef.current = 0;
-    setActiveTask(null, null);
-    setTimerLastSavedChunks(0);
-    setTimerLastAlertedChunks(0);
-    setTimerInitialMins(null);
-
-    // Safety clear of interval beep
-    if (intervalAudioRef.current) {
-      intervalAudioRef.current.pause();
-      intervalAudioRef.current.currentTime = 0;
-    }
+  const stopIntervalBeep = () => {
+    haltAudio(intervalAudioRef.current);
     setIsIntervalRinging(false);
     isIntervalRingingRef.current = false;
   };
 
-  // Track last tick timestamp to detect laptop sleep/wake execution gaps
-  const lastTickTimeRef = useRef<number>(Date.now());
-  const systemWakeTimeRef = useRef<number>(0);
-  const isSettingsOpen = useDashboardStore((state) => state.isSettingsOpen);
+  const saveAndClearActiveTaskTimer = () => {
+    if (store.timerInitialMins && (store.timerEndAt || store.timerPausedLeft !== null)) {
+      const currentRemaining = store.timerEndAt ? Math.max(0, Math.floor((store.timerEndAt - Date.now()) / 1000)) : store.timerPausedLeft!;
+      const elapsedMins = Math.floor(((store.timerInitialMins * 60) - currentRemaining) / 60);
+      const finalUnsavedMins = Math.max(0, elapsedMins - (savedChunksRef.current * 5));
 
-  // Window Focus / Visibility Change Cleanup: Ensure no stray audio plays when laptop wakes up from sleep
+      if (finalUnsavedMins > 0) {
+        store.addMins(getLocalDateString(), finalUnsavedMins);
+        if (store.activeTaskId) {
+          store.updateTaskDuration(store.activeTaskId, finalUnsavedMins);
+          updateLocalTaskDuration(store.activeTaskId, finalUnsavedMins);
+          store.incrementGroupTaskTimeSpent(store.activeTaskId, finalUnsavedMins);
+        }
+        triggerInstantSave();
+      }
+    }
+    savedChunksRef.current = 0;
+    store.setActiveTask(null, null);
+    store.setTimerLastSavedChunks(0);
+    store.setTimerLastAlertedChunks(0);
+    store.setTimerInitialMins(null);
+    stopIntervalBeep();
+  };
+
   useEffect(() => {
     const handleSleepWakeCleanup = () => {
       systemWakeTimeRef.current = Date.now();
-      const storeState = useDashboardStore.getState();
-      const isAlarm = storeState.isAlarmPlaying;
-
-      // Stop audio if not an active alarm or if timer is overdue / finished during sleep
-      if (!isAlarm || (storeState.timerEndAt && Date.now() - storeState.timerEndAt > 15000)) {
-        if (isAlarm) {
-          storeState.setIsAlarmPlaying(false);
-        }
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-        }
-        if (intervalAudioRef.current) {
-          intervalAudioRef.current.pause();
-          intervalAudioRef.current.currentTime = 0;
-        }
-        setIsIntervalRinging(false);
-        isIntervalRingingRef.current = false;
+      const st = useDashboardStore.getState();
+      if (!st.isAlarmPlaying || (st.timerEndAt && Date.now() - st.timerEndAt > 15000)) {
+        if (st.isAlarmPlaying) st.setIsAlarmPlaying(false);
+        stopAlarm();
+        stopIntervalBeep();
       }
     };
-
     if (typeof window !== 'undefined') {
       window.addEventListener('focus', handleSleepWakeCleanup);
       document.addEventListener('visibilitychange', handleSleepWakeCleanup);
-      return () => {
-        window.removeEventListener('focus', handleSleepWakeCleanup);
-        document.removeEventListener('visibilitychange', handleSleepWakeCleanup);
-      };
+      return () => { window.removeEventListener('focus', handleSleepWakeCleanup); document.removeEventListener('visibilitychange', handleSleepWakeCleanup); };
     }
   }, []);
 
-  // Forcibly stop audio when settings modal is opened
   useEffect(() => {
-    if (isSettingsOpen) {
-      if (useDashboardStore.getState().isAlarmPlaying) {
-        useDashboardStore.getState().setIsAlarmPlaying(false);
-      }
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-      if (intervalAudioRef.current) {
-        intervalAudioRef.current.pause();
-        intervalAudioRef.current.currentTime = 0;
-      }
-      setIsIntervalRinging(false);
-      isIntervalRingingRef.current = false;
+    if (store.isSettingsOpen) {
+      if (useDashboardStore.getState().isAlarmPlaying) useDashboardStore.getState().setIsAlarmPlaying(false);
+      stopAlarm(); stopIntervalBeep();
     }
-  }, [isSettingsOpen]);
+  }, [store.isSettingsOpen]);
 
-  // Main tick interval
+  // Main Tick Interval
   useEffect(() => {
     let interval: NodeJS.Timeout;
-
-    if (timerEndAt) {
-      // Initialize or reset lastTickTime to now when timer starts or resumes
-      if (!lastTickTimeRef.current || Math.abs(Date.now() - lastTickTimeRef.current) > 60000) {
-        lastTickTimeRef.current = Date.now();
-      }
+    if (store.timerEndAt) {
+      if (!lastTickTimeRef.current || Math.abs(Date.now() - lastTickTimeRef.current) > 60000) lastTickTimeRef.current = Date.now();
+      
       interval = setInterval(() => {
         const now = Date.now();
-        const gap = now - (lastTickTimeRef.current || now);
+        const wasSleeping = (now - (lastTickTimeRef.current || now)) > 60000;
         lastTickTimeRef.current = now;
-        const wasSleeping = gap > 60000; // Execution gap > 60 seconds indicates real system sleep/lock (increased from 3s/30s)
-
-        const remaining = Math.floor((timerEndAt - now) / 1000);
-        const isOwner = timerDeviceId === getDeviceId();
+        const remaining = Math.floor((store.timerEndAt! - now) / 1000);
+        const isOwner = store.timerDeviceId === getDeviceId();
 
         if (wasSleeping) {
-          // If system was sleeping or just woke up (e.g. Win+L unlock), sync interval alerted chunks ref to current chunk without ringing
-          let isIntervalActive = activeTaskId ? (isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0) : (isTimerIntervalEnabled && timerIntervalMins > 0);
-          let activeIntervalMins = activeTaskId ? taskIntervalAlertMins : timerIntervalMins;
-          if (isIntervalActive && activeIntervalMins > 0 && timerInitialMins) {
-            const alertIntervalSecs = activeIntervalMins * 60;
-            const elapsedSeconds = Math.max(0, (timerInitialMins * 60) - remaining);
-            alertedChunksRef.current = Math.floor(elapsedSeconds / alertIntervalSecs);
-          }
+          const actvMins = store.activeTaskId ? store.taskIntervalAlertMins : store.timerIntervalMins;
+          if (actvMins > 0 && store.timerInitialMins) alertedChunksRef.current = Math.floor(Math.max(0, (store.timerInitialMins * 60) - remaining) / (actvMins * 60));
           return;
         }
 
-        const elapsedSinceInteraction = Math.floor((now - lastInteractionTimeRef.current) / 1000);
-        
-        if (elapsedSinceInteraction >= 7200 && isOwner) {
-          // Pause exactly at the last known heartbeat! No extra hours added.
-          const intendedPauseTime = lastInteractionTimeRef.current;
-          // Only pause if the timer wouldn't have finished naturally before the pause time
-          if (intendedPauseTime < timerEndAt) {
-            const actualRemaining = Math.max(0, Math.floor((timerEndAt - intendedPauseTime) / 1000));
-            
-            // Save chunks up to the intended pause time
-            if (timerInitialMins) {
-              const elapsedAtPause = Math.max(0, (timerInitialMins * 60) - actualRemaining);
-              const chunksAtPause = Math.floor(elapsedAtPause / 300);
-              if (chunksAtPause > savedChunksRef.current) {
-                const diff = chunksAtPause - savedChunksRef.current;
-                const minsToSave = diff * 5;
-                const today = getLocalDateString();
-                addMins(today, minsToSave);
-                if (activeTaskId) {
-                  updateTaskDuration(activeTaskId, minsToSave);
-                  updateLocalTaskDuration(activeTaskId, minsToSave);
-                  incrementGroupTaskTimeSpent(activeTaskId, minsToSave);
-                }
-                setTimerLastSavedChunks(chunksAtPause);
-                savedChunksRef.current = chunksAtPause;
+        if (Math.floor((now - lastInteractionTimeRef.current) / 1000) >= 7200 && isOwner && lastInteractionTimeRef.current < store.timerEndAt!) {
+          const actRem = Math.max(0, Math.floor((store.timerEndAt! - lastInteractionTimeRef.current) / 1000));
+          if (store.timerInitialMins) {
+            const chunksAtPause = Math.floor(Math.max(0, (store.timerInitialMins * 60) - actRem) / 300);
+            if (chunksAtPause > savedChunksRef.current) {
+              const diffMins = (chunksAtPause - savedChunksRef.current) * 5;
+              store.addMins(getLocalDateString(), diffMins);
+              if (store.activeTaskId) {
+                store.updateTaskDuration(store.activeTaskId, diffMins);
+                updateLocalTaskDuration(store.activeTaskId, diffMins);
+                store.incrementGroupTaskTimeSpent(store.activeTaskId, diffMins);
               }
+              store.setTimerLastSavedChunks(chunksAtPause);
+              savedChunksRef.current = chunksAtPause;
             }
-
-            setTimerPausedLeft(actualRemaining);
-            setTimerEndAt(null);
-            setPausedAtString(new Date(lastInteractionTimeRef.current).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-            setShowContinuePrompt(true);
-            updateInteraction();
-            return;
           }
+          store.setTimerPausedLeft(actRem);
+          store.setTimerEndAt(null);
+          setPausedAtString(new Date(lastInteractionTimeRef.current).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+          setShowContinuePrompt(true);
+          updateInteraction();
+          return;
         }
 
-        if (timerInitialMins) {
-          const elapsedSeconds = (timerInitialMins * 60) - remaining;
-          if (elapsedSeconds >= 0) {
-            const chunks = Math.floor(elapsedSeconds / 300); // 5 minutes = 300 seconds
+        if (store.timerInitialMins) {
+          const elapsedSecs = (store.timerInitialMins * 60) - remaining;
+          if (elapsedSecs >= 0) {
+            const chunks = Math.floor(elapsedSecs / 300);
             if (chunks > savedChunksRef.current) {
               if (isOwner) {
-                const diff = chunks - savedChunksRef.current;
-                const minsToSave = diff * 5;
-                const targetChunks = chunks;
-                const capturedTaskId = activeTaskId; // Capture in closure
-                
-                // Immediately update ref to prevent duplicate interval triggers
-                savedChunksRef.current = targetChunks;
-
-                const applyMinsLocally = () => {
-                  const today = getLocalDateString();
-                  addMins(today, minsToSave);
-                  if (capturedTaskId) {
-                    updateTaskDuration(capturedTaskId, minsToSave);
-                    updateLocalTaskDuration(capturedTaskId, minsToSave);
-                    incrementGroupTaskTimeSpent(capturedTaskId, minsToSave);
-                  }
-                  setTimerLastSavedChunks(targetChunks);
-                  triggerInstantSave();
-                };
-                
-                applyMinsLocally();
-              } else {
+                const diffMins = (chunks - savedChunksRef.current) * 5;
                 savedChunksRef.current = chunks;
-              }
+                store.addMins(getLocalDateString(), diffMins);
+                if (store.activeTaskId) {
+                  store.updateTaskDuration(store.activeTaskId, diffMins);
+                  updateLocalTaskDuration(store.activeTaskId, diffMins);
+                  store.incrementGroupTaskTimeSpent(store.activeTaskId, diffMins);
+                }
+                store.setTimerLastSavedChunks(chunks);
+                triggerInstantSave();
+              } else savedChunksRef.current = chunks;
             }
 
             if (remaining > 5 && !wasSleeping) {
-              let isIntervalActive = false;
-              let activeIntervalMins = 0;
-
-              if (activeTaskId) {
-                isIntervalActive = isTaskIntervalAlertEnabled && taskIntervalAlertMins > 0;
-                activeIntervalMins = taskIntervalAlertMins;
-              } else {
-                isIntervalActive = isTimerIntervalEnabled && timerIntervalMins > 0;
-                activeIntervalMins = timerIntervalMins;
-              }
-
-              if (isIntervalActive && timerInitialMins) {
-                const alertIntervalSecs = activeIntervalMins * 60;
-                const currentChunk = Math.floor(elapsedSeconds / alertIntervalSecs);
-
-                if (
-                  lastIntervalAlertMinsRef.current !== activeIntervalMins ||
-                  lastIsIntervalEnabledRef.current !== isIntervalActive
-                ) {
-                  lastIntervalAlertMinsRef.current = activeIntervalMins;
-                  lastIsIntervalEnabledRef.current = isIntervalActive;
-                  alertedChunksRef.current = currentChunk;
-                } else if (currentChunk > alertedChunksRef.current && currentChunk > 0) {
-                  alertedChunksRef.current = currentChunk;
-
+              const isIntvActive = store.activeTaskId ? (store.isTaskIntervalAlertEnabled && store.taskIntervalAlertMins > 0) : (store.isTimerIntervalEnabled && store.timerIntervalMins > 0);
+              const intvMins = store.activeTaskId ? store.taskIntervalAlertMins : store.timerIntervalMins;
+              if (isIntvActive) {
+                const curChunk = Math.floor(elapsedSecs / (intvMins * 60));
+                if (lastIntervalAlertMinsRef.current !== intvMins || lastIsIntervalEnabledRef.current !== isIntvActive) {
+                  lastIntervalAlertMinsRef.current = intvMins; lastIsIntervalEnabledRef.current = isIntvActive; alertedChunksRef.current = curChunk;
+                } else if (curChunk > alertedChunksRef.current && curChunk > 0) {
+                  alertedChunksRef.current = curChunk;
                   if (isOwner) {
-                    setTimerLastAlertedChunks(currentChunk);
-                    if (enableAlarmSound || enableAlarmVibration) {
-                      setIsIntervalRinging(true);
-                      isIntervalRingingRef.current = true;
-                      useDashboardStore.setState({ isTimerOpen: true });
-
-                      if (enableAlarmVibration) {
-                        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                          try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) { }
-                        }
-                      }
-
-                      const duration = taskIntervalRingSecs ? taskIntervalRingSecs * 1000 : 1500;
-                      setTimeout(() => {
-                        setIsIntervalRinging(false);
-                        isIntervalRingingRef.current = false;
-                      }, duration);
+                    store.setTimerLastAlertedChunks(curChunk);
+                    if (store.enableAlarmSound || store.enableAlarmVibration) {
+                      setIsIntervalRinging(true); isIntervalRingingRef.current = true; useDashboardStore.setState({ isTimerOpen: true });
+                      if (store.enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
+                      setTimeout(() => { setIsIntervalRinging(false); isIntervalRingingRef.current = false; }, (store.taskIntervalRingSecs || 1.5) * 1000);
                     }
                   }
                 }
@@ -451,904 +238,323 @@ export default function Timer() {
         }
 
         if (remaining <= 0) {
-          // Timer finished!
           clearInterval(interval);
           setLocalTimeLeft(0);
+          store.setTimerEndAt(null);
+          store.setTimerPausedLeft(null);
+          stopIntervalBeep();
 
-          setTimerEndAt(null);
-          setTimerPausedLeft(null);
-
-          // Force stop any lingering interval beep
-          if (intervalAudioRef.current) {
-            intervalAudioRef.current.pause();
-            intervalAudioRef.current.currentTime = 0;
-          }
-          setIsIntervalRinging(false);
-          isIntervalRingingRef.current = false;
-
-          // Only trigger alarm if system was active and NOT sleeping when timer expired
-          if (isOwner && !wasSleeping) {
-            playAlarm();
-          }
-
-          // Log to history
-          if (timerInitialMins && timerInitialMins > 0) {
-            if (isOwner) {
-              const today = getLocalDateString();
-              // Calculate any remaining unsaved minutes for this session
-              const savedMins = savedChunksRef.current * 5;
-              const finalUnsavedMins = Math.max(0, timerInitialMins - savedMins);
-              if (finalUnsavedMins > 0) {
-                addMins(today, finalUnsavedMins);
-                if (activeTaskId) {
-                  updateTaskDuration(activeTaskId, finalUnsavedMins);
-                  updateLocalTaskDuration(activeTaskId, finalUnsavedMins);
-                  incrementGroupTaskTimeSpent(activeTaskId, finalUnsavedMins);
-                }
-                triggerInstantSave();
+          if (isOwner && !wasSleeping) playAlarm();
+          if (store.timerInitialMins && store.timerInitialMins > 0 && isOwner) {
+            const finalMins = Math.max(0, store.timerInitialMins - (savedChunksRef.current * 5));
+            if (finalMins > 0) {
+              store.addMins(getLocalDateString(), finalMins);
+              if (store.activeTaskId) {
+                store.updateTaskDuration(store.activeTaskId, finalMins);
+                updateLocalTaskDuration(store.activeTaskId, finalMins);
+                store.incrementGroupTaskTimeSpent(store.activeTaskId, finalMins);
               }
+              triggerInstantSave();
             }
-            // Intentionally not calling clearTimerState() here so the Stop Timer button and alarm persist!
             savedChunksRef.current = 0;
+            fetchQuote().then(q => store.showQuotePopup(q));
           }
+        } else setLocalTimeLeft(remaining);
 
-          // Show quote popup
-          if (isOwner) {
-            fetchQuote().then(q => showQuotePopup(q));
-          }
-        } else {
-          setLocalTimeLeft(remaining);
-        }
-
-        // Heartbeat to prove tab is open and running
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('timer_last_active', now.toString());
-          lastInteractionTimeRef.current = now;
-        }
-
-      }, 250); // High frequency check for smooth local UI update
+        if (typeof window !== 'undefined') localStorage.setItem('timer_last_active', now.toString());
+      }, 250);
     }
-
     return () => clearInterval(interval);
-  }, [timerEndAt, timerInitialMins, timerLastSavedChunks, timerLastAlertedChunks, taskIntervalAlertMins, timerIntervalMins, isTimerIntervalEnabled, addMins, setTimerEndAt, setTimerPausedLeft, setTimerInitialMins, setTimerLastSavedChunks, setTimerLastAlertedChunks, showQuotePopup, activeTaskId, updateTaskDuration, updateLocalTaskDuration, incrementGroupTaskTimeSpent, setActiveTask, alarmSound, alarmVolume, enableAlarmSound, isTaskIntervalAlertEnabled, taskIntervalRingSecs, timerDeviceId]);
+  }, [store]);
 
-  // Listen for timer triggers from other components
   useEffect(() => {
-    if (timerTrigger) {
-      const state = useDashboardStore.getState();
-      if (timerTrigger.taskId && timerTrigger.taskId === state.activeTaskId) {
-        if (state.timerPausedLeft !== null) {
-          setTimerEndAt(Date.now() + state.timerPausedLeft * 1000);
-          setTimerPausedLeft(null);
-          lastTickTimeRef.current = Date.now();
-        }
-        useDashboardStore.setState({ timerTrigger: null });
-        return;
-      }
-
-      // If we are triggering a new timer, save partial time of any currently running task timer
-      saveAndClearActiveTaskTimer();
-
-      if (timerTrigger.taskId) {
-        setActiveTask(timerTrigger.taskId, timerTrigger.taskTitle || null);
-        startTimer(timerTrigger.mins * 60, true);
+    if (store.timerTrigger) {
+      if (store.timerTrigger.taskId && store.timerTrigger.taskId === store.activeTaskId && store.timerPausedLeft !== null) {
+        store.setTimerEndAt(Date.now() + store.timerPausedLeft * 1000);
+        store.setTimerPausedLeft(null);
+        lastTickTimeRef.current = Date.now();
       } else {
-        startTimer(timerTrigger.mins * 60, false);
+        saveAndClearActiveTaskTimer();
+        if (store.timerTrigger.taskId) store.setActiveTask(store.timerTrigger.taskId, store.timerTrigger.taskTitle || null);
+        startTimer(store.timerTrigger.mins * 60, !!store.timerTrigger.taskId);
       }
       useDashboardStore.setState({ timerTrigger: null });
     }
-  }, [timerTrigger]);
+  }, [store.timerTrigger]);
 
-  // Handle vibration pattern when alarm is playing
   useEffect(() => {
-    let vibeInterval: NodeJS.Timeout;
-    if (isAlarmPlaying && enableAlarmVibration) {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try {
-          navigator.vibrate([500, 500, 500, 500, 500]);
-          vibeInterval = setInterval(() => {
-            try { navigator.vibrate([500, 500, 500, 500, 500]); } catch (e) { }
-          }, 2500);
-        } catch (e) { }
-      }
-    } else {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try { navigator.vibrate(0); } catch (e) { }
-      }
-    }
-    return () => {
-      if (vibeInterval) clearInterval(vibeInterval);
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try { navigator.vibrate(0); } catch (e) { }
-      }
-    };
-  }, [isAlarmPlaying, enableAlarmVibration]);
+    let vibe: NodeJS.Timeout;
+    if (store.isAlarmPlaying && store.enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate([500, 500, 500, 500, 500]); vibe = setInterval(() => { try { navigator.vibrate([500, 500, 500, 500, 500]); } catch(e){} }, 2500); } catch(e){}
+    } else if (typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate(0); } catch(e){}
+    return () => { if (vibe) clearInterval(vibe); if (typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate(0); } catch(e){} };
+  }, [store.isAlarmPlaying, store.enableAlarmVibration]);
 
-  // Handle Audio playback reacting to isAlarmPlaying state
   useEffect(() => {
     if (audioRef.current) {
-      if (isAlarmPlaying && enableAlarmSound) {
-        audioRef.current.muted = false;
-        const vol = alarmVolume !== undefined ? alarmVolume : 1;
-        audioRef.current.volume = vol > 1 ? vol / 100 : vol;
-        audioRef.current.play().catch(e => console.error('Failed to play alarm:', e));
-        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-          try { navigator.mediaSession.playbackState = 'playing'; } catch (e) { }
-        }
-      } else {
-        try {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-          audioRef.current.removeAttribute('src');
-          audioRef.current.load();
-        } catch (e) { }
-        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-          try { navigator.mediaSession.playbackState = 'none'; } catch (e) { }
-        }
-      }
+      if (store.isAlarmPlaying && store.enableAlarmSound) {
+        audioRef.current.muted = false; audioRef.current.volume = (store.alarmVolume || 1) > 1 ? (store.alarmVolume || 1)/100 : (store.alarmVolume || 1);
+        audioRef.current.play().catch(e => console.error(e));
+      } else haltAudio(audioRef.current);
     }
-  }, [isAlarmPlaying, enableAlarmSound, alarmVolume, resolvedAlarmUrl, alarmSound]);
+  }, [store.isAlarmPlaying, store.enableAlarmSound, store.alarmVolume, resolvedAlarmUrl]);
 
-  // Handle Interval Audio playback reacting to isIntervalRinging state
   useEffect(() => {
     if (intervalAudioRef.current) {
-      if (isIntervalRinging && enableAlarmSound) {
-        intervalAudioRef.current.muted = false;
-        const vol = alarmVolume !== undefined ? alarmVolume : 1;
-        intervalAudioRef.current.volume = (vol > 1 ? vol / 100 : vol) * 0.4;
-        intervalAudioRef.current.currentTime = 0;
-        console.log('[AUDIO DEBUG] Playing interval audio via useEffect...');
-        intervalAudioRef.current.play().then(() => console.log('[AUDIO DEBUG] Interval audio play success')).catch(e => console.error('[AUDIO DEBUG] Interval beep failed:', e));
-        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-          try { navigator.mediaSession.playbackState = 'playing'; } catch (e) { }
-        }
-      } else {
-        try {
-          intervalAudioRef.current.pause();
-          intervalAudioRef.current.currentTime = 0;
-          intervalAudioRef.current.removeAttribute('src');
-          intervalAudioRef.current.load();
-        } catch (e) { }
-        if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-          try { navigator.mediaSession.playbackState = 'none'; } catch (e) { }
-        }
-      }
+      if (isIntervalRinging && store.enableAlarmSound) {
+        intervalAudioRef.current.muted = false; intervalAudioRef.current.volume = ((store.alarmVolume || 1) > 1 ? (store.alarmVolume || 1)/100 : (store.alarmVolume || 1)) * 0.4;
+        intervalAudioRef.current.currentTime = 0; intervalAudioRef.current.play().catch(e => console.error(e));
+      } else haltAudio(intervalAudioRef.current);
     }
-  }, [isIntervalRinging, enableAlarmSound, alarmVolume, resolvedAlarmUrl, alarmSound]);
+  }, [isIntervalRinging, store.enableAlarmSound, store.alarmVolume, resolvedAlarmUrl]);
 
-  const getAlarmTitle = () => {
-    if (enableAlarmSound && enableAlarmVibration) return 'PWA_ALARM_RING_VIBRATE';
-    if (enableAlarmSound) return 'PWA_ALARM_RING';
-    if (enableAlarmVibration) return 'PWA_ALARM_VIBRATE';
-    return 'PWA_ALARM_TRIGGER';
-  };
+  const getAlarmTitle = () => store.enableAlarmSound && store.enableAlarmVibration ? 'PWA_ALARM_RING_VIBRATE' : store.enableAlarmSound ? 'PWA_ALARM_RING' : store.enableAlarmVibration ? 'PWA_ALARM_VIBRATE' : 'PWA_ALARM_TRIGGER';
 
   const playAlarm = async () => {
-    console.log(`[AUDIO DEBUG] playAlarm triggered: Main timer finished. enableAlarmSound: ${enableAlarmSound}`);
-    setIsAlarmPlaying(true);
-    useDashboardStore.setState({ isTimerOpen: true });
-    const durationSecs = useDashboardStore.getState().alarmDurationSecs || 60;
-
+    store.setIsAlarmPlaying(true); useDashboardStore.setState({ isTimerOpen: true });
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
-        if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.ready;
-          registration.showNotification(getAlarmTitle(), {
-            body: 'Your focus session has ended.',
-            icon: '/icon-192x192.png',
-            vibrate: enableAlarmVibration ? [500, 500, 500, 500, 500] : undefined,
-            silent: !enableAlarmSound,
-            requireInteraction: true,
-            tag: 'alarm-alert',
-            renotify: true
-          } as any);
-        } else {
-          new Notification(getAlarmTitle(), {
-            body: 'Your focus session has ended.',
-            icon: '/icon-192x192.png',
-            vibrate: enableAlarmVibration ? [500, 500, 500, 500, 500] : undefined,
-            silent: !enableAlarmSound,
-            requireInteraction: true,
-            tag: 'alarm-alert',
-            renotify: true
-          } as any);
-        }
-      } catch (e) {
-        console.error('Notification failed:', e);
-      }
+        const opts = { body: 'Focus session ended.', icon: '/icon-192x192.png', vibrate: store.enableAlarmVibration ? [500,500,500,500,500] : undefined, silent: !store.enableAlarmSound, requireInteraction: true, tag: 'alarm-alert', renotify: true } as any;
+        if ('serviceWorker' in navigator) (await navigator.serviceWorker.ready).showNotification(getAlarmTitle(), opts);
+        else new Notification(getAlarmTitle(), opts);
+      } catch (e) {}
     }
-
-    setTimeout(() => {
-      useDashboardStore.getState().setIsAlarmPlaying(false);
-    }, durationSecs * 1000);
+    setTimeout(() => useDashboardStore.getState().setIsAlarmPlaying(false), (store.alarmDurationSecs || 60) * 1000);
   };
 
-  const stopAlarm = async () => {
-    setIsAlarmPlaying(false);
-    if (audioRef.current) {
-      try {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current.removeAttribute('src');
-        audioRef.current.load();
-      } catch (e) { }
+  const startTimer = (seconds: number, isTask = false) => {
+    if (!isTask) saveAndClearActiveTaskTimer();
+    store.setTimerInitialMins(Math.round(seconds / 60)); store.setTimerPausedLeft(null); store.setTimerEndAt(Date.now() + seconds * 1000);
+    savedChunksRef.current = 0; alertedChunksRef.current = 0; lastIntervalAlertMinsRef.current = 0; lastIsIntervalEnabledRef.current = false;
+    store.setTimerLastSavedChunks(0); store.setTimerLastAlertedChunks(0); store.setTimerDeviceId(getDeviceId()); lastTickTimeRef.current = Date.now();
+    stopAlarm(); updateInteraction();
+
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setTimeout(() => useDashboardStore.setState({ isTimerOpen: false }), 3000);
+    if (store.enableAlarmSound && typeof window !== 'undefined') {
+      try { const AudioCtx = window.AudioContext || (window as any).webkitAudioContext; if (AudioCtx) { const ctx = new AudioCtx(); if (ctx.state === 'suspended') ctx.resume(); ctx.createBufferSource().start(0); } } catch (e) {}
     }
-    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-      try { navigator.mediaSession.playbackState = 'none'; } catch (e) { }
-    }
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        const notifications = await registration.getNotifications({ tag: 'alarm-alert' } as any);
-        notifications.forEach(n => n.close());
-      } catch (e) { }
-    }
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') scheduleNotification(Date.now() + seconds * 1000);
   };
 
-  const stopIntervalBeep = () => {
-    if (intervalAudioRef.current) {
-      try {
-        intervalAudioRef.current.pause();
-        intervalAudioRef.current.currentTime = 0;
-        intervalAudioRef.current.removeAttribute('src');
-        intervalAudioRef.current.load();
-      } catch (e) { }
-    }
-    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-      try { navigator.mediaSession.playbackState = 'none'; } catch (e) { }
-    }
-    setIsIntervalRinging(false);
-    isIntervalRingingRef.current = false;
-  };
-
-  const startTimer = (seconds: number, isTask: boolean = false) => {
-    if (!isTask) {
-      saveAndClearActiveTaskTimer();
-    }
-    setTimerInitialMins(Math.round(seconds / 60));
-    setTimerPausedLeft(null);
-    setTimerEndAt(Date.now() + seconds * 1000);
-    savedChunksRef.current = 0;
-    alertedChunksRef.current = 0;
-    lastIntervalAlertMinsRef.current = 0;
-    lastIsIntervalEnabledRef.current = false;
-    setTimerLastSavedChunks(0);
-    setTimerLastAlertedChunks(0);
-    setTimerDeviceId(getDeviceId());
-    lastTickTimeRef.current = Date.now();
-    stopAlarm();
-    updateInteraction();
-
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setTimeout(() => {
-        useDashboardStore.setState({ isTimerOpen: false });
-      }, 3000);
-    }
-
-    // Unlock audio using Web Audio API (does NOT create/register HTMLMediaElements with OS MediaSession)
-    if (enableAlarmSound && typeof window !== 'undefined') {
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          const ctx = new AudioCtx();
-          if (ctx.state === 'suspended') ctx.resume();
-          const buffer = ctx.createBuffer(1, 1, 22050);
-          const source = ctx.createBufferSource();
-          source.buffer = buffer;
-          source.connect(ctx.destination);
-          source.start(0);
-        }
-      } catch (e) {
-        console.log('Web Audio unlock:', e);
-      }
-    }
-
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        Notification.requestPermission().then(permission => {
-          if (permission === 'granted') scheduleNotification(Date.now() + seconds * 1000);
-        });
-      } else if (Notification.permission === 'granted') {
-        scheduleNotification(Date.now() + seconds * 1000);
-      }
-    }
-  };
-
-  const scheduleNotification = async (targetTimestamp: number) => {
+  const scheduleNotification = async (targetTime: number) => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && (window as any).TimestampTrigger) {
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        registration.showNotification(getAlarmTitle(), {
-          body: 'Your focus session has ended.',
-          icon: '/icon-192x192.png',
-          vibrate: enableAlarmVibration ? [500, 500, 500, 500, 500] : undefined,
-          silent: !enableAlarmSound,
-          requireInteraction: true,
-          tag: 'alarm-alert',
-          renotify: true,
-          showTrigger: new (window as any).TimestampTrigger(targetTimestamp)
-        } as any);
-      } catch (e) {
-        console.error('Failed to schedule notification:', e);
-      }
+      try { (await navigator.serviceWorker.ready).showNotification(getAlarmTitle(), { body: 'Session ended.', icon: '/icon-192x192.png', silent: !store.enableAlarmSound, requireInteraction: true, tag: 'alarm-alert', showTrigger: new (window as any).TimestampTrigger(targetTime) } as any); } catch (e) {}
     }
   };
 
   const togglePause = () => {
-    if (timerEndAt) {
-      // Pause it
-      setTimerPausedLeft(localTimeLeft);
-      setTimerEndAt(null);
-      stopIntervalBeep();
-
-      // Clear scheduled background notification
-      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(async (registration) => {
-          try {
-            const notifications = await registration.getNotifications({ tag: 'alarm-alert', includeTriggered: true } as any);
-            notifications.forEach(n => n.close());
-          } catch (e) { }
-        });
-      }
-    } else if (timerPausedLeft !== null) {
-      // Resume it
-      const newEndAt = Date.now() + timerPausedLeft * 1000;
-      setTimerEndAt(newEndAt);
-      setTimerPausedLeft(null);
-      setTimerDeviceId(getDeviceId());
-      lastTickTimeRef.current = Date.now();
-
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-        scheduleNotification(newEndAt);
-      }
+    if (store.timerEndAt) {
+      store.setTimerPausedLeft(localTimeLeft); store.setTimerEndAt(null); stopIntervalBeep();
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) navigator.serviceWorker.ready.then(async r => { try { (await r.getNotifications({ tag: 'alarm-alert', includeTriggered: true } as any)).forEach(n => n.close()); } catch(e){} });
+    } else if (store.timerPausedLeft !== null) {
+      const newEndAt = Date.now() + store.timerPausedLeft * 1000;
+      store.setTimerEndAt(newEndAt); store.setTimerPausedLeft(null); store.setTimerDeviceId(getDeviceId()); lastTickTimeRef.current = Date.now();
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') scheduleNotification(newEndAt);
     }
-  };
-
-  const resetTimer = () => {
-    saveAndClearActiveTaskTimer();
-    savedChunksRef.current = 0;
-    alertedChunksRef.current = 0;
-    lastIntervalAlertMinsRef.current = 0;
-    lastIsIntervalEnabledRef.current = false;
-    // Atomically clear all timer state and immediately push to cloud
-    // so other devices don't see this device's ghost timer on their next refresh
-    clearTimerState();
-    stopAlarm();
-    stopIntervalBeep();
   };
 
   const handleStopClick = async () => {
-    // Only check if we are online, have a sync token, and timer is tracking unsaved hours
-    if (!timerInitialMins || typeof window === 'undefined') {
-      resetTimer();
-      return;
-    }
-
+    if (!store.timerInitialMins || typeof window === 'undefined') { saveAndClearActiveTaskTimer(); return stopAlarm(); }
     const token = localStorage.getItem('dashboard_sync_token');
     if (token && navigator.onLine) {
       setIsCheckingCloudStop(true);
       try {
-        const res = await fetch(`/api/store?t=${Date.now()}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const cloudState = json.data?.state;
-          // If the cloud explicitly says the timer is ended (null) but our local timer is running
-          if (cloudState && cloudState.timerEndAt === null) {
-            setIsCheckingCloudStop(false);
-            setShowAlreadyEndedModal(true);
-            
-            // Clear local timer WITHOUT calling saveAndClearActiveTaskTimer to prevent double-counting
-            savedChunksRef.current = 0;
-            alertedChunksRef.current = 0;
-            lastIntervalAlertMinsRef.current = 0;
-            lastIsIntervalEnabledRef.current = false;
-            useDashboardStore.getState().setActiveTask(null, null);
-            setTimerLastSavedChunks(0);
-            setTimerLastAlertedChunks(0);
-            setTimerInitialMins(null);
-            clearTimerState();
-            stopAlarm();
-            stopIntervalBeep();
-            return;
-          }
+        const res = await fetch(`/api/store?t=${Date.now()}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok && (await res.json()).data?.state?.timerEndAt === null) {
+          setIsCheckingCloudStop(false); setShowAlreadyEndedModal(true);
+          savedChunksRef.current = 0; alertedChunksRef.current = 0; useDashboardStore.getState().setActiveTask(null, null);
+          store.setTimerLastSavedChunks(0); store.setTimerInitialMins(null); store.clearTimerState(); stopAlarm(); stopIntervalBeep(); return;
         }
-      } catch (e) {
-        // network error, fallback to normal stop
-      }
+      } catch (e) {}
       setIsCheckingCloudStop(false);
     }
-    
-    resetTimer();
+    saveAndClearActiveTaskTimer(); store.clearTimerState(); stopAlarm(); stopIntervalBeep();
   };
 
   const handleCustomStart = () => {
-    let mins = parseInt(customMins);
-    if (!isNaN(mins) && mins > 0) {
-      if (mins > 720) mins = 720;
-      startTimer(mins * 60);
-      setCustomMins('');
-    }
+    let m = parseInt(customMins);
+    if (!isNaN(m) && m > 0) { startTimer(Math.min(m, 720) * 60); setCustomMins(''); }
   };
 
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) {
-      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    }
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  const formatTime = (sec: number) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return sec >= 3600 ? `${pad(Math.floor(sec/3600))}:${pad(Math.floor((sec%3600)/60))}:${pad(sec%60)}` : `${pad(Math.floor(sec/60))}:${pad(sec%60)}`;
   };
 
-  const openEditor = () => {
-    if (timerEndAt || isAlarmPlaying) return;
-    const h = Math.floor(localTimeLeft / 3600);
-    const m = Math.floor((localTimeLeft % 3600) / 60) || 25;
-    setEditHours(h.toString().padStart(2, '0'));
-    setEditMins(m.toString().padStart(2, '0'));
-    setIsEditingTime(true);
+  const adjustEditTime = (t: 'h' | 'm', d: number) => {
+    let h = parseInt(editHours) || 0, m = parseInt(editMins) || 0;
+    if (t === 'h') h = Math.max(0, Math.min(99, h + d));
+    else { m += d; if (m >= 60) { h += Math.floor(m/60); m = m%60; } else if (m < 0) { if (h > 0) { h -= 1; m = 60 + (m%60); } else m = 0; } }
+    setEditHours(h.toString().padStart(2, '0')); setEditMins(m.toString().padStart(2, '0'));
+    setCustomMins((h * 60 + m) > 0 ? (h * 60 + m).toString() : '');
+  };
+
+  const handleEditChange = (val: string, t: 'h' | 'm') => {
+    let n = parseInt(val); if (isNaN(n)) return t==='h' ? setEditHours('') : setEditMins('');
+    if (t === 'h') setEditHours(Math.max(0, Math.min(99, n)).toString().padStart(2, '0'));
+    else { let h = parseInt(editHours) || 0; if (n >= 60) { h += Math.floor(n/60); n = n%60; setEditHours(h.toString().padStart(2, '0')); } setEditMins(n.toString().padStart(2, '0')); }
+    setCustomMins((parseInt(editHours||'0') * 60 + parseInt(editMins||'0')) > 0 ? (parseInt(editHours||'0') * 60 + parseInt(editMins||'0')).toString() : '');
   };
 
   const saveEditor = () => {
-    let h = parseInt(editHours) || 0;
-    let m = parseInt(editMins) || 0;
-    const newRemaining = h * 3600 + m * 60;
-
-    if (timerInitialMins) {
-      const oldElapsed = (timerInitialMins * 60) - localTimeLeft;
-      setTimerInitialMins(Math.max(0, Math.round((oldElapsed + newRemaining) / 60)));
-    }
-
-    setTimerPausedLeft(newRemaining);
-    setIsEditingTime(false);
+    const newRem = (parseInt(editHours) || 0) * 3600 + (parseInt(editMins) || 0) * 60;
+    if (store.timerInitialMins) store.setTimerInitialMins(Math.max(0, Math.round((((store.timerInitialMins * 60) - localTimeLeft) + newRem) / 60)));
+    store.setTimerPausedLeft(newRem); setIsEditingTime(false);
   };
 
-  const adjustEditTime = (type: 'h' | 'm', delta: number) => {
-    let h = parseInt(editHours) || 0;
-    let m = parseInt(editMins) || 0;
-
-    if (type === 'h') {
-      h = Math.max(0, Math.min(99, h + delta));
-    } else {
-      m += delta;
-      if (m >= 60) {
-        h += Math.floor(m / 60);
-        m = m % 60;
-      } else if (m < 0) {
-        if (h > 0) {
-          h -= 1;
-          m = 60 + (m % 60);
-        } else {
-          m = 0;
-        }
-      }
-    }
-
-    const formattedH = h.toString().padStart(2, '0');
-    const formattedM = m.toString().padStart(2, '0');
-    setEditHours(formattedH);
-    setEditMins(formattedM);
-
-    const totalMins = h * 60 + m;
-    setCustomMins(totalMins > 0 ? totalMins.toString() : '');
+  const updateTargetTime = (hStr: string, mStr: string, ampm: string) => {
+    let h = parseInt(hStr); if (ampm === 'PM' && h < 12) h += 12; if (ampm === 'AM' && h === 12) h = 0;
+    const t = new Date(); t.setHours(h, parseInt(mStr), 0, 0); if (t < new Date()) t.setDate(t.getDate() + 1);
+    const m = Math.min(720, Math.floor((t.getTime() - Date.now()) / 60000));
+    setCustomMins(m.toString()); setEditHours(Math.floor(m/60).toString().padStart(2,'0')); setEditMins((m%60).toString().padStart(2,'0'));
+    setHighlightedField('minutes'); setTimeout(() => setHighlightedField(null), 1800);
   };
 
-  const handleEditHoursChange = (val: string) => {
-    let num = parseInt(val);
-    if (isNaN(num)) {
-      setEditHours('');
-      return;
+  const handleCustomMinsChange = (v: string) => {
+    let m = parseInt(v); if (!isNaN(m) && m > 720) m = 720; setCustomMins(isNaN(m) ? '' : m.toString());
+    if (!isNaN(m) && m > 0) {
+      setEditHours(Math.floor(m/60).toString().padStart(2,'0')); setEditMins((m%60).toString().padStart(2,'0'));
+      const t = new Date(Date.now() + m * 60000); let h = t.getHours(); setSelectedAmPm(h >= 12 ? 'PM' : 'AM');
+      setSelectedHr((h % 12 || 12).toString().padStart(2, '0')); setSelectedMin(t.getMinutes().toString().padStart(2, '0'));
+      setHighlightedField('clock'); setTimeout(() => setHighlightedField(null), 1800);
     }
-    num = Math.max(0, Math.min(99, num));
-    setEditHours(num.toString().padStart(2, '0'));
-    const m = parseInt(editMins) || 0;
-    const totalMins = num * 60 + m;
-    setCustomMins(totalMins > 0 ? totalMins.toString() : '');
   };
 
-  const handleEditMinsChange = (val: string) => {
-    let num = parseInt(val);
-    if (isNaN(num)) {
-      setEditMins('');
-      return;
-    }
-    let h = parseInt(editHours) || 0;
-    if (num >= 60) {
-      h += Math.floor(num / 60);
-      num = num % 60;
-      setEditHours(h.toString().padStart(2, '0'));
-    }
-    setEditMins(num.toString().padStart(2, '0'));
-    const totalMins = h * 60 + num;
-    setCustomMins(totalMins > 0 ? totalMins.toString() : '');
-  };
-
-  const elapsedSecs = timerInitialMins ? Math.max(0, (timerInitialMins * 60) - localTimeLeft) : 0;
-  const doneMins = Math.floor(elapsedSecs / 60);
-
-  const displayTaskTitle = activeTaskTitle ? activeTaskTitle.replace(/^👥\s*\[Group:[^\]]+\]\s*/i, '') : null;
+  const doneMins = Math.floor((store.timerInitialMins ? Math.max(0, (store.timerInitialMins * 60) - localTimeLeft) : 0) / 60);
+  const displayTaskTitle = store.activeTaskTitle ? store.activeTaskTitle.replace(/^👥\s*\[Group:[^\]]+\]\s*/i, '') : null;
 
   return (
     <>
-      <div
-        onPointerDown={updateInteraction}
-        className={`relative pointer-events-auto select-none ${isTimerOpen || isAlarmPlaying || isIntervalRinging ? '' : 'hidden'}`}
-      >
+      <div onPointerDown={updateInteraction} className={`relative pointer-events-auto select-none ${store.isTimerOpen || store.isAlarmPlaying || isIntervalRinging ? '' : 'hidden'}`}>
         <div className="w-64 rounded-3xl glass-panel border border-white/20 text-white flex flex-col shadow-2xl overflow-hidden relative">
-
-          {/* Header Title Bar (Flex Sibling) */}
+          
           <div className="pt-1 px-3 pb-1 flex justify-center items-center w-full border-b border-white/10 bg-black/40">
             <Tooltip text={displayTaskTitle || 'Timer'} position="bottom">
-              <span
-                className="px-2 py-0.5 rounded-md text-[10px] sm:text-[10.5px] font-bold tracking-wider text-blue-300 uppercase max-w-full text-center flex items-center justify-center gap-1.5 whitespace-normal break-words leading-tight"
-              >
-                {displayTaskTitle ? (
-                  <>
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shrink-0"></span>
-                    <span className="break-words leading-tight">{displayTaskTitle}</span>
-                  </>
-                ) : (
-                  <span className="font-black text-blue-400 uppercase tracking-widest">Timer</span>
-                )}
+              <span className="px-2 py-0.5 rounded-md text-[10.5px] font-bold tracking-wider text-blue-300 uppercase max-w-full text-center flex items-center justify-center gap-1.5 whitespace-normal break-words leading-tight">
+                {displayTaskTitle ? <><span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shrink-0"></span><span>{displayTaskTitle}</span></> : <span className="font-black text-blue-400 tracking-widest">Timer</span>}
               </span>
             </Tooltip>
           </div>
 
-          {/* Body */}
           <div className="p-3 flex flex-col gap-2 cursor-default">
-            {/* Timer Display / Editor */}
             <div className="text-center min-h-[60px] flex flex-col items-center justify-center relative">
               <div className="flex items-center justify-center w-full relative">
-                {/* Quick Presets Right */}
-                {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !isAlarmPlaying && (
+                {!store.timerEndAt && !store.timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !store.isAlarmPlaying && (
                   <div className="absolute right-1 top-1 mt-[18px] ml-[5px] -translate-y-1/2 flex flex-col gap-1">
-                    {[5, 15, 25].map((preset) => (
-                      <button
-                        key={preset}
-                        onClick={() => startTimer(preset * 60)}
-                        className="w-8 py-0.5 text-xs bg-grey/30 hover:bg-white/20 rounded-lg transition-colors border border-white/40 font-medium"
-                      >
-                        {preset}m
-                      </button>
-                    ))}
+                    {[5, 15, 25].map(p => <button key={p} onClick={() => startTimer(p * 60)} className="w-8 py-0.5 text-xs bg-white/10 hover:bg-white/20 rounded-lg transition-colors border border-white/20 font-medium">{p}m</button>)}
                   </div>
                 )}
                 {isEditingTime ? (
                   <div className="flex items-center justify-center gap-1">
-                    {/* Hours Column */}
                     <div className="flex flex-col items-center">
-                      <Tooltip text="Increase hours" position="top">
-                        <button
-                          onClick={() => adjustEditTime('h', 1)}
-                          className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
-                        >
-                          <ChevronUp size={20} />
-                        </button>
-                      </Tooltip>
-                      <input
-                        type="number"
-                        value={editHours}
-                        onChange={(e) => handleEditHoursChange(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && saveEditor()}
-                        className="w-14 bg-transparent text-4xl sm:text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
-                        min="0"
-                        max="99"
-                      />
-                      <Tooltip text="Decrease hours" position="bottom">
-                        <button
-                          onClick={() => adjustEditTime('h', -1)}
-                          className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
-                        >
-                          <ChevronDown size={20} />
-                        </button>
-                      </Tooltip>
+                      <button onClick={() => adjustEditTime('h', 1)} className="hover:text-blue-400 p-0.5 active:scale-90"><ChevronUp size={20} /></button>
+                      <input type="number" value={editHours} onChange={e => handleEditChange(e.target.value, 'h')} onKeyDown={e => e.key === 'Enter' && saveEditor()} className="w-14 bg-transparent text-4xl sm:text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none selection:bg-white/20" min="0" max="99" />
+                      <button onClick={() => adjustEditTime('h', -1)} className="hover:text-blue-400 p-0.5 active:scale-90"><ChevronDown size={20} /></button>
                       <span className="text-[10px] font-bold text-blue-300/70 uppercase tracking-widest mt-0.5">hr</span>
                     </div>
-
                     <span className="text-4xl sm:text-5xl font-light opacity-50 mb-4">:</span>
-
-                    {/* Minutes Column */}
                     <div className="flex flex-col items-center">
-                      <Tooltip text="Increase minutes" position="top">
-                        <button
-                          onClick={() => adjustEditTime('m', 1)}
-                          className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
-                        >
-                          <ChevronUp size={20} />
-                        </button>
-                      </Tooltip>
-                      <input
-                        type="number"
-                        value={editMins}
-                        onChange={(e) => handleEditMinsChange(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && saveEditor()}
-                        className="w-14 bg-transparent text-4xl sm:text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none selection:bg-white/20"
-                        min="0"
-                      />
-                      <Tooltip text="Decrease minutes" position="bottom">
-                        <button
-                          onClick={() => adjustEditTime('m', -1)}
-                          className="hover:text-blue-400 p-0.5 transition-colors active:scale-90"
-                        >
-                          <ChevronDown size={20} />
-                        </button>
-                      </Tooltip>
+                      <button onClick={() => adjustEditTime('m', 1)} className="hover:text-blue-400 p-0.5 active:scale-90"><ChevronUp size={20} /></button>
+                      <input type="number" value={editMins} onChange={e => handleEditChange(e.target.value, 'm')} onKeyDown={e => e.key === 'Enter' && saveEditor()} className="w-14 bg-transparent text-4xl sm:text-5xl font-light tabular-nums text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none selection:bg-white/20" min="0" />
+                      <button onClick={() => adjustEditTime('m', -1)} className="hover:text-blue-400 p-0.5 active:scale-90"><ChevronDown size={20} /></button>
                       <span className="text-[10px] font-bold text-blue-300/70 uppercase tracking-widest mt-0.5">min</span>
                     </div>
-
-                    <Tooltip text="Save Time" position="right">
-                      <button
-                        onClick={saveEditor}
-                        className="ml-2 p-2 bg-blue-500 hover:bg-blue-600 rounded-xl transition-all shadow-md active:scale-95 text-white flex items-center justify-center self-center"
-                      >
-                        <Check size={18} />
-                      </button>
-                    </Tooltip>
+                    <button onClick={saveEditor} className="ml-2 p-2 bg-sky-500 hover:bg-sky-400 rounded-xl transition-all shadow-md active:scale-95 text-white flex items-center justify-center self-center"><Check size={18} /></button>
                   </div>
-                ) : (
-                  <div className="text-5xl font-light tracking-widest tabular-nums drop-shadow-md">
-                    {formatTime(localTimeLeft)}
-                  </div>
-                )}
+                ) : <div className="text-5xl font-light tracking-widest tabular-nums drop-shadow-md">{formatTime(localTimeLeft)}</div>}
               </div>
             </div>
 
-            {/* Interval Alert Banner (Separate Top/Middle Slot) */}
             {isIntervalRinging && (
               <div className="w-full my-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (intervalAudioRef.current) {
-                      intervalAudioRef.current.pause();
-                      intervalAudioRef.current.currentTime = 0;
-                    }
-                    setIsIntervalRinging(false);
-                    isIntervalRingingRef.current = false;
-                  }}
-                  className="w-full py-2 px-3 flex flex-col items-center justify-center gap-0.5 bg-sky-500 hover:bg-sky-400 rounded-xl transition-all animate-pulse shadow-lg cursor-pointer active:scale-95 border border-sky-300/40"
-                >
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">
-                    {activeTaskId ? (taskIntervalAlertMins || 5) : (timerIntervalMins || 5)}m Span ({doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m"} / {(timerInitialMins || 0) >= 60 ? Math.floor((timerInitialMins || 0) / 60) + "h " + ((timerInitialMins || 0) % 60) + "m" : (timerInitialMins || 0) + "m"})
-                  </span>
-                  <span className="text-base font-bold tracking-wide flex items-center gap-1 text-white">
-                    <Check size={18} strokeWidth={2.5} /> Okay
-                  </span>
+                <button onClick={stopIntervalBeep} className="w-full py-2 px-3 flex flex-col items-center justify-center gap-0.5 bg-sky-500 hover:bg-sky-400 rounded-xl animate-pulse shadow-lg active:scale-95 border border-sky-300/40">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">{store.activeTaskId ? (store.taskIntervalAlertMins || 5) : (store.timerIntervalMins || 5)}m Span ({doneMins >= 60 ? Math.floor(doneMins / 60) + "h " + (doneMins % 60) + "m" : doneMins + "m"} / {(store.timerInitialMins || 0) >= 60 ? Math.floor((store.timerInitialMins || 0) / 60) + "h " + ((store.timerInitialMins || 0) % 60) + "m" : (store.timerInitialMins || 0) + "m"})</span>
+                  <span className="text-base font-bold tracking-wide flex items-center gap-1 text-white"><Check size={18} strokeWidth={2.5} /> Okay</span>
                 </button>
               </div>
             )}
 
-            {/* Alarm State */}
-            {isAlarmPlaying && (
+            {store.isAlarmPlaying && (
               showContinuePrompt ? (
                 <div className="flex flex-col items-center gap-3 w-full py-2">
                   <p className="text-sm font-semibold text-amber-300">Session paused (Away)</p>
                   <div className="flex gap-2 w-full">
-                    <button
-                      onClick={() => {
-                        setIsAlarmPlaying(false);
-                        setShowResumeModal(true);
-                      }}
-                      className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-xs font-bold transition-colors"
-                    >
-                      I was away
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowContinuePrompt(false);
-                        setIsAlarmPlaying(false);
-                      }}
-                      className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors"
-                    >
-                      Stop
-                    </button>
+                    <button onClick={() => { store.setIsAlarmPlaying(false); setShowResumeModal(true); }} className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 rounded-lg text-xs font-bold transition-colors">I was away</button>
+                    <button onClick={() => { setShowContinuePrompt(false); store.setIsAlarmPlaying(false); }} className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors">Stop</button>
                   </div>
                 </div>
-              ) : (
-                <button
-                  onClick={stopAlarm}
-                  className="w-full py-2 flex items-center justify-center gap-2 bg-red-500/80 hover:bg-red-500 rounded-xl font-medium transition-colors animate-pulse"
-                >
-                  <VolumeX size={20} />
-                  STOP TIMER
-                </button>
-              )
+              ) : <button onClick={stopAlarm} className="w-full py-2 flex items-center justify-center gap-2 bg-red-500/80 hover:bg-red-500 rounded-xl font-medium transition-colors animate-pulse"><VolumeX size={20} /> STOP TIMER</button>
             )}
 
-            {/* Bottom Controls */}
-            {!isIntervalRinging && !isAlarmPlaying && !isEditingTime && (timerEndAt || timerPausedLeft) && (
+            {!isIntervalRinging && !store.isAlarmPlaying && !isEditingTime && (store.timerEndAt || store.timerPausedLeft) && (
               <div className="flex justify-center gap-2">
-                <Tooltip text={timerEndAt ? "Pause" : "Resume"} position="top">
-                  <button
-                    onClick={togglePause}
-                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                  >
-                    {timerEndAt ? <Pause size={20} /> : <Play size={20} />}
-                  </button>
+                <Tooltip text={store.timerEndAt ? "Pause" : "Resume"} position="top">
+                  <button onClick={togglePause} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors border border-white/10 shadow-sm">{store.timerEndAt ? <Pause size={20} /> : <Play size={20} />}</button>
                 </Tooltip>
                 <Tooltip text="Stop Timer" position="top">
-                  <button
-                    onClick={handleStopClick}
-                    disabled={isCheckingCloudStop}
-                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50"
-                  >
-                    {isCheckingCloudStop ? <Loader2 size={20} className="animate-spin text-white/50" /> : <Square size={20} className="fill-current" />}
-                  </button>
+                  <button onClick={handleStopClick} disabled={isCheckingCloudStop} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50 border border-white/10 shadow-sm">{isCheckingCloudStop ? <Loader2 size={20} className="animate-spin text-white/50" /> : <Square size={20} className="fill-current" />}</button>
                 </Tooltip>
               </div>
             )}
 
-            {/* Custom Input - Ultra Compact Height */}
-            {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !isAlarmPlaying && (
+            {!store.timerEndAt && !store.timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !store.isAlarmPlaying && (
               <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/10">
                 <div className="flex items-center gap-1.5">
-                  {/* Target Clock Button */}
                   <Tooltip text="Set target end clock time" position="top" className="flex-1">
-                    <button
-                      onClick={() => setIsClockModalOpen(true)}
-                      className={`w-full border rounded-xl px-2 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-inner shrink-0 truncate cursor-pointer ${highlightedField === 'clock'
-                        ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
-                        : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-blue-400/60 text-sky-200'
-                        }`}
-                    >
+                    <button onClick={() => setIsClockModalOpen(true)} className={`w-full border rounded-xl px-2 py-1.5 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-inner shrink-0 truncate cursor-pointer ${highlightedField === 'clock' ? 'ring-2 ring-sky-400 border-sky-400 bg-sky-500/40 text-white shadow-[0_0_15px_rgba(56,189,248,0.8)] animate-pulse' : 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-sky-400/60 text-sky-200'}`}>
                       <Clock size={13} className={highlightedField === 'clock' ? 'text-white shrink-0' : 'text-sky-300 shrink-0'} />
-                      <span className="truncate tracking-wide text-xs sm:text-xs font-black">{selectedHr}:{selectedMin} {selectedAmPm}</span>
+                      <span className="truncate tracking-wide">{selectedHr}:{selectedMin} {selectedAmPm}</span>
                     </button>
                   </Tooltip>
-
-                  {/* OR Text Separator */}
-                  <span className="text-[10px] font-black text-white/70 uppercase px-0.5 shrink-0 select-none tracking-wider">
-                    OR
-                  </span>
-
-                  {/* Minutes Input */}
-                  <div className="w-16 relative shrink-0">
-                    <input
-                      type="number"
-                      placeholder="Mins"
-                      value={customMins}
-                      onChange={(e) => handleCustomMinsChange(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-                      className={`w-full border rounded-xl px-1.5 py-1.5 text-xs font-black text-center outline-none transition-all placeholder:text-white/40 text-white shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${highlightedField === 'minutes'
-                        ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-500/40 text-white shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-pulse'
-                        : 'bg-white/10 border-white/20 hover:border-white/30 focus:border-blue-400'
-                        }`}
-                      min="1"
-                    />
-                  </div>
-
-                  {/* Start Button */}
+                  <span className="text-[10px] font-black text-white/70 uppercase px-0.5 shrink-0 select-none tracking-wider">OR</span>
+                  <input type="number" placeholder="Mins" value={customMins} onChange={e => handleCustomMinsChange(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCustomStart()} className={`w-16 border rounded-xl px-1.5 py-1.5 text-xs font-black text-center outline-none transition-all placeholder:text-white/40 text-white shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none ${highlightedField === 'minutes' ? 'ring-2 ring-sky-400 border-sky-400 bg-sky-500/40 text-white shadow-[0_0_15px_rgba(56,189,248,0.8)] animate-pulse' : 'bg-white/10 border-white/20 focus:border-sky-400'}`} min="1" />
                   <Tooltip text="Start timer" position="top">
-                    <button
-                      onClick={handleCustomStart}
-                      className="p-1.5 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-blue-400/30 hover:border-transparent"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                    </button>
+                    <button onClick={handleCustomStart} className="p-1.5 bg-sky-500 hover:bg-sky-400 rounded-lg text-white transition-all active:scale-95 shadow-md shrink-0 flex items-center justify-center border border-sky-400/30"><Play className="w-3.5 h-3.5 fill-current" /></button>
                   </Tooltip>
                 </div>
               </div>
             )}
 
-            {/* Interval settings (show for normal timers always) */}
-            {!activeTaskId && !isEditingTime && !isAlarmPlaying && !isIntervalRinging && (
-              <div className="flex items-center justify-start gap-1 pt-1 mt-1 border-t border-white/10 w-full">
-                <div className="flex items-center gap-1 cursor-pointer" onClick={() => setIsTimerIntervalEnabled(!isTimerIntervalEnabled)}>
-                  <BellRing size={12} className={isTimerIntervalEnabled ? "text-sky-300" : "text-white/40"} />
-                  <span className="text-[9px] font-medium text-white/70">Interval</span>
-                  <button
-                    className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors shrink-0 ml-0.5 ${isTimerIntervalEnabled ? 'bg-sky-500' : 'bg-white/20'}`}
-                  >
-                    <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${isTimerIntervalEnabled ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
+            {!store.activeTaskId && !isEditingTime && !store.isAlarmPlaying && !isIntervalRinging && (
+              <div className="flex items-center justify-between gap-1 mt-2 pt-2.5 pb-2.5 px-3 -mx-3 -mb-3 bg-black/40 border-t border-white/10">
+                <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => store.setIsTimerIntervalEnabled(!store.isTimerIntervalEnabled)}>
+                  <BellRing size={12} className={store.isTimerIntervalEnabled ? "text-sky-400" : "text-white/40"} />
+                  <span className="text-[10px] font-bold text-white/70 tracking-wide">Interval</span>
+                  <button className={`relative inline-flex h-3.5 w-6 items-center rounded-full transition-colors ml-1 ${store.isTimerIntervalEnabled ? 'bg-sky-500' : 'bg-white/20'}`}>
+                    <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${store.isTimerIntervalEnabled ? 'translate-x-3' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
-                {isTimerIntervalEnabled ? (
-                  <div className="flex items-center gap-1 pl-1.5 ml-0.5 border-l border-white/10">
-                    <input
-                      type="number"
-                      value={timerIntervalMins || ''}
-                      onChange={(e) => {
-                        if (e.target.value === '') {
-                          setTimerIntervalMins(0);
-                        } else {
-                          const parsed = parseInt(e.target.value);
-                          if (!isNaN(parsed) && parsed >= 0) {
-                            setTimerIntervalMins(parsed);
-                          }
-                        }
-                      }}
-                      className="w-7 bg-black/40 border border-white/20 rounded px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner"
-                      min="1"
-                    />
-                    <span className="text-[8px] font-bold text-white/40">min</span>
+                {store.isTimerIntervalEnabled ? (
+                  <div className="flex items-center gap-1">
+                    <input type="number" value={store.timerIntervalMins || ''} onChange={e => store.setTimerIntervalMins(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0))} className="w-8 bg-black/50 border border-white/20 rounded px-1 py-0.5 text-[10px] text-center font-bold text-sky-300 outline-none focus:border-sky-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none shadow-inner" min="1" />
+                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Min</span>
                   </div>
-                ) : (
-                  <div className="flex items-center pl-1.5 ml-0.5 border-l border-white/10">
-                    <span className="text-[8px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-md shadow-sm">Beep alert off</span>
-                  </div>
-                )}
+                ) : <span className="text-[8px] font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wide">Beep Off</span>}
               </div>
             )}
           </div>
 
-          {/* Hidden Audio Elements - Conditionally mounted to prevent OS/browser resume on Win+L wake */}
-          {isAlarmPlaying && (
-            <audio
-              ref={audioRef}
-              src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))}
-              loop
-              preload="none"
-              onError={(e) => {
-                console.log('Main alarm audio failed to load:', e);
-              }}
-            />
-          )}
-          {isIntervalRinging && (
-            <audio
-              ref={intervalAudioRef}
-              src={resolvedAlarmUrl || (alarmSound?.startsWith('custom-audio-') ? undefined : (alarmSound || '/ringtones/narutoBGM.mp3'))}
-              preload="none"
-              onError={(e) => {
-                console.log('Interval alarm audio failed to load:', e);
-              }}
-            />
-          )}
+          {store.isAlarmPlaying && <audio ref={audioRef} src={resolvedAlarmUrl || (store.alarmSound?.startsWith('custom-audio-') ? undefined : (store.alarmSound || '/ringtones/narutoBGM.mp3'))} loop preload="none" />}
+          {isIntervalRinging && <audio ref={intervalAudioRef} src={resolvedAlarmUrl || (store.alarmSound?.startsWith('custom-audio-') ? undefined : (store.alarmSound || '/ringtones/narutoBGM.mp3'))} preload="none" />}
         </div>
       </div>
 
-      {/* Target Clock Time Portal Modal */}
-      <TargetClockModal
-        isOpen={isClockModalOpen}
-        onClose={() => setIsClockModalOpen(false)}
-        initialHr={selectedHr}
-        initialMin={selectedMin}
-        initialAmPm={selectedAmPm}
-        onConfirm={(h, m, ampm) => {
-          setSelectedHr(h);
-          setSelectedMin(m);
-          setSelectedAmPm(ampm);
-          updateTargetTime(h, m, ampm);
-        }}
-      />
+      <TargetClockModal isOpen={isClockModalOpen} onClose={() => setIsClockModalOpen(false)} initialHr={selectedHr} initialMin={selectedMin} initialAmPm={selectedAmPm} onConfirm={(h, m, ampm) => { setSelectedHr(h); setSelectedMin(m); setSelectedAmPm(ampm); updateTargetTime(h, m, ampm); }} />
 
       <ConfirmationModal
         isOpen={showResumeModal}
         onClose={() => setShowResumeModal(false)}
         title="Resume Session"
-        message={
-          <div className="flex flex-col gap-2">
-            <p className="text-white/80">You were away for an extended period of time.</p>
-            <p className="text-white">Your session was automatically paused precisely at the time you left <strong className="text-blue-300">({pausedAtString || 'your last active time'})</strong>, so <strong className="text-amber-400 font-bold">no extra focus hours were added</strong> while you were gone.</p>
-            <p className="text-white/80 mt-2">Do you want to continue your session from exactly where you left off?</p>
-          </div>
-        }
-        confirmText="Yes, Continue"
-        cancelText="Cancel"
-        onConfirm={() => {
-          setShowContinuePrompt(false);
-          setShowResumeModal(false);
-          // Resume timer
-          if (timerPausedLeft !== null) {
-            setTimerEndAt(Date.now() + timerPausedLeft * 1000);
-            setTimerPausedLeft(null);
-            setTimerDeviceId(getDeviceId());
-            updateInteraction();
-          }
-        }}
+        message={<div className="flex flex-col gap-2"><p className="text-white/80">You were away for an extended period of time.</p><p className="text-white">Your session paused automatically at <strong className="text-blue-300">({pausedAtString || 'your last active time'})</strong>, <strong className="text-amber-400 font-bold">no extra hours added</strong> while away.</p><p className="text-white/80 mt-2">Do you want to continue your session from exactly where you left off?</p></div>}
+        confirmText="Yes, Continue" cancelText="Cancel"
+        onConfirm={() => { setShowContinuePrompt(false); setShowResumeModal(false); if (store.timerPausedLeft !== null) { store.setTimerEndAt(Date.now() + store.timerPausedLeft * 1000); store.setTimerPausedLeft(null); store.setTimerDeviceId(getDeviceId()); updateInteraction(); } }}
       />
 
       <ConfirmationModal
         isOpen={showAlreadyEndedModal}
         onClose={() => setShowAlreadyEndedModal(false)}
         title="Timer Already Ended"
-        message={
-          <div className="flex flex-col gap-2">
-            <p className="text-white/80">This timer was already ended on another device.</p>
-            <p className="text-white">To prevent double-counting, <strong className="text-amber-400 font-bold">no additional focus hours were added</strong> from this device.</p>
-          </div>
-        }
+        message={<div className="flex flex-col gap-2"><p className="text-white/80">This timer was already ended on another device.</p><p className="text-white">To prevent double-counting, <strong className="text-amber-400 font-bold">no additional focus hours were added</strong> from this device.</p></div>}
         confirmText="Got it"
         onConfirm={() => setShowAlreadyEndedModal(false)}
       />
@@ -1356,152 +562,45 @@ export default function Timer() {
   );
 }
 
-function TargetClockModal({
-  isOpen,
-  onClose,
-  initialHr,
-  initialMin,
-  initialAmPm,
-  onConfirm
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  initialHr: string;
-  initialMin: string;
-  initialAmPm: string;
-  onConfirm: (h: string, m: string, ampm: string) => void;
-}) {
-  const [hr, setHr] = useState(initialHr);
-  const [min, setMin] = useState(initialMin);
-  const [ampm, setAmPm] = useState(initialAmPm);
+const Column = ({ val, lbl, onUp, onDown, isPeriod, onTog }: any) => (
+  <div className="flex flex-col items-center">
+    <button onClick={onUp} className="p-1 hover:text-sky-400 text-white/70 active:scale-90 transition-colors"><ChevronUp size={22} /></button>
+    {isPeriod ? <button onClick={onTog} className="px-2.5 py-1 my-1 text-xs font-bold rounded-lg bg-sky-500 text-white shadow-md transition-all active:scale-95">{val}</button> : <span className="text-2xl font-mono font-bold text-white my-1 tabular-nums">{val}</span>}
+    <button onClick={onDown} className="p-1 hover:text-sky-400 text-white/70 active:scale-90 transition-colors"><ChevronDown size={22} /></button>
+    <span className="text-[9px] font-bold text-white/40 uppercase mt-0.5">{lbl}</span>
+  </div>
+);
 
-  useEffect(() => {
-    if (isOpen) {
-      const now = new Date();
-      let h = now.getHours();
-      const currentAmPm = h >= 12 ? 'PM' : 'AM';
-      h = h % 12;
-      if (h === 0) h = 12;
-      setHr(h.toString().padStart(2, '0'));
-      setMin(now.getMinutes().toString().padStart(2, '0'));
-      setAmPm(currentAmPm);
-    }
-  }, [isOpen]);
-
+function TargetClockModal({ isOpen, onClose, initialHr, initialMin, initialAmPm, onConfirm }: any) {
+  const [hr, setHr] = useState(initialHr); const [min, setMin] = useState(initialMin); const [ampm, setAmPm] = useState(initialAmPm);
+  useEffect(() => { if (isOpen) { const d = new Date(); let h = d.getHours(); setAmPm(h >= 12 ? 'PM' : 'AM'); setHr((h % 12 || 12).toString().padStart(2, '0')); setMin(d.getMinutes().toString().padStart(2, '0')); } }, [isOpen]);
   if (!isOpen || typeof document === 'undefined') return null;
 
-  const adjustHr = (delta: number) => {
-    let h = parseInt(hr) + delta;
-    if (h > 12) h = 1;
-    if (h < 1) h = 12;
-    setHr(h.toString().padStart(2, '0'));
-  };
+  const adjH = (d: number) => { let h = parseInt(hr) + d; if (h > 12) h = 1; if (h < 1) h = 12; setHr(h.toString().padStart(2, '0')); };
+  const adjM = (d: number) => { let m = parseInt(min) + d; if (m > 59) m = 0; if (m < 0) m = 59; setMin(m.toString().padStart(2, '0')); };
 
-  const adjustMin = (delta: number) => {
-    let m = parseInt(min) + delta;
-    if (m > 59) m = 0;
-    if (m < 0) m = 59;
-    setMin(m.toString().padStart(2, '0'));
-  };
-
-  const toggleAmPm = () => {
-    setAmPm((prev) => (prev === 'AM' ? 'PM' : 'AM'));
-  };
-
-  let h = parseInt(hr);
-  if (ampm === 'PM' && h < 12) h += 12;
-  if (ampm === 'AM' && h === 12) h = 0;
-  const m = parseInt(min);
-  const now = new Date();
-  const targetDate = new Date();
-  targetDate.setHours(h, m, 0, 0);
-  if (targetDate < now) targetDate.setDate(targetDate.getDate() + 1);
-  const diffInMs = targetDate.getTime() - now.getTime();
-  let diffInMins = Math.floor(diffInMs / 1000 / 60);
-  if (diffInMins > 720) diffInMins = 720;
-  const durationText = diffInMins >= 60 ? `${Math.floor(diffInMins / 60)}h ${diffInMins % 60}m` : `${diffInMins}m`;
+  let h = parseInt(hr); if (ampm === 'PM' && h < 12) h += 12; if (ampm === 'AM' && h === 12) h = 0;
+  const t = new Date(); t.setHours(h, parseInt(min), 0, 0); if (t < new Date()) t.setDate(t.getDate() + 1);
+  const diff = Math.min(720, Math.floor((t.getTime() - Date.now()) / 60000));
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn select-none">
-      <div className="bg-[#121218] border border-blue-500/30 w-full max-w-xs rounded-2xl p-4 shadow-2xl text-white flex flex-col gap-3">
+      <div className="bg-[#121218] border border-sky-500/30 w-full max-w-xs rounded-2xl p-4 shadow-2xl text-white flex flex-col gap-3">
         <div className="flex items-center justify-between border-b border-white/10 pb-2">
-          <div className="flex items-center gap-2">
-            <Clock size={18} className="text-blue-400" />
-            <h3 className="text-sm font-black uppercase tracking-wider text-white">Set Target End Time</h3>
-          </div>
-          <button onClick={onClose} className="p-1 text-white/50 hover:text-white rounded-lg transition-colors">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2"><Clock size={18} className="text-sky-400" /><h3 className="text-sm font-black uppercase tracking-wider text-white">Set Target End Time</h3></div>
+          <button onClick={onClose} className="p-1 text-white/50 hover:text-white rounded-lg"><X size={16} /></button>
         </div>
-
-        {/* Up/Down Arrow Picker Columns */}
         <div className="grid grid-cols-3 gap-2 bg-black/40 p-3 rounded-xl border border-white/10 items-center">
-          {/* Hours Column */}
-          <div className="flex flex-col items-center">
-            <button onClick={() => adjustHr(1)} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
-              <ChevronUp size={22} />
-            </button>
-            <span className="text-2xl font-mono font-bold text-white my-1 tabular-nums">{hr}</span>
-            <button onClick={() => adjustHr(-1)} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
-              <ChevronDown size={22} />
-            </button>
-            <span className="text-[9px] font-bold text-white/40 uppercase mt-0.5">Hour</span>
-          </div>
-
-          {/* Mins Column */}
-          <div className="flex flex-col items-center">
-            <button onClick={() => adjustMin(1)} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
-              <ChevronUp size={22} />
-            </button>
-            <span className="text-2xl font-mono font-bold text-white my-1 tabular-nums">{min}</span>
-            <button onClick={() => adjustMin(-1)} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
-              <ChevronDown size={22} />
-            </button>
-            <span className="text-[9px] font-bold text-white/40 uppercase mt-0.5">Min</span>
-          </div>
-
-          {/* AM/PM Column */}
-          <div className="flex flex-col items-center">
-            <button onClick={toggleAmPm} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
-              <ChevronUp size={22} />
-            </button>
-            <button
-              onClick={toggleAmPm}
-              className="px-2.5 py-1 my-1 text-xs font-bold rounded-lg bg-blue-500 text-white shadow-md transition-all active:scale-95"
-            >
-              {ampm}
-            </button>
-            <button onClick={toggleAmPm} className="p-1 hover:text-blue-400 text-white/70 active:scale-90 transition-colors">
-              <ChevronDown size={22} />
-            </button>
-            <span className="text-[9px] font-bold text-white/40 uppercase mt-0.5">Period</span>
-          </div>
+          <Column val={hr} lbl="Hour" onUp={() => adjH(1)} onDown={() => adjH(-1)} />
+          <Column val={min} lbl="Min" onUp={() => adjM(1)} onDown={() => adjM(-1)} />
+          <Column val={ampm} lbl="Period" onUp={() => setAmPm(ampm === 'AM' ? 'PM' : 'AM')} onDown={() => setAmPm(ampm === 'AM' ? 'PM' : 'AM')} isPeriod onTog={() => setAmPm(ampm === 'AM' ? 'PM' : 'AM')} />
         </div>
-
-        {/* Calculated duration preview */}
-        <div className="text-center bg-blue-500/10 border border-blue-500/20 py-2 px-3 rounded-xl text-xs font-bold text-blue-300">
-          Duration: {durationText} (Target: {hr}:{min} {ampm})
-        </div>
-
+        <div className="text-center bg-sky-500/10 border border-sky-500/20 py-2 px-3 rounded-xl text-xs font-bold text-sky-300">Duration: {diff >= 60 ? `${Math.floor(diff/60)}h ${diff%60}m` : `${diff}m`} (Target: {hr}:{min} {ampm})</div>
         <div className="flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => {
-              onConfirm(hr, min, ampm);
-              onClose();
-            }}
-            className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 rounded-xl text-xs font-bold text-white transition-colors shadow-lg"
-          >
-            Set Target
-          </button>
+          <button onClick={onClose} className="flex-1 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors">Cancel</button>
+          <button onClick={() => { onConfirm(hr, min, ampm); onClose(); }} className="flex-1 py-2 bg-sky-500 hover:bg-sky-600 rounded-xl text-xs font-bold text-white shadow-lg">Set Target</button>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>, document.body
   );
 }

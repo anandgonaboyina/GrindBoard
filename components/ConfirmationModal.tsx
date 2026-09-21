@@ -21,6 +21,8 @@ interface ConfirmationModalProps {
   inputType?: string;
   inputFooter?: React.ReactNode;
   hideCancel?: boolean;
+  isLoading?: boolean;
+  confirmDisabled?: boolean;
 }
 
 export default function ConfirmationModal({
@@ -39,6 +41,8 @@ export default function ConfirmationModal({
   inputFooter,
   onCancel,
   hideCancel = false,
+  isLoading = false,
+  confirmDisabled = false,
 }: ConfirmationModalProps) {
   const theme = useDashboardStore((state) => state.theme);
   const [inputText, setInputText] = useState("");
@@ -139,22 +143,29 @@ export default function ConfirmationModal({
           {!hideCancel && (
             <button
               onClick={handleClose}
+              disabled={isLoading}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isDark ? "bg-white/5 hover:bg-white/10 text-white/80 hover:text-white" : "bg-black/5 hover:bg-black/10 text-slate-600 hover:text-slate-800"
-                }`}
+                } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {cancelText}
             </button>
           )}
           <button
             onClick={handleConfirm}
-            disabled={!isConfirmed}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg flex items-center justify-center ${!isConfirmed
+            disabled={!isConfirmed || isLoading || confirmDisabled}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg flex items-center justify-center gap-2 ${(!isConfirmed || confirmDisabled) && !isLoading
               ? (isDark ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-black/5 text-slate-400 cursor-not-allowed")
               : isDestructive
                 ? "bg-red-500 hover:bg-red-600 text-white shadow-red-500/20"
                 : "bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/20"
-              }`}
+              } ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
           >
+            {isLoading && (
+              <svg className="w-4 h-4 animate-spin text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
             {confirmText}
           </button>
         </div>

@@ -10,8 +10,8 @@ export async function POST(request: Request) {
     const { username, password, isDemo } = await request.json();
 
     if (isDemo) {
-      const demoUser = process.env.DEMO_USERNAME || 'demo_user';
-      const demoPass = process.env.DEMO_PASSWORD || 'demo123';
+      const demoUser = process.env.DEMO_USERNAME;
+      const demoPass = process.env.DEMO_PASSWORD;
       
       const client = await clientPromise;
       const db = client.db();
@@ -21,172 +21,34 @@ export async function POST(request: Request) {
          return NextResponse.json({ error: 'Demo user not found in database' }, { status: 404 });
       }
       
+      if (!demoPass) {
+        return NextResponse.json({ error: 'Demo credentials not configured' }, { status: 500 });
+      }
+
       const isMatch = await bcrypt.compare(demoPass, user.password);
       if (!isMatch) {
          return NextResponse.json({ error: 'Invalid demo credentials' }, { status: 401 });
       }
 
-      // 1. Reset timer/stopwatch states in DashboardStorage (just in case)
-      await db.collection('DashboardStorage').updateOne(
-        { userId: user._id.toString() },
-        { 
-          $unset: { 
-            timerEndAt: "", 
-            timerPausedLeft: "",
-            stopwatchStartTime: "",
-            stopwatchLastSavedChunks: "",
-            stopwatchDeviceId: ""
-          } 
-        }
-      );
-
-      // 2. Reset them in Settings where they are actually mapped (generalSettings), and make sure they always see the onboarding tour
-      // Also reset peek mode (isPanicHidden) and focus mode (isHidden) so new users aren't confused
-      await db.collection('Settings').updateOne(
-        { userId: user._id.toString() },
-        { 
-          $set: { 
-            hasSeenOnboarding: false,
-            "displaySettings.isPanicHidden": false,
-            "displaySettings.isHidden": false
-          },
-          $unset: {
-            "generalSettings.timerEndAt": "",
-            "generalSettings.timerPausedLeft": "",
-            "generalSettings.stopwatchStartTime": "",
-            "generalSettings.stopwatchLastSavedChunks": "",
-            "generalSettings.stopwatchDeviceId": "",
-            "generalSettings.activeTimerSecs": "",
-            "generalSettings.activeStopwatchSecs": "",
-            "displaySettings.showQuote": "",
-            "displaySettings.showTimer": "",
-            "displaySettings.showCountdowns": "",
-            "displaySettings.showVideoControls": "",
-            "displaySettings.showClock": "",
-            "displaySettings.showTasks": "",
-            "displaySettings.showCalendar": "",
-            "displaySettings.showTodayWork": "",
-            "displaySettings.showStats": "",
-            "displaySettings.showPlans": "",
-            "displaySettings.showNotes": "",
-            "displaySettings.showTimetable": "",
-            "displaySettings.showDock": "",
-            "displaySettings.showDeadlineAlerts": "",
-            "displaySettings.showBgSwitcher": "",
-            "displaySettings.showSettingsBtn": "",
-            "displaySettings.showStopwatch": ""
-          }
-        },
-        { upsert: true }
-      );
-
-      // 3. Set 4 hardcoded deadlines based on the current date, so demo users always see upcoming deadlines
       const todayDate = new Date();
       const tomorrowDate = new Date(); tomorrowDate.setDate(todayDate.getDate() + 1);
       const dayAfterDate = new Date(); dayAfterDate.setDate(todayDate.getDate() + 2);
       
       const demoDeadlines = [
-        {
-          id: 'demo-deadline-1',
-          text: 'Project Submission',
-          date: todayDate.toISOString().split('T')[0],
-          isPinned: true
-        },
-        {
-          id: 'demo-deadline-2',
-          text: 'Team Sync Meeting',
-          date: todayDate.toISOString().split('T')[0],
-          isPinned: true
-        },
-        {
-          id: 'demo-deadline-3',
-          text: 'Code Review',
-          date: tomorrowDate.toISOString().split('T')[0],
-          isPinned: true
-        },
-        {
-          id: 'demo-deadline-4',
-          text: 'Client Presentation',
-          date: dayAfterDate.toISOString().split('T')[0],
-          isPinned: true
-        }
+        { id: 'demo-deadline-1', text: 'Project Submission', date: todayDate.toISOString().split('T')[0], isPinned: true },
+        { id: 'demo-deadline-2', text: 'Team Sync Meeting', date: todayDate.toISOString().split('T')[0], isPinned: true },
+        { id: 'demo-deadline-3', text: 'Code Review', date: tomorrowDate.toISOString().split('T')[0], isPinned: true },
+        { id: 'demo-deadline-4', text: 'Client Presentation', date: dayAfterDate.toISOString().split('T')[0], isPinned: true }
       ];
-
-      await db.collection('Deadlines').updateOne(
-        { userId: user._id.toString() },
-        { 
-          $set: { 
-            deadlines: demoDeadlines,
-            lastModified: Date.now(),
-            hideYouInLeaderboard: false
-          }
-        },
-        { upsert: true }
-      );
-
-      // Reset User profile fields to default
-      await db.collection('User').updateOne(
-        { _id: user._id },
-        {
-          $set: {
-            alias: "demoUser",
-            profilePicture: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQf48actplbaZQTsAVGm8rv1ZmiaFa_P8oYMiLKnzAm4pkcylWmgJ_XKFEI&s=10"
-          }
-        }
-      );
 
       const nextWeekDate = new Date(todayDate); nextWeekDate.setDate(todayDate.getDate() + 7);
       const nextMonthDate = new Date(todayDate); nextMonthDate.setDate(todayDate.getDate() + 30);
       
-      // Overwrite Dashboard settings for Wallpapers
-      await db.collection('DashboardStorage').updateOne(
-        { userId: user._id.toString() },
-        {
-          $set: {
-            wallpaper: "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
-            bgIndex: 1,
-            peekModeWallpaper: "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg",
-            panicWallpaperSwitch: true,
-            customDesktopWallpapers: [
-              "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
-              "https://images4.alphacoders.com/140/1402795.mp4",
-              "https://images4.alphacoders.com/476/thumb-1920-47698.png",
-              "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg"
-            ],
-            activeDesktopCustomIndex: 0,
-            isHidden: false,
-            isPanicHidden: false,
-            lastModified: Date.now()
-          }
-        },
-        { upsert: true }
-      );
-      
       const demoCountdowns = [
-        {
-          id: 'demo-countdown-1',
-          title: 'Product Launch',
-          endDate: nextWeekDate.toISOString()
-        },
-        {
-          id: 'demo-countdown-2',
-          title: 'Vacation',
-          endDate: nextMonthDate.toISOString()
-        }
+        { id: 'demo-countdown-1', title: 'Product Launch', endDate: nextWeekDate.toISOString() },
+        { id: 'demo-countdown-2', title: 'Vacation', endDate: nextMonthDate.toISOString() }
       ];
 
-      await db.collection('Countdowns').updateOne(
-        { userId: user._id.toString() },
-        { 
-          $set: { 
-            countdowns: demoCountdowns,
-            lastModified: Date.now()
-          } 
-        },
-        { upsert: true }
-      );
-
-      // 5. Set generic default tasks for the demo user
       const demoTasks = [
         { id: 'demo-task-1', title: 'Review pull requests', completed: false, duration:120, timeSpent: 30, groupId: 0, createdAt: Date.now() },
         { id: 'demo-task-2', title: 'Update project documentation', completed: false, duration:50, timeSpent: 20, groupId: 0, createdAt: Date.now() },
@@ -196,17 +58,6 @@ export async function POST(request: Request) {
         { id: 'demo-task-6', title: 'fix the minor bugs', completed: true, duration:120, timeSpent: 120, groupId: 0, createdAt: Date.now() }
       ];
 
-      await db.collection('Tasks').updateOne(
-        { userId: user._id.toString() },
-        { 
-          $set: { 
-            tasks: demoTasks,
-            lastModified: Date.now()
-          } 
-        },
-        { upsert: true }
-      );
-
       const demoYesterdayDate = new Date(todayDate); demoYesterdayDate.setDate(todayDate.getDate() - 1);
       const demoTomorrowDate = new Date(todayDate); demoTomorrowDate.setDate(todayDate.getDate() + 1);
 
@@ -214,7 +65,6 @@ export async function POST(request: Request) {
       const todayStr = todayDate.toISOString().split('T')[0];
       const tomorrowStr = demoTomorrowDate.toISOString().split('T')[0];
 
-      // 6. Set generic default notes for the demo user
       const demoNotes = [
         {
           id: 'demo-note-1',
@@ -249,16 +99,144 @@ export async function POST(request: Request) {
         }
       ];
 
-      await db.collection('Notes').updateOne(
-        { userId: user._id.toString() },
-        {
-          $set: {
-            notes: demoNotes,
-            lastModified: Date.now()
+      await Promise.all([
+        // 1. Reset timer/stopwatch states in DashboardStorage
+        db.collection('DashboardStorage').updateOne(
+          { userId: user._id.toString() },
+          { 
+            $unset: { 
+              timerEndAt: "", 
+              timerPausedLeft: "",
+              stopwatchStartTime: "",
+              stopwatchLastSavedChunks: "",
+              stopwatchDeviceId: ""
+            } 
           }
-        },
-        { upsert: true }
-      );
+        ),
+        
+        // 2. Reset them in Settings where they are actually mapped
+        db.collection('Settings').updateOne(
+          { userId: user._id.toString() },
+          { 
+            $set: { 
+              hasSeenOnboarding: false,
+              "displaySettings.isPanicHidden": false,
+              "displaySettings.isHidden": false
+            },
+            $unset: {
+              "generalSettings.timerEndAt": "",
+              "generalSettings.timerPausedLeft": "",
+              "generalSettings.stopwatchStartTime": "",
+              "generalSettings.stopwatchLastSavedChunks": "",
+              "generalSettings.stopwatchDeviceId": "",
+              "generalSettings.activeTimerSecs": "",
+              "generalSettings.activeStopwatchSecs": "",
+              "displaySettings.showQuote": "",
+              "displaySettings.showTimer": "",
+              "displaySettings.showCountdowns": "",
+              "displaySettings.showVideoControls": "",
+              "displaySettings.showClock": "",
+              "displaySettings.showTasks": "",
+              "displaySettings.showCalendar": "",
+              "displaySettings.showTodayWork": "",
+              "displaySettings.showStats": "",
+              "displaySettings.showPlans": "",
+              "displaySettings.showNotes": "",
+              "displaySettings.showTimetable": "",
+              "displaySettings.showDock": "",
+              "displaySettings.showDeadlineAlerts": "",
+              "displaySettings.showBgSwitcher": "",
+              "displaySettings.showSettingsBtn": "",
+              "displaySettings.showStopwatch": ""
+            }
+          },
+          { upsert: true }
+        ),
+        
+        // 3. Set 4 hardcoded deadlines
+        db.collection('Deadlines').updateOne(
+          { userId: user._id.toString() },
+          { 
+            $set: { 
+              deadlines: demoDeadlines,
+              lastModified: Date.now(),
+              hideYouInLeaderboard: false
+            }
+          },
+          { upsert: true }
+        ),
+        
+        // 4. Reset User profile fields to default
+        db.collection('User').updateOne(
+          { _id: user._id },
+          {
+            $set: {
+              alias: "demoUser",
+              profilePicture: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQf48actplbaZQTsAVGm8rv1ZmiaFa_P8oYMiLKnzAm4pkcylWmgJ_XKFEI&s=10"
+            }
+          }
+        ),
+        
+        // 5. Overwrite Dashboard settings for Wallpapers
+        db.collection('DashboardStorage').updateOne(
+          { userId: user._id.toString() },
+          {
+            $set: {
+              wallpaper: "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
+              bgIndex: 1,
+              peekModeWallpaper: "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg",
+              panicWallpaperSwitch: true,
+              customDesktopWallpapers: [
+                "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
+                "https://images4.alphacoders.com/140/1402795.mp4",
+                "https://images4.alphacoders.com/476/thumb-1920-47698.png",
+                "https://i.pinimg.com/736x/07/bd/cb/07bdcb605727348d60ac19d4e8215e06.jpg"
+              ],
+              activeDesktopCustomIndex: 0,
+              isHidden: false,
+              isPanicHidden: false,
+              lastModified: Date.now()
+            }
+          },
+          { upsert: true }
+        ),
+        
+        // 6. Set Countdowns
+        db.collection('Countdowns').updateOne(
+          { userId: user._id.toString() },
+          { 
+            $set: { 
+              countdowns: demoCountdowns,
+              lastModified: Date.now()
+            } 
+          },
+          { upsert: true }
+        ),
+        
+        // 7. Set Tasks
+        db.collection('Tasks').updateOne(
+          { userId: user._id.toString() },
+          { 
+            $set: { 
+              tasks: demoTasks,
+              lastModified: Date.now()
+            } 
+          },
+          { upsert: true }
+        ),
+        
+        // 8. Set Notes
+        db.collection('Notes').updateOne(
+          { userId: user._id.toString() },
+          {
+            $set: {
+              notes: demoNotes,
+              lastModified: Date.now()
+            }
+          },
+          { upsert: true }
+        )
+      ]);
 
       // Short-lived token for demo (25 minutes)
       const token = jwt.sign({ userId: user._id.toString(), username: user.username }, JWT_SECRET, {

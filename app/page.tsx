@@ -99,6 +99,7 @@ useEffect(() => {
 }, [isMounted]);
 
   const handleDemoLogin = async () => {
+    setShowDemoModal(true);
     setIsLoading(true);
     setError('');
     setSuccessMsg('');
@@ -113,11 +114,12 @@ useEffect(() => {
       
       if (res.ok && data.token) {
         setDemoAuthData({ token: data.token, username: data.username });
-        setShowDemoModal(true);
       } else {
+        setShowDemoModal(false);
         setError(data.error || 'Demo login failed');
       }
     } catch (err) {
+      setShowDemoModal(false);
       setError('Failed to connect to server');
     } finally {
       setIsLoading(false);
@@ -650,6 +652,8 @@ useEffect(() => {
       <ConfirmationModal
         isOpen={showDemoModal}
         onClose={() => setShowDemoModal(false)}
+        isLoading={isLoading}
+        confirmDisabled={!demoAuthData}
         onConfirm={() => {
           if (demoAuthData) {
             const demoState = {
@@ -680,10 +684,39 @@ useEffect(() => {
             window.location.href = '/dashboard';
           }
         }}
-        title="Demo Mode Activated"
-        message="You are exploring the app using demo credentials. You will be automatically logged out when the 25-minute demo period expires."
+        title="Welcome to the Demo!"
+        message={
+          <div className="flex flex-col gap-4 text-sm mt-2">
+            {isLoading ? (
+              <p className="font-semibold text-emerald-500 animate-pulse">
+                Provisioning your demo environment...
+              </p>
+            ) : (
+              <p className="font-semibold text-emerald-500">
+                Demo environment is ready!
+              </p>
+            )}
+            <p className="opacity-90">
+              You're about to explore the app using demo credentials. You will be automatically logged out when the <strong>25-minute</strong> demo period expires.
+            </p>
+            <div className="opacity-80">
+              <p className="font-bold mb-2">Here is what you can do:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Create and complete tasks in the <strong>Task Manager</strong></li>
+                <li>Write markdown-formatted notes in the <strong>Notes</strong> app</li>
+                <li>Use the <strong>Timer</strong> and <strong>Stopwatch</strong> to track focus time</li>
+                <li>Add countdowns and check deadlines</li>
+                <li>Interact with the <strong>Groups</strong> and <strong>Global Chat</strong> (Connect Tab)</li>
+                <li>Customize backgrounds and shortcuts in <strong>Settings</strong></li>
+              </ul>
+            </div>
+            <p className="text-xs opacity-60 italic mt-2">
+              Note: Changes made in demo mode will not be permanently saved.
+            </p>
+          </div>
+        }
         hideCancel={true}
-        confirmText="Understood, Let's Go!"
+        confirmText={isLoading ? "Setting up..." : "Understood, Let's Go!"}
       />
     </div>
   );

@@ -291,7 +291,7 @@ export default function Countdown({
                     Hours Left
                   </span>
                   {examCountdown.endDate && (
-                    <span className="text-[7.5px] sm:text-[8px] text-white/50 font-bold tracking-wider uppercase border-t border-white/10 pt-1 w-full text-center">
+                    <span className="text-[12px] sm:text-[16px] text-white/50 font-bold tracking-wider uppercase border-t border-white/10 pt-1 w-full text-center">
                       Until {getTargetSubtext()}
                     </span>
                   )}
