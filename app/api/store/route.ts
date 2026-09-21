@@ -791,11 +791,13 @@ export async function POST(request: Request) {
     }
 
     // 6. Save Stats to the isolated Stats collection
-    if (incrementHistory && Object.keys(incrementHistory).length > 0) {
+    const hasIncrement = incrementHistory && Object.keys(incrementHistory).length > 0;
+    
+    if (hasIncrement) {
       if (!modifiedCollections.includes('Stats')) modifiedCollections.push('Stats');
     }
 
-    if ((isFullSync || modifiedCollections.includes('Stats')) && (Object.keys(statsSpecificData).length > 0 || incrementHistory)) {
+    if (isFullSync || modifiedCollections.includes('Stats') || hasIncrement) {
       const statsDoc: any = { ...statsSpecificData, lastModified: newLastModified };
 
       const serverHistory = (existingStats && existingStats.history) ? existingStats.history : {};
@@ -803,7 +805,7 @@ export async function POST(request: Request) {
       
       const mergedHistory = { ...serverHistory, ...incomingHistory };
 
-      if (incrementHistory) {
+      if (hasIncrement) {
         for (const dateKey in incrementHistory) {
           // Add the queued minutes directly to the server's truth! Ignore the incoming absolute value.
           mergedHistory[dateKey] = (serverHistory[dateKey] || 0) + incrementHistory[dateKey];

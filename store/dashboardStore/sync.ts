@@ -275,7 +275,25 @@ export const performSave = async () => {
       }
     }
     if (typeof window !== 'undefined' && incrementHistory) {
-      localStorage.removeItem('unsaved_focus_mins');
+      try {
+        const currentQueueStr = localStorage.getItem('unsaved_focus_mins');
+        if (currentQueueStr) {
+          const currentQueue = JSON.parse(currentQueueStr);
+          for (const dateKey in incrementHistory) {
+            if (currentQueue[dateKey]) {
+              currentQueue[dateKey] -= incrementHistory[dateKey];
+              if (currentQueue[dateKey] <= 0) {
+                delete currentQueue[dateKey];
+              }
+            }
+          }
+          if (Object.keys(currentQueue).length === 0) {
+            localStorage.removeItem('unsaved_focus_mins');
+          } else {
+            localStorage.setItem('unsaved_focus_mins', JSON.stringify(currentQueue));
+          }
+        }
+      } catch (e) {}
     }
   } catch (err) {
     console.warn("Failed to save to DB, storing locally:", err);
