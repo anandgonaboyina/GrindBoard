@@ -160,15 +160,18 @@ export const performSave = async () => {
       const parsedCloud = json.cloudData;
       const parsedLocal = JSON.parse(valueToSave);
 
-      const localHistory = parsedLocal.state.history || {};
       const cloudHistory = parsedCloud.state.history || {};
-      const mergedHistory = { ...localHistory };
-      for (const date in cloudHistory) {
-        if (mergedHistory[date] !== undefined) {
-          mergedHistory[date] = Math.max(mergedHistory[date], cloudHistory[date]);
-        } else {
-          mergedHistory[date] = cloudHistory[date];
-        }
+      const mergedHistory = { ...cloudHistory };
+      if (typeof window !== 'undefined') {
+        try {
+          const qStr = localStorage.getItem('unsaved_focus_mins');
+          if (qStr) {
+            const q = JSON.parse(qStr);
+            for (const d in q) {
+              mergedHistory[d] = (mergedHistory[d] || 0) + q[d];
+            }
+          }
+        } catch (e) {}
       }
 
       const localDailyTimes = parsedLocal.state.dailyTimes || {};

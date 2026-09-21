@@ -476,7 +476,6 @@ export async function POST(request: Request) {
         if (modifiedCollections.includes('Tasks') && existingTasks?.lastModified > incomingLastModified) hasConflict = true;
         if (modifiedCollections.includes('Notes') && existingNotes?.lastModified > incomingLastModified) hasConflict = true;
         if (modifiedCollections.includes('Roadmaps') && existingRoadmaps?.lastModified > incomingLastModified) hasConflict = true;
-        if (modifiedCollections.includes('Stats') && existingStats?.lastModified > incomingLastModified) hasConflict = true;
         if (modifiedCollections.includes('Settings') && existingSettings?.lastModified > incomingLastModified) hasConflict = true;
         if (modifiedCollections.includes('DailyRoutine') && existingDailyRoutine?.lastModified > incomingLastModified) hasConflict = true;
         if (modifiedCollections.includes('Timetable') && existingTimetable?.lastModified > incomingLastModified) hasConflict = true;
