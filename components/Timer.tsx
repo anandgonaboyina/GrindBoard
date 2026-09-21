@@ -54,8 +54,6 @@ export default function Timer() {
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [pausedAtString, setPausedAtString] = useState<string>('');
-  const [isCheckingCloudStop, setIsCheckingCloudStop] = useState(false);
-  const [showAlreadyEndedModal, setShowAlreadyEndedModal] = useState(false);
 
   useEffect(() => {
     const d = new Date();
@@ -355,20 +353,16 @@ export default function Timer() {
 
   const handleStopClick = async () => {
     if (!store.timerInitialMins || typeof window === 'undefined') { saveAndClearActiveTaskTimer(); return stopAlarm(); }
-    const token = localStorage.getItem('dashboard_sync_token');
-    if (token && navigator.onLine) {
-      setIsCheckingCloudStop(true);
-      try {
-        const res = await fetch(`/api/store?t=${Date.now()}`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok && (await res.json()).data?.state?.timerEndAt === null) {
-          setIsCheckingCloudStop(false); setShowAlreadyEndedModal(true);
-          savedChunksRef.current = 0; alertedChunksRef.current = 0; useDashboardStore.getState().setActiveTask(null, null);
-          store.setTimerLastSavedChunks(0); store.setTimerInitialMins(null); store.clearTimerState(); stopAlarm(); stopIntervalBeep(); return;
-        }
-      } catch (e) {}
-      setIsCheckingCloudStop(false);
-    }
-    saveAndClearActiveTaskTimer(); store.clearTimerState(); stopAlarm(); stopIntervalBeep();
+    
+    // We previously checked the cloud here to see if timerEndAt === null,
+    // but if the user stops the timer within 2 seconds of starting it,
+    // the start action hasn't synced yet, causing a false positive "Ended on another device" error.
+    // Trusting the local state is safer and prevents this race condition.
+    
+    saveAndClearActiveTaskTimer(); 
+    store.clearTimerState(); 
+    stopAlarm(); 
+    stopIntervalBeep();
   };
 
   const handleCustomStart = () => {
@@ -492,7 +486,7 @@ export default function Timer() {
                   <button onClick={togglePause} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors border border-white/10 shadow-sm">{store.timerEndAt ? <Pause size={20} /> : <Play size={20} />}</button>
                 </Tooltip>
                 <Tooltip text="Stop Timer" position="top">
-                  <button onClick={handleStopClick} disabled={isCheckingCloudStop} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50 border border-white/10 shadow-sm">{isCheckingCloudStop ? <Loader2 size={20} className="animate-spin text-white/50" /> : <Square size={20} className="fill-current" />}</button>
+                  <button onClick={handleStopClick} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors border border-white/10 shadow-sm"><Square size={20} className="fill-current" /></button>
                 </Tooltip>
               </div>
             )}
@@ -526,10 +520,10 @@ export default function Timer() {
                 </div>
                 {store.isTimerIntervalEnabled ? (
                   <div className="flex items-center gap-1">
-                    <input type="number" value={store.timerIntervalMins || ''} onChange={e => store.setTimerIntervalMins(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0))} className="w-8 bg-black/50 border border-white/20 rounded px-1 py-0.5 text-[10px] text-center font-bold text-sky-300 outline-none focus:border-sky-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none shadow-inner" min="1" />
-                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Min</span>
+                    <input type="number" value={store.timerIntervalMins || ''} onChange={e => store.setTimerIntervalMins(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0))} className="w-8 bg-black/50 border border-white/20 rounded px-1 py-0.5 text-[12px] text-center font-bold text-sky-300 outline-none focus:border-sky-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none shadow-inner" min="1" />
+                    <span className="text-[12px] font-bold text-white/50 uppercase tracking-widest">Min</span>
                   </div>
-                ) : <span className="text-[8px] font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wide">Beep Off</span>}
+                ) : <span className="text-[12px] font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wide">Beep Off</span>}
               </div>
             )}
           </div>
@@ -539,7 +533,7 @@ export default function Timer() {
         </div>
       </div>
 
-      <TargetClockModal isOpen={isClockModalOpen} onClose={() => setIsClockModalOpen(false)} initialHr={selectedHr} initialMin={selectedMin} initialAmPm={selectedAmPm} onConfirm={(h, m, ampm) => { setSelectedHr(h); setSelectedMin(m); setSelectedAmPm(ampm); updateTargetTime(h, m, ampm); }} />
+      <TargetClockModal isOpen={isClockModalOpen} onClose={() => setIsClockModalOpen(false)} initialHr={selectedHr} initialMin={selectedMin} initialAmPm={selectedAmPm} onConfirm={(h: string, m: string, ampm: string) => { setSelectedHr(h); setSelectedMin(m); setSelectedAmPm(ampm); updateTargetTime(h, m, ampm); }} />
 
       <ConfirmationModal
         isOpen={showResumeModal}
@@ -550,14 +544,6 @@ export default function Timer() {
         onConfirm={() => { setShowContinuePrompt(false); setShowResumeModal(false); if (store.timerPausedLeft !== null) { store.setTimerEndAt(Date.now() + store.timerPausedLeft * 1000); store.setTimerPausedLeft(null); store.setTimerDeviceId(getDeviceId()); updateInteraction(); } }}
       />
 
-      <ConfirmationModal
-        isOpen={showAlreadyEndedModal}
-        onClose={() => setShowAlreadyEndedModal(false)}
-        title="Timer Already Ended"
-        message={<div className="flex flex-col gap-2"><p className="text-white/80">This timer was already ended on another device.</p><p className="text-white">To prevent double-counting, <strong className="text-amber-400 font-bold">no additional focus hours were added</strong> from this device.</p></div>}
-        confirmText="Got it"
-        onConfirm={() => setShowAlreadyEndedModal(false)}
-      />
     </>
   );
 }
