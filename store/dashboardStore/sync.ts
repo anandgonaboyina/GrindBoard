@@ -242,7 +242,7 @@ export const performSave = async () => {
       const mergedStr = JSON.stringify(mergedData);
 
       isSyncingFromCloud = true;
-      setSyncLastModified(Date.now());
+      setSyncLastModified(Math.max(Date.now(), (json.cloudLastModified || 0) + 1000));
       try { localStorage.setItem('dashboard-storage', mergedStr); } catch (e) { }
       useDashboardStore.setState(mergedState);
 

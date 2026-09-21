@@ -132,7 +132,7 @@ export default function Dashboard() {
     }
 
     const username = localStorage.getItem('dashboard_username');
-    if (username?.toLowerCase() === 'demo_user') {
+    if (username?.toLowerCase() === process.env.DEMO_USERNAME) {
       const now = Date.now();
       let sessionStart = parseInt(localStorage.getItem('demo_session_start') || '0', 10);
       if (!sessionStart || isNaN(sessionStart)) {
