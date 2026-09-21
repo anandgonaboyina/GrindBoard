@@ -10,6 +10,7 @@ import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { getDeviceId } from '@/utils/deviceId';
 import Tooltip from './Tooltip';
 import ConfirmationModal from './ConfirmationModal';
+import { triggerInstantSave } from '@/store/dashboardStore/sync';
 
 const HR_OPTIONS = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
 const MIN_OPTIONS = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
@@ -219,6 +220,7 @@ export default function Timer() {
             updateLocalTaskDuration(activeTaskId, finalUnsavedMins);
             incrementGroupTaskTimeSpent(activeTaskId, finalUnsavedMins);
           }
+          triggerInstantSave();
         }
       }
     }
@@ -387,6 +389,7 @@ export default function Timer() {
                     incrementGroupTaskTimeSpent(capturedTaskId, minsToSave);
                   }
                   setTimerLastSavedChunks(targetChunks);
+                  triggerInstantSave();
                 };
                 
                 applyMinsLocally();
@@ -482,9 +485,10 @@ export default function Timer() {
                   updateLocalTaskDuration(activeTaskId, finalUnsavedMins);
                   incrementGroupTaskTimeSpent(activeTaskId, finalUnsavedMins);
                 }
+                triggerInstantSave();
               }
             }
-            clearTimerState();
+            // Intentionally not calling clearTimerState() here so the Stop Timer button and alarm persist!
             savedChunksRef.current = 0;
           }
 
@@ -1177,7 +1181,7 @@ export default function Timer() {
             )}
 
             {/* Custom Input - Ultra Compact Height */}
-            {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && (
+            {!timerEndAt && !timerPausedLeft && localTimeLeft === 0 && !isEditingTime && !isAlarmPlaying && (
               <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/10">
                 <div className="flex items-center gap-1.5">
                   {/* Target Clock Button */}

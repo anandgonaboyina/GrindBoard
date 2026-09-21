@@ -46,7 +46,7 @@ export default function Countdown({
   // STRICT OR LOGIC: Split into date OR time. If it has a 'T', it's a Time target (for today). Otherwise, Date target.
   const isTimeTarget = examCountdown.endDate && examCountdown.endDate.includes('T');
   const initialDate = examCountdown.endDate && !isTimeTarget ? examCountdown.endDate.split('T')[0] : '';
-  const initialTime = isTimeTarget ? examCountdown.endDate.split('T')[1] : '';
+  const initialTime = isTimeTarget && examCountdown.endDate ? examCountdown.endDate.split('T')[1] : '';
 
   const [editDateOnly, setEditDateOnly] = useState(initialDate);
   const [editTimeOnly, setEditTimeOnly] = useState(initialTime);

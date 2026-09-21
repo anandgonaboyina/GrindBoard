@@ -39,15 +39,28 @@ export async function POST(req: NextRequest) {
       if (oldUrl && oldUrl.includes('res.cloudinary.com')) {
         // Extract public_id
         const parts = oldUrl.split('/');
-        const filename = parts[parts.length - 1];
-        const publicId = filename.split('.')[0];
-        const folder = parts[parts.length - 2];
-        const fullPublicId = `${folder}/${publicId}`; // Assume standard folder structure
+        const uploadIndex = parts.indexOf('upload');
+        let fullPublicId = '';
+        if (uploadIndex !== -1) {
+          let pathParts = parts.slice(uploadIndex + 1);
+          if (pathParts[0].match(/^v\d+$/)) {
+            pathParts.shift();
+          }
+          const fileWithExt = pathParts.join('/');
+          fullPublicId = fileWithExt.substring(0, fileWithExt.lastIndexOf('.'));
+        } else {
+          const filename = parts[parts.length - 1];
+          const publicId = filename.split('.')[0];
+          const folder = parts[parts.length - 2];
+          fullPublicId = `${folder}/${publicId}`;
+        }
         
         try {
-          await cloudinary.uploader.destroy(fullPublicId);
+          console.log(`Attempting to delete Cloudinary image with public ID: ${fullPublicId}`);
+          const result = await cloudinary.uploader.destroy(fullPublicId);
+          console.log(`Delete result for ${fullPublicId}:`, result);
         } catch (err) {
-          console.error("Cloudinary delete error:", err);
+          console.error(`Cloudinary delete error for ${fullPublicId}:`, err);
         }
       }
       return NextResponse.json({ success: true });

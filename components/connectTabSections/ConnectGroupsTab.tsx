@@ -1437,7 +1437,7 @@ export default React.memo(function ConnectGroupsTab() {
                           setExpandedMemberIds(prev => ({ ...prev, [member.userId]: !prev[member.userId] }));
                         }
                       }}
-                      className={`relative bg-black/40 border p-1.5 pt-2.5 rounded-xl flex flex-col gap-1 shadow-sm transition-all w-full h-fit cursor-pointer ${canSelectInCopyMode
+                      className={`relative bg-black/40 border p-2.5 rounded-xl flex flex-col gap-1 shadow-sm transition-all w-full h-fit cursor-pointer ${canSelectInCopyMode
                         ? 'ring-2 ring-sky-400 border-sky-400 cursor-pointer bg-sky-950/40 hover:bg-sky-900/60 shadow-[0_0_20px_rgba(56,189,248,0.35)] scale-[1.01]'
                         : isGroupAdmin
                           ? 'border-amber-500/40 bg-gradient-to-b from-amber-500/10 via-black/40 to-black/40 shadow-[0_0_12px_rgba(245,158,11,0.12)]'
@@ -1445,7 +1445,6 @@ export default React.memo(function ConnectGroupsTab() {
                             ? 'border-sky-500/40 bg-gradient-to-b from-sky-500/10 via-black/40 to-black/40 shadow-[0_0_10px_rgba(56,189,248,0.1)]'
                             : 'border-white/10'
                         }`}
-                      style={{ zoom: 0.85 }}
                     >
                       {isGroupAdmin ? (
                         <span className="absolute -top-2.5 left-2 px-1.5 py-0.5 bg-black/90 rounded-md text-[8px] font-black tracking-widest text-amber-400 uppercase z-20 shadow-sm border border-amber-500/40 backdrop-blur-md flex items-center gap-1">
@@ -1476,13 +1475,13 @@ export default React.memo(function ConnectGroupsTab() {
                         #{rankIdx + 1}
                       </span>
 
-                      <div className="flex flex-col gap-1 border-b border-white/5 pb-1">
-                        <div className="flex items-center justify-between gap-1 min-w-0">
-                          <div className="flex items-center gap-1 min-w-0 flex-1">
+                      <div className="flex flex-col gap-2 border-b border-white/5 pb-2">
+                        <div className="flex items-center justify-between gap-2 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
                             {(() => {
                               const memberAvatar = member.avatarUrl || member.profilePicture || (isMe ? (typeof window !== 'undefined' ? localStorage.getItem('dashboard_profile_picture') || '' : '') : '');
                               return (
-                                <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden shrink-0 border border-white/20 bg-black/80 flex items-center justify-center shadow-md relative aspect-square">
                                   {memberAvatar ? (
                                     <img
                                       src={memberAvatar}
@@ -1497,7 +1496,7 @@ export default React.memo(function ConnectGroupsTab() {
                                   ) : null}
                                   <span
                                     style={{ display: memberAvatar ? 'none' : 'flex' }}
-                                    className="w-full h-full items-center justify-center text-white font-bold text-[10px] uppercase pointer-events-none"
+                                    className="w-full h-full items-center justify-center text-white font-bold text-xs uppercase pointer-events-none"
                                   >
                                     {member.username?.[0] || 'U'}
                                   </span>
@@ -1505,12 +1504,12 @@ export default React.memo(function ConnectGroupsTab() {
                               );
                             })()}
 
-                            <div className="flex items-center gap-1 min-w-0 flex-wrap">
-                              <span className="text-[10.5px] font-bold text-white/90 truncate max-w-[85px] sm:max-w-[110px]">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                              <span className="text-sm sm:text-base font-bold text-white/90 truncate max-w-[120px] sm:max-w-[160px]">
                                 {member.username}
                               </span>
                               {isMe && (
-                                <span className="text-[7px] bg-blue-500/30 text-blue-300 px-1 py-px rounded font-mono font-bold shrink-0">
+                                <span className="text-[9px] bg-blue-500/30 text-blue-300 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">
                                   You
                                 </span>
                               )}
@@ -1519,15 +1518,15 @@ export default React.memo(function ConnectGroupsTab() {
 
                           <div className="flex items-center gap-1 shrink-0">
                             {viewerIsAdmin && !isMe && (
-                              <div className="flex items-center gap-1 shrink-0 mr-1" onClick={(e) => e.stopPropagation()}>
-                                <label className="text-[7.5px] text-amber-300/90 font-bold flex items-center gap-0.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-1 py-0.5 rounded transition-colors" title="Grant Co-Admin Rights">
-                                  <ShieldAlert size={7.5} className={isCoAdmin ? "text-amber-400" : "text-white/40"} />
+                              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <label className="text-[9px] text-amber-300/90 font-bold flex items-center gap-1 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-1.5 py-1 rounded transition-colors" title="Grant Co-Admin Rights">
+                                  <ShieldAlert size={10} className={isCoAdmin ? "text-amber-400" : "text-white/40"} />
                                   <span>Co-Admin</span>
                                   <input
                                     type="checkbox"
                                     checked={isCoAdmin || false}
                                     onChange={(e) => handleGrantEdit(viewingGroup._id, member.userId, e.target.checked)}
-                                    className="accent-amber-500 scale-75 cursor-pointer"
+                                    className="accent-amber-500 scale-90 cursor-pointer"
                                   />
                                 </label>
                                 <button
@@ -1536,51 +1535,39 @@ export default React.memo(function ConnectGroupsTab() {
                                     e.stopPropagation();
                                     handleRemoveMember(viewingGroup._id, member.userId, member.username);
                                   }}
-                                  className="px-1 py-0.5 text-[8px] font-bold bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white rounded border border-red-500/30 flex items-center gap-0.5 transition-colors cursor-pointer"
+                                  className="px-1.5 py-1 text-[9px] font-bold bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white rounded border border-red-500/30 flex items-center gap-0.5 transition-colors cursor-pointer"
                                   title="Remove member from group"
                                 >
-                                  <X size={8.5} />
+                                  <X size={10} />
                                   <span>Remove</span>
                                 </button>
                               </div>
                             )}
-                            
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedMemberIds(prev => ({ ...prev, [member.userId]: !prev[member.userId] }));
-                              }}
-                              className="p-0.5 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors"
-                              title={expandedMemberIds[member.userId] ? "Collapse tasks" : "Expand tasks"}
-                            >
-                              {expandedMemberIds[member.userId] ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between text-[10px] font-mono bg-black/40 px-3 py-1.5 rounded-lg border border-white/10 shadow-inner mt-1">
+                        <div className="flex items-center justify-between text-xs font-mono bg-black/40 px-3 py-2 rounded-lg border border-white/10 shadow-inner mt-1">
                           <div className="flex items-center gap-1.5">
-                            <CheckCircle2 size={12} className="text-emerald-400" />
-                            <span className="text-white/60">Done: <strong className="text-emerald-300 text-xs">{globalFormatTime(totalMemberDone)}</strong></span>
+                            <CheckCircle2 size={16} className="text-emerald-400" />
+                            <span className="text-white/60">Done: <strong className="text-emerald-300 text-sm">{globalFormatTime(totalMemberDone)}</strong></span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <Clock size={12} className="text-indigo-400" />
-                            <span className="text-white/60">Left: <strong className="text-indigo-300 text-xs">{globalFormatTime(totalMemberLeft)}</strong></span>
+                            <Clock size={16} className="text-indigo-400" />
+                            <span className="text-white/60">Left: <strong className="text-indigo-300 text-sm">{globalFormatTime(totalMemberLeft)}</strong></span>
                           </div>
                         </div>
 
                         {canSelectInCopyMode && (
-                          <div className="mt-1 pt-1 border-t border-sky-500/30 flex justify-end">
+                          <div className="mt-2 pt-2 border-t border-sky-500/30 flex justify-end">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setCopyConfirmModal({ isOpen: true, targetMember: member });
                               }}
-                              className="w-full py-1 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-black font-black text-[9px] rounded-md shadow-md flex items-center justify-center gap-1 transition-transform active:scale-95 cursor-pointer uppercase tracking-wider"
+                              className="w-full py-1.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-black font-black text-[10px] rounded-md shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer uppercase tracking-wider"
                             >
-                              <Copy size={11} /> Copy {member.username}'s Tasks
+                              <Copy size={13} /> Copy {member.username}'s Tasks
                             </button>
                           </div>
                         )}
