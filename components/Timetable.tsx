@@ -120,7 +120,7 @@ export default function Timetable() {
   );
   const [isDemoUser, setIsDemoUser] = useState(false);
   useEffect(() => {
-    setIsDemoUser(localStorage.getItem('dashboard_username')?.toLowerCase() === 'demo_user');
+    setIsDemoUser(localStorage.getItem('dashboard_username')?.toLowerCase() === process.env.DEMO_USERNAME);
   }, []);
   const [editingCell, setEditingCell] = useState<{ day: string, time: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);

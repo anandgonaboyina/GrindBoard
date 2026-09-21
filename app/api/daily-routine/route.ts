@@ -22,18 +22,16 @@ export async function GET(request: Request) {
 
         const client = await clientPromise;
         const db = client.db();
+        
+        const record = await db.collection('DailyRoutine').findOne({ userId: user.userId });
+        
+        if (!record) return NextResponse.json({ data: null });
 
-        const deadlinesRecord = await db.collection('Deadlines').findOne({ userId: user.userId });
-
-        if (!deadlinesRecord) {
-            return NextResponse.json({ data: null });
-        }
-
-        const { _id, userId, ...coreData } = deadlinesRecord as any;
-        return NextResponse.json({ data: coreData });
+        const { _id, userId, ...coreData } = record as any;
+        return NextResponse.json({ success: true, data: coreData });
     } catch (error) {
-        console.error('Error fetching deadlines:', error);
-        return NextResponse.json({ error: 'Failed to fetch deadlines' }, { status: 500 });
+        console.error('Error fetching DailyRoutine:', error);
+        return NextResponse.json({ error: 'Failed to fetch DailyRoutine' }, { status: 500 });
     }
 }
 
@@ -45,12 +43,12 @@ export async function PATCH(request: Request) {
         const body = await request.json();
         const client = await clientPromise;
         const db = client.db();
-        const collection = db.collection('Deadlines');
+        const collection = db.collection('DailyRoutine');
 
         // 1. Ensure document exists
         await collection.updateOne(
             { userId: user.userId },
-            { $setOnInsert: { deadlines: [], lastModified: Date.now() } },
+            { $setOnInsert: { dailyTimes: {}, lastModified: Date.now() } },
             { upsert: true }
         );
 
@@ -59,56 +57,32 @@ export async function PATCH(request: Request) {
             const bulkOps: any[] = [];
 
             for (const action of body.actions) {
-                if (action.type === 'ADD_DEADLINE') {
+                if (action.type === 'UPDATE_DAILY_TIME') {
+                    // Uses dot notation to safely set just the specific timestamp (e.g. "dailyTimes.2026-09-21.wakeupTime")
                     bulkOps.push({
                         updateOne: {
                             filter: { userId: user.userId },
-                            update: { $push: { deadlines: action.deadline },$set: { lastModified: Date.now() } }
+                            update: { 
+                                $set: { 
+                                    [`dailyTimes.${action.dateKey}.${action.field}`]: action.timestamp,
+                                    lastModified: Date.now()
+                                } 
+                            }
                         }
                     });
                 } 
-                else if (action.type === 'UPDATE_DEADLINE') {
-                    const setObj: Record<string, any> = { lastModified: Date.now() };
-                    for (const key in action.updates) {
-                        setObj[`deadlines.$[elem].${key}`] = action.updates[key];
-                    }
-
-                    bulkOps.push({
-                        updateOne: {
-                            filter: { userId: user.userId },
-                            update: { $set: setObj },
-                            arrayFilters: [{ "elem.id": action.deadlineId }]
-                        }
-                    });
-                } 
-                else if (action.type === 'DELETE_DEADLINE') {
-                    bulkOps.push({
-                        updateOne: {
-                            filter: { userId: user.userId },
-                            update: { $pull: { deadlines: { id: action.deadlineId } },$set: { lastModified: Date.now() } }
-                        }
-                    });
-                } 
-                else if (action.type === 'UPDATE_SETTINGS') {
-                    bulkOps.push({
-                        updateOne: {
-                            filter: { userId: user.userId },
-                            update: { $set: { ...action.updates, lastModified: Date.now() } }
-                        }
-                    });
-                }
                 else if (action.type === 'REPLACE_ALL') {
                     bulkOps.push({
                         updateOne: {
                             filter: { userId: user.userId },
-                            update: { $set: { ...action.data, lastModified: Date.now() } }
+                            update: { $set: { dailyTimes: action.dailyTimes, lastModified: Date.now() } }
                         }
                     });
                 }
             }
 
             if (bulkOps.length > 0) {
-                // Cast as any to bypass strict TypeScript Document validation for bulkOps
+                // Cast to any to bypass strict TS Document validation
                 await collection.bulkWrite(bulkOps as any);
             }
             
@@ -127,7 +101,7 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'No valid actions or updates provided' }, { status: 400 });
 
     } catch (error) {
-        console.error('Error updating deadlines:', error);
-        return NextResponse.json({ error: 'Failed to update deadlines' }, { status: 500 });
+        console.error('Error updating DailyRoutine:', error);
+        return NextResponse.json({ error: 'Failed to update DailyRoutine' }, { status: 500 });
     }
 }

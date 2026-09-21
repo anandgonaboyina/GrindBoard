@@ -76,7 +76,7 @@ export default function ConnectTab() {
     localStorage.removeItem('demo_session_start');
 
     const username = localStorage.getItem('dashboard_username');
-    const isDemoUser = username?.toLowerCase() === 'demo_user';
+    const isDemoUser = username?.toLowerCase() === process.env.DEMO_USERNAME;
 
     fetch('/api/session', {
       method: 'POST',

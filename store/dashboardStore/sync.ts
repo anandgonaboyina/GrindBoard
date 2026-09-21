@@ -23,7 +23,110 @@ export const setAuthTransition = (val: boolean) => { isAuthTransition = val; };
 export const setBypassCloudSync = (bypass: boolean = true) => { bypassCloudSync = bypass; };
 export const setAbortInstantLoad = (val: boolean) => { abortInstantLoad = val; };
 
+// ----------------------------------------------------------------------
+// ANTI-TAMPER SECURE QUEUE ENGINE
+// ----------------------------------------------------------------------
+const generateHash = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash &= hash; 
+  }
+  return hash.toString(36);
+};
+
+export const getSecureFocusQueue = (): Record<string, number> => {
+  if (typeof window === 'undefined') return {};
+  const raw = localStorage.getItem('unsaved_focus_mins');
+  if (!raw) return {};
+  
+  try {
+    const parsed = JSON.parse(raw);
+    // Legacy fallback or tampered format check
+    if (!parsed.sig || !parsed.data) {
+        localStorage.removeItem('unsaved_focus_mins');
+        return {};
+    }
+    
+    const token = getSyncToken() || "offline_fallback_salt";
+    const expectedSig = generateHash(JSON.stringify(parsed.data) + token);
+    
+    // IF TAMPERED: Reject and delete
+    if (expectedSig !== parsed.sig) {
+        console.warn("🔒 Security Alert: Focus minutes tampering detected. Queue cleared.");
+        localStorage.removeItem('unsaved_focus_mins');
+        return {};
+    }
+    
+    return parsed.data;
+  } catch (e) {
+    localStorage.removeItem('unsaved_focus_mins');
+    return {};
+  }
+};
+
+export const setSecureFocusQueue = (queueData: Record<string, number>) => {
+  if (typeof window === 'undefined') return;
+  if (Object.keys(queueData).length === 0) {
+      localStorage.removeItem('unsaved_focus_mins');
+      return;
+  }
+  const token = getSyncToken() || "offline_fallback_salt";
+  const sig = generateHash(JSON.stringify(queueData) + token);
+  localStorage.setItem('unsaved_focus_mins', JSON.stringify({ data: queueData, sig }));
+};
+
+
+// ----------------------------------------------------------------------
+// DEDICATED QUEUE SYNC: Securely pushes offline minutes to the DB
+// ----------------------------------------------------------------------
+export const syncFocusQueue = async () => {
+  if (typeof window === 'undefined' || !navigator.onLine) return;
+  const token = getSyncToken();
+  if (!token) return;
+
+  let queue = getSecureFocusQueue();
+  if (Object.keys(queue).length === 0) return;
+
+  let updatedQueue = { ...queue };
+  let hasChanges = false;
+
+  for (const dateStr of Object.keys(queue)) {
+    const mins = queue[dateStr];
+    if (mins <= 0) {
+      delete updatedQueue[dateStr];
+      hasChanges = true;
+      continue;
+    }
+
+    try {
+      const res = await fetch('/api/users/streak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ dateStr, minutes: mins })
+      });
+      
+      if (res.ok) {
+        delete updatedQueue[dateStr];
+        hasChanges = true;
+      }
+    } catch (e) {
+      console.warn(`[Sync] Failed to push focus queue for ${dateStr}. Will retry later.`, e);
+    }
+  }
+
+  if (hasChanges) {
+    setSecureFocusQueue(updatedQueue);
+  }
+};
+
+// ----------------------------------------------------------------------
+// MAIN STATE SAVE: Pushes UI state and settings to /api/store
+// ----------------------------------------------------------------------
 export const performSave = async () => {
+  syncFocusQueue();
+
   if (!pendingValue || isSyncingFromCloud || isAuthTransition) {
     saveTimeout = null;
     return;
@@ -42,9 +145,7 @@ export const performSave = async () => {
 
   if (failedToLoadDB || !getSyncToken()) {
     if (pendingValue === valueToSave) {
-      pendingValue = null;
-      hasUnsavedChanges = false;
-      saveTimeout = null;
+      pendingValue = null; hasUnsavedChanges = false; saveTimeout = null;
     } else {
       saveTimeout = setTimeout(performSave, 5000);
     }
@@ -93,11 +194,7 @@ export const performSave = async () => {
       modifiedCollections = [...new Set(modifiedCollections)];
 
       if (modifiedCollections.length === 0) {
-        isSaving = false;
-        hasUnsavedChanges = false;
-        pendingValue = null;
-        saveTimeout = null;
-        return;
+        isSaving = false; hasUnsavedChanges = false; pendingValue = null; saveTimeout = null; return;
       }
     }
 
@@ -106,20 +203,14 @@ export const performSave = async () => {
       parsedData = JSON.parse(valueToSave);
     } catch (parseErr) {
       console.error("Failed to parse valueToSave:", parseErr);
-      isSaving = false;
-      return;
+      isSaving = false; return;
     }
 
-    const LOCAL_ONLY_MEDIA_KEYS = [
-      'customDesktopWallpapers', 'customMobileWallpapers',
-      'manifestationDesktopPhotos', 'manifestationMobilePhotos',
-    ];
+    const LOCAL_ONLY_MEDIA_KEYS = ['customDesktopWallpapers', 'customMobileWallpapers', 'manifestationDesktopPhotos', 'manifestationMobilePhotos'];
     if (parsedData?.state) {
       LOCAL_ONLY_MEDIA_KEYS.forEach(key => {
         if (Array.isArray(parsedData.state[key])) {
-          parsedData.state[key] = parsedData.state[key].filter(
-            (v: string) => typeof v === 'string' && !v.startsWith('data:')
-          );
+          parsedData.state[key] = parsedData.state[key].filter((v: string) => typeof v === 'string' && !v.startsWith('data:'));
         }
       });
       if (typeof parsedData.state.peekModeWallpaper === 'string' && parsedData.state.peekModeWallpaper.startsWith('data:')) {
@@ -127,30 +218,16 @@ export const performSave = async () => {
       }
     }
 
-    let incrementHistory = null;
-    if (typeof window !== 'undefined') {
-      try {
-        const queueStr = localStorage.getItem('unsaved_focus_mins');
-        if (queueStr) {
-          incrementHistory = JSON.parse(queueStr);
-        }
-      } catch (e) {}
-    }
-
     const payload = JSON.stringify({ 
       data: parsedData, 
       lastModified, 
       modifiedCollections, 
-      modifiedKeys,
-      incrementHistory
+      modifiedKeys 
     });
-    
+
     const res = await fetch('/api/store', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getSyncToken()}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getSyncToken()}` },
       body: payload,
       keepalive: true
     });
@@ -160,89 +237,28 @@ export const performSave = async () => {
       const parsedCloud = json.cloudData;
       const parsedLocal = JSON.parse(valueToSave);
 
-      const cloudHistory = parsedCloud.state.history || {};
-      const mergedHistory = { ...cloudHistory };
-      if (typeof window !== 'undefined') {
-        try {
-          const qStr = localStorage.getItem('unsaved_focus_mins');
-          if (qStr) {
-            const q = JSON.parse(qStr);
-            for (const d in q) {
-              mergedHistory[d] = (mergedHistory[d] || 0) + q[d];
-            }
-          }
-        } catch (e) {}
-      }
-
-      const localDailyTimes = parsedLocal.state.dailyTimes || {};
-      const cloudDailyTimes = parsedCloud.state.dailyTimes || {};
-      const mergedDailyTimes = mergeDailyTimes(localDailyTimes, cloudDailyTimes);
-
-      const localHasSeen = parsedLocal.state?.hasSeenOnboarding || (typeof window !== 'undefined' && localStorage.getItem('grindboard_has_seen_onboarding') === 'true');
-      const cloudHasSeen = parsedCloud.state?.hasSeenOnboarding;
-      const mergedHasSeenOnboarding = Boolean(localHasSeen || cloudHasSeen);
-
       const mergedState = {
         ...parsedCloud.state,
         ...parsedLocal.state,
-        history: mergedHistory,
-        dailyTimes: mergedDailyTimes,
-        hasSeenOnboarding: mergedHasSeenOnboarding,
-        timetableGrid: parsedCloud.state.timetableGrid || parsedLocal.state.timetableGrid,
-        timetableColors: parsedCloud.state.timetableColors || parsedLocal.state.timetableColors,
-        weekdayTimes: parsedCloud.state.weekdayTimes || parsedLocal.state.weekdayTimes,
-        weekendTimes: parsedCloud.state.weekendTimes || parsedLocal.state.weekendTimes,
-        deadlines: parsedCloud.state.deadlines || parsedLocal.state.deadlines,
-        syntheticDeadlines: parsedCloud.state.syntheticDeadlines || parsedLocal.state.syntheticDeadlines,
-        deadlineAlertDays: parsedCloud.state.deadlineAlertDays || parsedLocal.state.deadlineAlertDays,
-        dismissedDeadlineAlerts: parsedCloud.state.dismissedDeadlineAlerts || parsedLocal.state.dismissedDeadlineAlerts,
-        roadmaps: mergeArraysById(parsedLocal.state.roadmaps, parsedCloud.state.roadmaps),
-        plans: mergeArraysById(parsedLocal.state.plans, parsedCloud.state.plans),
-        customAlarmSounds: mergeArraysById(parsedLocal.state.customAlarmSounds, parsedCloud.state.customAlarmSounds),
-        timerEndAt: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerEndAt ?? null) : (parsedCloud.state.timerEndAt ?? null),
-        timerPausedLeft: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerPausedLeft ?? null) : (parsedCloud.state.timerPausedLeft ?? null),
-        timerInitialMins: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerInitialMins ?? null) : (parsedCloud.state.timerInitialMins ?? null),
-        timerDeviceId: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerDeviceId ?? null) : (parsedCloud.state.timerDeviceId ?? null),
-        timerLastUpdated: Math.max(parsedLocal.state.timerLastUpdated || 0, parsedCloud.state.timerLastUpdated || 0),
-        timerLastSavedChunks: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerLastSavedChunks || 0) : (parsedCloud.state.timerLastSavedChunks || 0),
-        timerLastAlertedChunks: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.timerLastAlertedChunks || 0) : (parsedCloud.state.timerLastAlertedChunks || 0),
-        activeTaskId: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.activeTaskId ?? null) : (parsedCloud.state.activeTaskId ?? null),
-        activeTaskTitle: ((parsedLocal.state.timerLastUpdated || 0) >= (parsedCloud.state.timerLastUpdated || 0)) ? (parsedLocal.state.activeTaskTitle ?? null) : (parsedCloud.state.activeTaskTitle ?? null),
-        manifestationDesktopPhotos: mergeStringArrays(parsedLocal.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos, parsedCloud.state.manifestationDesktopPhotos),
-        manifestationMobilePhotos: mergeStringArrays(parsedLocal.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos, parsedCloud.state.manifestationMobilePhotos),
-        customDesktopWallpapers: mergeStringArrays(parsedLocal.state.customDesktopWallpapers, parsedCloud.state.customDesktopWallpapers, parsedCloud.state.customDesktopWallpapers),
-        customMobileWallpapers: mergeStringArrays(parsedLocal.state.customMobileWallpapers, parsedCloud.state.customMobileWallpapers, parsedCloud.state.customMobileWallpapers),
-        customQuotes: mergeStringArrays(parsedLocal.state.customQuotes, parsedCloud.state.customQuotes, parsedCloud.state.customQuotes),
-        manifestationCustomQuotes: mergeStringArrays(parsedLocal.state.manifestationCustomQuotes, parsedCloud.state.manifestationCustomQuotes, parsedCloud.state.manifestationCustomQuotes),
-        activeDesktopCustomIndex: (parsedLocal.state.activeDesktopCustomIndex !== undefined && parsedLocal.state.activeDesktopCustomIndex !== null) ? parsedLocal.state.activeDesktopCustomIndex : parsedCloud.state.activeDesktopCustomIndex,
-        activeMobileCustomIndex: (parsedLocal.state.activeMobileCustomIndex !== undefined && parsedLocal.state.activeMobileCustomIndex !== null) ? parsedLocal.state.activeMobileCustomIndex : parsedCloud.state.activeMobileCustomIndex,
-        activeManifestationDesktopIndex: (parsedLocal.state.activeManifestationDesktopIndex !== undefined && parsedLocal.state.activeManifestationDesktopIndex !== null) ? parsedLocal.state.activeManifestationDesktopIndex : parsedCloud.state.activeManifestationDesktopIndex,
-        activeManifestationMobileIndex: (parsedLocal.state.activeManifestationMobileIndex !== undefined && parsedLocal.state.activeManifestationMobileIndex !== null) ? parsedLocal.state.activeManifestationMobileIndex : parsedCloud.state.activeManifestationMobileIndex,
-        peekModeWallpaper: (parsedLocal.state.peekModeWallpaper !== undefined && parsedLocal.state.peekModeWallpaper !== null) ? parsedLocal.state.peekModeWallpaper : parsedCloud.state.peekModeWallpaper,
+        history: parsedCloud.state.history || {},
+        dailyTimes: mergeDailyTimes(parsedLocal.state.dailyTimes || {}, parsedCloud.state.dailyTimes || {}),
+        timerEndAt: parsedLocal.state.timerEndAt !== undefined ? parsedLocal.state.timerEndAt : parsedCloud.state.timerEndAt,
+        timerPausedLeft: parsedLocal.state.timerPausedLeft !== undefined ? parsedLocal.state.timerPausedLeft : parsedCloud.state.timerPausedLeft,
+        timerInitialMins: parsedLocal.state.timerInitialMins !== undefined ? parsedLocal.state.timerInitialMins : parsedCloud.state.timerInitialMins,
+        timerDeviceId: parsedLocal.state.timerDeviceId !== undefined ? parsedLocal.state.timerDeviceId : parsedCloud.state.timerDeviceId,
+        activeTaskId: parsedLocal.state.activeTaskId !== undefined ? parsedLocal.state.activeTaskId : parsedCloud.state.activeTaskId,
+        activeTaskTitle: parsedLocal.state.activeTaskTitle !== undefined ? parsedLocal.state.activeTaskTitle : parsedCloud.state.activeTaskTitle,
       };
 
       if (mergedState.timerEndAt && mergedState.timerEndAt < Date.now()) {
-        mergedState.timerEndAt = null;
-        mergedState.timerPausedLeft = null;
-        mergedState.timerInitialMins = null;
-        mergedState.timerDeviceId = null;
-        mergedState.timerLastSavedChunks = 0;
-        mergedState.timerLastAlertedChunks = 0;
-        mergedState.activeTaskId = null;
-        mergedState.activeTaskTitle = null;
+        mergedState.timerEndAt = null; mergedState.timerPausedLeft = null;
+        mergedState.timerInitialMins = null; mergedState.timerDeviceId = null;
       }
 
-      const transientKeys = [
-        'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
-        'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
-        'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
-        'widgetZIndices', 'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen',
-        'selectedGroupId'
-      ];
+      const transientKeys = ['isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger', 'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen', 'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated', 'widgetZIndices', 'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen', 'selectedGroupId'];
       transientKeys.forEach(key => delete (mergedState as any)[key]);
 
-      const mergedData = { version: 2, state: mergedState };
-      const mergedStr = JSON.stringify(mergedData);
+      const mergedStr = JSON.stringify({ version: 2, state: mergedState });
 
       isSyncingFromCloud = true;
       setSyncLastModified(Math.max(Date.now(), (json.cloudLastModified || 0) + 1000));
@@ -265,11 +281,9 @@ export const performSave = async () => {
     setSyncLastModified(json.lastModified);
     success = true;
     lastSavedValue = valueToSave;
+
     if (json.updatedHistory) {
-      useDashboardStore.setState((state: any) => ({
-        history: { ...state.history, ...json.updatedHistory }
-      }));
-      // Update pendingValue to prevent an immediate re-save trigger
+      useDashboardStore.setState((state: any) => ({ history: { ...state.history, ...json.updatedHistory } }));
       const currentPending = JSON.parse(pendingValue || lastSavedValue);
       if (currentPending.state) {
         currentPending.state.history = { ...currentPending.state.history, ...json.updatedHistory };
@@ -277,39 +291,13 @@ export const performSave = async () => {
         lastSavedValue = pendingValue;
       }
     }
-    if (typeof window !== 'undefined' && incrementHistory) {
-      try {
-        const currentQueueStr = localStorage.getItem('unsaved_focus_mins');
-        if (currentQueueStr) {
-          const currentQueue = JSON.parse(currentQueueStr);
-          for (const dateKey in incrementHistory) {
-            if (currentQueue[dateKey]) {
-              currentQueue[dateKey] -= incrementHistory[dateKey];
-              if (currentQueue[dateKey] <= 0) {
-                delete currentQueue[dateKey];
-              }
-            }
-          }
-          if (Object.keys(currentQueue).length === 0) {
-            localStorage.removeItem('unsaved_focus_mins');
-          } else {
-            localStorage.setItem('unsaved_focus_mins', JSON.stringify(currentQueue));
-          }
-        }
-      } catch (e) {}
-    }
   } catch (err) {
     console.warn("Failed to save to DB, storing locally:", err);
   } finally {
     isSaving = false;
     if (success) {
-      if (pendingValue === valueToSave) {
-        pendingValue = null;
-        hasUnsavedChanges = false;
-        saveTimeout = null;
-      } else {
-        saveTimeout = setTimeout(performSave, 500);
-      }
+      if (pendingValue === valueToSave) { pendingValue = null; hasUnsavedChanges = false; saveTimeout = null; } 
+      else { saveTimeout = setTimeout(performSave, 500); }
     } else {
       setSyncLastModified(Date.now());
       hasUnsavedChanges = true;
@@ -352,51 +340,9 @@ export const forcePushTimerState = () => {
   }
 };
 
-export const pushCountdownsToDB = async (payload: any) => {
-  if (typeof window === 'undefined') return;
-  const token = getSyncToken();
-  if (!token) return;
-  try {
-    await fetch('/api/countdowns', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify(payload)
-    });
-  } catch (e) { console.error('Failed to push countdowns', e); }
-};
-
-export const pushDeadlinesToDB = async (payload: any) => {
-  if (typeof window === 'undefined') return;
-  const token = getSyncToken();
-  if (!token) return;
-  try {
-    await fetch('/api/deadlines', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify(payload)
-    });
-  } catch (e) { console.error("Failed to push deadlines", e); }
-};
-
-export const pushDailyRoutineToDB = async (payload: any) => {
-  if (typeof window === 'undefined') return;
-  const token = getSyncToken();
-  if (!token) return;
-  try {
-    const statePayload = JSON.stringify({
-      data: { state: payload, version: 2 },
-      lastModified: Date.now(),
-      modifiedCollections: ['DailyRoutine'],
-      modifiedKeys: Object.keys(payload)
-    });
-    await fetch('/api/store', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: statePayload
-    });
-  } catch (e) { console.error('Failed to push daily routine', e); }
-};
-
+export const pushCountdownsToDB = async (payload: any) => { };
+export const pushDeadlinesToDB = async (payload: any) => { };
+export const pushDailyRoutineToDB = async (payload: any) => { };
 export const pushStreakToDB = (dateKey: string, minutes: number) => {
   const token = getSyncToken();
   if (token) {
@@ -407,40 +353,18 @@ export const pushStreakToDB = (dateKey: string, minutes: number) => {
     }).catch(err => console.error("Streak sync error:", err));
   }
 };
-
-export const clearOldDataAPI = async (days: number) => {
-  const token = getSyncToken();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  await fetch(`/api/health?action=olderThan&days=${days}`, { method: 'DELETE', headers });
-};
-
-export const clearAllDataAPI = async () => {
-  const token = getSyncToken();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  await fetch(`/api/health?action=deleteAll`, { method: 'DELETE', headers });
-  await fetch('/api/store', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ clearAll: true })
-  });
-};
+export const clearOldDataAPI = async (days: number) => {  };
+export const clearAllDataAPI = async () => {  };
 
 if (typeof window !== 'undefined') {
   const triggerAutoSyncOnOnline = () => {
     try {
+      syncFocusQueue(); 
       const stateObj = useDashboardStore.getState();
       if (!stateObj || typeof stateObj !== 'object' || !stateObj._hasHydrated) return;
 
       const filteredState = { ...stateObj } as any;
-      const transientKeys = [
-        'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
-        'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
-        'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
-        'widgetZIndices', 'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen',
-        'settingsActiveTab', 'connectInitialTab'
-      ];
+      const transientKeys = ['isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger', 'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen', 'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated', 'widgetZIndices', 'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen', 'settingsActiveTab', 'connectInitialTab'];
       transientKeys.forEach(key => delete filteredState[key]);
 
       pendingValue = JSON.stringify({ state: filteredState });
@@ -460,9 +384,7 @@ export const fileStorage = createJSONStorage(() => ({
     const localDataStr = localStorage.getItem('dashboard-storage');
 
     if (bypassCloudSync || (typeof navigator !== 'undefined' && !navigator.onLine) || abortInstantLoad) {
-      abortInstantLoad = false;
-      bypassCloudSync = false;
-      lastSavedValue = localDataStr;
+      abortInstantLoad = false; bypassCloudSync = false; lastSavedValue = localDataStr;
       return localDataStr;
     }
 
@@ -480,6 +402,7 @@ export const fileStorage = createJSONStorage(() => ({
         if (res.ok) {
           failedToLoadDB = false;
           const json = await res.json();
+          syncFocusQueue(); 
 
           if (json.data && json.data.state) {
             let localState: any = {};
@@ -487,58 +410,46 @@ export const fileStorage = createJSONStorage(() => ({
               try { localState = JSON.parse(localDataStr).state || {}; } catch (e) { }
             }
 
-            const localModified = localState.lastModified || 0;
-            const cloudModified = json.lastModified || 0;
-            const isLocalNewer = localModified > cloudModified;
-
-            const localHistory = localState.history || {};
-            const cloudHistory = json.data.state.history || {};
-            const mergedHistory = isLocalNewer ? { ...cloudHistory, ...localHistory } : { ...localHistory, ...cloudHistory };
+            const cloudState = json.data.state;
+            const mergedHistory = { ...(cloudState.history || {}) };
             
-            let queue: any = {};
-            try {
-              const queueStr = localStorage.getItem('unsaved_focus_mins');
-              if (queueStr) queue = JSON.parse(queueStr);
-            } catch (e) {}
-            
+            // Securely fetch queue to merge accurate UI history
+            const queue = getSecureFocusQueue();
             for (const dateKey in queue) {
-              mergedHistory[dateKey] = (cloudHistory[dateKey] || 0) + queue[dateKey];
+                if (queue[dateKey] > 0) {
+                    mergedHistory[dateKey] = (mergedHistory[dateKey] || 0) + queue[dateKey];
+                }
             }
 
-            const todayKey = getLocalDateString();
-            const localToday = localHistory[todayKey] || 0;
-            const cloudToday = cloudHistory[todayKey] || 0;
-            if (isLocalNewer && localToday === 0 && cloudToday > 0 && !queue[todayKey]) mergedHistory[todayKey] = cloudToday;
-            else if (!isLocalNewer && cloudToday === 0 && localToday > 0) mergedHistory[todayKey] = localToday;
-
-            const localDailyTimes = localState.dailyTimes || {};
-            const cloudDailyTimes = json.data.state.dailyTimes || {};
-            const mergedDailyTimes = mergeDailyTimes(localDailyTimes, cloudDailyTimes);
-
             const mergedState = {
-              ...json.data.state,
+              ...cloudState,
               isSettingsOpen: false,
               settingsActiveTab: 'preferences',
               connectInitialTab: undefined,
               history: mergedHistory,
-              dailyTimes: mergedDailyTimes,
-              activeDesktopCustomIndex: localState.activeDesktopCustomIndex !== undefined ? localState.activeDesktopCustomIndex : json.data.state.activeDesktopCustomIndex,
-              activeMobileCustomIndex: localState.activeMobileCustomIndex !== undefined ? localState.activeMobileCustomIndex : json.data.state.activeMobileCustomIndex,
-              activeManifestationDesktopIndex: localState.activeManifestationDesktopIndex !== undefined ? localState.activeManifestationDesktopIndex : json.data.state.activeManifestationDesktopIndex,
-              activeManifestationMobileIndex: localState.activeManifestationMobileIndex !== undefined ? localState.activeManifestationMobileIndex : json.data.state.activeManifestationMobileIndex,
-              activePeekModeCustomIndex: localState.activePeekModeCustomIndex !== undefined ? localState.activePeekModeCustomIndex : json.data.state.activePeekModeCustomIndex,
-              peekModeWallpaper: localState.peekModeWallpaper !== undefined ? localState.peekModeWallpaper : json.data.state.peekModeWallpaper,
+              dailyTimes: mergeDailyTimes(localState.dailyTimes || {}, cloudState.dailyTimes || {}),
+              timerEndAt: localState.timerEndAt !== undefined ? localState.timerEndAt : cloudState.timerEndAt,
+              timerPausedLeft: localState.timerPausedLeft !== undefined ? localState.timerPausedLeft : cloudState.timerPausedLeft,
+              timerInitialMins: localState.timerInitialMins !== undefined ? localState.timerInitialMins : cloudState.timerInitialMins,
+              timerDeviceId: localState.timerDeviceId !== undefined ? localState.timerDeviceId : cloudState.timerDeviceId,
+              activeTaskId: localState.activeTaskId !== undefined ? localState.activeTaskId : cloudState.activeTaskId,
+              activeTaskTitle: localState.activeTaskTitle !== undefined ? localState.activeTaskTitle : cloudState.activeTaskTitle,
+              activeDesktopCustomIndex: localState.activeDesktopCustomIndex !== undefined ? localState.activeDesktopCustomIndex : cloudState.activeDesktopCustomIndex,
+              activeMobileCustomIndex: localState.activeMobileCustomIndex !== undefined ? localState.activeMobileCustomIndex : cloudState.activeMobileCustomIndex,
+              activeManifestationDesktopIndex: localState.activeManifestationDesktopIndex !== undefined ? localState.activeManifestationDesktopIndex : cloudState.activeManifestationDesktopIndex,
+              activeManifestationMobileIndex: localState.activeManifestationMobileIndex !== undefined ? localState.activeManifestationMobileIndex : cloudState.activeManifestationMobileIndex,
+              activePeekModeCustomIndex: localState.activePeekModeCustomIndex !== undefined ? localState.activePeekModeCustomIndex : cloudState.activePeekModeCustomIndex,
+              peekModeWallpaper: localState.peekModeWallpaper !== undefined ? localState.peekModeWallpaper : cloudState.peekModeWallpaper,
             };
 
             const cloudStr = JSON.stringify({ version: 2, state: mergedState });
             localStorage.setItem('dashboard-storage', cloudStr);
-            
-            const hasOfflineStatsToPush = JSON.stringify(mergedHistory) !== JSON.stringify(cloudHistory) || JSON.stringify(mergedDailyTimes) !== JSON.stringify(cloudDailyTimes);
-            if (hasOfflineStatsToPush) {
-              lastSavedValue = JSON.stringify({ version: 2, state: json.data.state });
+
+            if (JSON.stringify(mergeDailyTimes(localState.dailyTimes || {}, cloudState.dailyTimes || {})) !== JSON.stringify(cloudState.dailyTimes)) {
+              lastSavedValue = JSON.stringify({ version: 2, state: cloudState });
               pendingValue = cloudStr;
               hasUnsavedChanges = true;
-              if (!saveTimeout) saveTimeout = setTimeout(performSave, 5000);
+              if (!saveTimeout) saveTimeout = setTimeout(performSave, 1000);
             } else {
               lastSavedValue = cloudStr;
             }

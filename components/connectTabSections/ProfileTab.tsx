@@ -223,7 +223,7 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
   };
 
   if (!isProfileUnlocked) {
-    if (username?.toLowerCase() === 'demo_user') {
+    if (username?.toLowerCase() === process.env.DEMO_USERNAME) {
       return (
         <div className="flex flex-col items-center justify-center w-full min-h-[250px] gap-3 animate-in fade-in slide-in-from-bottom-2">
           <ShieldAlert className="w-10 h-10 text-blue-400 mb-1 opacity-80" />
@@ -449,11 +449,11 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
         <label className="text-[10px] md:text-xs font-bold text-red-400 flex items-center gap-1.5 uppercase tracking-wider"><Trash className="w-3.5 h-3.5" /> Danger Zone</label>
         <button 
           onClick={() => {
-            if (username?.toLowerCase() === 'demo_user') return;
+            if (username?.toLowerCase() === process.env.DEMO_USERNAME) return;
             setConfirmModal({ isOpen: true, title: 'Delete Account', message: 'Are you sure you want to delete your account? This action cannot be undone.', isDestructive: true, requireText: 'DELETE', onConfirm: handleDeleteAccount })
           }} 
-          disabled={username?.toLowerCase() === 'demo_user'}
-          title={username?.toLowerCase() === 'demo_user' ? "Account deletion is disabled in Demo Mode" : ""}
+          disabled={username?.toLowerCase() === process.env.DEMO_USERNAME}
+          title={username?.toLowerCase() === process.env.DEMO_USERNAME ? "Account deletion is disabled in Demo Mode" : ""}
           className="w-full px-3 py-2 bg-red-900/40 hover:bg-red-900/60 disabled:opacity-50 disabled:cursor-not-allowed text-red-300 border border-red-900/50 rounded-xl transition-colors font-bold text-xs flex items-center justify-center gap-2 mt-1 shadow-sm"
         >
           <Trash size={14} /> Delete Account Permanently

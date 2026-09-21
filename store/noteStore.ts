@@ -7,10 +7,20 @@ export interface Note {
     entries: Record<string, string>; // date string -> html content
 }
 
+interface NoteAction {
+    type: 'ADD_NOTE' | 'UPDATE_NOTE_TITLE' | 'UPDATE_NOTE_ENTRY' | 'DELETE_NOTE' | 'REPLACE_ALL';
+    noteId?: string;
+    note?: Note;
+    title?: string;
+    date?: string;
+    content?: string | null;
+    notes?: Note[];
+}
+
 interface NoteState {
     _hasHydrated: boolean;
     setHasHydrated: (state: boolean) => void;
-    lastModified: number; // Tracks exactly when the note was last touched
+    lastModified: number;
     notes: Note[];
     setNotes: (notes: Note[]) => void;
     activeNoteId: string | null;
@@ -23,42 +33,75 @@ interface NoteState {
     fetchNotes: () => Promise<void>;
 }
 
-let noteSaveTimeout: NodeJS.Timeout | null = null;
+// ----------------------------------------------------------------------
+// QUEUE & SYNC ENGINE
+// ----------------------------------------------------------------------
+export const syncNotesQueue = async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+    const token = localStorage.getItem('dashboard_sync_token') || localStorage.getItem('token');
+    if (!token) return;
 
-// Debounced API sync helper
-export const pushNotesToDB = async (updates: Partial<NoteState>) => {
-    if (typeof window === 'undefined') return;
-    if (noteSaveTimeout) clearTimeout(noteSaveTimeout);
+    const queueStr = localStorage.getItem('notes_offline_queue');
+    if (!queueStr) return;
 
-    noteSaveTimeout = setTimeout(async () => {
-        const token = localStorage.getItem('dashboard_sync_token') || localStorage.getItem('token');
-        if (!token || !navigator.onLine) return;
-        try {
-            await fetch('/api/notes', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(updates) // This now includes lastModified!
-            });
-        } catch (e) {
-            console.error("Failed to sync notes", e);
+    let actions: NoteAction[] = [];
+    try { actions = JSON.parse(queueStr); } catch (e) { return; }
+    if (actions.length === 0) return;
+
+    try {
+        const res = await fetch('/api/notes', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ actions })
+        });
+        
+        if (res.ok) {
+            localStorage.removeItem('notes_offline_queue');
         }
-    }, 3000);
+    } catch (e) {
+        console.warn("[Notes] Failed to push offline queue. Will retry later.", e);
+    }
 };
 
+const queueNoteAction = (action: NoteAction) => {
+    if (typeof window === 'undefined') return;
+    
+    let queue: NoteAction[] = [];
+    try {
+        const queueStr = localStorage.getItem('notes_offline_queue');
+        if (queueStr) queue = JSON.parse(queueStr);
+    } catch (e) {}
+
+    queue.push(action);
+    localStorage.setItem('notes_offline_queue', JSON.stringify(queue));
+
+    if (navigator.onLine) {
+        syncNotesQueue();
+    }
+};
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', syncNotesQueue);
+    window.addEventListener('app_sync_now', syncNotesQueue);
+}
+
+// ----------------------------------------------------------------------
+// STORE
+// ----------------------------------------------------------------------
 export const useNoteStore = create<NoteState>()(
     persist(
         (set, get) => ({
             _hasHydrated: false,
             setHasHydrated: (state) => set({ _hasHydrated: state }),
 
-            lastModified: 0, // Fresh devices start at 0
+            lastModified: 0,
             notes: [{ id: 'default', title: 'Daily Journal', entries: {} }],
             activeNoteId: 'default',
 
             setNotes: (notes) => {
                 const now = Date.now();
+                queueNoteAction({ type: 'REPLACE_ALL', notes });
                 set({ notes, lastModified: now });
-                pushNotesToDB({ notes, lastModified: now });
             },
 
             addNote: () => set((state) => {
@@ -69,48 +112,55 @@ export const useNoteStore = create<NoteState>()(
                 const newNotes = [newNote, ...state.notes];
                 const now = Date.now();
 
-                pushNotesToDB({ notes: newNotes, lastModified: now });
+                queueNoteAction({ type: 'ADD_NOTE', note: newNote });
                 return { notes: newNotes, activeNoteId: newNote.id, lastModified: now };
             }),
 
             updateNoteTitle: (id, title) => set((state) => {
+                queueNoteAction({ type: 'UPDATE_NOTE_TITLE', noteId: id, title });
                 const newNotes = state.notes.map(n => n.id === id ? { ...n, title } : n);
-                const now = Date.now();
-
-                pushNotesToDB({ notes: newNotes, lastModified: now });
-                return { notes: newNotes, lastModified: now };
+                return { notes: newNotes, lastModified: Date.now() };
             }),
 
             updateNoteEntry: (id, date, content) => set((state) => {
+                const cleanText = content.replace(/<[^>]*>?/gm, '').trim();
+                const isDeleting = !cleanText;
+
+                queueNoteAction({ 
+                    type: 'UPDATE_NOTE_ENTRY', 
+                    noteId: id, 
+                    date, 
+                    content: isDeleting ? null : content 
+                });
+
                 const updatedNotes = state.notes.map(n => {
                     if (n.id !== id) return n;
                     const newEntries = { ...n.entries };
-                    const cleanText = content.replace(/<[^>]*>?/gm, '').trim();
-                    if (!cleanText) {
+                    if (isDeleting) {
                         delete newEntries[date];
                     } else {
                         newEntries[date] = content;
                     }
                     return { ...n, entries: newEntries };
                 });
-                const now = Date.now();
 
-                pushNotesToDB({ notes: updatedNotes, lastModified: now });
-                return { notes: updatedNotes, lastModified: now };
+                return { notes: updatedNotes, lastModified: Date.now() };
             }),
 
             deleteNote: (id) => set((state) => {
+                queueNoteAction({ type: 'DELETE_NOTE', noteId: id });
+                
                 let newNotes = state.notes.filter(n => n.id !== id);
                 if (newNotes.length === 0) {
-                    newNotes = [{ id: Date.now().toString(), title: 'Daily Journal', entries: {} }];
+                    const defaultNote = { id: Date.now().toString(), title: 'Daily Journal', entries: {} };
+                    newNotes = [defaultNote];
+                    queueNoteAction({ type: 'ADD_NOTE', note: defaultNote }); // Safely queue the fallback note
                 }
-                const now = Date.now();
 
-                pushNotesToDB({ notes: newNotes, lastModified: now });
                 return {
                     notes: newNotes,
                     activeNoteId: state.activeNoteId === id ? newNotes[0].id : state.activeNoteId,
-                    lastModified: now
+                    lastModified: Date.now()
                 };
             }),
 
@@ -121,15 +171,23 @@ export const useNoteStore = create<NoteState>()(
                 const newNotes = [...state.notes];
                 const [moved] = newNotes.splice(fromIndex, 1);
                 newNotes.splice(toIndex, 0, moved);
-                const now = Date.now();
-
-                pushNotesToDB({ notes: newNotes, lastModified: now });
-                return { notes: newNotes, lastModified: now };
+                
+                queueNoteAction({ type: 'REPLACE_ALL', notes: newNotes });
+                return { notes: newNotes, lastModified: Date.now() };
             }),
 
             fetchNotes: async () => {
+                // GUARD 1: Try flushing queue first to avoid overwriting local changes
+                const queueStr = localStorage.getItem('notes_offline_queue');
+                if (queueStr && JSON.parse(queueStr).length > 0) {
+                    await syncNotesQueue();
+                    if (localStorage.getItem('notes_offline_queue')) return;
+                }
+
+                if (typeof window !== 'undefined' && !navigator.onLine) return;
                 const token = localStorage.getItem('dashboard_sync_token') || localStorage.getItem('token');
-                if (!token || !navigator.onLine) return;
+                if (!token) return;
+
                 try {
                     const res = await fetch(`/api/notes?t=${Date.now()}`, {
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -145,7 +203,7 @@ export const useNoteStore = create<NoteState>()(
                             set((state) => {
                                 const localLastModified = state.lastModified || 0;
 
-                                // GUARD 1: Prevent empty defaults from wiping real cloud data
+                                // Prevent empty defaults from wiping real cloud data
                                 const isLocalEmptyDefault = localLastModified === 0 ||
                                     (state.notes.length === 1 && state.notes[0].id === 'default' && Object.keys(state.notes[0].entries).length === 0);
 
@@ -153,17 +211,16 @@ export const useNoteStore = create<NoteState>()(
                                     return { notes: cloudNotes, lastModified: cloudLastModified };
                                 }
 
-                                // GUARD 2: Strict Overwrite using exact timestamps
+                                // Strict Overwrite using exact timestamps
                                 if (cloudLastModified > localLastModified) {
-                                    // Cloud has newer edits from another device. OVERWRITE local.
                                     return { notes: cloudNotes, lastModified: cloudLastModified };
                                 } else if (localLastModified > cloudLastModified) {
-                                    // Local has newer edits (likely happened offline). PUSH to cloud!
-                                    pushNotesToDB({ notes: state.notes, lastModified: localLastModified });
+                                    // Local is newer. Push up to cloud.
+                                    queueNoteAction({ type: 'REPLACE_ALL', notes: state.notes });
                                     return state;
                                 }
 
-                                return state; // Timestamps match, do nothing.
+                                return state; 
                             });
                         }
                     }

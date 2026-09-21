@@ -35,17 +35,52 @@ export async function PATCH(request: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    if (!body.updates) return NextResponse.json({ error: 'No updates provided' }, { status: 400 });
-
     await dbConnect();
-    const updatedTimetable = await Timetable.findOneAndUpdate(
+
+    // 1. Ensure document exists
+    await Timetable.updateOne(
       { userId: user.userId },
-      { $set: body.updates, lastModified: Date.now() },
-      { upsert: true, new: true }
+      { $setOnInsert: { lastModified: Date.now() } },
+      { upsert: true }
     );
 
-    return NextResponse.json({ success: true, data: updatedTimetable });
+    // 2. ATOMIC OFFLINE QUEUE PROCESSOR
+    if (body.actions && Array.isArray(body.actions) && body.actions.length > 0) {
+      const bulkOps: any[] = [];
+
+      for (const action of body.actions) {
+        if (action.type === 'UPDATE_TIMETABLE') {
+          // Dynamically sets exactly what was changed (supports dot notation like "timetableGrid.Mon.09:00 AM")
+          bulkOps.push({
+            updateOne: {
+              filter: { userId: user.userId },
+              update: { $set: { ...action.updates, lastModified: Date.now() } }
+            }
+          });
+        }
+      }
+
+      if (bulkOps.length > 0) {
+        await Timetable.bulkWrite(bulkOps as any);
+      }
+      
+      return NextResponse.json({ success: true, message: 'Queue processed atomically' });
+    }
+
+    // 3. FALLBACK FOR INSTANT SAVES
+    if (body.updates) {
+      const updatedTimetable = await Timetable.findOneAndUpdate(
+        { userId: user.userId },
+        { $set: { ...body.updates, lastModified: Date.now() } },
+        { new: true }
+      );
+      return NextResponse.json({ success: true, data: updatedTimetable });
+    }
+
+    return NextResponse.json({ error: 'No valid actions or updates provided' }, { status: 400 });
+
   } catch (error) {
+    console.error('Error updating timetable:', error);
     return NextResponse.json({ error: 'Failed to update timetable' }, { status: 500 });
   }
 }

@@ -47,38 +47,89 @@ export async function PATCH(request: Request) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await request.json();
-        if (!body.updates) return NextResponse.json({ error: 'No updates provided' }, { status: 400 });
-
         const client = await clientPromise;
         const db = client.db();
+        const collection = db.collection('Tasks');
 
-        const incomingLastModified = body.updates.lastModified || Date.now();
-
-        // 1. Fetch current DB record to check timestamps
-        const existing = await db.collection('Tasks').findOne({ userId: user.userId });
-
-        // 2. If DB has a newer timestamp than what's coming in, reject stale overwrites
-        if (existing && existing.lastModified && existing.lastModified > incomingLastModified) {
-            return NextResponse.json({
-                success: true,
-                data: existing,
-                message: "Ignored stale update"
-            });
-        }
-
-        // 3. Perform update if incoming data is newer or equal
-        const updated = await db.collection('Tasks').findOneAndUpdate(
+        // 1. Ensure document exists so array operations don't fail on new accounts
+        await collection.updateOne(
             { userId: user.userId },
-            {
-                $set: {
-                    ...body.updates,
-                    lastModified: incomingLastModified
-                }
-            },
-            { upsert: true, returnDocument: 'after' }
+            { $setOnInsert: { tasks: [], tomorrowTasks: [], taskGroupNames: ['Core Tasks', 'Daily Routine', 'Milestones'], tasksDate: '' } },
+            { upsert: true }
         );
 
-        return NextResponse.json({ success: true, data: updated });
+        // 2. ATOMIC OFFLINE QUEUE PROCESSOR
+        if (body.actions && Array.isArray(body.actions) && body.actions.length > 0) {
+            const bulkOps: any[] = [];
+
+            for (const action of body.actions) {
+                if (action.type === 'ADD_TASK') {
+                    const targetArray = action.tab === 'tomorrow' ? 'tomorrowTasks' : 'tasks';
+                    bulkOps.push({
+                        updateOne: {
+                            filter: { userId: user.userId },
+                            update: { $push: { [targetArray]: action.task },$set: { lastModified: Date.now() } }
+                        }
+                    });
+                } 
+                else if (action.type === 'UPDATE_TASK') {
+                    // THIS IS WHERE THE EDIT HAPPENS!
+                    // It dynamically targets only the fields that changed (e.g. `duration` or `title`)
+                    const targetArray = action.tab === 'tomorrow' ? 'tomorrowTasks' : 'tasks';
+                    const setObj: Record<string, any> = { lastModified: Date.now() };
+                    
+                    for (const key in action.updates) {
+                        setObj[`${targetArray}.$[elem].${key}`] = action.updates[key];
+                    }
+
+                    bulkOps.push({
+                        updateOne: {
+                            filter: { userId: user.userId },
+                            update: { $set: setObj },
+                            arrayFilters: [{ "elem.id": action.taskId }] // Finds the specific task inside the array
+                        }
+                    });
+                } 
+                else if (action.type === 'DELETE_TASK') {
+                    bulkOps.push({
+                        updateOne: {
+                            filter: { userId: user.userId },
+                            update: { 
+                                $pull: { tasks: { id: action.taskId }, tomorrowTasks: { id: action.taskId } },$set: { lastModified: Date.now() }
+                            }
+                        }
+                    });
+                } 
+                else if (action.type === 'REPLACE_ALL') {
+                    // Fallback for full array replacements (like Drag & Drop reordering)
+                    bulkOps.push({
+                        updateOne: {
+                            filter: { userId: user.userId },
+                            update: { $set: { ...action.data, lastModified: Date.now() } }
+                        }
+                    });
+                }
+            }
+
+            if (bulkOps.length > 0) {
+                await collection.bulkWrite(bulkOps);
+            }
+            
+            return NextResponse.json({ success: true, message: 'Queue processed atomically' });
+        }
+
+        // 3. FALLBACK FOR INSTANT SAVES (If queue isn't used)
+        if (body.updates) {
+            const updated = await collection.findOneAndUpdate(
+                { userId: user.userId },
+                { $set: { ...body.updates, lastModified: Date.now() } },
+                { returnDocument: 'after' }
+            );
+            return NextResponse.json({ success: true, data: updated });
+        }
+
+        return NextResponse.json({ error: 'No valid actions or updates provided' }, { status: 400 });
+
     } catch (error) {
         console.error("PATCH TASKS ERROR:", error);
         return NextResponse.json({ error: 'Failed to update tasks' }, { status: 500 });

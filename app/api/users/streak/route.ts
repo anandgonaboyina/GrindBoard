@@ -26,14 +26,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    if (minutes < 60) {
-      return NextResponse.json({ message: 'No streak update needed' });
-    }
-
     const client = await clientPromise;
     const db = client.db();
     const userObjId = new ObjectId(decoded.userId);
-    
+
+    // 1. ALWAYS RECORD THE MINUTES FIRST (Offline Queue Fix)
+    // We use $inc to safely add the new minutes (e.g., 11) to whatever is already in the database for that day.
+    await db.collection('Stats').updateOne(
+      { userId: decoded.userId },
+      { 
+        $inc: { [`history.${dateStr}`]: minutes },
+        $set: { lastModified: Date.now() }
+      },
+      { upsert: true }
+    );
+
+    // Fetch the updated stats to see the new total for today
+    const updatedStats = await db.collection('Stats').findOne({ userId: decoded.userId });
+    const totalMinutesToday = updatedStats?.history?.[dateStr] || minutes;
+
+    // 2. STREAK LOGIC (Only update streak if total for the day is >= 60)
+    if (totalMinutesToday < 60) {
+      // Return success so the frontend queue clears the 11 minutes, but skip streak logic
+      return NextResponse.json({ success: true, message: 'Minutes logged, streak unchanged' }, { status: 200 });
+    }
+
     const user = await db.collection('User').findOne({ _id: userObjId }, { projection: { streak: 1 } });
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -43,21 +60,8 @@ export async function POST(request: Request) {
     let updated = false;
 
     if (!streak) {
-      // Fetch history from Stats to calculate accurate historical streaks
-      const storage = await db.collection('Stats').findOne({ userId: decoded.userId }, { projection: { history: 1 } });
-      const legacyStorage = await db.collection('DashboardStorage').findOne({ userId: decoded.userId }, { projection: { 'state.history': 1, data: 1 } });
-      
-      let history = storage?.history;
-      if (!history && legacyStorage?.state?.history) {
-        history = legacyStorage.state.history;
-      }
-      if (!history && legacyStorage?.data) {
-        try {
-          const parsed = JSON.parse(legacyStorage.data);
-          history = parsed?.state?.history;
-        } catch(e){}
-      }
-      history = history || {};
+      // Base the initial streak calculation purely off the freshly updated Stats history
+      let history = updatedStats?.history || {};
       
       let maxStreak = 0;
       let tempStreak = 0;
@@ -90,15 +94,7 @@ export async function POST(request: Request) {
       reqDate.setHours(0,0,0,0);
       
       let activeDate = new Date(reqDate);
-      if (!history[dateStr] || history[dateStr] < 60) {
-        // Technically this API is called when minutes >= 60, but just in case
-        if (minutes >= 60) {
-          history[dateStr] = minutes;
-        } else {
-          activeDate.setDate(activeDate.getDate() - 1);
-        }
-      }
-
+      
       while (true) {
         const activeStr = `${activeDate.getFullYear()}-${String(activeDate.getMonth() + 1).padStart(2, '0')}-${String(activeDate.getDate()).padStart(2, '0')}`;
         if (history[activeStr] && history[activeStr] >= 60) {
@@ -110,8 +106,8 @@ export async function POST(request: Request) {
       }
 
       if (currentStreak > maxStreak) maxStreak = currentStreak;
-      if (currentStreak === 0 && minutes >= 60) {
-        currentStreak = 1; // At minimum 1 since they just did 60 mins
+      if (currentStreak === 0 && totalMinutesToday >= 60) {
+        currentStreak = 1;
         if (maxStreak === 0) maxStreak = 1;
       }
 
@@ -151,7 +147,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ streak });
+    return NextResponse.json({ success: true, streak });
   } catch (error) {
     console.error('Streak API error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -132,7 +132,7 @@ export default function RightToolbar() {
               <button
                 onClick={() => {
                   const username = localStorage.getItem('dashboard_username');
-                  if (username?.toLowerCase() === 'demo_user') {
+                  if (username?.toLowerCase() === process.env.DEMO_USERNAME) {
                     useDashboardStore.getState().togglePanicHide();
                   } else {
                     setIsUnlockModalOpen(true);

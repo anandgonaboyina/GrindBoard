@@ -12,6 +12,15 @@ export interface Task {
     groupId?: number;
 }
 
+interface TaskAction {
+    type: 'ADD_TASK' | 'UPDATE_TASK' | 'DELETE_TASK' | 'REPLACE_ALL';
+    tab?: 'today' | 'tomorrow';
+    taskId?: string;
+    task?: Task;
+    updates?: any;
+    data?: any;
+}
+
 interface TaskState {
     _hasHydrated: boolean;
     setHasHydrated: (state: boolean) => void;
@@ -35,45 +44,70 @@ interface TaskState {
     fetchTasks: () => Promise<void>;
 }
 
-let taskSaveTimeout: NodeJS.Timeout | null = null;
+// ----------------------------------------------------------------------
+// QUEUE & SYNC ENGINE
+// ----------------------------------------------------------------------
+export const syncTasksQueue = async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+    const token = localStorage.getItem('dashboard_sync_token');
+    if (!token) return;
 
+    const queueStr = localStorage.getItem('tasks_offline_queue');
+    if (!queueStr) return;
 
+    let actions: TaskAction[] = [];
+    try { actions = JSON.parse(queueStr); } catch (e) { return; }
+    if (actions.length === 0) return;
 
-// Debounced API sync helper (waits 5000ms after last edit before hitting DB)
-export const pushTasksToDB = async (updates: Partial<TaskState>, immediate: boolean = false) => {
-    if (typeof window === 'undefined') return;
-
-    // GUARD: Stop save attempts immediately if offline
-    if (!navigator.onLine) {
-        console.warn("Offline: Tasks saved locally, will sync to cloud when online.");
-        return;
-    }
-
-    if (taskSaveTimeout) clearTimeout(taskSaveTimeout);
-
-    const performPush = async () => {
-        const token = localStorage.getItem('dashboard_sync_token');
-        if (!token || !navigator.onLine) return;
-        try {
-            const res = await fetch('/api/tasks', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ updates })
-            });
-            console.log(await res.json());
-        } catch (e) {
-            console.error('Failed to sync tasks to DB', e);
+    try {
+        const res = await fetch('/api/tasks', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ actions })
+        });
+        
+        if (res.ok) {
+            localStorage.removeItem('tasks_offline_queue');
         }
-    };
-
-    if (immediate) {
-        performPush();
-    } else {
-        taskSaveTimeout = setTimeout(performPush, 5000);
+    } catch (e) {
+        console.warn("[Tasks] Failed to push offline queue. Will retry later.", e);
     }
 };
 
+const queueTaskAction = (action: TaskAction) => {
+    if (typeof window === 'undefined') return;
+    
+    let queue: TaskAction[] = [];
+    try {
+        const queueStr = localStorage.getItem('tasks_offline_queue');
+        if (queueStr) queue = JSON.parse(queueStr);
+    } catch (e) {}
 
+    queue.push(action);
+    localStorage.setItem('tasks_offline_queue', JSON.stringify(queue));
+
+    if (navigator.onLine) {
+        syncTasksQueue();
+    }
+};
+
+// Backward-compatibility wrapper for components still calling pushTasksToDB directly
+export const pushTasksToDB = (updates: Partial<TaskState>, immediate: boolean = false) => {
+    queueTaskAction({ type: 'REPLACE_ALL', data: updates });
+    if (immediate) {
+        syncTasksQueue();
+    }
+};
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', syncTasksQueue);
+    window.addEventListener('app_sync_now', syncTasksQueue);
+}
+
+
+// ----------------------------------------------------------------------
+// STORE
+// ----------------------------------------------------------------------
 export const useTaskStore = create<TaskState>()(
     persist(
         (set, get) => ({
@@ -81,156 +115,165 @@ export const useTaskStore = create<TaskState>()(
             setHasHydrated: (state) => set({ _hasHydrated: state }),
             tasks: [],
             tomorrowTasks: [],
-
             tasksDate: getLocalDateString(),
             taskGroupNames: ['Core Tasks', 'Daily Routine', 'Milestones'],
             lastModified: Date.now(),
+
             setTaskGroupName: (index, name) => {
                 set((state) => {
                     const DEFAULT_TAB_NAMES = ['Core Tasks', 'Daily Routine', 'Milestones'];
                     const newNames = [...(state.taskGroupNames || DEFAULT_TAB_NAMES)];
                     const cleanName = name.trim() || DEFAULT_TAB_NAMES[index] || `Tab ${index + 1}`;
                     newNames[index] = cleanName === `Tab ${index + 1}` ? DEFAULT_TAB_NAMES[index] : cleanName;
-                    pushTasksToDB({ taskGroupNames: newNames });
-                    return { taskGroupNames: newNames };
+                    
+                    queueTaskAction({ type: 'REPLACE_ALL', data: { taskGroupNames: newNames } });
+                    return { taskGroupNames: newNames, lastModified: Date.now() };
                 });
             },
 
             setTasks: (tasks, tab = 'today') => {
                 set(() => {
                     const updates = tab === 'today' ? { tasks } : { tomorrowTasks: tasks };
-                    pushTasksToDB(updates);
-                    return updates;
+                    queueTaskAction({ type: 'REPLACE_ALL', data: updates });
+                    return { ...updates, lastModified: Date.now() };
                 });
             },
 
             addTask: (title, duration, tab = 'today', groupId = 0) => {
                 set((state) => {
-                    const newTask = { id: Date.now().toString(), title, duration, completed: false, timeSpent: 0, groupId };
-                    const updates = tab === 'today' ? { tasks: [...state.tasks, newTask] } : { tomorrowTasks: [...state.tomorrowTasks, newTask] };
-                    pushTasksToDB(updates);
-                    return updates;
+                    const newTask: Task = { id: Date.now().toString(), title, duration, completed: false, timeSpent: 0, groupId };
+                    queueTaskAction({ type: 'ADD_TASK', tab, task: newTask });
+                    
+                    if (tab === 'today') return { tasks: [...state.tasks, newTask], lastModified: Date.now() };
+                    return { tomorrowTasks: [...state.tomorrowTasks, newTask], lastModified: Date.now() };
                 });
             },
 
             toggleTask: (id, tab = 'today') => {
                 set((state) => {
-                    const updates = tab === 'today'
-                        ? { tasks: state.tasks.map((t) => t.id === id ? { ...t, completed: !t.completed } : t) }
-                        : { tomorrowTasks: state.tomorrowTasks.map((t) => t.id === id ? { ...t, completed: !t.completed } : t) };
-                    pushTasksToDB(updates);
-                    return updates;
+                    const list = tab === 'today' ? state.tasks : state.tomorrowTasks;
+                    const task = list.find(t => t.id === id);
+                    if (!task) return state;
+
+                    queueTaskAction({ type: 'UPDATE_TASK', tab, taskId: id, updates: { completed: !task.completed } });
+                    
+                    const updatedList = list.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+                    return tab === 'today' ? { tasks: updatedList, lastModified: Date.now() } : { tomorrowTasks: updatedList, lastModified: Date.now() };
                 });
             },
 
             deleteTask: async (id, tab = 'today') => {
-                const state = get();
                 const dashboardState = useDashboardStore.getState();
                 if (dashboardState.activeTaskId === id) dashboardState.setActiveTask(null, null);
 
-                const newTasks = tab === 'today' ? state.tasks.filter((t) => t.id !== id) : state.tasks;
-                const newTomorrowTasks = tab === 'tomorrow' ? state.tomorrowTasks.filter((t) => t.id !== id) : state.tomorrowTasks;
-                const now = Date.now();
+                set((state) => {
+                    queueTaskAction({ type: 'DELETE_TASK', taskId: id });
+                    
+                    const newTasks = tab === 'today' ? state.tasks.filter((t) => t.id !== id) : state.tasks;
+                    const newTomorrowTasks = tab === 'tomorrow' ? state.tomorrowTasks.filter((t) => t.id !== id) : state.tomorrowTasks;
+                    const now = Date.now();
 
-                // 1. Update local state and timestamp immediately
-                set({
-                    tasks: newTasks,
-                    tomorrowTasks: newTomorrowTasks,
-                });
-
-                // 2. Clear out local storage cache override immediately if using persist
-                if (typeof window !== 'undefined') {
-                    const cached = localStorage.getItem('tasks-storage');
-                    if (cached) {
-                        try {
-                            const parsed = JSON.parse(cached);
-                            if (parsed.state) {
-                                parsed.state.tasks = newTasks;
-                                parsed.state.tomorrowTasks = newTomorrowTasks;
-                                parsed.state.lastModified = now;
-                                localStorage.setItem('tasks-storage', JSON.stringify(parsed));
-                            }
-                        } catch (e) { }
+                    // Manual localStorage update (preserved from original code)
+                    if (typeof window !== 'undefined') {
+                        const cached = localStorage.getItem('tasks-storage');
+                        if (cached) {
+                            try {
+                                const parsed = JSON.parse(cached);
+                                if (parsed.state) {
+                                    parsed.state.tasks = newTasks;
+                                    parsed.state.tomorrowTasks = newTomorrowTasks;
+                                    parsed.state.lastModified = now;
+                                    localStorage.setItem('tasks-storage', JSON.stringify(parsed));
+                                }
+                            } catch (e) { }
+                        }
                     }
-                }
-                const updates = {
-                    tasks: newTasks,
-                    tomorrowTasks: newTomorrowTasks
-                };
-                pushTasksToDB(updates);
 
+                    return { tasks: newTasks, tomorrowTasks: newTomorrowTasks, lastModified: now };
+                });
             },
 
             moveTaskTab: (id, fromTab) => {
                 set((state) => {
-                    if (fromTab === 'today') {
-                        const taskToMove = state.tasks.find(t => t.id === id);
-                        if (!taskToMove) return state;
-                        const updates = { tasks: state.tasks.filter(t => t.id !== id), tomorrowTasks: [...state.tomorrowTasks, taskToMove] };
-                        pushTasksToDB(updates);
-                        return updates;
-                    } else {
-                        const taskToMove = state.tomorrowTasks.find(t => t.id === id);
-                        if (!taskToMove) return state;
-                        const updates = { tomorrowTasks: state.tomorrowTasks.filter(t => t.id !== id), tasks: [...state.tasks, taskToMove] };
-                        pushTasksToDB(updates);
-                        return updates;
-                    }
+                    const sourceList = fromTab === 'today' ? state.tasks : state.tomorrowTasks;
+                    const targetList = fromTab === 'today' ? state.tomorrowTasks : state.tasks;
+                    const taskToMove = sourceList.find(t => t.id === id);
+                    
+                    if (!taskToMove) return state;
+                    
+                    const newSourceList = sourceList.filter(t => t.id !== id);
+                    const newTargetList = [...targetList, taskToMove];
+                    const updates = fromTab === 'today' 
+                        ? { tasks: newSourceList, tomorrowTasks: newTargetList }
+                        : { tomorrowTasks: newSourceList, tasks: newTargetList };
+
+                    queueTaskAction({ type: 'REPLACE_ALL', data: updates });
+                    return { ...updates, lastModified: Date.now() };
                 });
             },
 
             updateTaskTitle: (id, title, tab = 'today') => {
-                set((state) => {
-                    const dashboardState = useDashboardStore.getState();
-                    if (dashboardState.activeTaskId === id) dashboardState.setActiveTask(id, title);
+                const dashboardState = useDashboardStore.getState();
+                if (dashboardState.activeTaskId === id) dashboardState.setActiveTask(id, title);
 
-                    const updates = tab === 'today'
-                        ? { tasks: state.tasks.map((t) => t.id === id ? { ...t, title } : t) }
-                        : { tomorrowTasks: state.tomorrowTasks.map((t) => t.id === id ? { ...t, title } : t) };
-                    pushTasksToDB(updates);
-                    return updates;
+                set((state) => {
+                    queueTaskAction({ type: 'UPDATE_TASK', tab, taskId: id, updates: { title } });
+                    const list = tab === 'today' ? state.tasks : state.tomorrowTasks;
+                    const updatedList = list.map(t => t.id === id ? { ...t, title } : t);
+                    return tab === 'today' ? { tasks: updatedList, lastModified: Date.now() } : { tomorrowTasks: updatedList, lastModified: Date.now() };
                 });
             },
 
             updateTaskDuration: (id, decreaseMins) => set((state) => {
+                let updatedTask: Partial<Task> = {};
+                
                 const updateTasks = (tasks: Task[]) => tasks.map(t => {
                     if (t.id === id) {
-                        return {
-                            ...t,
-                            duration: Math.max(0, t.duration - decreaseMins),
-                            timeSpent: (t.timeSpent || 0) + decreaseMins
-                        };
+                        const newDuration = Math.max(0, t.duration - decreaseMins);
+                        const newTimeSpent = (t.timeSpent || 0) + decreaseMins;
+                        updatedTask = { duration: newDuration, timeSpent: newTimeSpent };
+                        return { ...t, duration: newDuration, timeSpent: newTimeSpent };
                     }
                     return t;
                 });
 
-                const updates = {
-                    tasks: updateTasks(state.tasks),
-                    tomorrowTasks: updateTasks(state.tomorrowTasks)
-                };
-                pushTasksToDB(updates, true);
-                return updates;
+                const newTasks = updateTasks(state.tasks);
+                const newTomorrowTasks = updateTasks(state.tomorrowTasks);
+                
+                if (updatedTask.duration !== undefined) {
+                    const tab = state.tasks.find(t => t.id === id) ? 'today' : 'tomorrow';
+                    queueTaskAction({ type: 'UPDATE_TASK', tab, taskId: id, updates: updatedTask });
+                }
+
+                return { tasks: newTasks, tomorrowTasks: newTomorrowTasks, lastModified: Date.now() };
             }),
 
             editTaskDuration: (id, newDuration, tab = 'today') => set((state) => {
-                const updates = tab === 'today'
-                    ? { tasks: state.tasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) }
-                    : { tomorrowTasks: state.tomorrowTasks.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t) };
-                pushTasksToDB(updates);
-                return updates;
+                queueTaskAction({ type: 'UPDATE_TASK', tab, taskId: id, updates: { duration: Math.max(0, newDuration) } });
+                const list = tab === 'today' ? state.tasks : state.tomorrowTasks;
+                const updatedList = list.map(t => t.id === id ? { ...t, duration: Math.max(0, newDuration) } : t);
+                return tab === 'today' ? { tasks: updatedList, lastModified: Date.now() } : { tomorrowTasks: updatedList, lastModified: Date.now() };
             }),
 
             editTaskTimeSpent: (id, newTimeSpent, tab = 'today') => set((state) => {
-                const updateTasks = (tasks: Task[]) => tasks.map(t => {
+                const list = tab === 'today' ? state.tasks : state.tomorrowTasks;
+                let updatedTask: Partial<Task> = {};
+                
+                const updatedList = list.map(t => {
                     if (t.id === id) {
                         const diff = newTimeSpent - (t.timeSpent || 0);
-                        return { ...t, timeSpent: Math.max(0, newTimeSpent), duration: Math.max(0, t.duration - diff) };
+                        const newDuration = Math.max(0, t.duration - diff);
+                        updatedTask = { timeSpent: Math.max(0, newTimeSpent), duration: newDuration };
+                        return { ...t, ...updatedTask };
                     }
                     return t;
                 });
-                const updates = tab === 'today' ? { tasks: updateTasks(state.tasks) } : { tomorrowTasks: updateTasks(state.tomorrowTasks) };
-                pushTasksToDB(updates);
-                return updates;
+
+                if (updatedTask.timeSpent !== undefined) {
+                    queueTaskAction({ type: 'UPDATE_TASK', tab, taskId: id, updates: updatedTask });
+                }
+
+                return tab === 'today' ? { tasks: updatedList, lastModified: Date.now() } : { tomorrowTasks: updatedList, lastModified: Date.now() };
             }),
 
             reorderTasks: (tab, startIndex, endIndex) => set((state) => {
@@ -241,8 +284,8 @@ export const useTaskStore = create<TaskState>()(
                 list.splice(endIndex, 0, removed);
 
                 const updates = tab === 'today' ? { tasks: list } : { tomorrowTasks: list };
-                pushTasksToDB(updates);
-                return updates;
+                queueTaskAction({ type: 'REPLACE_ALL', data: updates });
+                return { ...updates, lastModified: Date.now() };
             }),
 
             checkTasksRollover: () => set((state) => {
@@ -250,18 +293,25 @@ export const useTaskStore = create<TaskState>()(
                 if (!state.tasksDate || state.tasksDate !== todayStr) {
                     if (!state.tomorrowTasks || state.tomorrowTasks.length === 0) {
                         const updates = { tasksDate: todayStr };
-                        pushTasksToDB(updates);
-                        return updates;
+                        queueTaskAction({ type: 'REPLACE_ALL', data: updates });
+                        return { ...updates, lastModified: Date.now() };
                     }
                     const newToday = state.tomorrowTasks.map(t => ({ ...t, completed: false, timeSpent: 0, id: Date.now().toString() + Math.random() }));
                     const updates = { tasksDate: todayStr, tasks: [...state.tasks, ...newToday], tomorrowTasks: [] };
-                    pushTasksToDB(updates);
-                    return updates;
+                    queueTaskAction({ type: 'REPLACE_ALL', data: updates });
+                    return { ...updates, lastModified: Date.now() };
                 }
                 return {};
             }),
+
             fetchTasks: async () => {
-                // 🛡️ GUARD 1: Do not attempt to fetch if offline on boot
+                // GUARD: Try pushing offline queue first before fetching
+                const queueStr = localStorage.getItem('tasks_offline_queue');
+                if (queueStr && JSON.parse(queueStr).length > 0) {
+                    await syncTasksQueue();
+                    if (localStorage.getItem('tasks_offline_queue')) return; // If queue failed to clear, skip fetch
+                }
+
                 if (typeof window !== 'undefined' && !navigator.onLine) {
                     console.log("Offline on boot: Skipping task fetch, strictly trusting local cache.");
                     return;
@@ -281,7 +331,7 @@ export const useTaskStore = create<TaskState>()(
                             const localModified = get().lastModified || 0;
                             const cloudModified = json.data.lastModified || 0;
 
-                            // 🛡️ GUARD 2: ONLY overwrite if the cloud data is genuinely newer!
+                            // ONLY overwrite if the cloud data is genuinely newer!
                             if (cloudModified >= localModified) {
                                 console.log("Cloud is newer or equal. Syncing tasks DOWN.");
                                 set({
@@ -292,14 +342,17 @@ export const useTaskStore = create<TaskState>()(
                                     lastModified: cloudModified
                                 });
                             } else {
-                                // 🛡️ GUARD 3: Local is newer! Protect local data and push it UP.
+                                // Local is newer! Protect local data and push it UP.
                                 console.log("Local tasks are newer! Protecting local cache and syncing UP to fix cloud.");
-                                pushTasksToDB({
-                                    tasks: get().tasks,
-                                    tomorrowTasks: get().tomorrowTasks,
-                                    tasksDate: get().tasksDate,
-                                    taskGroupNames: get().taskGroupNames,
-                                    lastModified: localModified
+                                queueTaskAction({ 
+                                    type: 'REPLACE_ALL', 
+                                    data: {
+                                        tasks: get().tasks,
+                                        tomorrowTasks: get().tomorrowTasks,
+                                        tasksDate: get().tasksDate,
+                                        taskGroupNames: get().taskGroupNames,
+                                        lastModified: localModified
+                                    } 
                                 });
                             }
                         }

@@ -19,7 +19,7 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
   const [isDemoUser, setIsDemoUser] = useState(false);
   
   React.useEffect(() => {
-    setIsDemoUser(localStorage.getItem('dashboard_username')?.toLowerCase() === 'demo_user');
+    setIsDemoUser(localStorage.getItem('dashboard_username')?.toLowerCase() === process.env.DEMO_USERNAME);
   }, []);
 
   const processBackupDownload = useCallback((data: any, filename: string, typeName: string) => {

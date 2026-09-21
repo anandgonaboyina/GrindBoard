@@ -13,6 +13,11 @@ const DEFAULT_TIMETABLE_GRID = {
 
 type TimetableGrid = Record<string, Record<string, string>>;
 
+interface TimetableAction {
+    type: 'UPDATE_TIMETABLE';
+    updates: Record<string, any>;
+}
+
 interface TimetableState {
     _hasHydrated: boolean;
     setHasHydrated: (state: boolean) => void;
@@ -42,65 +47,79 @@ interface TimetableState {
     swapTimetableDays: (day1: string, day2: string) => void;
 }
 
-let timetableSaveTimeout: NodeJS.Timeout | null = null;
-let pendingTimetableUpdates: Partial<TimetableState> = {};
+// ----------------------------------------------------------------------
+// QUEUE & SYNC ENGINE
+// ----------------------------------------------------------------------
+export const syncTimetableQueue = async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+    const token = localStorage.getItem('dashboard_sync_token');
+    if (!token) return;
 
-export const pushTimetableToDB = (updates: Partial<TimetableState>) => {
-    if (typeof window === 'undefined') return;
-    
-    // Accumulate updates so rapid consecutive changes are merged
-    pendingTimetableUpdates = { ...pendingTimetableUpdates, ...updates };
+    const queueStr = localStorage.getItem('timetable_offline_queue');
+    if (!queueStr) return;
 
-    if (timetableSaveTimeout) {
-        clearTimeout(timetableSaveTimeout);
+    let actions: TimetableAction[] = [];
+    try { actions = JSON.parse(queueStr); } catch (e) { return; }
+    if (actions.length === 0) return;
+
+    try {
+        const res = await fetch('/api/timetable', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ actions })
+        });
+        
+        if (res.ok) {
+            localStorage.removeItem('timetable_offline_queue');
+        }
+    } catch (e) {
+        console.warn("[Timetable] Failed to push offline queue.", e);
     }
-
-    timetableSaveTimeout = setTimeout(flushTimetableToDB, 5000);
 };
 
-export const flushTimetableToDB = async () => {
-    if (timetableSaveTimeout) {
-        clearTimeout(timetableSaveTimeout);
-        timetableSaveTimeout = null;
-    }
-    const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
-    if (token && typeof navigator !== 'undefined' && navigator.onLine && Object.keys(pendingTimetableUpdates).length > 0) {
-        const updatesToSend = { ...pendingTimetableUpdates };
-        pendingTimetableUpdates = {}; // Clear pending immediately
-        try {
-            await fetch('/api/timetable', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ updates: updatesToSend })
-            });
-        } catch (e) {
-            console.error("Failed to sync timetable", e);
-            // Merge back on failure
-            pendingTimetableUpdates = { ...updatesToSend, ...pendingTimetableUpdates };
-        }
-    }
+const queueTimetableAction = (action: TimetableAction) => {
+    if (typeof window === 'undefined') return;
+    
+    let queue: TimetableAction[] = [];
+    try {
+        const queueStr = localStorage.getItem('timetable_offline_queue');
+        if (queueStr) queue = JSON.parse(queueStr);
+    } catch (e) {}
+
+    queue.push(action);
+    localStorage.setItem('timetable_offline_queue', JSON.stringify(queue));
+
+    if (navigator.onLine) syncTimetableQueue();
+};
+
+// Legacy wrapper for bulk restores/wipes
+export const pushTimetableToDB = (updates: any) => {
+    queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates });
 };
 
 if (typeof window !== 'undefined') {
+    window.addEventListener('online', syncTimetableQueue);
+    window.addEventListener('app_sync_now', syncTimetableQueue);
+    
+    // Fallback sync for tab closes
     window.addEventListener('beforeunload', () => {
-        if (Object.keys(pendingTimetableUpdates).length > 0) {
-            // Synchronous fetch or keepalive for reliable unload saving
-            const token = localStorage.getItem('dashboard_sync_token');
-            if (token) {
-                const blob = new Blob([JSON.stringify({ updates: pendingTimetableUpdates })], { type: 'application/json' });
-                navigator.sendBeacon('/api/timetable', blob); // Does not use Authorization header easily, wait! sendBeacon doesn't send Bearer.
-                // Best fallback is fetch with keepalive
-                fetch('/api/timetable', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ updates: pendingTimetableUpdates }),
-                    keepalive: true
-                }).catch(() => {});
-            }
+        const queueStr = localStorage.getItem('timetable_offline_queue');
+        const token = localStorage.getItem('dashboard_sync_token');
+        if (queueStr && token && navigator.onLine) {
+            try {
+                const actions = JSON.parse(queueStr);
+                if (actions.length > 0) {
+                    const blob = new Blob([JSON.stringify({ actions })], { type: 'application/json' });
+                    navigator.sendBeacon('/api/timetable', blob); // Best effort, but queue stays safe in localStorage anyway!
+                }
+            } catch (e) {}
         }
     });
 }
 
+// ----------------------------------------------------------------------
+// STORE
+// ----------------------------------------------------------------------
 export const useTimetableStore = create<TimetableState>()(
     persist(
         (set, get) => ({
@@ -119,7 +138,8 @@ export const useTimetableStore = create<TimetableState>()(
             updateTimetableCell: (day, time, subject) => {
                 set((state) => {
                     const newGrid = { ...state.timetableGrid, [day]: { ...state.timetableGrid[day], [time]: subject } };
-                    pushTimetableToDB({ timetableGrid: newGrid });
+                    // Surgical DB update using Dot Notation!
+                    queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: { [`timetableGrid.${day}.${time}`]: subject } });
                     return { timetableGrid: newGrid };
                 });
             },
@@ -127,7 +147,8 @@ export const useTimetableStore = create<TimetableState>()(
             updateTimetableColor: (day, time, color) => {
                 set((state) => {
                     const newColors = { ...state.timetableColors, [day]: { ...(state.timetableColors[day] || {}), [time]: color } };
-                    pushTimetableToDB({ timetableColors: newColors });
+                    // Surgical DB update using Dot Notation!
+                    queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: { [`timetableColors.${day}.${time}`]: color } });
                     return { timetableColors: newColors };
                 });
             },
@@ -149,7 +170,7 @@ export const useTimetableStore = create<TimetableState>()(
                         delete newColors[targetDay];
                     }
                     
-                    pushTimetableToDB({ timetableGrid: newGrid, timetableColors: newColors });
+                    queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: { timetableGrid: newGrid, timetableColors: newColors } });
                     return { timetableGrid: newGrid, timetableColors: newColors };
                 });
             },
@@ -169,7 +190,7 @@ export const useTimetableStore = create<TimetableState>()(
                     if (tempColorDay2) newColors[day1] = tempColorDay2; else delete newColors[day1];
                     if (tempColorDay1) newColors[day2] = tempColorDay1; else delete newColors[day2];
                     
-                    pushTimetableToDB({ timetableGrid: newGrid, timetableColors: newColors });
+                    queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: { timetableGrid: newGrid, timetableColors: newColors } });
                     return { timetableGrid: newGrid, timetableColors: newColors };
                 });
             },
@@ -179,19 +200,19 @@ export const useTimetableStore = create<TimetableState>()(
             toggleTimetableRange: () => {
                 set((state) => {
                     const newState = !state.useTimetableRange;
-                    pushTimetableToDB({ useTimetableRange: newState });
+                    queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: { useTimetableRange: newState } });
                     return { useTimetableRange: newState };
                 });
             },
 
             setTimetableStartTime: (mins) => {
                 set({ timetableStartTime: mins });
-                pushTimetableToDB({ timetableStartTime: mins });
+                queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: { timetableStartTime: mins } });
             },
 
             setTimetableWeekendStartTime: (mins) => {
                 set({ timetableWeekendStartTime: mins });
-                pushTimetableToDB({ timetableWeekendStartTime: mins });
+                queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: { timetableWeekendStartTime: mins } });
             },
 
             updateTimetableTime: (isWeekend, index, newTime, keyMap) => set((state) => {
@@ -202,7 +223,6 @@ export const useTimetableStore = create<TimetableState>()(
                 const oldTime = newTimes[index];
                 newTimes[index] = newTime;
 
-                // Also update the timetableGrid and timetableColors keys to preserve data
                 const newGrid = { ...state.timetableGrid };
                 const newColors = { ...(state.timetableColors || {}) };
                 const targetDays = isWeekend ? ["Sat", "Sun"] : ["Mon", "Tue", "Wed", "Thu", "Fri"];
@@ -247,7 +267,7 @@ export const useTimetableStore = create<TimetableState>()(
                     ? { weekendTimes: newTimes, timetableGrid: newGrid, timetableColors: newColors }
                     : { weekdayTimes: newTimes, timetableGrid: newGrid, timetableColors: newColors };
 
-                pushTimetableToDB(payload);
+                queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: payload });
                 return payload as any;
             }),
 
@@ -278,7 +298,7 @@ export const useTimetableStore = create<TimetableState>()(
                 });
 
                 const payload = { timetableGrid: newGrid, timetableColors: newColors };
-                pushTimetableToDB(payload);
+                queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: payload });
                 return payload;
             }),
 
@@ -288,11 +308,10 @@ export const useTimetableStore = create<TimetableState>()(
                     timetableColors: {},
                     weekdayTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
                     weekendTimes: ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"],
-                    // FIX: Force start times back to 09:00 AM (540 mins) so the grid keys align!
                     timetableStartTime: 540,
                     timetableWeekendStartTime: 540,
                 };
-                pushTimetableToDB(payload);
+                queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: payload });
                 return payload;
             }),
 
@@ -301,7 +320,7 @@ export const useTimetableStore = create<TimetableState>()(
                 const timesList = targetArray || [];
                 const newTimes = prepend ? ["60", ...timesList] : [...timesList, "60"];
                 const payload = isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
-                pushTimetableToDB(payload);
+                queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: payload });
                 return payload as any;
             }),
 
@@ -309,7 +328,7 @@ export const useTimetableStore = create<TimetableState>()(
                 const targetArray = isWeekend ? state.weekendTimes : state.weekdayTimes;
                 const timesList = targetArray || [];
                 const newTimes = [...timesList];
-                newTimes.splice(index, 0, duration);
+                newTimes.splice(index, 0, duration.toString());
 
                 let payload: any = isWeekend ? { weekendTimes: newTimes } : { weekdayTimes: newTimes };
 
@@ -353,7 +372,7 @@ export const useTimetableStore = create<TimetableState>()(
                     payload.timetableColors = newColors;
                 }
 
-                pushTimetableToDB(payload);
+                queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: payload });
                 return payload;
             }),
 
@@ -374,7 +393,6 @@ export const useTimetableStore = create<TimetableState>()(
                             const currentDayData = { ...newGrid[day] };
                             let updatedDayData: Record<string, string> = {};
                             Object.entries(currentDayData).forEach(([oldKey, value]) => {
-                                // If the key is in the map, map it. If it maps to null/undefined, it's deleted.
                                 if (keyMap[oldKey] !== undefined) {
                                     if (keyMap[oldKey] !== null) {
                                         updatedDayData[keyMap[oldKey] as string] = value as string;
@@ -405,7 +423,7 @@ export const useTimetableStore = create<TimetableState>()(
                     payload.timetableColors = newColors;
                 }
 
-                pushTimetableToDB(payload);
+                queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: payload });
                 return payload;
             })
         }),

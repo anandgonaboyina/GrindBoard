@@ -32,7 +32,7 @@ export default function SettingsModal() {
 
   const [isDemoUser, setIsDemoUser] = useState(false);
   useEffect(() => {
-    setIsDemoUser(localStorage.getItem('dashboard_username')?.toLowerCase() === 'demo_user');
+    setIsDemoUser(localStorage.getItem('dashboard_username')?.toLowerCase() === process.env.DEMO_USERNAME);
   }, []);
 
   // Global Confirmation Modal State

@@ -5,10 +5,188 @@ import { getLocalDateString } from '@/utils/date';
 import { filterActiveDeadlines, mergeDailyTimes } from './helpers';
 import { useTaskStore } from '@/store/taskStore';
 import {
-  fileStorage, triggerInstantSave, pushCountdownsToDB, pushDeadlinesToDB,
-  pushDailyRoutineToDB, pushStreakToDB, clearOldDataAPI, clearAllDataAPI, forcePushTimerState
+  fileStorage, triggerInstantSave, pushCountdownsToDB,
+  pushDailyRoutineToDB, pushStreakToDB, clearOldDataAPI, clearAllDataAPI, forcePushTimerState, getSecureFocusQueue, setSecureFocusQueue
 } from './sync';
 
+// ----------------------------------------------------------------------
+// DEADLINES QUEUE & SYNC ENGINE
+// ----------------------------------------------------------------------
+interface DeadlineAction {
+    type: 'ADD_DEADLINE' | 'UPDATE_DEADLINE' | 'DELETE_DEADLINE' | 'UPDATE_SETTINGS' | 'REPLACE_ALL';
+    deadlineId?: string;
+    deadline?: any;
+    updates?: Record<string, any>;
+    data?: any;
+}
+
+export const syncDeadlinesQueue = async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+    const token = localStorage.getItem('dashboard_sync_token');
+    if (!token) return;
+
+    const queueStr = localStorage.getItem('deadlines_offline_queue');
+    if (!queueStr) return;
+
+    let actions: DeadlineAction[] = [];
+    try { actions = JSON.parse(queueStr); } catch (e) { return; }
+    if (actions.length === 0) return;
+
+    try {
+        const res = await fetch('/api/deadlines', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ actions })
+        });
+        
+        if (res.ok) {
+            localStorage.removeItem('deadlines_offline_queue');
+        }
+    } catch (e) {
+        console.warn("[Deadlines] Failed to push offline queue.", e);
+    }
+};
+
+const queueDeadlineAction = (action: DeadlineAction) => {
+    if (typeof window === 'undefined') return;
+    
+    let queue: DeadlineAction[] = [];
+    try {
+        const queueStr = localStorage.getItem('deadlines_offline_queue');
+        if (queueStr) queue = JSON.parse(queueStr);
+    } catch (e) {}
+
+    queue.push(action);
+    localStorage.setItem('deadlines_offline_queue', JSON.stringify(queue));
+
+    if (navigator.onLine) syncDeadlinesQueue();
+};
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', syncDeadlinesQueue);
+    window.addEventListener('app_sync_now', syncDeadlinesQueue);
+}
+
+// ----------------------------------------------------------------------
+// COUNTDOWNS QUEUE & SYNC ENGINE
+// ----------------------------------------------------------------------
+interface CountdownAction {
+    type: 'ADD_COUNTDOWN' | 'UPDATE_COUNTDOWN' | 'DELETE_COUNTDOWN' | 'REPLACE_ALL';
+    countdownId?: string;
+    countdown?: any;
+    updates?: Record<string, any>;
+    countdowns?: any[];
+}
+
+export const syncCountdownsQueue = async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+    const token = localStorage.getItem('dashboard_sync_token');
+    if (!token) return;
+
+    const queueStr = localStorage.getItem('countdowns_offline_queue');
+    if (!queueStr) return;
+
+    let actions: CountdownAction[] = [];
+    try { actions = JSON.parse(queueStr); } catch (e) { return; }
+    if (actions.length === 0) return;
+
+    try {
+        const res = await fetch('/api/countdowns', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ actions })
+        });
+        
+        if (res.ok) {
+            localStorage.removeItem('countdowns_offline_queue');
+        }
+    } catch (e) {
+        console.warn("[Countdowns] Failed to push offline queue.", e);
+    }
+};
+
+const queueCountdownAction = (action: CountdownAction) => {
+    if (typeof window === 'undefined') return;
+    
+    let queue: CountdownAction[] = [];
+    try {
+        const queueStr = localStorage.getItem('countdowns_offline_queue');
+        if (queueStr) queue = JSON.parse(queueStr);
+    } catch (e) {}
+
+    queue.push(action);
+    localStorage.setItem('countdowns_offline_queue', JSON.stringify(queue));
+
+    if (navigator.onLine) syncCountdownsQueue();
+};
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', syncCountdownsQueue);
+    window.addEventListener('app_sync_now', syncCountdownsQueue);
+}
+
+// ----------------------------------------------------------------------
+// DAILY ROUTINE QUEUE & SYNC ENGINE
+// ----------------------------------------------------------------------
+interface DailyRoutineAction {
+    type: 'UPDATE_DAILY_TIME' | 'REPLACE_ALL';
+    dateKey?: string;
+    field?: string;
+    timestamp?: number;
+    dailyTimes?: any;
+}
+
+export const syncDailyRoutineQueue = async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+    const token = localStorage.getItem('dashboard_sync_token');
+    if (!token) return;
+
+    const queueStr = localStorage.getItem('daily_routine_offline_queue');
+    if (!queueStr) return;
+
+    let actions: DailyRoutineAction[] = [];
+    try { actions = JSON.parse(queueStr); } catch (e) { return; }
+    if (actions.length === 0) return;
+
+    try {
+        const res = await fetch('/api/daily-routine', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ actions })
+        });
+        
+        if (res.ok) {
+            localStorage.removeItem('daily_routine_offline_queue');
+        }
+    } catch (e) {
+        console.warn("[Daily Routine] Failed to push offline queue.", e);
+    }
+};
+
+const queueDailyRoutineAction = (action: DailyRoutineAction) => {
+    if (typeof window === 'undefined') return;
+    
+    let queue: DailyRoutineAction[] = [];
+    try {
+        const queueStr = localStorage.getItem('daily_routine_offline_queue');
+        if (queueStr) queue = JSON.parse(queueStr);
+    } catch (e) {}
+
+    queue.push(action);
+    localStorage.setItem('daily_routine_offline_queue', JSON.stringify(queue));
+
+    if (navigator.onLine) syncDailyRoutineQueue();
+};
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', syncDailyRoutineQueue);
+    window.addEventListener('app_sync_now', syncDailyRoutineQueue);
+}
+
+
+// ----------------------------------------------------------------------
+// MAIN DASHBOARD STORE
+// ----------------------------------------------------------------------
 export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
@@ -76,7 +254,7 @@ export const useDashboardStore = create<DashboardState>()(
       activeManifestationMobileIndex: null,
       setActiveManifestationMobileIndex: (index) => set({ activeManifestationMobileIndex: index }),
 
-      addMins: (dateKey, mins) => {
+        addMins: (dateKey, mins) => {
         set((state) => {
           const oldTotal = state.history[dateKey] || 0;
           const newTotal = oldTotal + mins;
@@ -87,12 +265,21 @@ export const useDashboardStore = create<DashboardState>()(
 
           if (typeof window !== 'undefined') {
             try {
-              const queueStr = localStorage.getItem('unsaved_focus_mins');
-              const queue = queueStr ? JSON.parse(queueStr) : {};
+              const queue = getSecureFocusQueue();
               queue[dateKey] = (queue[dateKey] || 0) + mins;
-              localStorage.setItem('unsaved_focus_mins', JSON.stringify(queue));
+              setSecureFocusQueue(queue);
             } catch (e) {}
           }
+
+          const existingWorkStarted = (state.dailyTimes[dateKey] || {}).workStartedTime;
+          const newBedTime = Date.now();
+
+          // If this is the first focus session of the day, record the start time
+          if (!existingWorkStarted) {
+             queueDailyRoutineAction({ type: 'UPDATE_DAILY_TIME', dateKey, field: 'workStartedTime', timestamp: newBedTime });
+          }
+          // Always update the bedTime to the latest focus session end
+          queueDailyRoutineAction({ type: 'UPDATE_DAILY_TIME', dateKey, field: 'bedTime', timestamp: newBedTime });
 
           return {
             history: { ...state.history, [dateKey]: newTotal },
@@ -100,18 +287,17 @@ export const useDashboardStore = create<DashboardState>()(
               ...state.dailyTimes,
               [dateKey]: {
                 ...(state.dailyTimes[dateKey] || {}),
-                workStartedTime: (state.dailyTimes[dateKey] || {}).workStartedTime || Date.now(),
-                bedTime: Date.now()
+                workStartedTime: existingWorkStarted || newBedTime,
+                bedTime: newBedTime
               }
             },
             lastModified: Date.now()
           } as any;
         });
-        get().forceInstantSave();
       },
 
       toggleHide: () => set((state) => {
-        if (state.isPanicHidden) return {}; // Exclusive with Peek Mode
+        if (state.isPanicHidden) return {}; 
         return { isHidden: !state.isHidden };
       }),
 
@@ -479,7 +665,7 @@ export const useDashboardStore = create<DashboardState>()(
       syntheticDeadlines: {},
       setSyntheticDeadline: (status, date) => set((state) => {
         const payload = { syntheticDeadlines: { ...state.syntheticDeadlines, [status]: date } };
-        pushDeadlinesToDB(payload);
+        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: payload });
         return payload;
       }),
       isPlansOpen: false,
@@ -500,97 +686,96 @@ export const useDashboardStore = create<DashboardState>()(
 
       countdowns: [],
       autoOpenCountdowns: true,
-      setAutoOpenCountdowns: (enabled) => set({ autoOpenCountdowns: enabled }),
+      setAutoOpenCountdowns: (enabled) => set({ autoOpenCountdowns: enabled }), // This is a display setting, it saves via your settings queue
+      
       addCountdown: (title = 'New Target', endDate = null) => {
         let newId = '';
         set((state) => {
           if (state.countdowns.length >= 5) return state;
           newId = Date.now().toString();
-          const newArr = [...state.countdowns, { id: newId, title, endDate }];
-          pushCountdownsToDB({ countdowns: newArr });
-          return { countdowns: newArr };
+          const newCountdown = { id: newId, title, endDate };
+          
+          queueCountdownAction({ type: 'ADD_COUNTDOWN', countdown: newCountdown });
+          return { countdowns: [...state.countdowns, newCountdown] };
         });
         return newId;
       },
+
       updateCountdown: (id, title, endDate) => set((state) => {
-        const newArr = state.countdowns.map(c => c.id === id ? { ...c, title, endDate } : c);
-        pushCountdownsToDB({ countdowns: newArr });
-        return { countdowns: newArr };
+        queueCountdownAction({ type: 'UPDATE_COUNTDOWN', countdownId: id, updates: { title, endDate } });
+        return { countdowns: state.countdowns.map(c => c.id === id ? { ...c, title, endDate } : c) };
       }),
+
       deleteCountdown: (id) => set((state) => {
-        const newArr = state.countdowns.filter(c => c.id !== id);
-        pushCountdownsToDB({ countdowns: newArr });
-        return { countdowns: newArr };
+        queueCountdownAction({ type: 'DELETE_COUNTDOWN', countdownId: id });
+        return { countdowns: state.countdowns.filter(c => c.id !== id) };
       }),
 
       deadlines: [],
       addDeadline: (date, text) => {
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
         set((state) => {
-          const payload = { deadlines: [...filterActiveDeadlines(state.deadlines), { id, date, text }] };
-          pushDeadlinesToDB(payload);
-          return payload;
+          const newDeadline = { id, date, text, isDone: false };
+          queueDeadlineAction({ type: 'ADD_DEADLINE', deadline: newDeadline });
+          return { deadlines: [...filterActiveDeadlines(state.deadlines), newDeadline] };
         });
         return id;
       },
       updateDeadline: (id, text) => set((state) => {
-        const payload = { deadlines: state.deadlines.map(d => d.id === id ? { ...d, text } : d) };
-        pushDeadlinesToDB(payload);
-        return payload;
+        queueDeadlineAction({ type: 'UPDATE_DEADLINE', deadlineId: id, updates: { text } });
+        return { deadlines: state.deadlines.map(d => d.id === id ? { ...d, text } : d) };
       }),
       deleteDeadline: (id) => set((state) => {
-        const payload = { deadlines: state.deadlines.filter(d => d.id !== id) };
-        pushDeadlinesToDB(payload);
-        return payload;
+        queueDeadlineAction({ type: 'DELETE_DEADLINE', deadlineId: id });
+        return { deadlines: state.deadlines.filter(d => d.id !== id) };
       }),
       toggleDeadlineDone: (id) => set((state) => {
-        const payload = { deadlines: state.deadlines.map(d => d.id === id ? { ...d, isDone: !d.isDone } : d) };
-        pushDeadlinesToDB(payload);
-        return payload;
+        const deadline = state.deadlines.find(d => d.id === id);
+        if (deadline) {
+            queueDeadlineAction({ type: 'UPDATE_DEADLINE', deadlineId: id, updates: { isDone: !deadline.isDone } });
+        }
+        return { deadlines: state.deadlines.map(d => d.id === id ? { ...d, isDone: !d.isDone } : d) };
       }),
       deleteAllDeadlinesForDay: (date) => set((state) => {
-        const payload = { deadlines: state.deadlines.filter(d => d.date !== date) };
-        pushDeadlinesToDB(payload);
-        return payload;
+        const newDeadlines = state.deadlines.filter(d => d.date !== date);
+        queueDeadlineAction({ type: 'REPLACE_ALL', data: { deadlines: newDeadlines } });
+        return { deadlines: newDeadlines };
       }),
       deleteAllDeadlines: () => set(() => {
-        const payload = { deadlines: [] };
-        pushDeadlinesToDB(payload);
-        return payload;
+        queueDeadlineAction({ type: 'REPLACE_ALL', data: { deadlines: [] } });
+        return { deadlines: [] };
       }),
       cleanOldDeadlines: () => set((state) => {
         const filtered = filterActiveDeadlines(state.deadlines);
         const didChange = filtered.length !== state.deadlines.length;
         const isHydrated = useDashboardStore.getState()._hasHydrated;
         if (didChange && isHydrated && state.deadlines.length > 0) {
-          pushDeadlinesToDB({ deadlines: filtered });
+          queueDeadlineAction({ type: 'REPLACE_ALL', data: { deadlines: filtered } });
         }
         return { deadlines: filtered };
       }),
 
       deadlineAlertDays: 0,
       setDeadlineAlertDays: (days) => set(() => {
-        const payload = { deadlineAlertDays: Math.max(0, days) };
-        pushDeadlinesToDB(payload);
-        return payload;
+        const val = Math.max(0, days);
+        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { deadlineAlertDays: val } });
+        return { deadlineAlertDays: val };
       }),
       dismissedDeadlineAlerts: [],
       dismissDeadlineAlert: (id) => set((state) => {
-        const payload = { dismissedDeadlineAlerts: Array.from(new Set([...(state.dismissedDeadlineAlerts || []), id])) };
-        pushDeadlinesToDB(payload);
-        return payload;
+        const newAlerts = Array.from(new Set([...(state.dismissedDeadlineAlerts || []), id]));
+        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { dismissedDeadlineAlerts: newAlerts } });
+        return { dismissedDeadlineAlerts: newAlerts };
       }),
       disableDeadlineLockOnToday: false,
       setDisableDeadlineLockOnToday: (disabled) => set(() => {
-        const payload = { disableDeadlineLockOnToday: disabled };
-        pushDeadlinesToDB(payload);
-        return payload;
+        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { disableDeadlineLockOnToday: disabled } });
+        return { disableDeadlineLockOnToday: disabled };
       }),
       hideYouInLeaderboard: false,
       setHideYouInLeaderboard: (hide) => set(() => {
-        const payload = { hideYouInLeaderboard: hide };
-        pushDeadlinesToDB(payload); // saving it alongside deadlines for ease since we just need it in DB
-        return payload;
+        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { hideYouInLeaderboard: hide } });
+        return { hideYouInLeaderboard: hide };
       }),
 
       isDeadlinesCollapsed: false,
@@ -602,12 +787,16 @@ export const useDashboardStore = create<DashboardState>()(
       dailyTimes: {},
       isDayStartModalOpen: false,
       toggleDayStartModal: () => set((state) => ({ isDayStartModalOpen: !state.isDayStartModalOpen })),
+      
       updateDailyTime: (dateKey, field, timestamp) => {
         set((state) => {
           const newData = { ...state.dailyTimes };
           if (!newData[dateKey]) newData[dateKey] = {};
           newData[dateKey] = { ...newData[dateKey], [field]: timestamp };
-          pushDailyRoutineToDB({ dailyTimes: newData });
+          
+          // Surgically queue the exact timestamp that changed!
+          queueDailyRoutineAction({ type: 'UPDATE_DAILY_TIME', dateKey, field, timestamp });
+          
           return { dailyTimes: newData };
         });
       },
