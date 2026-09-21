@@ -8,7 +8,7 @@ import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
 import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { getDeviceId } from '@/utils/deviceId';
-import { triggerInstantSave } from '@/store/dashboardStore/sync';
+import { triggerInstantSave, checkTimerStillActiveInDB } from '@/store/dashboardStore/sync';
 import Tooltip from './Tooltip';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -264,6 +264,68 @@ export default function Timer() {
     }
     return () => clearInterval(interval);
   }, [store]);
+
+  // Cross-device timer sync: after 5 min, poll DB every 60s to detect if timer was stopped on another device
+  useEffect(() => {
+    if (!store.timerEndAt || !store.timerInitialMins) return;
+    const isOwner = store.timerDeviceId === getDeviceId();
+    if (!isOwner) return; // Only the owner device polls
+
+    // Only start polling after 5 minutes have elapsed (avoid false positives on quick stops)
+    const timerStartedAt = store.timerEndAt - (store.timerInitialMins * 60 * 1000);
+    const elapsedMs = Date.now() - timerStartedAt;
+    const FIVE_MINS_MS = 5 * 60 * 1000;
+    const initialDelay = Math.max(0, FIVE_MINS_MS - elapsedMs);
+
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    const startPolling = () => {
+      pollInterval = setInterval(async () => {
+        const st = useDashboardStore.getState();
+        // Stop polling if timer ended naturally
+        if (!st.timerEndAt && st.timerPausedLeft === null) {
+          if (pollInterval) clearInterval(pollInterval);
+          return;
+        }
+
+        const status = await checkTimerStillActiveInDB('timer');
+        if (status === 'stopped') {
+          // Cloud says no timer — another device stopped it
+          if (pollInterval) clearInterval(pollInterval);
+          const currentSt = useDashboardStore.getState();
+          if (currentSt.timerEndAt) {
+            // Save chunks up to now before discarding
+            const remaining = Math.max(0, Math.floor((currentSt.timerEndAt - Date.now()) / 1000));
+            if (currentSt.timerInitialMins) {
+              const elapsedSecs = (currentSt.timerInitialMins * 60) - remaining;
+              const chunks = Math.floor(Math.max(0, elapsedSecs) / 300);
+              if (chunks > savedChunksRef.current) {
+                const diffMins = (chunks - savedChunksRef.current) * 5;
+                currentSt.addMins(getLocalDateString(), diffMins);
+                savedChunksRef.current = chunks;
+                currentSt.setTimerLastSavedChunks(chunks);
+              }
+            }
+            // Clear timer state — other device ended it
+            currentSt.setTimerEndAt(null);
+            currentSt.setTimerPausedLeft(null);
+            currentSt.clearTimerState();
+            setShowContinuePrompt(true);
+            setPausedAtString('another device');
+            triggerInstantSave();
+          }
+        }
+        // If 'active' or 'unknown' — continue as normal
+      }, 60 * 1000); // poll every 60 seconds
+    };
+
+    const delayTimeout = setTimeout(startPolling, initialDelay);
+
+    return () => {
+      clearTimeout(delayTimeout);
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [store.timerEndAt, store.timerDeviceId, store.timerInitialMins]);
 
   useEffect(() => {
     if (store.timerTrigger) {

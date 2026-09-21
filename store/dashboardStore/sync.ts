@@ -122,6 +122,46 @@ export const syncFocusQueue = async () => {
 };
 
 // ----------------------------------------------------------------------
+// CROSS-DEVICE TIMER CHECK: Poll cloud to see if active timer was stopped
+// Returns: 'active' | 'stopped' | 'unknown' (unknown = network/error)
+// Only call this after 5 minutes of running to avoid false positives.
+// ----------------------------------------------------------------------
+export const checkTimerStillActiveInDB = async (type: 'timer' | 'stopwatch'): Promise<'active' | 'stopped' | 'unknown'> => {
+  if (typeof window === 'undefined' || !navigator.onLine) return 'unknown';
+  const token = getSyncToken();
+  if (!token) return 'unknown';
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(`/api/store?t=${Date.now()}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return 'unknown';
+    const json = await res.json();
+    const cloudState = json?.data?.state;
+    if (!cloudState) return 'unknown';
+
+    if (type === 'timer') {
+      // Timer is active if cloud still has a future timerEndAt
+      if (cloudState.timerEndAt && cloudState.timerEndAt > Date.now()) return 'active';
+      if (cloudState.timerEndAt === null || cloudState.timerEndAt === undefined) return 'stopped';
+      return 'stopped'; // expired
+    } else {
+      // Stopwatch is active if cloud still has a stopwatchStartTime
+      if (cloudState.stopwatchStartTime) return 'active';
+      return 'stopped';
+    }
+  } catch {
+    return 'unknown';
+  }
+};
+
+// ----------------------------------------------------------------------
 // MAIN STATE SAVE: Pushes UI state and settings to /api/store
 // ----------------------------------------------------------------------
 export const performSave = async () => {
@@ -246,6 +286,12 @@ export const performSave = async () => {
         timerPausedLeft: parsedLocal.state.timerPausedLeft !== undefined ? parsedLocal.state.timerPausedLeft : parsedCloud.state.timerPausedLeft,
         timerInitialMins: parsedLocal.state.timerInitialMins !== undefined ? parsedLocal.state.timerInitialMins : parsedCloud.state.timerInitialMins,
         timerDeviceId: parsedLocal.state.timerDeviceId !== undefined ? parsedLocal.state.timerDeviceId : parsedCloud.state.timerDeviceId,
+        timerLastSavedChunks: parsedLocal.state.timerLastSavedChunks !== undefined ? parsedLocal.state.timerLastSavedChunks : parsedCloud.state.timerLastSavedChunks,
+        timerLastAlertedChunks: parsedLocal.state.timerLastAlertedChunks !== undefined ? parsedLocal.state.timerLastAlertedChunks : parsedCloud.state.timerLastAlertedChunks,
+        timerLastUpdated: parsedLocal.state.timerLastUpdated !== undefined ? parsedLocal.state.timerLastUpdated : parsedCloud.state.timerLastUpdated,
+        stopwatchStartTime: parsedLocal.state.stopwatchStartTime !== undefined ? parsedLocal.state.stopwatchStartTime : parsedCloud.state.stopwatchStartTime,
+        stopwatchDeviceId: parsedLocal.state.stopwatchDeviceId !== undefined ? parsedLocal.state.stopwatchDeviceId : parsedCloud.state.stopwatchDeviceId,
+        stopwatchLastSavedChunks: parsedLocal.state.stopwatchLastSavedChunks !== undefined ? parsedLocal.state.stopwatchLastSavedChunks : parsedCloud.state.stopwatchLastSavedChunks,
         activeTaskId: parsedLocal.state.activeTaskId !== undefined ? parsedLocal.state.activeTaskId : parsedCloud.state.activeTaskId,
         activeTaskTitle: parsedLocal.state.activeTaskTitle !== undefined ? parsedLocal.state.activeTaskTitle : parsedCloud.state.activeTaskTitle,
       };
@@ -344,14 +390,36 @@ export const pushCountdownsToDB = async (payload: any) => { };
 export const pushDeadlinesToDB = async (payload: any) => { };
 export const pushDailyRoutineToDB = async (payload: any) => { };
 export const pushStreakToDB = (dateKey: string, minutes: number) => {
+  if (typeof window === 'undefined' || minutes <= 0) return;
+
   const token = getSyncToken();
-  if (token) {
-    fetch('/api/users/streak', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ dateStr: dateKey, minutes })
-    }).catch(err => console.error("Streak sync error:", err));
+
+  if (!token || !navigator.onLine) {
+    // Offline: write to queue, will flush when back online
+    try {
+      const queue = getSecureFocusQueue();
+      queue[dateKey] = (queue[dateKey] || 0) + minutes;
+      setSecureFocusQueue(queue);
+    } catch (e) {}
+    return;
   }
+
+  // Online: fire directly — only fall back to queue on network failure
+  fetch('/api/users/streak', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ dateStr: dateKey, minutes })
+  }).then(res => {
+    if (!res.ok) throw new Error(`streak API ${res.status}`);
+    // Success — nothing to queue, already committed to DB via $inc
+  }).catch(() => {
+    // Network failure: queue so syncFocusQueue retries later
+    try {
+      const queue = getSecureFocusQueue();
+      queue[dateKey] = (queue[dateKey] || 0) + minutes;
+      setSecureFocusQueue(queue);
+    } catch (e) {}
+  });
 };
 export const clearOldDataAPI = async (days: number) => {  };
 export const clearAllDataAPI = async () => {  };
@@ -432,6 +500,12 @@ export const fileStorage = createJSONStorage(() => ({
               timerPausedLeft: localState.timerPausedLeft !== undefined ? localState.timerPausedLeft : cloudState.timerPausedLeft,
               timerInitialMins: localState.timerInitialMins !== undefined ? localState.timerInitialMins : cloudState.timerInitialMins,
               timerDeviceId: localState.timerDeviceId !== undefined ? localState.timerDeviceId : cloudState.timerDeviceId,
+              timerLastSavedChunks: localState.timerLastSavedChunks !== undefined ? localState.timerLastSavedChunks : cloudState.timerLastSavedChunks,
+              timerLastAlertedChunks: localState.timerLastAlertedChunks !== undefined ? localState.timerLastAlertedChunks : cloudState.timerLastAlertedChunks,
+              timerLastUpdated: localState.timerLastUpdated !== undefined ? localState.timerLastUpdated : cloudState.timerLastUpdated,
+              stopwatchStartTime: localState.stopwatchStartTime !== undefined ? localState.stopwatchStartTime : cloudState.stopwatchStartTime,
+              stopwatchDeviceId: localState.stopwatchDeviceId !== undefined ? localState.stopwatchDeviceId : cloudState.stopwatchDeviceId,
+              stopwatchLastSavedChunks: localState.stopwatchLastSavedChunks !== undefined ? localState.stopwatchLastSavedChunks : cloudState.stopwatchLastSavedChunks,
               activeTaskId: localState.activeTaskId !== undefined ? localState.activeTaskId : cloudState.activeTaskId,
               activeTaskTitle: localState.activeTaskTitle !== undefined ? localState.activeTaskTitle : cloudState.activeTaskTitle,
               activeDesktopCustomIndex: localState.activeDesktopCustomIndex !== undefined ? localState.activeDesktopCustomIndex : cloudState.activeDesktopCustomIndex,

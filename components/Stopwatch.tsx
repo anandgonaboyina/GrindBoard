@@ -8,6 +8,7 @@ import ConfirmationModal from './ConfirmationModal';
 import { getLocalDateString } from '@/utils/date';
 import { getDeviceId } from '@/utils/deviceId';
 import Tooltip from './Tooltip';
+import { checkTimerStillActiveInDB, triggerInstantSave } from '@/store/dashboardStore/sync';
 
 const haltAudio = (audioEl: HTMLAudioElement | null) => {
   if (!audioEl) return;
@@ -148,6 +149,56 @@ export default function Stopwatch() {
     }
     return () => clearInterval(interval);
   }, [isRunning, store.stopwatchStartTime, store.stopwatchAddToStats, store.stopwatchLastSavedChunks, store.isStopwatchIntervalEnabled, store.stopwatchIntervalMins, store.enableAlarmSound, store.enableAlarmVibration, store.alarmVolume, store.taskIntervalRingSecs]);
+
+  // Cross-device stopwatch sync: after 5 min, poll DB every 60s
+  useEffect(() => {
+    if (!isRunning || !store.stopwatchStartTime) return;
+    const isOwner = store.stopwatchDeviceId === getDeviceId();
+    if (!isOwner) return;
+
+    const elapsedMs = Date.now() - store.stopwatchStartTime;
+    const FIVE_MINS_MS = 5 * 60 * 1000;
+    const initialDelay = Math.max(0, FIVE_MINS_MS - elapsedMs);
+
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    const startPolling = () => {
+      pollInterval = setInterval(async () => {
+        const st = useDashboardStore.getState();
+        if (!st.stopwatchStartTime) {
+          if (pollInterval) clearInterval(pollInterval);
+          return;
+        }
+
+        const status = await checkTimerStillActiveInDB('stopwatch');
+        if (status === 'stopped') {
+          if (pollInterval) clearInterval(pollInterval);
+          const currentSt = useDashboardStore.getState();
+          if (currentSt.stopwatchStartTime && currentSt.stopwatchAddToStats) {
+            const elapsed = Math.max(0, Math.floor((Date.now() - currentSt.stopwatchStartTime) / 1000));
+            const chunks = Math.floor(elapsed / 300);
+            if (chunks > currentSt.stopwatchLastSavedChunks) {
+              currentSt.addMins(getLocalDateString(), (chunks - currentSt.stopwatchLastSavedChunks) * 5);
+              currentSt.setStopwatchLastSavedChunks(chunks);
+            }
+          }
+          // Clear state — stopped on other device
+          setIsRunning(false);
+          store.setStopwatchStartTime(null);
+          store.setStopwatchDeviceId(null);
+          setShowContinuePrompt(true);
+          setPausedAtString('another device');
+          triggerInstantSave();
+        }
+      }, 60 * 1000);
+    };
+
+    const delayTimeout = setTimeout(startPolling, initialDelay);
+    return () => {
+      clearTimeout(delayTimeout);
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [isRunning, store.stopwatchStartTime, store.stopwatchDeviceId]);
 
   const handleStart = (e?: React.MouseEvent) => {
     e?.stopPropagation();

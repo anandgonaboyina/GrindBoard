@@ -190,13 +190,13 @@ export default function Dashboard() {
   }, []);
 
   // ALL HOOKS MUST BE ABOVE THIS LINE
-  if (!_hasHydrated) return <LoadingScreen />;
-
   const bottomRightZ = Math.max(50, widgetZIndices.tasks || 50, widgetZIndices.stopwatch || 50, widgetZIndices.timer || 50, widgetZIndices.toolbar || 50);
 
   return (
     <>
-      {isOverlayVisible && <LoadingScreen onFinished={() => setIsOverlayVisible(false)} />}
+      {(!_hasHydrated || isOverlayVisible) && <LoadingScreen onFinished={() => setIsOverlayVisible(false)} />}
+      
+      {_hasHydrated && (
       <main className="relative overflow-hidden w-full flex-1" style={{ zoom: activeDashboardScale }}>
         <ConnectionStatusToast />
         <VideoBackground />
@@ -412,6 +412,7 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+      )}
     </>
   );
 }

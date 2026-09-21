@@ -460,7 +460,8 @@ export async function POST(request: Request) {
       existingSettings?.lastModified ? Number(existingSettings.lastModified) : 0,
       existingTasks?.lastModified ? Number(existingTasks.lastModified) : 0,
       existingRoadmaps?.lastModified ? Number(existingRoadmaps.lastModified) : 0,
-      existingStats?.lastModified ? Number(existingStats.lastModified) : 0,
+      // NOTE: Stats is intentionally excluded — it is only updated by /api/users/streak
+      // via $inc and must never cause a false 409 conflict for settings/other saves.
       existingDailyRoutine?.lastModified ? Number(existingDailyRoutine.lastModified) : 0,
       existingTimetable?.lastModified ? Number(existingTimetable.lastModified) : 0,
       existingDeadlines?.lastModified ? Number(existingDeadlines.lastModified) : 0
@@ -688,28 +689,16 @@ export async function POST(request: Request) {
         });
 
         // Merge displaySettings & generalSettings preserving existing DB values if incoming is missing
-        if (existingSettings.displaySettings && typeof existingSettings.displaySettings === 'object') {
-          settingsDoc.displaySettings = { ...existingSettings.displaySettings, ...(displaySettings || {}) };
-        }
-        if (existingSettings.generalSettings && typeof existingSettings.generalSettings === 'object') {
-          settingsDoc.generalSettings = { ...existingSettings.generalSettings, ...(generalSettings || {}) };
-        }
+        settingsDoc.displaySettings = { ...(existingSettings?.displaySettings || {}), ...(displaySettings || {}) };
+        settingsDoc.generalSettings = { ...(existingSettings?.generalSettings || {}), ...(generalSettings || {}) };
 
         // Deep merge hideConfig & mobileHideConfig
-        if (existingSettings.hideConfig && typeof existingSettings.hideConfig === 'object') {
-          settingsDoc.hideConfig = { ...existingSettings.hideConfig, ...(settingsDoc.hideConfig || {}) };
-        }
-        if (existingSettings.mobileHideConfig && typeof existingSettings.mobileHideConfig === 'object') {
-          settingsDoc.mobileHideConfig = { ...existingSettings.mobileHideConfig, ...(settingsDoc.mobileHideConfig || {}) };
-        }
+        settingsDoc.hideConfig = { ...(existingSettings?.hideConfig || {}), ...(settingsDoc.hideConfig || {}) };
+        settingsDoc.mobileHideConfig = { ...(existingSettings?.mobileHideConfig || {}), ...(settingsDoc.mobileHideConfig || {}) };
 
         // Deep merge clockOffsets and widgetOffsets
-        if (existingSettings.clockOffsets && typeof existingSettings.clockOffsets === 'object') {
-          settingsDoc.clockOffsets = { ...existingSettings.clockOffsets, ...(settingsDoc.clockOffsets || {}) };
-        }
-        if (existingSettings.widgetOffsets && typeof existingSettings.widgetOffsets === 'object') {
-          settingsDoc.widgetOffsets = { ...existingSettings.widgetOffsets, ...(settingsDoc.widgetOffsets || {}) };
-        }
+        settingsDoc.clockOffsets = { ...(existingSettings?.clockOffsets || {}), ...(settingsDoc.clockOffsets || {}) };
+        settingsDoc.widgetOffsets = { ...(existingSettings?.widgetOffsets || {}), ...(settingsDoc.widgetOffsets || {}) };
 
         if (settingsDoc.timetableGrid === undefined && existingSettings.timetableGrid && typeof existingSettings.timetableGrid === 'object') {
           settingsDoc.timetableGrid = existingSettings.timetableGrid;
@@ -790,28 +779,9 @@ export async function POST(request: Request) {
     }
 
     // 6. Save Stats to the isolated Stats collection
-    const hasIncrement = incrementHistory && Object.keys(incrementHistory).length > 0;
-    
-    if (hasIncrement) {
-      if (!modifiedCollections.includes('Stats')) modifiedCollections.push('Stats');
-    }
-
-    if (isFullSync || modifiedCollections.includes('Stats') || hasIncrement) {
+    if (isFullSync || modifiedCollections.includes('Stats')) {
       const statsDoc: any = { ...statsSpecificData, lastModified: newLastModified };
-
-      const serverHistory = (existingStats && existingStats.history) ? existingStats.history : {};
-      const incomingHistory = statsDoc.history || {};
-      
-      const mergedHistory = { ...serverHistory, ...incomingHistory };
-
-      if (hasIncrement) {
-        for (const dateKey in incrementHistory) {
-          // Add the queued minutes directly to the server's truth! Ignore the incoming absolute value.
-          mergedHistory[dateKey] = (serverHistory[dateKey] || 0) + incrementHistory[dateKey];
-        }
-      }
-
-      statsDoc.history = mergedHistory;
+      delete statsDoc.history; // Completely handled by /api/users/streak now via $inc
 
       await db.collection('Stats').updateOne(
         { userId: user.userId },

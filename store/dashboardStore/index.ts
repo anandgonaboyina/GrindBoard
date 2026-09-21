@@ -259,18 +259,9 @@ export const useDashboardStore = create<DashboardState>()(
           const oldTotal = state.history[dateKey] || 0;
           const newTotal = oldTotal + mins;
 
-          if (newTotal >= 60 && typeof window !== 'undefined') {
-            pushStreakToDB(dateKey, newTotal);
-          }
-
           if (typeof window !== 'undefined') {
-            try {
-              const queue = getSecureFocusQueue();
-              queue[dateKey] = (queue[dateKey] || 0) + mins;
-              setSecureFocusQueue(queue);
-            } catch (e) {}
+            pushStreakToDB(dateKey, mins);
           }
-
           const existingWorkStarted = (state.dailyTimes[dateKey] || {}).workStartedTime;
           const newBedTime = Date.now();
 
