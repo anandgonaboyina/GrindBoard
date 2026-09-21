@@ -302,14 +302,15 @@ export default function Timer() {
     let interval: NodeJS.Timeout;
 
     if (timerEndAt) {
-      if (!lastTickTimeRef.current || Math.abs(Date.now() - lastTickTimeRef.current) > 30000) {
+      // Initialize or reset lastTickTime to now when timer starts or resumes
+      if (!lastTickTimeRef.current || Math.abs(Date.now() - lastTickTimeRef.current) > 60000) {
         lastTickTimeRef.current = Date.now();
       }
       interval = setInterval(() => {
         const now = Date.now();
         const gap = now - (lastTickTimeRef.current || now);
         lastTickTimeRef.current = now;
-        const wasSleeping = gap > 3000; // Execution gap > 3 seconds indicates system sleep/lock
+        const wasSleeping = gap > 60000; // Execution gap > 60 seconds indicates real system sleep/lock (increased from 3s/30s)
 
         const remaining = Math.floor((timerEndAt - now) / 1000);
         const isOwner = timerDeviceId === getDeviceId();
@@ -388,36 +389,7 @@ export default function Timer() {
                   setTimerLastSavedChunks(targetChunks);
                 };
                 
-                const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
-                if (token && navigator.onLine) {
-                  fetch(`/api/store?t=${Date.now()}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                  }).then(res => res.ok ? res.json() : null)
-                    .then(json => {
-                      const cloudState = json?.data?.state;
-                      if (cloudState && cloudState.timerEndAt === null) {
-                        // The timer was ended in the cloud by another device!
-                        setShowAlreadyEndedModal(true);
-                        
-                        // Clear local timer WITHOUT adding time
-                        savedChunksRef.current = 0;
-                        alertedChunksRef.current = 0;
-                        lastIntervalAlertMinsRef.current = 0;
-                        lastIsIntervalEnabledRef.current = false;
-                        useDashboardStore.getState().setActiveTask(null, null);
-                        setTimerLastSavedChunks(0);
-                        setTimerLastAlertedChunks(0);
-                        setTimerInitialMins(null);
-                        clearTimerState();
-                        stopAlarm();
-                        stopIntervalBeep();
-                      } else {
-                        applyMinsLocally();
-                      }
-                    }).catch(() => applyMinsLocally());
-                } else {
-                  applyMinsLocally();
-                }
+                applyMinsLocally();
               } else {
                 savedChunksRef.current = chunks;
               }
@@ -544,6 +516,7 @@ export default function Timer() {
         if (state.timerPausedLeft !== null) {
           setTimerEndAt(Date.now() + state.timerPausedLeft * 1000);
           setTimerPausedLeft(null);
+          lastTickTimeRef.current = Date.now();
         }
         useDashboardStore.setState({ timerTrigger: null });
         return;
@@ -738,6 +711,7 @@ export default function Timer() {
     setTimerLastSavedChunks(0);
     setTimerLastAlertedChunks(0);
     setTimerDeviceId(getDeviceId());
+    lastTickTimeRef.current = Date.now();
     stopAlarm();
     updateInteraction();
 
@@ -818,6 +792,7 @@ export default function Timer() {
       setTimerEndAt(newEndAt);
       setTimerPausedLeft(null);
       setTimerDeviceId(getDeviceId());
+      lastTickTimeRef.current = Date.now();
 
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         scheduleNotification(newEndAt);

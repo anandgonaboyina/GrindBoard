@@ -43,9 +43,10 @@ export default function Countdown({
     }
   }, [examCountdown.title, examCountdown.endDate, id]);
 
-  // Split into date and time
-  const initialDate = examCountdown.endDate ? examCountdown.endDate.split('T')[0] : '';
-  const initialTime = examCountdown.endDate && examCountdown.endDate.includes('T') ? examCountdown.endDate.split('T')[1] : '';
+  // STRICT OR LOGIC: Split into date OR time. If it has a 'T', it's a Time target (for today). Otherwise, Date target.
+  const isTimeTarget = examCountdown.endDate && examCountdown.endDate.includes('T');
+  const initialDate = examCountdown.endDate && !isTimeTarget ? examCountdown.endDate.split('T')[0] : '';
+  const initialTime = isTimeTarget ? examCountdown.endDate.split('T')[1] : '';
 
   const [editDateOnly, setEditDateOnly] = useState(initialDate);
   const [editTimeOnly, setEditTimeOnly] = useState(initialTime);
@@ -77,7 +78,6 @@ export default function Countdown({
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
         if (diffDays < 0) {
-          // Past date
           setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
           return false;
         }
@@ -90,15 +90,10 @@ export default function Countdown({
         const mins = Math.max(0, Math.floor((timeUntilMidnight % (1000 * 60 * 60)) / (1000 * 60)));
         const secs = Math.max(0, Math.floor((timeUntilMidnight % (1000 * 60)) / 1000));
 
-        setTimeLeft({
-          days: Math.max(0, diffDays),
-          hours,
-          mins,
-          secs
-        });
+        setTimeLeft({ days: Math.max(0, diffDays), hours, mins, secs });
         return true;
       } else {
-        // Specific target date and time specified
+        // Specific target time for TODAY
         const targetTime = new Date(examCountdown.endDate).getTime();
         const distance = targetTime - now.getTime();
 
@@ -131,7 +126,20 @@ export default function Countdown({
   const handleSave = () => {
     if (!id) return;
     const finalTitle = editTitle.trim() || 'Target Goal';
-    const finalDateTime = editDateOnly ? (editTimeOnly ? `${editDateOnly}T${editTimeOnly}` : editDateOnly) : null;
+    
+    let finalDate = editDateOnly;
+    let finalTime = editTimeOnly;
+
+    // Mutually exclusive save logic: Default to today's date if user provided ONLY a time
+    if (finalTime && !finalDate) {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      finalDate = `${y}-${m}-${d}`;
+    }
+
+    const finalDateTime = finalDate ? (finalTime ? `${finalDate}T${finalTime}` : finalDate) : null;
     updateCountdown(id, finalTitle, finalDateTime);
     setIsEditing(false);
   };
@@ -152,7 +160,29 @@ export default function Countdown({
     }
   };
 
-  // EMPTY STATE CARD
+  // Format the strictly mutually-exclusive subtext
+  const getTargetSubtext = () => {
+    if (!examCountdown.endDate) return '';
+    try {
+      const hasTime = examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
+      const parts = examCountdown.endDate.split('T');
+      const [y, m, d] = parts[0].split('-').map(Number);
+      
+      if (hasTime) {
+        const [hr, min] = parts[1].split(':').map(Number);
+        const dateObj = new Date(y, m - 1, d, hr, min);
+        // Only return the Time since it's a today-target
+        return dateObj.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      } else {
+        const dateObj = new Date(y, m - 1, d);
+        // Only return the Date
+        return dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    } catch (e) {
+      return '';
+    }
+  };
+
   if (!id || totalCount === 0 || countdowns.length === 0) {
     return (
       <div className="w-[150px] sm:w-[200px] bg-slate-900/30 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-2xl p-1.5 sm:p-2 text-white pointer-events-auto select-none overflow-hidden transition-all duration-300">
@@ -188,10 +218,8 @@ export default function Countdown({
   return (
     <div className="group w-[150px] sm:w-[210px] bg-indigo-950/30 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-2xl p-1.5 sm:p-2 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300 hover:border-white/20 flex flex-col gap-1">
 
-      {/* Ambient Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-cyan-400/20 blur-[25px] pointer-events-none rounded-full" />
 
-      {/* Header Bar */}
       <div className="flex items-center gap-1 pb-1 border-b border-white/10 relative z-10 shrink-0">
         <button
           onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
@@ -211,24 +239,34 @@ export default function Countdown({
         </div>
       )}
 
-      {/* Content Area */}
       <div className="flex-1 flex flex-col justify-center min-h-[75px] sm:min-h-[85px] relative z-10">
         {isEditing ? (
-          <div className="flex flex-col gap-1 w-full">
+          <div className="flex flex-col gap-1 w-full relative z-20">
             <input
               type="text"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full bg-black/30 border border-white/10 rounded-md px-1.5 py-1 text-white outline-none focus:border-cyan-400 text-[10px] font-bold placeholder:text-white/30"
+              className="w-full bg-black/30 border border-white/10 rounded-md px-1.5 py-1 text-white outline-none focus:border-cyan-400 text-[10px] font-bold placeholder:text-white/30 mb-0.5"
               placeholder="Target Title"
               autoFocus
             />
-            <CustomDatePicker value={editDateOnly} onChange={setEditDateOnly} placeholder="Date" />
-            <CustomTimePicker value={editTimeOnly} onChange={setEditTimeOnly} />
+            
+            {/* MUTUALLY EXCLUSIVE OR LOGIC */}
+            <div onClick={() => setEditTimeOnly('')}>
+              <CustomDatePicker value={editDateOnly} onChange={(val) => { setEditDateOnly(val); setEditTimeOnly(''); }} placeholder="Select Date" />
+            </div>
+            
+            <div className="flex items-center justify-center relative my-0.5">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+              <span className="bg-[#1e1b4b] px-2 text-[8px] font-black text-white/40 uppercase tracking-widest relative z-10 rounded">OR</span>
+            </div>
+            
+            <div onClick={() => setEditDateOnly('')}>
+              <CustomTimePicker value={editTimeOnly} onChange={(val) => { setEditTimeOnly(val); setEditDateOnly(''); }} />
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-between w-full">
-            {/* Prev Arrow */}
             <div className="w-4 flex justify-start">
               {totalCount > 1 && (
                 <button
@@ -243,47 +281,54 @@ export default function Countdown({
 
             {/* Main Countdown Display Logic */}
             <div className="flex flex-col items-center justify-center flex-1 p-2">
-              {hasTime && timeLeft.days === 0 && timeLeft.hours < 12 ? (
-                // LESS THAN 12 HOURS - SHOW HUGE TIME
+              {hasTime && timeLeft.days === 0 ? (
+                // TIME TARGET SELECTED - SHOW HUGE TIME
                 <>
                   <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-pink-400 tracking-tighter drop-shadow-sm font-mono leading-none pr-1">
                     {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.mins).padStart(2, '0')}
                   </span>
-                  <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-amber-400 animate-pulse mt-0.5">
+                  <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-amber-400 animate-pulse mt-0.5 mb-0.5">
                     Hours Left
                   </span>
+                  {examCountdown.endDate && (
+                    <span className="text-[7.5px] sm:text-[8px] text-white/50 font-bold tracking-wider uppercase border-t border-white/10 pt-1 w-full text-center">
+                      Until {getTargetSubtext()}
+                    </span>
+                  )}
                 </>
               ) : timeLeft.days === 0 && !hasTime ? (
-                // NO TIME SPECIFIED, DAY IS 0 -> TARGET TODAY
+                // NO TIME OR DATE REACHED TODAY
                 <>
                   <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-teal-500 tracking-tighter pr-1 drop-shadow-sm leading-none">
                     00
                   </span>
-                  <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-emerald-400 animate-pulse mt-0.5">
+                  <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-emerald-400 animate-pulse mt-0.5 mb-0.5">
                     Target Today
                   </span>
+                  {examCountdown.endDate && (
+                    <span className="text-[7.5px] sm:text-[8px] text-white/50 font-bold tracking-wider uppercase border-t border-white/10 pt-1 w-full text-center">
+                      {getTargetSubtext()}
+                    </span>
+                  )}
                 </>
               ) : (
-                // DEFAULT SHOW HUGE DAYS (Subtext Time if applicable)
+                // DEFAULT DATE TARGET - SHOW HUGE DAYS
                 <>
-                  <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-cyan-200 tracking-tighter leading-none drop-shadow-sm pr-1 ">
+                  <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-cyan-200 tracking-tighter leading-none drop-shadow-sm pr-1">
                     {String(timeLeft.days).padStart(2, '0')}
                   </span>
-                  {hasTime ? (
-                    <div className="flex items-center gap-0.5 mt-0.5 bg-black/20 px-1.5 py-0.5 rounded border border-white/5 text-[8px] font-mono text-cyan-200/80 p-1">
-                      <span>{String(timeLeft.hours).padStart(2, '0')}h</span>
-                      <span>{String(timeLeft.mins).padStart(2, '0')}m</span>
-                    </div>
-                  ) : (
-                    <span className="text-[7px] uppercase font-black tracking-widest text-cyan-400/80 mt-0.5">
-                      Days Left
+                  <span className="text-[7px] uppercase font-black tracking-widest text-cyan-400/80 mt-0.5 mb-0.5">
+                    Days Left
+                  </span>
+                  {examCountdown.endDate && (
+                    <span className="text-[7.5px] sm:text-[8px] text-white/50 font-bold tracking-wider uppercase border-t border-white/10 pt-1 w-full text-center">
+                      Until {getTargetSubtext()}
                     </span>
                   )}
                 </>
               )}
             </div>
 
-            {/* Next Arrow */}
             <div className="w-4 flex justify-end">
               {totalCount > 1 && (
                 <button
@@ -299,7 +344,6 @@ export default function Countdown({
         )}
       </div>
 
-      {/* Footer Actions Row */}
       <div className="pt-1 border-t border-white/10 flex items-center justify-between relative z-10 shrink-0">
         <div className="flex items-center">
           {totalCount > 1 && !isEditing ? (
@@ -313,7 +357,6 @@ export default function Countdown({
 
         <div className="flex items-center gap-1">
           {isEditing ? (
-            // EDIT MODE: CANCEL & SAVE SIDE-BY-SIDE
             <>
               <button
                 onClick={() => setIsEditing(false)}
@@ -329,7 +372,6 @@ export default function Countdown({
               </button>
             </>
           ) : (
-            // VIEW MODE: MINIMAL ICONS
             <>
               <button
                 onClick={handleAddNew}
@@ -357,7 +399,6 @@ export default function Countdown({
         </div>
       </div>
 
-      {/* Delete Confirmation Modal (Unchanged structurally, just styled compact) */}
       {showDeleteConfirm && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[900] flex items-center justify-center pointer-events-auto p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
@@ -392,7 +433,7 @@ function CustomTimePicker({ value, onChange }: { value: string, onChange: (time:
         onClick={() => setIsOpen(true)}
         className="w-full bg-black/30 border border-white/10 hover:border-cyan-500/50 rounded-md px-1.5 py-1 text-white cursor-pointer text-[9px] text-center min-h-[24px] flex items-center justify-center transition-colors"
       >
-        <span className={value ? "font-bold text-cyan-300" : "text-white/40"}>{value || "Time (Optional)"}</span>
+        <span className={value ? "font-bold text-cyan-300" : "text-white/40"}>{value || "Select Time (Today)"}</span>
       </div>
 
       {isOpen && typeof document !== 'undefined' && createPortal(

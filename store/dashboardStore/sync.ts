@@ -136,6 +136,7 @@ export const performSave = async () => {
         'Authorization': `Bearer ${getSyncToken()}`
       },
       body: payload,
+      keepalive: true
     });
 
     if (res.status === 409) {
