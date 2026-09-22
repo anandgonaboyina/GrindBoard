@@ -65,6 +65,8 @@ export const syncSettingsQueue = async () => {
     }
 };
 
+let syncSettingsTimeout: any = null;
+
 const queueSettingsAction = (action: SettingsAction) => {
     if (typeof window === 'undefined') return;
     
@@ -74,11 +76,22 @@ const queueSettingsAction = (action: SettingsAction) => {
         if (queueStr) queue = JSON.parse(queueStr);
     } catch (e) {}
 
-    queue.push(action);
+    // Compress queue: If the last action in the queue is also an UPDATE_SETTINGS, 
+    // merge the updates into it instead of appending a new action.
+    if (action.type === 'UPDATE_SETTINGS' && queue.length > 0 && queue[queue.length - 1].type === 'UPDATE_SETTINGS') {
+        queue[queue.length - 1].updates = {
+            ...queue[queue.length - 1].updates,
+            ...action.updates
+        };
+    } else {
+        queue.push(action);
+    }
+
     localStorage.setItem('settings_offline_queue', JSON.stringify(queue));
 
     if (navigator.onLine) {
-        syncSettingsQueue();
+        if (syncSettingsTimeout) clearTimeout(syncSettingsTimeout);
+        syncSettingsTimeout = setTimeout(syncSettingsQueue, 2000);
     }
 };
 

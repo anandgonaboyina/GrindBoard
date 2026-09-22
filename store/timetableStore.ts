@@ -77,6 +77,8 @@ export const syncTimetableQueue = async () => {
     }
 };
 
+let syncTimetableTimeout: any = null;
+
 const queueTimetableAction = (action: TimetableAction) => {
     if (typeof window === 'undefined') return;
     
@@ -86,10 +88,23 @@ const queueTimetableAction = (action: TimetableAction) => {
         if (queueStr) queue = JSON.parse(queueStr);
     } catch (e) {}
 
-    queue.push(action);
+    // Compress queue: If the last action in the queue is also an UPDATE_TIMETABLE, 
+    // merge the updates into it instead of appending a new action.
+    if (action.type === 'UPDATE_TIMETABLE' && queue.length > 0 && queue[queue.length - 1].type === 'UPDATE_TIMETABLE') {
+        queue[queue.length - 1].updates = {
+            ...queue[queue.length - 1].updates,
+            ...action.updates
+        };
+    } else {
+        queue.push(action);
+    }
+
     localStorage.setItem('timetable_offline_queue', JSON.stringify(queue));
 
-    if (navigator.onLine) syncTimetableQueue();
+    if (navigator.onLine) {
+        if (syncTimetableTimeout) clearTimeout(syncTimetableTimeout);
+        syncTimetableTimeout = setTimeout(syncTimetableQueue, 2000);
+    }
 };
 
 // Legacy wrapper for bulk restores/wipes
