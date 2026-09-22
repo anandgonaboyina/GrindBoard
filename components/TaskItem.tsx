@@ -189,12 +189,13 @@ export default function TaskItem({
                         {task.duration > 0 && !isTaskDone && (
                             editingDurationId === task.id ? (
                                 <div className="flex items-center bg-[#0d1b2a] rounded border border-sky-500/40 px-1 py-[1px] shadow-sm shrink-0">
-                                    <input
-                                        autoFocus type="number" defaultValue={task.duration} min="1" max="999"
-                                        className="w-6 bg-transparent text-[9px] font-bold text-sky-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none"
-                                        onBlur={(e) => { const dur = parseInt(e.target.value); if (!isNaN(dur) && dur > 0) editTaskDuration(task.id, dur, activeTab); setEditingDurationId(null); }}
-                                        onKeyDown={(e) => { if (e.key === 'Enter') { const dur = parseInt(e.currentTarget.value); if (!isNaN(dur) && dur > 0) editTaskDuration(task.id, dur, activeTab); setEditingDurationId(null); } }}
-                                    />
+                                <input
+                                    autoFocus type="number" defaultValue={task.duration} min="1" max="999"
+                                    className="w-6 bg-transparent text-[9px] font-bold text-sky-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    onBlur={(e) => { const dur = parseInt(e.target.value); if (!isNaN(dur) && dur > 0) editTaskDuration(task.id, dur, activeTab); setEditingDurationId(null); }}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { const dur = parseInt(e.currentTarget.value); if (!isNaN(dur) && dur > 0) editTaskDuration(task.id, dur, activeTab); setEditingDurationId(null); } }}
+                                />
+
                                     <span className="text-[8.5px] font-semibold text-sky-200/50 pr-0.5">m</span>
                                 </div>
                             ) : (
@@ -213,10 +214,11 @@ export default function TaskItem({
                             <div className="flex items-center bg-[#061c13] rounded border border-emerald-500/40 px-1 py-[1px] shadow-sm shrink-0">
                                 <input
                                     autoFocus type="number" defaultValue={task.timeSpent || 0} min="0" max="999"
-                                    className="w-6 bg-transparent text-[9px] font-bold text-emerald-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none"
+                                    className="w-6 bg-transparent text-[9px] font-bold text-emerald-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     onBlur={(e) => { const dur = parseInt(e.target.value); if (!isNaN(dur) && dur >= 0) editTaskTimeSpent(task.id, dur, activeTab); setEditingTimeSpentId(null); }}
                                     onKeyDown={(e) => { if (e.key === 'Enter') { const dur = parseInt(e.currentTarget.value); if (!isNaN(dur) && dur >= 0) editTaskTimeSpent(task.id, dur, activeTab); setEditingTimeSpentId(null); } }}
                                 />
+
                                 <span className="text-[8.5px] font-semibold text-emerald-200/50 pr-0.5">m</span>
                             </div>
                         ) : (

@@ -318,8 +318,14 @@ export default function Stopwatch() {
                 </div>
                 {store.isStopwatchIntervalEnabled ? (
                   <div className="flex items-center gap-1">
-                    <input type="number" value={store.stopwatchIntervalMins || ''} onChange={e => store.setStopwatchIntervalMins(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0))} className="w-8 bg-black/50 border border-white/20 rounded px-1 py-0.5 text-[12px] text-center font-bold text-sky-300 outline-none focus:border-sky-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none shadow-inner" min="1" />
-                    <span className="text-[12px] font-bold text-white/50 uppercase tracking-widest">Min</span>
+                    <input 
+                        type="number" 
+                        value={store.stopwatchIntervalMins || ''} 
+                        onChange={e => store.setStopwatchIntervalMins(e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0))} 
+                        className="w-8 bg-black/50 border border-white/20 rounded px-1 py-0.5 text-[12px] text-center font-bold text-sky-300 outline-none focus:border-sky-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner" 
+                        min="1" 
+                      />
+
                   </div>
                 ) : <span className="text-[9px] font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wide">Beep Off</span>}
               </div>

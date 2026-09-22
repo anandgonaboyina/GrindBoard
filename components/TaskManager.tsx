@@ -124,12 +124,13 @@ export default function TaskManager() {
                                     {dashboardStore.isTaskIntervalAlertEnabled ? (
                                     <div className="flex items-center gap-1 pl-1 md:pl-1.5 ml-0.5 border-l border-white/10">
                                     <input 
-                                        type="number" 
-                                        value={dashboardStore.taskIntervalAlertMins || ''} 
-                                        onChange={(e) => dashboardStore.setTaskIntervalAlertMins(isNaN(parseInt(e.target.value)) ? 0 : parseInt(e.target.value))} 
-                                        className="w-6 md:w-7 bg-black/40 border border-white/20 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner" 
-                                        min="1" 
+                                    type="number" 
+                                    value={dashboardStore.taskIntervalAlertMins || ''} 
+                                    onChange={(e) => dashboardStore.setTaskIntervalAlertMins(isNaN(parseInt(e.target.value)) ? 0 : parseInt(e.target.value))} 
+                                    className="w-6 md:w-7 bg-black/40 border border-white/20 rounded px-0.5 md:px-1 py-0.5 text-[9px] text-center font-bold text-sky-300 outline-none focus:border-sky-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner" 
+                                    min="1" 
                                     />
+
                                     <span className="text-[8px] font-medium text-white/40 uppercase">min</span>
                                     </div>
                                     ) : (

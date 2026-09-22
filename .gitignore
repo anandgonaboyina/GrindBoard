@@ -47,3 +47,10 @@ migrate-to-cloud.js
 seed-quotes.js
 seed-demo-data.js
 MERN_STACK_GUIDE.md
+
+# PWA / Service Worker auto-generated files
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/swe-worker-*.js
+public/fallback-*.js

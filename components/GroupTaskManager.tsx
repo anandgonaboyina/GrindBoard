@@ -681,29 +681,30 @@ export default function GroupTaskManager({
                                                 {task.duration > 0 && !isTaskDone && (
                                                     canEdit && editingDurationId === task.id ? (
                                                         <div className="flex items-center bg-[#0d1b2a] rounded border border-sky-500/40 px-1 py-[1px] shadow-sm shrink-0">
-                                                            <input
-                                                                autoFocus
-                                                                type="number"
-                                                                defaultValue={Math.max(0, task.duration - timeSpent)}
-                                                                min="0"
-                                                                max="999"
-                                                                className="w-6 bg-transparent text-[9px] font-bold text-sky-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none"
-                                                                onBlur={(e) => {
-                                                                    const dur = parseInt(e.target.value);
-                                                                    if (!isNaN(dur) && dur >= 0) {
-                                                                        const newGlobalDuration = dur + timeSpent;
-                                                                        const newTasks = tasks.map(t => t.id === task.id ? { ...t, duration: newGlobalDuration } : t);
-                                                                        setTasks(newTasks);
-                                                                        updateTasksInDB(newTasks);
-                                                                    }
-                                                                    setEditingDurationId(null);
-                                                                }}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        e.currentTarget.blur();
-                                                                    }
-                                                                }}
-                                                            />
+                                                        <input
+                                                            autoFocus
+                                                            type="number"
+                                                            defaultValue={Math.max(0, task.duration - timeSpent)}
+                                                            min="0"
+                                                            max="999"
+                                                            className="w-6 bg-transparent text-[9px] font-bold text-sky-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                            onBlur={(e) => {
+                                                                const dur = parseInt(e.target.value);
+                                                                if (!isNaN(dur) && dur >= 0) {
+                                                                    const newGlobalDuration = dur + timeSpent;
+                                                                    const newTasks = tasks.map(t => t.id === task.id ? { ...t, duration: newGlobalDuration } : t);
+                                                                    setTasks(newTasks);
+                                                                    updateTasksInDB(newTasks);
+                                                                }
+                                                                setEditingDurationId(null);
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.currentTarget.blur();
+                                                                }
+                                                            }}
+                                                        />
+
                                                             <span className="text-[8.5px] font-semibold text-sky-200/50 pr-0.5">m</span>
                                                         </div>
                                                     ) : (
@@ -729,7 +730,7 @@ export default function GroupTaskManager({
                                                             defaultValue={timeSpent}
                                                             min="0"
                                                             max="999"
-                                                            className="w-6 bg-transparent text-[9px] font-bold text-emerald-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none"
+                                                            className="w-6 bg-transparent text-[9px] font-bold text-emerald-200 outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             onBlur={(e) => {
                                                                 const dur = parseInt(e.target.value);
                                                                 if (!isNaN(dur) && dur >= 0) {
