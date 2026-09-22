@@ -236,6 +236,11 @@ export const performSave = async () => {
       if (modifiedCollections.length === 0) {
         isSaving = false; hasUnsavedChanges = false; pendingValue = null; saveTimeout = null; return;
       }
+    } else {
+      // First save (no lastSavedValue): Treat as a FULL SYNC to prevent data loss on the server
+      const newState = JSON.parse(valueToSave).state || {};
+      modifiedKeys = Object.keys(newState);
+      modifiedCollections = ['Tasks', 'Stats', 'DailyRoutine', 'Notes', 'Roadmaps', 'Settings', 'Deadlines', 'DashboardStorage'];
     }
 
     let parsedData = null;
@@ -256,13 +261,36 @@ export const performSave = async () => {
       if (typeof parsedData.state.peekModeWallpaper === 'string' && parsedData.state.peekModeWallpaper.startsWith('data:')) {
         delete parsedData.state.peekModeWallpaper;
       }
+
+      // 1. STRIP massive transient data before sending to server to prevent infinite pending/413 errors
+      delete parsedData.state.userGroups;
+      delete parsedData.state.selectedGroupId;
+      delete parsedData.state.viewingFriend;
+      delete parsedData.state.syntheticDeadlines;
+      delete parsedData.state.timerEndAt;
+      delete parsedData.state.timerPausedLeft;
+      delete parsedData.state.timerInitialMins;
+      delete parsedData.state.stopwatchStartTime;
+
+      // 2. DELTA SYNC: Only send the exact keys that were modified!
+      // This prevents the payload from containing the entire store data every time a single setting is changed.
+      if (modifiedKeys && modifiedKeys.length > 0) {
+        const diffState: any = {};
+        modifiedKeys.forEach(k => {
+          if (parsedData.state[k] !== undefined) {
+            diffState[k] = parsedData.state[k];
+          }
+        });
+        parsedData.state = diffState;
+      }
     }
 
     const payload = JSON.stringify({ 
       data: parsedData, 
       lastModified, 
       modifiedCollections, 
-      modifiedKeys 
+      modifiedKeys,
+      isFullSync: !lastSavedValue
     });
 
     const res = await fetch('/api/store', {
@@ -275,11 +303,20 @@ export const performSave = async () => {
     if (res.status === 409) {
       const json = await res.json();
       const parsedCloud = json.cloudData;
-      const parsedLocal = JSON.parse(valueToSave);
+      const parsedLocal = JSON.parse(valueToSave); 
+
+      const userModifications: any = {};
+      if (lastSavedValue && modifiedKeys && modifiedKeys.length > 0) {
+        modifiedKeys.forEach(k => {
+          if (parsedLocal.state && parsedLocal.state[k] !== undefined) {
+            userModifications[k] = parsedLocal.state[k];
+          }
+        });
+      }
 
       const mergedState = {
         ...parsedCloud.state,
-        ...parsedLocal.state,
+        ...userModifications,
         history: parsedCloud.state.history || {},
         dailyTimes: mergeDailyTimes(parsedLocal.state.dailyTimes || {}, parsedCloud.state.dailyTimes || {}),
         timerEndAt: parsedLocal.state.timerEndAt !== undefined ? parsedLocal.state.timerEndAt : parsedCloud.state.timerEndAt,
@@ -368,11 +405,30 @@ export const forcePushTimerState = () => {
       if (token && navigator.onLine) {
         try {
           const parsedData = JSON.parse(pendingValue);
+          
+          const explicitModifiedKeys = ['timerEndAt', 'timerPausedLeft', 'timerInitialMins', 'timerDeviceId', 'timerLastSavedChunks', 'timerLastAlertedChunks', 'timerLastUpdated', 'activeTaskId', 'activeTaskTitle'];
+
+          if (parsedData?.state) {
+            delete parsedData.state.userGroups;
+            delete parsedData.state.selectedGroupId;
+            delete parsedData.state.viewingFriend;
+            delete parsedData.state.syntheticDeadlines;
+
+            // DELTA SYNC: Only send the explicit modified keys for this push
+            const diffState: any = {};
+            explicitModifiedKeys.forEach(k => {
+              if (parsedData.state[k] !== undefined) {
+                diffState[k] = parsedData.state[k];
+              }
+            });
+            parsedData.state = diffState;
+          }
+
           const payload = JSON.stringify({
             data: parsedData,
             lastModified: Date.now(),
             modifiedCollections: ['Settings'],
-            modifiedKeys: ['timerEndAt', 'timerPausedLeft', 'timerInitialMins', 'timerDeviceId', 'timerLastSavedChunks', 'timerLastAlertedChunks', 'timerLastUpdated', 'activeTaskId', 'activeTaskTitle']
+            modifiedKeys: explicitModifiedKeys
           });
           fetch('/api/store', {
             method: 'POST',
@@ -471,6 +527,10 @@ export const fileStorage = createJSONStorage(() => ({
           failedToLoadDB = false;
           const json = await res.json();
           syncFocusQueue(); 
+          
+          if (json.lastModified) {
+            setSyncLastModified(json.lastModified);
+          }
 
           if (json.data && json.data.state) {
             let localState: any = {};

@@ -40,6 +40,16 @@ export const syncSettingsQueue = async () => {
     try { actions = JSON.parse(queueStr); } catch (e) { return; }
     if (actions.length === 0) return;
 
+    // Sanitize actions to ensure no massive data causes a Next.js network hang or 413 error
+    actions = actions.map(action => {
+      if (action.type === 'UPDATE_SETTINGS' && action.updates) {
+        delete action.updates.userGroups;
+        delete action.updates.selectedGroupId;
+        delete action.updates.viewingFriend;
+      }
+      return action;
+    });
+
     try {
         const res = await fetch('/api/settings', {
             method: 'PATCH',

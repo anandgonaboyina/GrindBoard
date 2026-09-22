@@ -585,6 +585,17 @@ export async function POST(request: Request) {
       unsetDeadlineKeys[key] = "";
     });
 
+    const settingsSpecificData: Record<string, any> = {};
+
+    SETTING_ARRAY_KEYS.forEach(key => {
+      if (state && state[key] !== undefined) {
+        if (isFullSync || modifiedKeys.includes(key)) {
+          settingsSpecificData[key] = state[key];
+        }
+        delete state[key];
+      }
+    });
+
     const displaySettings: Record<string, any> = {};
     const generalSettings: Record<string, any> = {};
     const coreData: Record<string, any> = {};
@@ -600,16 +611,6 @@ export async function POST(request: Request) {
     });
 
     const { notes, roadmaps, ...restCoreData } = coreData;
-    const settingsSpecificData: Record<string, any> = {};
-
-    SETTING_ARRAY_KEYS.forEach(key => {
-      if (restCoreData[key] !== undefined) {
-        if (isFullSync || modifiedKeys.includes(key)) {
-          settingsSpecificData[key] = restCoreData[key];
-        }
-        delete restCoreData[key];
-      }
-    });
 
     try {
       require('fs').appendFileSync('D:/productivedashborad/dashboard-cloud/debug-store.txt',
