@@ -93,7 +93,7 @@ export default function TaskItem({
                                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingTaskId(null); } }}
                                 ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
                                 value={task.title}
-                                onChange={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; updateTaskTitle(task.id, e.target.value); }}
+                                onChange={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; updateTaskTitle(task.id, e.target.value, activeTab); }}
                                 rows={1} spellCheck={false}
                                 className="bg-black/20 backdrop-blur-2xl outline-none w-full text-[12px] sm:text-[13px] leading-snug border-b border-sky-500/70 px-1 -mx-1 resize-none overflow-hidden block text-white rounded-md shadow-inner transition-colors"
                             />
