@@ -192,6 +192,26 @@ export default function Dashboard() {
   // ALL HOOKS MUST BE ABOVE THIS LINE
   const bottomRightZ = Math.max(50, widgetZIndices.tasks || 50, widgetZIndices.stopwatch || 50, widgetZIndices.timer || 50, widgetZIndices.toolbar || 50);
 
+  useEffect(() => {
+      const fetchCountdowns = async () => {
+        const token = localStorage.getItem('dashboard_sync_token') || localStorage.getItem('token');
+        if (!token) return;
+        try {
+          const res = await fetch('/api/countdowns', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const json = await res.json();
+          if (json.success && json.data?.countdowns) {
+            useDashboardStore.setState({ countdowns: json.data.countdowns });
+          }
+        } catch (e) {
+          console.warn("Failed to load countdowns", e);
+        }
+      };
+
+      fetchCountdowns();
+    }, []);
+
   return (
     <>
       {(!_hasHydrated || isOverlayVisible) && <LoadingScreen onFinished={() => setIsOverlayVisible(false)} />}

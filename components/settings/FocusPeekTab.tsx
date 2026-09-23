@@ -101,7 +101,9 @@ export default React.memo(function FocusPeekTab({ setInfoModalKey, showAlertModa
         </div>
           <div className="p-2 md:p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
           <div className="text-[9px] md:text-[10px] text-red-200/90 leading-relaxed break-words">
-            <strong className="text-blue-400">Alt + f4</strong> shortcut to shutdown <strong className="text-white">not works</strong>  due to lively wallpaper shortcut keys you have to manually do <pre> <strong className="text-white">Tip :  once click on windows button and do alt+f4 it works</strong></pre>
+            <strong className="text-blue-400">Alt + f4</strong> shortcut to shutdown <strong className="text-white">not works</strong>  due to lively wallpaper shortcut keys you have to manually do
+             <hr/>
+             <strong className="text-white">Tip :  once click on windows button and do alt+f4 it works</strong>
           </div>
         </div>
         <div className="flex flex-col gap-2">

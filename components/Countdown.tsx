@@ -46,6 +46,29 @@ export default function Countdown({
     }
   }, [id]);
 
+
+useEffect(() => {
+  const fetchCountdowns = async () => {
+    const token = localStorage.getItem('dashboard_sync_token') || localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/countdowns', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
+      });
+      const json = await res.json();
+      if (json.success && json.data && json.data.countdowns) {
+        useDashboardStore.setState({ countdowns: json.data.countdowns });
+      }
+    } catch (e) {
+      console.warn("Failed to fetch countdowns", e);
+    }
+  };
+
+  fetchCountdowns();
+}, []);
+
   // Initialize edit fields with smart defaults (Today + Current Time)
   useEffect(() => {
     if (isEditing) {
@@ -331,7 +354,7 @@ export default function Countdown({
               <ChevronLeft size={14} />
             </button>
             
-            <span className="text-[10px] font-mono font-black text-white">
+            <span className="text-[7px] sm:text-[10px] font-mono font-black text-white">
               {currentIndex + 1} <span className="text-white/40">/ {totalCount}</span>
             </span>
             
@@ -347,7 +370,7 @@ export default function Countdown({
           <button 
             onClick={handleAddNew} 
             disabled={countdowns.length >= 5} 
-            className="flex items-center gap-1 bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/30 px-2 py-1 rounded-full transition-colors disabled:opacity-30"
+            className="flex items-center gap-1 bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/30 px-1 py-0.5 rounded-full transition-colors disabled:opacity-30"
           >
             <Plus size={12} className="text-cyan-400" />
             <span className="text-[10px] font-bold text-cyan-300">New</span>

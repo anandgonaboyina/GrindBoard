@@ -135,7 +135,9 @@ export const checkTimerStillActiveInDB = async (type: 'timer' | 'stopwatch'): Pr
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
-    const res = await fetch(`/api/store?t=${Date.now()}`, {
+// 1. ADD: Send our local timestamp so the server knows we don't need the whole DB
+    const localLastMod = getSyncLastModified() || 0;
+    const res = await fetch(`/api/store?t=${Date.now()}&localModified=${localLastMod}`, {
       headers: { 'Authorization': `Bearer ${token}` },
       cache: 'no-store',
       signal: controller.signal
@@ -144,6 +146,11 @@ export const checkTimerStillActiveInDB = async (type: 'timer' | 'stopwatch'): Pr
 
     if (!res.ok) return 'unknown';
     const json = await res.json();
+    
+    // 2. NEW: If the server says "upToDate", it means no other device touched the DB.
+    // Therefore, our timer is absolutely still active! No payload downloaded!
+    if (json.upToDate) return 'active';
+
     const cloudState = json?.data?.state;
     if (!cloudState) return 'unknown';
 
@@ -213,7 +220,7 @@ export const performSave = async () => {
     if (lastSavedValue) {
       const oldState = JSON.parse(lastSavedValue).state || {};
       const newState = JSON.parse(valueToSave).state || {};
-      const TASK_KEYS = ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
+      const TASK_KEYS = ['tasks', 'deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'plans'];
       const DAILY_ROUTINE_KEYS = ['dailyTimes'];
       const NOTES_KEYS = ['notes'];
       const ROADMAPS_KEYS = ['roadmaps'];
@@ -232,6 +239,8 @@ export const performSave = async () => {
 
       // ACTION SQUASHING: Detect and squash rapid slider/toggle changes
       Object.keys(newState).forEach(key => {
+        // FIX 1: Ignore keys that are already handled perfectly by the atomic action queue!
+        if (key === 'lastModified' || key === 'history' || key === 'dailyTimes' || TRANSIENT_KEYS.includes(key)) return;
         if (JSON.stringify(newState[key]) !== JSON.stringify(oldState[key])) {
           modifiedKeys.push(key);
           if (TASK_KEYS.includes(key)) modifiedCollections.push('Tasks');
@@ -276,12 +285,10 @@ export const performSave = async () => {
       if (typeof parsedData.state.peekModeWallpaper === 'string' && parsedData.state.peekModeWallpaper.startsWith('data:')) {
         delete parsedData.state.peekModeWallpaper;
       }
-
-      // 1. STRIP massive transient data before sending to server to prevent infinite pending/413 errors
-      delete parsedData.state.userGroups;
-      delete parsedData.state.selectedGroupId;
-      delete parsedData.state.viewingFriend;
-      delete parsedData.state.syntheticDeadlines;
+      // delete parsedData.state.userGroups;
+      // delete parsedData.state.selectedGroupId;
+      // delete parsedData.state.viewingFriend;
+      // delete parsedData.state.syntheticDeadlines;
       delete parsedData.state.timerEndAt;
       delete parsedData.state.timerPausedLeft;
       delete parsedData.state.timerInitialMins;
@@ -322,7 +329,8 @@ export const performSave = async () => {
       const userModifications: any = {};
       if (lastSavedValue && modifiedKeys && modifiedKeys.length > 0) {
         modifiedKeys.forEach(k => {
-          if (parsedLocal.state && parsedLocal.state[k] !== undefined) {
+          // FIX 2: Prevent the old local timestamp from overwriting the new cloud one
+          if (k !== 'lastModified' && parsedLocal.state && parsedLocal.state[k] !== undefined) {
             userModifications[k] = parsedLocal.state[k];
           }
         });
@@ -359,12 +367,18 @@ export const performSave = async () => {
       const mergedStr = JSON.stringify({ version: 2, state: mergedState });
 
       isSyncingFromCloud = true;
-      // CRITICAL: Update local timestamp instantly on conflict resolution
-      setSyncLastModified(Math.max(Date.now(), (json.cloudLastModified || 0) + 1000));
+      // 1. CRITICAL: Trust the server's exact timestamp, don't do math with Date.now()
+      setSyncLastModified(json.cloudLastModified);
+      
       try { localStorage.setItem('dashboard-storage', mergedStr); } catch (e) { }
       useDashboardStore.setState(mergedState);
 
       pendingValue = mergedStr;
+      
+      // 2. THE FIX: Create a pure cloud baseline so the next diff ONLY sends your tiny edits!
+      const pureCloudBaseline = { ...parsedLocal.state, ...parsedCloud.state };
+      lastSavedValue = JSON.stringify({ version: 2, state: pureCloudBaseline });
+
       hasUnsavedChanges = true;
       if (saveTimeout) clearTimeout(saveTimeout);
       saveTimeout = setTimeout(performSave, 500);
@@ -445,7 +459,13 @@ export const forcePushTimerState = () => {
         try {
           const parsedData = JSON.parse(pendingValue);
           
-          const explicitModifiedKeys = ['timerEndAt', 'timerPausedLeft', 'timerInitialMins', 'timerDeviceId', 'timerLastSavedChunks', 'timerLastAlertedChunks', 'timerLastUpdated', 'activeTaskId', 'activeTaskTitle'];
+          //  FIX : Add the 3 stopwatch keys to the end of this array in sync.ts
+            const explicitModifiedKeys = [
+              'timerEndAt', 'timerPausedLeft', 'timerInitialMins', 'timerDeviceId', 
+              'timerLastSavedChunks', 'timerLastAlertedChunks', 'timerLastUpdated', 
+              'activeTaskId', 'activeTaskTitle',
+              'stopwatchStartTime', 'stopwatchDeviceId', 'stopwatchLastSavedChunks' // <-- ADDED THESE!
+            ];
 
           if (parsedData?.state) {
             delete parsedData.state.userGroups;
@@ -463,25 +483,52 @@ export const forcePushTimerState = () => {
             parsedData.state = diffState;
           }
 
-          const payload = JSON.stringify({
+            const payload = JSON.stringify({
             data: parsedData,
-            lastModified: Date.now(),
+            // FIX: Use the actual sync token, NOT Date.now()!
+            lastModified: getSyncLastModified(), 
             modifiedCollections: ['Settings'],
             modifiedKeys: explicitModifiedKeys
           });
+          
           fetch('/api/store', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: payload,
             keepalive: true
-          }).catch(() => {});
+          })
+          .then(res => res.json())
+          .then(json => {
+            // FIX: Ensure the local app learns the new timestamp from the server!
+            if (json.lastModified) setSyncLastModified(json.lastModified);
+          })
+          .catch(() => {});
         } catch (e) { }
       }
     }
   }
 };
 
-export const pushCountdownsToDB = async (payload: any) => { };
+export const pushCountdownsToDB = async (countdownsArray: any[]) => {
+  const token = getSyncToken();
+  if (!token || typeof window === 'undefined') return;
+
+  if (!navigator.onLine) {
+    // Optional: Save to local queue if offline (like tasks)
+    try { localStorage.setItem('countdowns_offline_queue', JSON.stringify(countdownsArray)); } catch(e){}
+    return;
+  }
+
+  try {
+    await fetch('/api/countdowns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ countdowns: countdownsArray })
+    });
+  } catch (err) {
+    console.warn("Failed to atomic sync countdowns:", err);
+  }
+};
 export const pushDeadlinesToDB = async (payload: any) => { };
 export const pushDailyRoutineToDB = async (payload: any) => { };
 export const pushStreakToDB = (dateKey: string, minutes: number) => {

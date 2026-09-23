@@ -8,7 +8,8 @@ import ConfirmationModal from './ConfirmationModal';
 import { getLocalDateString } from '@/utils/date';
 import { getDeviceId } from '@/utils/deviceId';
 import Tooltip from './Tooltip';
-import { checkTimerStillActiveInDB, triggerInstantSave } from '@/store/dashboardStore/sync';
+// 🚀 FIX: Imported our surgical atomic APIs!
+import { checkTimerStillActiveInDB, triggerInstantSave, pushStreakToDB, forcePushTimerState } from '@/store/dashboardStore/sync';
 
 const haltAudio = (audioEl: HTMLAudioElement | null) => {
   if (!audioEl) return;
@@ -38,6 +39,12 @@ export default function Stopwatch() {
   const deadmanTriggeredAtRef = useRef<number | null>(null);
   const deadmanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 🚀 FIX: Added the missing function to silence the interval beep
+  const stopIntervalBeep = () => {
+    haltAudio(intervalAudioRef.current);
+    setIsIntervalRinging(false);
+  };
+
   // Handle sleep/wake and settings modal audio cleanup
   useEffect(() => {
     const handleSleepWakeCleanup = () => { if (!useDashboardStore.getState().isAlarmPlaying) haltAudio(intervalAudioRef.current); };
@@ -56,7 +63,10 @@ export default function Stopwatch() {
         intervalAudioRef.current.muted = false;
         intervalAudioRef.current.volume = ((store.alarmVolume || 1) > 1 ? (store.alarmVolume || 1) / 100 : (store.alarmVolume || 1)) * 0.4;
         intervalAudioRef.current.currentTime = 0;
-        intervalAudioRef.current.play().catch(e => console.error(e));
+        intervalAudioRef.current.play().catch(error => { if (error.name !== 'NotAllowedError') {
+                console.warn("Audio playback issue:", error);
+                  }
+                  });
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
       } else haltAudio(intervalAudioRef.current);
     }
@@ -111,9 +121,13 @@ export default function Stopwatch() {
 
             const chunks = Math.floor(cappedElapsed / 300);
             if (chunks > store.stopwatchLastSavedChunks) {
-              store.addMins(getLocalDateString(), (chunks - store.stopwatchLastSavedChunks) * 5);
+              const diffMins = (chunks - store.stopwatchLastSavedChunks) * 5;
+              store.addMins(getLocalDateString(), diffMins);
               store.setStopwatchLastSavedChunks(chunks);
-              useDashboardStore.getState().forceInstantSave();
+              
+              // 🚀 ATOMIC SYNC: Swap sledgehammer for scalpels!
+              pushStreakToDB(getLocalDateString(), diffMins);
+              forcePushTimerState();
             }
             if (typeof window !== 'undefined') localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
             store.setStopwatchStartTime(null); store.setStopwatchDeviceId(null); setElapsedSecs(cappedElapsed);
@@ -146,8 +160,12 @@ export default function Stopwatch() {
               const chunks = Math.floor(cappedElapsed / 300);
               const savedSoFar = currentSt.stopwatchLastSavedChunks;
               if (chunks > savedSoFar) {
-                currentSt.addMins(getLocalDateString(), (chunks - savedSoFar) * 5);
+                const diffMins = (chunks - savedSoFar) * 5;
+                currentSt.addMins(getLocalDateString(), diffMins);
                 currentSt.setStopwatchLastSavedChunks(chunks);
+                
+                // End of session, sledgehammer is fine here!
+                pushStreakToDB(getLocalDateString(), diffMins);
                 triggerInstantSave();
               }
             }
@@ -168,9 +186,15 @@ export default function Stopwatch() {
         if (store.stopwatchAddToStats && isOwner) {
           const chunks = Math.floor(currentElapsed / 300);
           if (chunks > store.stopwatchLastSavedChunks) {
-            store.addMins(getLocalDateString(), (chunks - store.stopwatchLastSavedChunks) * 5);
+            const diffMins = (chunks - store.stopwatchLastSavedChunks) * 5;
+            
+            // 1. Update UI state
+            store.addMins(getLocalDateString(), diffMins);
             store.setStopwatchLastSavedChunks(chunks);
-            useDashboardStore.getState().forceInstantSave();
+            
+            // 🚀 2. ATOMIC SYNC: Tiny payloads!
+            pushStreakToDB(getLocalDateString(), diffMins);
+            forcePushTimerState(); 
           }
         }
 
@@ -218,8 +242,10 @@ export default function Stopwatch() {
             const elapsed = Math.max(0, Math.floor((Date.now() - currentSt.stopwatchStartTime) / 1000));
             const chunks = Math.floor(elapsed / 300);
             if (chunks > currentSt.stopwatchLastSavedChunks) {
-              currentSt.addMins(getLocalDateString(), (chunks - currentSt.stopwatchLastSavedChunks) * 5);
+              const diffMins = (chunks - currentSt.stopwatchLastSavedChunks) * 5;
+              currentSt.addMins(getLocalDateString(), diffMins);
               currentSt.setStopwatchLastSavedChunks(chunks);
+              pushStreakToDB(getLocalDateString(), diffMins);
             }
           }
           // Clear state — stopped on other device
@@ -228,7 +254,7 @@ export default function Stopwatch() {
           store.setStopwatchDeviceId(null);
           setShowContinuePrompt(true);
           setPausedAtString('another device');
-          triggerInstantSave();
+          triggerInstantSave(); // Sledgehammer is correct here (session ended)
         }
       }, 60 * 1000);
     };
@@ -274,11 +300,16 @@ export default function Stopwatch() {
   const finalizeStop = (saveToStats: boolean) => {
     if (elapsedSecs >= 300 && saveToStats && store.stopwatchDeviceId === getDeviceId()) {
       const finalUnsavedMins = Math.max(0, Math.floor(elapsedSecs / 60) - (store.stopwatchLastSavedChunks * 5));
-      if (finalUnsavedMins > 0) store.addMins(getLocalDateString(), finalUnsavedMins);
+      if (finalUnsavedMins > 0) {
+        store.addMins(getLocalDateString(), finalUnsavedMins);
+        pushStreakToDB(getLocalDateString(), finalUnsavedMins);
+      }
     }
     setIsRunning(false); setElapsedSecs(0); store.setStopwatchStartTime(null); store.setStopwatchDeviceId(null); store.setStopwatchLastSavedChunks(0); stopwatchAlertedChunksRef.current = 0;
     if (typeof window !== 'undefined') { localStorage.removeItem('stopwatch_paused_secs'); localStorage.removeItem('stopwatch_last_active'); localStorage.removeItem('stopwatch_tainted'); }
-    haltAudio(intervalAudioRef.current); setIsIntervalRinging(false); useDashboardStore.getState().forceInstantSave();
+    haltAudio(intervalAudioRef.current); setIsIntervalRinging(false); 
+    
+    triggerInstantSave(); // Global sync at the very end of the session
   };
 
   const toggleStatsCheckbox = (e: React.MouseEvent) => {
@@ -303,6 +334,7 @@ export default function Stopwatch() {
         </div>
 
         <div className="p-3 flex flex-col gap-1 cursor-default" onPointerDown={(e) => { e.stopPropagation(); updateInteraction(); }}>
+          
           {showContinuePrompt ? (
             <div className="flex flex-col items-center gap-2 w-full py-1">
               <p className="text-[10px] font-semibold text-amber-300">Session paused (Away)</p>
@@ -326,30 +358,38 @@ export default function Stopwatch() {
                 <span className="text-[8px] uppercase tracking-wider font-bold">Add to Today's Focus</span>
               </div>
 
-              <div className="flex justify-center items-center gap-2">
-                {!isRunning ? (
-                  <Tooltip text="Start Stopwatch" position="top">
-                    <button onClick={handleStart} className="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95">
-                      <Play fill="currentColor" size={14} className="ml-0.5" />
+              {/* 🚀 FIX: Replaces the controls seamlessly when ringing without taking extra height! */}
+              {isIntervalRinging ? (
+                <button onClick={stopIntervalBeep} className="w-full h-8 flex flex-row items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 rounded-xl animate-pulse shadow-lg active:scale-95 border border-sky-300/40">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">{store.stopwatchIntervalMins || 5}m</span>
+                  <span className="text-sm font-bold tracking-wide flex items-center gap-1 text-white"><Check size={16} strokeWidth={2.5} /> Okay</span>
+                </button>
+              ) : (
+                <div className="flex justify-center items-center gap-2">
+                  {!isRunning ? (
+                    <Tooltip text="Start Stopwatch" position="top">
+                      <button onClick={handleStart} className="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95">
+                        <Play fill="currentColor" size={14} className="ml-0.5" />
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip text="Pause Stopwatch" position="top">
+                      <button onClick={handlePause} className="w-8 h-8 flex items-center justify-center rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95">
+                        <Pause fill="currentColor" size={14} />
+                      </button>
+                    </Tooltip>
+                  )}
+                  <Tooltip text="Stop & Save" position="top">
+                    <button onClick={handleStop} disabled={elapsedSecs === 0} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed">
+                      <Square fill="currentColor" size={12} />
                     </button>
                   </Tooltip>
-                ) : (
-                  <Tooltip text="Pause Stopwatch" position="top">
-                    <button onClick={handlePause} className="w-8 h-8 flex items-center justify-center rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg transition-all hover:scale-105 active:scale-95">
-                      <Pause fill="currentColor" size={14} />
-                    </button>
-                  </Tooltip>
-                )}
-                <Tooltip text="Stop & Save" position="top">
-                  <button onClick={handleStop} disabled={elapsedSecs === 0} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed">
-                    <Square fill="currentColor" size={12} />
-                  </button>
-                </Tooltip>
-              </div>
+                </div>
+              )}
 
               {/* Interval Settings seamlessly integrated with bottom edge */}
-              <div className="flex items-center justify-between gap-1 mt-2 pt-2.5 pb-2.5 px-3 -mx-3 -mb-3 bg-black/40 border-t border-white/10 w-[calc(100%+1.5rem)]">
-                <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => store.setIsStopwatchIntervalEnabled(!store.isStopwatchIntervalEnabled)}>
+              <div className="flex items-center justify-between gap-1 mt-0.5 pt-1 pb-1 px-3 -mx-3 -mb-3 bg-black/40 border-t border-white/10 w-[calc(100%+1.5rem)]">
+                <div className="flex items-center gap-1 cursor-pointer" onClick={() => store.setIsStopwatchIntervalEnabled(!store.isStopwatchIntervalEnabled)}>
                   <BellRing size={12} className={store.isStopwatchIntervalEnabled ? "text-sky-400" : "text-white/40"} />
                   <span className="text-[10px] font-bold text-white/70 tracking-wide">Interval</span>
                   <button className={`relative inline-flex h-3.5 w-6 items-center rounded-full transition-colors ml-1 ${store.isStopwatchIntervalEnabled ? 'bg-sky-500' : 'bg-white/20'}`}>
@@ -365,7 +405,6 @@ export default function Stopwatch() {
                         className="w-8 bg-black/50 border border-white/20 rounded px-1 py-0.5 text-[12px] text-center font-bold text-sky-300 outline-none focus:border-sky-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner" 
                         min="1" 
                       />
-
                   </div>
                 ) : <span className="text-[9px] font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wide">Beep Off</span>}
               </div>

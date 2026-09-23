@@ -170,8 +170,7 @@ export default function RightToolbar() {
           </>
         ) : (
           <>
-            {/* Panic Button - Mobile Only */}
-            <Tooltip text={isHidden ? "Unhide Interface" : (panicButtonMode === 'redirect' ? "Panic! Launch App" : "Panic! Hide Interface")} position="left">
+
               <button
                 data-tour="eye-toggle"
                 onClick={handlePanic}
@@ -179,7 +178,6 @@ export default function RightToolbar() {
               >
                 <Eye size={20} className="sm:w-6 sm:h-6" />
               </button>
-            </Tooltip>
 
             {/* Plans Toggle Button */}
             {showPlans && (

@@ -8,9 +8,10 @@ import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
 import { useAudioUrl } from '@/hooks/useAudioUrl';
 import { getDeviceId } from '@/utils/deviceId';
-import { triggerInstantSave, checkTimerStillActiveInDB } from '@/store/dashboardStore/sync';
+import { triggerInstantSave, checkTimerStillActiveInDB, forcePushTimerState, pushStreakToDB } from '@/store/dashboardStore/sync';
 import Tooltip from './Tooltip';
 import ConfirmationModal from './ConfirmationModal';
+
 
 // Helper to safely stop audio and update OS media session state
 const haltAudio = (audioEl: HTMLAudioElement | null) => {
@@ -22,6 +23,7 @@ const haltAudio = (audioEl: HTMLAudioElement | null) => {
 };
 
 export default function Timer() {
+
   const store = useDashboardStore();
   const { updateTaskDuration: updateLocalTaskDuration } = useTaskStore();
   const resolvedAlarmUrl = useAudioUrl(store.alarmSound);
@@ -120,7 +122,7 @@ export default function Timer() {
           updateLocalTaskDuration(store.activeTaskId, finalUnsavedMins);
           store.incrementGroupTaskTimeSpent(store.activeTaskId, finalUnsavedMins);
         }
-        triggerInstantSave();
+        
       }
     }
     savedChunksRef.current = 0;
@@ -176,7 +178,6 @@ export default function Timer() {
         if (wasSleeping) {
           const actvMins = st.activeTaskId ? st.taskIntervalAlertMins : st.timerIntervalMins;
           if (actvMins > 0 && st.timerInitialMins) alertedChunksRef.current = Math.floor(Math.max(0, (st.timerInitialMins * 60) - remaining) / (actvMins * 60));
-          return;
         }
 
         // --- NEW 3-HOUR DEADMAN SWITCH ---
@@ -202,7 +203,7 @@ export default function Timer() {
                       updateLocalTaskDuration(currentSt.activeTaskId, cappedMins);
                       currentSt.incrementGroupTaskTimeSpent(currentSt.activeTaskId, cappedMins);
                     }
-                    triggerInstantSave();
+                    
                   }
                 }
                 currentSt.setTimerEndAt(null);
@@ -231,14 +232,25 @@ export default function Timer() {
               if (isOwner) {
                 const diffMins = (chunks - savedChunksRef.current) * 5;
                 savedChunksRef.current = chunks;
+                
+                // 1. Update Local State
                 st.addMins(getLocalDateString(), diffMins);
+                
+                // 2. ATOMIC SYNC: Send only the tiny {date, minutes} payload to DB
+                pushStreakToDB(getLocalDateString(), diffMins);
+
                 if (st.activeTaskId) {
+                // 3. Update local task (Your taskStore already pushes the tiny {actions: [...]} payload automatically!)
                   st.updateTaskDuration(st.activeTaskId, diffMins);
                   updateLocalTaskDuration(st.activeTaskId, diffMins);
                   st.incrementGroupTaskTimeSpent(st.activeTaskId, diffMins);
                 }
+                
                 st.setTimerLastSavedChunks(chunks);
-                triggerInstantSave();
+                
+                //  4. ATOMIC SYNC: Only sync the 5 specific timer variables (ignores tasks/history)
+                forcePushTimerState(); 
+                
               } else savedChunksRef.current = chunks;
             }
 
@@ -284,7 +296,7 @@ export default function Timer() {
                 updateLocalTaskDuration(currentSt.activeTaskId, finalMins);
                 currentSt.incrementGroupTaskTimeSpent(currentSt.activeTaskId, finalMins);
               }
-              triggerInstantSave();
+              
             }
             savedChunksRef.current = 0;
             fetchQuote().then(q => currentSt.showQuotePopup(q));
@@ -346,7 +358,7 @@ export default function Timer() {
             currentSt.clearTimerState();
             setShowContinuePrompt(true);
             setPausedAtString('another device');
-            triggerInstantSave();
+            
           }
         }
         // If 'active' or 'unknown' — continue as normal
@@ -397,7 +409,12 @@ export default function Timer() {
     if (intervalAudioRef.current) {
       if (isIntervalRinging && store.enableAlarmSound) {
         intervalAudioRef.current.muted = false; intervalAudioRef.current.volume = ((store.alarmVolume || 1) > 1 ? (store.alarmVolume || 1)/100 : (store.alarmVolume || 1)) * 0.4;
-        intervalAudioRef.current.currentTime = 0; intervalAudioRef.current.play().catch(e => console.error(e));
+        intervalAudioRef.current.currentTime = 0;
+         intervalAudioRef.current.play().catch(error => {
+        if (error.name !== 'NotAllowedError') {
+         console.warn("Audio playback issue:", error);
+         }
+        });
       } else haltAudio(intervalAudioRef.current);
     }
   }, [isIntervalRinging, store.enableAlarmSound, store.alarmVolume, resolvedAlarmUrl]);
@@ -606,7 +623,7 @@ export default function Timer() {
             )}
 
             {!store.activeTaskId && !isEditingTime && !store.isAlarmPlaying && !isIntervalRinging && (
-              <div className="flex items-center justify-between gap-1 mt-2 pt-2.5 pb-2.5 px-3 -mx-3 -mb-3 bg-black/40 border-t border-white/10">
+              <div className="flex items-center justify-between gap-1 mt-1 pt-1 pb-1 px-3 -mx-3 -mb-3 bg-black/40 border-t border-white/10">
                 <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => store.setIsTimerIntervalEnabled(!store.isTimerIntervalEnabled)}>
                   <BellRing size={12} className={store.isTimerIntervalEnabled ? "text-sky-400" : "text-white/40"} />
                   <span className="text-[10px] font-bold text-white/70 tracking-wide">Interval</span>

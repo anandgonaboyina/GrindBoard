@@ -11,8 +11,9 @@ export default function Dock({ onOpenNotes }: DockProps) {
         window.open(url, '_blank', 'noopener,noreferrer');
     };
 
+    // FIX: Removed 'justify-between' and 'w-full'. Added 'justify-center', 'w-max', and 'mx-auto' to keep it compact and centered on mobile.
     return (
-        <div id="nav-dock" className="relative flex items-center justify-between sm:justify-center gap-2 sm:gap-4 px-3.5 sm:px-5 py-2 sm:py-3 rounded-2xl sm:rounded-3xl glass-panel before:absolute before:inset-0 before:-z-10 before:rounded-2xl sm:before:rounded-3xl before:bg-gradient-to-b before:from-white/10 before:to-transparent pointer-events-auto w-full sm:w-auto max-w-full sm:max-w-none shadow-2xl">
+        <div id="nav-dock" className="relative flex items-center justify-center gap-3 sm:gap-4 px-4 sm:px-5 py-2 sm:py-3 rounded-2xl sm:rounded-3xl glass-panel before:absolute before:inset-0 before:-z-10 before:rounded-2xl sm:before:rounded-3xl before:bg-gradient-to-b before:from-white/10 before:to-transparent pointer-events-auto w-fit max-w-[95%] sm:max-w-none shadow-2xl mx-auto">
 
             {/* Google Translate */}
             <Tooltip text="Google Translate" position="top">
@@ -30,19 +31,12 @@ export default function Dock({ onOpenNotes }: DockProps) {
             <Tooltip text="Google Keep" position="top">
                 <button
                     onClick={() => {
-
                         const isAndroid = /Android/i.test(navigator.userAgent);
-
                         if (isAndroid) {
-
                             window.location.href = 'intent://keep.google.com#Intent;scheme=https;package=com.google.android.keep;S.browser_fallback_url=https%3A%2F%2Fkeep.google.com;end';
-
                         } else {
-
                             window.open('https://keep.google.com', '_blank');
-
                         }
-
                     }}
                     className="group relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-[#FFBB00] to-[#E5A800] text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
                 >
@@ -57,9 +51,7 @@ export default function Dock({ onOpenNotes }: DockProps) {
                 <Tooltip text="Phone / Dialer" position="top">
                     <button
                         onClick={() => {
-
                             window.location.href = 'tel:';
-
                         }}
                         className="group relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-[#34A853] to-[#2E7D32] text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
                     >
@@ -74,21 +66,13 @@ export default function Dock({ onOpenNotes }: DockProps) {
             <div className="hidden sm:flex">
                 <Tooltip text="Google Gemini" position="top">
                     <button
-
                         onClick={() => {
-
                             const isAndroid = /Android/i.test(navigator.userAgent);
-
                             if (isAndroid) {
-
                                 window.location.href = 'intent://gemini.google.com#Intent;scheme=https;package=com.google.android.apps.bard;S.browser_fallback_url=https%3A%2F%2Fgemini.google.com;end';
-
                             } else {
-
                                 window.open('https://gemini.google.com', '_blank');
-
                             }
-
                         }}
                         className="group relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-[white] text-transparent shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl border border-white/15 cursor-pointer"
                     >
@@ -105,29 +89,17 @@ export default function Dock({ onOpenNotes }: DockProps) {
             <Tooltip text="WhatsApp" position="top">
                 <button
                     onClick={() => {
-
                         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
                         if (isMobile) {
-
                             const isAndroid = /Android/i.test(navigator.userAgent);
-
                             if (isAndroid) {
-
                                 window.location.href = 'whatsapp://send?text=%20';
-
                             } else {
-
                                 window.location.href = 'whatsapp://app';
-
                             }
-
                         } else {
-
                             window.open('whatsapp://', '_blank');
-
                         }
-
                     }}
                     className="group relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-[#25D366] to-[#128C7E] text-white shadow-lg transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 hover:shadow-2xl cursor-pointer"
                 >
