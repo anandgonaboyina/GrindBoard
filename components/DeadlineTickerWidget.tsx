@@ -150,7 +150,7 @@ export default function DeadlineTickerWidget() {
           <Tooltip text="Click for Deadline Alert Info" position="top">
             <button
               onClick={() => setShowEmptyInfo(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-white/15 text-white/70 hover:text-white shadow-xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group text-xs font-medium"
+              className="flex items-center gap-1 px-2 py-1 rounded-xl bg-slate-900/90 border border-white/15 text-white/70 hover:text-white shadow-xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-105 group text-xs font-medium"
             >
               <Calendar className="w-3 h-3 text-emerald-400" />
               <span className="text-[10px] sm:text-[11px]">No Deadlines</span>
@@ -206,7 +206,7 @@ export default function DeadlineTickerWidget() {
         <div className="pointer-events-auto transition-all duration-300">
           <button
             onClick={() => setIsMinimized(false)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 border border-red-500/40 border-l-0 rounded-l-none rounded-r-xl text-white shadow-2xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-[1.02] origin-left group -ml-1.5 sm:-ml-4"
+            className="flex items-center gap-1 px-2 py-1.5 bg-slate-900/90 border border-red-500/40 border-l-0 rounded-l-none rounded-r-xl text-white shadow-2xl backdrop-blur-md hover:bg-slate-800/90 transition-all hover:scale-[1.02] origin-left group -ml-1.5 sm:-ml-4"
           >
             <div className="relative">
               <Flame className="w-3.5 h-3.5 text-red-400 animate-pulse" />
@@ -241,10 +241,10 @@ export default function DeadlineTickerWidget() {
           }
           dragStartX.current = null;
         }}
-        className="pointer-events-auto w-[200px] xs:w-[220px] sm:w-[320px] max-h-[170px] xs:max-h-[200px] sm:max-h-[380px] flex flex-col rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
+        className="pointer-events-auto w-[200px] xs:w-[220px] sm:w-[320px] max-h-[170px] xs:max-h-[200px] sm:max-h-[220px] md:max-h-[280px] flex flex-col rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-black/95 border border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 transition-all duration-300"
         >
           {/* Header Bar with Today's Date */}
-          <div className="flex items-center justify-between px-2 py-1 sm:px-3 sm:py-2 bg-gradient-to-r from-red-500/20 via-slate-900 to-amber-500/10 border-b border-white/10 shrink-0">
+          <div className="flex items-center justify-between px-2 py-0.5 sm:px-3 sm:py-1 bg-gradient-to-r from-red-500/20 via-slate-900 to-amber-500/10 border-b border-white/10 shrink-0">
 
             <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
               <div className="p-0.5 sm:p-1 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center">
@@ -288,15 +288,16 @@ export default function DeadlineTickerWidget() {
           </div>
 
           {/* Content Scroll Box */}
-          <div className="p-1.5 sm:p-2.5 overflow-y-auto flex flex-col gap-1 sm:gap-2 custom-scrollbar max-h-[120px] xs:max-h-[150px] sm:max-h-[320px]">
+          <div className="p-0.5 sm:p-1 overflow-y-auto flex flex-col gap-1 sm:gap-2 custom-scrollbar max-h-[120px] xs:max-h-[140px] sm:max-h-[200px]">
           <ScrollableWithArrows
+          className="p-1"
           hideArrows={isMobile}
           >
             {/* TODAY'S DEADLINES SECTION */}
             {todayAlerts.length > 0 && (
               <div className="flex flex-col gap-1 sm:gap-1.5">
                 {/* Glowing Today Header Banner */}
-                <div className="flex items-center justify-between px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-gradient-to-r from-red-600/30 via-amber-600/20 to-red-950/30 border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.25)]">
+                <div className="flex items-center justify-between px-1 py-1 md:px-2 sm:py-1 rounded-lg bg-gradient-to-r from-red-600/30 via-amber-600/20 to-red-950/30 border border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.25)]">
                   <div className="flex items-center gap-1 sm:gap-1.5">
                     <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-400 animate-bounce" />
                     <span className="text-[9px] sm:text-[10.5px] font-black tracking-wider uppercase text-red-200">
@@ -323,23 +324,19 @@ export default function DeadlineTickerWidget() {
                   {todayAlerts.map((alert) => (
                     <div
                       key={alert.id}
-                      className={`group relative flex items-start justify-between p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all shadow-sm ${alert.isDone
+                      className={`group relative flex items-start justify-between p-0.5 md:p-1 rounded-lg sm:rounded-xl transition-all shadow-sm ${alert.isDone
                         ? 'bg-emerald-500/15 border border-emerald-500/30 opacity-80 hover:opacity-100'
                         : 'bg-red-500/10 border border-red-500/25 hover:border-red-500/50'
                         }`}
                     >
-                      <div className="flex items-start gap-1.5 sm:gap-2 flex-1 min-w-0 pr-1">
+                      <div className="flex items-start gap-1 sm:gap-1.5 flex-1 min-w-0 pr-1">
                         <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full mt-1 shrink-0 ${alert.isDone ? 'bg-emerald-400' : 'bg-red-400 animate-ping'}`} />
                         <div className="flex flex-col min-w-0 flex-1">
-                          <p className={`text-[10px] sm:text-xs font-semibold leading-tight break-words ${alert.isDone ? 'text-emerald-200 line-through opacity-85' : 'text-white/90'}`}>
+                          <p className={`text-[10px] sm:text-xs font-semibold p-0.5 leading-tight break-words ${alert.isDone ? 'text-emerald-200 line-through opacity-85' : 'text-white/90'}`}>
                             {alert.text}
                           </p>
                           <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                            {alert.time && (
-                              <span className={`text-[8px] sm:text-[9px] font-mono flex items-center gap-0.5 ${alert.isDone ? 'text-emerald-300/70' : 'text-red-300/80'}`}>
-                                <Clock className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> {alert.time}
-                              </span>
-                            )}
+
                             {alert.isDone && (
                               <span className="text-[7.5px] sm:text-[8.5px] bg-emerald-500/30 text-emerald-300 px-1 py-0.2 rounded font-bold">
                                 Done ✓
@@ -374,7 +371,7 @@ export default function DeadlineTickerWidget() {
 
             {/* HORIZONTAL DIVIDER SECTION */}
             {todayAlerts.length > 0 && sortedUpcomingDays.length > 0 && (
-              <div className="relative py-0.5 sm:py-1 flex items-center justify-center">
+              <div className="relative py-0.5 sm:py-1 flex items-center justify-center mt-1">
                 <div className="w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                 <span className="absolute bg-[#0f1118] px-1.5 sm:px-2 text-[7.5px] sm:text-[8px] font-bold text-white/40 uppercase tracking-widest">
                   Upcoming
@@ -391,7 +388,7 @@ export default function DeadlineTickerWidget() {
               const daysLabel = daysAhead === 1 ? `Tomorrow (${dateLabel})` : `In ${daysAhead} Days (${dateLabel})`;
 
               return (
-                <div key={daysAhead} className="flex flex-col gap-0.5 sm:gap-1">
+                <div key={daysAhead} className="flex flex-col gap-0.5 my-1 sm:gap-1">
                   {/* Days Ahead Header with Date */}
                   <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 w-fit">
                     <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400" />
@@ -401,23 +398,20 @@ export default function DeadlineTickerWidget() {
                   </div>
 
                   {/* Items for this day */}
-                  <div className="flex flex-col gap-1 pl-0.5 sm:pl-1">
+                  <div className="flex flex-col gap-1 pl-0.5 md:pl-1">
                     {daysItems.map((alert) => (
                       <div
                         key={alert.id}
-                        className={`flex items-start justify-between p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-all shadow-sm ${alert.isDone
+                        className={`flex items-start justify-between p-0.5 md:p-1 rounded-lg sm:rounded-xl transition-all shadow-sm ${alert.isDone
                           ? 'bg-emerald-500/15 border border-emerald-500/30 opacity-80 hover:opacity-100'
                           : 'bg-white/[0.04] border border-white/10 hover:bg-white/[0.08]'
                           }`}
                       >
                         <div className="flex flex-col min-w-0 flex-1 pr-1">
-                          <p className={`text-xs font-medium leading-tight break-words ${alert.isDone ? 'text-emerald-200 line-through opacity-85' : 'text-white/80'}`}>
+                          <p className={`text-xs font-medium leading-tight p-0.5 break-words ${alert.isDone ? 'text-emerald-200 line-through opacity-85' : 'text-white/80'}`}>
                             {alert.text}
                           </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[8.5px] text-white/40 font-mono">
-                              Due: {new Date(alert.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </span>
                             {alert.isDone && (
                               <span className="text-[8.5px] bg-emerald-500/30 text-emerald-300 px-1 py-0.2 rounded font-bold">
                                 Done ✓
@@ -457,7 +451,7 @@ export default function DeadlineTickerWidget() {
       {/* Deadline Action Modal: Choice to Mark as Done or Delete Permanently */}
       {actionModal.isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[900] flex items-center justify-center p-4 animate-in fade-in"
+          className="fixed inset-1 bg-black/60 backdrop-blur-sm z-[900] flex items-center justify-center p-1 animate-in fade-in"
           onClick={() => setActionModal({ isOpen: false, deadlineId: '', deadlineText: '', isDone: false })}
         >
           <div

@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useDashboardStore } from "@/store/dashboardStore";
-import { Clock, Edit2, Check, ChevronLeft, ChevronRight, Plus, Trash2, Hourglass, Calendar, Info, X } from "lucide-react";
+import { Edit2, Check, ChevronLeft, ChevronRight, Plus, Trash2, Hourglass, Calendar } from "lucide-react";
 import { createPortal } from "react-dom";
-
 import CustomDatePicker from "@/components/CustomDatePicker";
 
 export default function Countdown({
@@ -26,90 +25,90 @@ export default function Countdown({
   currentIndex?: number;
   totalCount?: number;
 }) {
-  const { countdowns, updateCountdown, addCountdown, deleteCountdown } = useDashboardStore();
+  const { countdowns, updateCountdown, addCountdown, deleteCountdown, setIsMobileCountdownsVisible } = useDashboardStore();
   const examCountdown = countdowns.find(c => c.id === id) || { title: '', endDate: null };
 
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0 });
+  const [status, setStatus] = useState<'calculating' | 'active' | 'reached' | 'expired'>('calculating');
   const [isEditing, setIsEditing] = useState(() => !examCountdown.title && !examCountdown.endDate);
-  const [editTitle, setEditTitle] = useState(examCountdown.title);
-
-  // Sync title & direct edit mode when id or values change
-  useEffect(() => {
-    if (!examCountdown.title && !examCountdown.endDate) {
-      setIsEditing(true);
-      setEditTitle('');
-    } else {
-      setEditTitle(examCountdown.title);
-    }
-  }, [examCountdown.title, examCountdown.endDate, id]);
-
-  // STRICT OR LOGIC: Split into date OR time. If it has a 'T', it's a Time target (for today). Otherwise, Date target.
-  const isTimeTarget = examCountdown.endDate && examCountdown.endDate.includes('T');
-  const initialDate = examCountdown.endDate && !isTimeTarget ? examCountdown.endDate.split('T')[0] : (examCountdown.endDate?.split('T')[0] || '');
-  const initialTime = isTimeTarget ? (examCountdown.endDate?.split('T')[1] || '') : '';
-
-  const [editDateOnly, setEditDateOnly] = useState(initialDate);
-  const [editTimeOnly, setEditTimeOnly] = useState(initialTime);
-
-  useEffect(() => {
-    setEditDateOnly(initialDate);
-    setEditTimeOnly(initialTime);
-  }, [initialDate, initialTime, id]);
+  
+  const [editTitle, setEditTitle] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
 
   const [showMaxError, setShowMaxError] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Instantly drop out of edit mode if switching between existing countdowns
+  useEffect(() => {
+    if (examCountdown.title && examCountdown.endDate) {
+      setIsEditing(false);
+    }
+  }, [id]);
+
+  // Initialize edit fields with smart defaults (Today + Current Time)
+  useEffect(() => {
+    if (isEditing) {
+      setEditTitle(examCountdown.title || '');
+      if (examCountdown.endDate) {
+        const parts = examCountdown.endDate.split('T');
+        setEditDate(parts[0] || '');
+        setEditTime(parts[1] || '23:59');
+      } else {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const hr = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        setEditDate(`${y}-${m}-${d}`);
+        setEditTime(`${hr}:${min}`);
+      }
+    }
+  }, [isEditing, examCountdown.title, examCountdown.endDate, id]);
+
+  // Unified calculation & auto-delete logic
   useEffect(() => {
     if (!examCountdown.endDate) return;
 
     const calculateTimeLeft = () => {
-      if (!examCountdown.endDate) return false;
-
-      const now = new Date();
-      const hasTime = examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
-
-      if (!hasTime) {
-        // Pure date without time: Calculate calendar days difference relative to today (00:00)
-        const [y, m, d] = examCountdown.endDate.split('T')[0].split('-').map(Number);
-        const targetDateObj = new Date(y, m - 1, d);
-        const todayDateObj = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        const diffTime = targetDateObj.getTime() - todayDateObj.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 0) {
-          setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
-          return false;
-        }
-
-        // Calculate hours, mins, secs remaining to reach midnight tonight
-        const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-        const timeUntilMidnight = midnight.getTime() - now.getTime();
-
-        const hours = Math.max(0, Math.floor((timeUntilMidnight % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
-        const mins = Math.max(0, Math.floor((timeUntilMidnight % (1000 * 60 * 60)) / (1000 * 60)));
-        const secs = Math.max(0, Math.floor((timeUntilMidnight % (1000 * 60)) / 1000));
-
-        setTimeLeft({ days: Math.max(0, diffDays), hours, mins, secs });
-        return true;
-      } else {
-        // Specific target time for TODAY
-        const targetTime = new Date(examCountdown.endDate).getTime();
-        const distance = targetTime - now.getTime();
-
-        if (distance < 0 || isNaN(distance)) {
-          setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
-          return false;
-        }
-
-        setTimeLeft({
-          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-          mins: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-          secs: Math.floor((distance % (1000 * 60)) / 1000)
-        });
-        return true;
+      const now = new Date().getTime();
+      let targetTime = 0;
+      
+      if (examCountdown.endDate && examCountdown.endDate.includes('T')) {
+        targetTime = new Date(examCountdown.endDate).getTime();
+      } else if (examCountdown.endDate) {
+        // Fallback for dates without time
+        targetTime = new Date(`${examCountdown.endDate}T23:59:59`).getTime();
       }
+
+      const distance = targetTime - now;
+
+      // Safe-guard against NaN Date generation
+      if (isNaN(distance)) {
+        setStatus('expired');
+        return false;
+      }
+
+      // Auto-Delete if older than 1 day (86400000 ms)
+      if (distance < -86400000) {
+        setStatus('expired');
+        return false;
+      }
+      
+      // Reached Target (Today/Time hit)
+      if (distance <= 0) {
+        setStatus('reached');
+        return false;
+      }
+
+      setStatus('active');
+      setTimeLeft({
+        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        mins: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+      });
+      return true;
     };
 
     const shouldContinue = calculateTimeLeft();
@@ -118,28 +117,52 @@ export default function Countdown({
     const interval = setInterval(() => {
       const keepGoing = calculateTimeLeft();
       if (!keepGoing) clearInterval(interval);
-    }, 1000);
+    }, 1000 * 60); // Update every minute since seconds are removed
 
     return () => clearInterval(interval);
   }, [examCountdown.endDate]);
+
+  // Execute Auto-Delete safely outside render cycle
+  useEffect(() => {
+    if (status === 'expired' && id) {
+      const timer = setTimeout(() => deleteCountdown(id), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [status, id, deleteCountdown]);
 
   const handleSave = () => {
     if (!id) return;
     const finalTitle = editTitle.trim() || 'Target Goal';
     
-    let finalDate = editDateOnly;
-    let finalTime = editTimeOnly;
-
-    // Mutually exclusive save logic: Default to today's date if user provided ONLY a time
-    if (finalTime && !finalDate) {
+    let finalDateStr = editDate;
+    if (!finalDateStr) {
       const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const d = String(now.getDate()).padStart(2, '0');
-      finalDate = `${y}-${m}-${d}`;
+      finalDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     }
+    
+    // -------------------------------------------------------------
+    // NaN PROTECTION ENGINE: Guarantees a perfectly valid Time format!
+    // -------------------------------------------------------------
+    let rawTime = editTime || '23:59';
+    if (!rawTime.includes(':')) {
+      rawTime = rawTime.padEnd(4, '0');
+      rawTime = rawTime.slice(0, 2) + ':' + rawTime.slice(2, 4);
+    }
+    let [hh, mm] = rawTime.split(':');
+    
+    // Clamp Hours (00-23)
+    let hNum = parseInt(hh, 10);
+    if (isNaN(hNum)) hNum = 23;
+    if (hNum > 23) hNum = 23;
+    
+    // Clamp Minutes (00-59)
+    let mNum = parseInt(mm, 10);
+    if (isNaN(mNum)) mNum = 59;
+    if (mNum > 59) mNum = 59;
 
-    const finalDateTime = finalDate ? (finalTime ? `${finalDate}T${finalTime}` : finalDate) : null;
+    const finalTimeStr = `${String(hNum).padStart(2, '0')}:${String(mNum).padStart(2, '0')}`;
+    const finalDateTime = `${finalDateStr}T${finalTimeStr}`;
+
     updateCountdown(id, finalTitle, finalDateTime);
     setIsEditing(false);
   };
@@ -154,262 +177,199 @@ export default function Countdown({
     if (newId) {
       if (onAddNew) onAddNew();
       setIsEditing(true);
-      setEditTitle('');
-      setEditDateOnly('');
-      setEditTimeOnly('');
     }
   };
 
-  // Format the strictly mutually-exclusive subtext
-  const getTargetSubtext = () => {
-    if (!examCountdown.endDate) return '';
-    try {
-      const hasTime = examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
-      const parts = examCountdown.endDate.split('T');
-      const [y, m, d] = parts[0].split('-').map(Number);
-      
-      if (hasTime) {
-        const [hr, min] = parts[1].split(':').map(Number);
-        const dateObj = new Date(y, m - 1, d, hr, min);
-        // Only return the Time since it's a today-target
-        return dateObj.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      } else {
-        const dateObj = new Date(y, m - 1, d);
-        // Only return the Date
-        return dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-    } catch (e) {
-      return '';
-    }
-  };
-
-  if (!id || totalCount === 0 || countdowns.length === 0) {
+  // --- Render Empty State ---
+  if (!id || totalCount === 0 || countdowns.length === 0 || status === 'expired') {
     return (
-      <div className="w-[150px] sm:w-[200px] bg-slate-900/30 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-2xl p-1.5 sm:p-2 text-white pointer-events-auto select-none overflow-hidden transition-all duration-300">
-        <div className="flex items-center gap-1 pb-1.5 border-b border-white/10">
-          <button
-            onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
-            className="p-1 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-          >
+      <div className="w-[160px] sm:w-[220px] bg-slate-900/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl p-2 text-white pointer-events-auto select-none overflow-hidden transition-all duration-300">
+        <div className="flex items-center gap-1.5 pb-2 border-b border-white/10">
+          <button onClick={() => setIsMobileCountdownsVisible(false)} className="p-1 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors">
             <ChevronLeft size={12} />
           </button>
-          <Hourglass className="w-3 h-3 text-indigo-400 animate-pulse shrink-0" />
-          <span className="text-[10px] sm:text-xs font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-pink-300 uppercase truncate flex-1">
-            Targets
-          </span>
+          <Hourglass className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+          <span className="text-[11px] font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 uppercase">Targets</span>
         </div>
-
-        <div className="flex flex-col items-center justify-center py-3 text-center gap-1.5">
+        <div className="flex flex-col items-center justify-center py-4 text-center gap-2">
           <Calendar className="w-6 h-6 text-white/20" />
-          <h4 className="text-[9px] sm:text-[10px] font-bold text-white">No Targets Set</h4>
-          <button
-            onClick={handleAddNew}
-            className="mt-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white text-[9px] font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1"
-          >
-            <Plus size={10} /> Add
+          <h4 className="text-[10px] font-bold text-white/80">Countdown The Aim</h4>
+          <button onClick={handleAddNew} className="mt-1 px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 border border-cyan-500/30 text-cyan-300 text-[10px] font-bold shadow-sm active:scale-95 transition-all flex items-center gap-1">
+            <Plus size={12} /> Create Task
           </button>
         </div>
       </div>
     );
   }
 
-  const hasTime = examCountdown.endDate && examCountdown.endDate.includes('T') && examCountdown.endDate.split('T')[1] !== '';
-
+  // --- Render Main Component ---
   return (
-    <div className="group w-[150px] sm:w-[210px] bg-indigo-950/30 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-2xl p-1.5 sm:p-2 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300 hover:border-white/20 flex flex-col gap-1">
+    <div className="group w-[160px] sm:w-[220px] bg-indigo-950/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl p-1 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300 flex flex-col gap-2">
+      
+      {/* Glow Effect */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-cyan-500/20 blur-[30px] pointer-events-none rounded-full" />
 
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-cyan-400/20 blur-[25px] pointer-events-none rounded-full" />
-
-      <div className="flex items-center gap-1 pb-1 border-b border-white/10 relative z-10 shrink-0">
-        <button
-          onClick={() => useDashboardStore.getState().setIsMobileCountdownsVisible(false)}
-          className="p-1 rounded-md text-white/50 hover:text-white hover:bg-white/60 transition-colors shrink-0"
-        >
-          <ChevronLeft size={12} />
-        </button>
-        <Hourglass className="w-2.5 h-2.5 text-indigo-400 animate-pulse shrink-0" />
-        <div className="font-black text-[13px] sm:text-[15px] text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-pink-300 truncate flex-1 leading-tight">
-          {isEditing ? "Edit Target" : (examCountdown.title || "Set Title")}
+      {/* Top Bar */}
+      <div className="flex items-center justify-between pb-1.5 border-b border-white/10 relative z-10 shrink-0">
+        <div className="flex items-center gap-1 overflow-hidden">
+          <button 
+            onClick={() => {
+              if (isEditing && examCountdown.title) setIsEditing(false);
+              else setIsMobileCountdownsVisible(false);
+            }} 
+            className="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/20 transition-colors shrink-0"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <div className="font-black text-[12px] sm:text-[14px] text-white truncate leading-tight pl-0.5">
+            {isEditing ? "Configure Target" : (examCountdown.title || "Untitled Target")}
+          </div>
         </div>
+        {!isEditing && (
+          <button onClick={() => setIsEditing(true)} className="p-1 shrink-0 rounded bg-white/5 hover:bg-white/20 border border-white/10 text-white/80 hover:text-white transition-colors">
+            <Edit2 size={10} />
+          </button>
+        )}
       </div>
 
       {showMaxError && (
-        <div className="px-1 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[8px] font-bold text-center animate-in fade-in zoom-in-95 relative z-10">
-          Max 5 allowed!
+        <div className="px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[9px] font-bold text-center animate-in zoom-in-95 relative z-10">
+          Max 5 targets allowed!
         </div>
       )}
 
-      <div className="flex-1 flex flex-col justify-center min-h-[75px] sm:min-h-[85px] relative z-10">
+      {/* Main Body */}
+      <div className="flex flex-col justify-center min-h-[60px] relative z-10">
         {isEditing ? (
-          <div className="flex flex-col gap-1 w-full relative z-20">
+          /* COMPACT EDIT MODE UI */
+          <div className="flex flex-col gap-1 w-full">
             <input
               type="text"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full bg-black/30 border border-white/10 rounded-md px-1.5 py-1 text-white outline-none focus:border-cyan-400 text-[10px] font-bold placeholder:text-white/30 mb-0.5"
-              placeholder="Target Title"
+              className="w-full bg-black/40 border border-white/10 rounded-md px-1.5 py-1 text-white outline-none focus:border-cyan-400 text-[11px] font-bold placeholder:text-white/30 mb-1"
+              placeholder="Countdown the Aim..."
               autoFocus
             />
             
-            {/* MUTUALLY EXCLUSIVE OR LOGIC */}
-            <div onClick={() => setEditTimeOnly('')}>
-              <CustomDatePicker value={editDateOnly} onChange={(val) => { setEditDateOnly(val); setEditTimeOnly(''); }} placeholder="Select Date" />
+            {/* Evenly Placed Date and Time Grid */}
+            <div className="grid grid-rows-2 gap-1.5 mt-0.5">
+              <CustomDatePicker 
+                value={editDate} 
+                onChange={(val) => setEditDate(val)} 
+                placeholder="Date" 
+              />
+              
+              <CustomTimePicker 
+                value={editTime} 
+                onChange={(val) => setEditTime(val)} 
+              />
             </div>
-            
-            <div className="flex items-center justify-center relative my-0.5">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-              <span className="bg-[#1e1b4b] px-2 text-[8px] font-black text-white/40 uppercase tracking-widest relative z-10 rounded">OR</span>
-            </div>
-            
-            <div onClick={() => setEditDateOnly('')}>
-              <CustomTimePicker value={editTimeOnly} onChange={(val) => { setEditTimeOnly(val); setEditDateOnly(''); }} />
+
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <button onClick={() => setShowDeleteConfirm(true)} className="p-1 rounded border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors">
+                <Trash2 size={12} />
+              </button>
+              <div className="flex gap-1">
+                <button onClick={() => {
+                  if (!examCountdown.title) deleteCountdown(id!);
+                  else setIsEditing(false);
+                }} className="px-2 py-0.5 rounded border border-white/10 bg-white/5 hover:bg-white/15 text-white/80 transition-all text-[10px] font-bold">
+                  Cancel
+                </button>
+                <button onClick={handleSave} className="px-2 py-0.5 rounded border border-emerald-500/40 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 transition-all text-[10px] font-bold flex items-center gap-1">
+                  <Check size={10} /> Save
+                </button>
+              </div>
             </div>
           </div>
+        ) : status === 'reached' ? (
+          /* GREETING MODE UI */
+          <div className="flex flex-col items-center justify-center gap-0.5 animate-in zoom-in py-1">
+            <span className="text-2xl mb-1">🎉</span>
+            <span className="text-sm font-black text-emerald-400 uppercase tracking-widest text-center leading-tight">Target Reached!</span>
+            <span className="text-[10px] font-bold text-emerald-300/80 uppercase truncate w-full text-center px-1">
+              {examCountdown.title || "It's Time!"}
+            </span>
+          </div>
         ) : (
-          <div className="flex items-center justify-between w-full">
-            <div className="w-4 flex justify-start">
-              {totalCount > 1 && (
-                <button
-                  disabled={!hasPrev}
-                  onClick={onPrev}
-                  className="p-0.5 rounded-full text-white/40 hover:text-white bg-white/60 disabled:opacity-0 transition-all"
-                >
-                  <ChevronLeft size={12} className="text-black" />
-                </button>
-              )}
-            </div>
-
-            {/* Main Countdown Display Logic */}
-            <div className="flex flex-col items-center justify-center flex-1 p-2">
-              {hasTime && timeLeft.days === 0 ? (
-                // TIME TARGET SELECTED - SHOW HUGE TIME
-                <>
-                  <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-pink-400 tracking-tighter drop-shadow-sm font-mono leading-none pr-1">
-                    {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.mins).padStart(2, '0')}
-                  </span>
-                  <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-amber-400 animate-pulse mt-0.5 mb-0.5">
-                    Hours Left
-                  </span>
-                  {examCountdown.endDate && (
-                    <span className="text-[12px] sm:text-[16px] text-white/50 font-bold tracking-wider uppercase border-t border-white/10 pt-1 w-full text-center">
-                      Until {getTargetSubtext()}
-                    </span>
-                  )}
-                </>
-              ) : timeLeft.days === 0 && !hasTime ? (
-                // NO TIME OR DATE REACHED TODAY
-                <>
-                  <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-teal-500 tracking-tighter pr-1 drop-shadow-sm leading-none">
-                    00
-                  </span>
-                  <span className="text-[7px] sm:text-[8px] uppercase font-black tracking-widest text-emerald-400 animate-pulse mt-0.5 mb-0.5">
-                    Target Today
-                  </span>
-                  {examCountdown.endDate && (
-                    <span className="text-[7.5px] sm:text-[8px] text-white/50 font-bold tracking-wider uppercase border-t border-white/10 pt-1 w-full text-center">
-                      {getTargetSubtext()}
-                    </span>
-                  )}
-                </>
-              ) : (
-                // DEFAULT DATE TARGET - SHOW HUGE DAYS
-                <>
-                  <span className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-cyan-200 tracking-tighter leading-none drop-shadow-sm pr-1">
-                    {String(timeLeft.days).padStart(2, '0')}
-                  </span>
-                  <span className="text-[7px] uppercase font-black tracking-widest text-cyan-400/80 mt-0.5 mb-0.5">
-                    Days Left
-                  </span>
-                  {examCountdown.endDate && (
-                    <span className="text-[7.5px] sm:text-[8px] text-white/50 font-bold tracking-wider uppercase border-t border-white/10 pt-1 w-full text-center">
-                      Until {getTargetSubtext()}
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className="w-4 flex justify-end">
-              {totalCount > 1 && (
-                <button
-                  disabled={!hasNext}
-                  onClick={onNext}
-                  className="p-0.5 rounded-full text-white/40 hover:text-white bg-white/60 disabled:opacity-0 transition-all"
-                >
-                  <ChevronRight size={12} className="text-black" />
-                </button>
-              )}
-            </div>
+          /* EXCLUSIVE DISPLAY MODE UI */
+          <div className="flex flex-col items-center justify-center w-full py-0.5">
+            {timeLeft.days > 0 ? (
+              // > 24 Hours: Show Huge Days, Smaller Hours
+              <div className="flex items-baseline gap-1.5 justify-center">
+                <span className="text-4xl sm:text-5xl font-black text-white leading-none tracking-tighter">{String(timeLeft.days).padStart(2, '0')}</span>
+                <span className="text-[10px] font-bold text-white/50 tracking-widest">DAYS</span>
+                <span className="text-xl sm:text-2xl font-black text-cyan-300 leading-none ml-1">{String(timeLeft.hours).padStart(2, '0')}</span>
+                <span className="text-[10px] font-bold text-cyan-300/50 tracking-widest">HRS</span>
+              </div>
+            ) : (
+              // < 24 Hours: Show Huge Hours and Mins exclusively
+              <div className="flex items-baseline gap-2 justify-center">
+                <span className="text-4xl sm:text-5xl font-black text-cyan-300 leading-none tracking-tighter">{String(timeLeft.hours).padStart(2, '0')}</span>
+                <span className="text-[10px] font-bold text-cyan-300/50 tracking-widest">HRS</span>
+                <span className="text-4xl sm:text-5xl font-black text-pink-300 leading-none tracking-tighter">{String(timeLeft.mins).padStart(2, '0')}</span>
+                <span className="text-[10px] font-bold text-pink-300/50 tracking-widest">MINS</span>
+              </div>
+            )}
+            <div className="text-[8px] sm:text-[9px] font-bold uppercase tracking-widest mt-1.5 text-white/40">Left</div>
           </div>
         )}
       </div>
 
-      <div className="pt-1 border-t border-white/10 flex items-center justify-between relative z-10 shrink-0">
-        <div className="flex items-center">
-          {totalCount > 1 && !isEditing ? (
-            <span className="text-[8px] font-mono text-white/40 font-bold px-1">
-              {currentIndex + 1}/{totalCount}
+      {/* Bottom Bar: Pagination and Add */}
+      {!isEditing && (
+        <div className="pt-1 mt-1 border-t border-white/10 flex items-center justify-between relative z-10 shrink-0">
+          
+          {/* Enhanced Visibility Arrows */}
+          <div className="flex items-center gap-1 bg-black/40 rounded-full px-1 border border-white/10">
+            <button 
+              disabled={!hasPrev} 
+              onClick={() => { setIsEditing(false); onPrev?.(); }} 
+              className="text-white hover:text-cyan-300 bg-white/10 hover:bg-white/20 p-1 rounded-full disabled:opacity-20 disabled:hover:text-white transition-all shadow-sm border border-white/5"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            
+            <span className="text-[10px] font-mono font-black text-white">
+              {currentIndex + 1} <span className="text-white/40">/ {totalCount}</span>
             </span>
-          ) : (
-            <span className="w-1" />
-          )}
+            
+            <button 
+              disabled={!hasNext} 
+              onClick={() => { setIsEditing(false); onNext?.(); }} 
+              className="text-white hover:text-cyan-300 bg-white/10 hover:bg-white/20 p-1 rounded-full disabled:opacity-20 disabled:hover:text-white transition-all shadow-sm border border-white/5"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          
+          <button 
+            onClick={handleAddNew} 
+            disabled={countdowns.length >= 5} 
+            className="flex items-center gap-1 bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/30 px-2 py-1 rounded-full transition-colors disabled:opacity-30"
+          >
+            <Plus size={12} className="text-cyan-400" />
+            <span className="text-[10px] font-bold text-cyan-300">New</span>
+          </button>
         </div>
+      )}
 
-        <div className="flex items-center gap-1">
-          {isEditing ? (
-            <>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-2 py-1 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 transition-all text-[9px] font-bold"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-2 py-1 rounded border border-emerald-500/30 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition-all text-[9px] font-bold flex items-center gap-1"
-              >
-                <Check size={10} /> Save
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={handleAddNew}
-                disabled={countdowns.length >= 5}
-                className="p-1 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-30 transition-all"
-              >
-                <Plus size={10} />
-              </button>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-1 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all"
-              >
-                <Edit2 size={10} />
-              </button>
-              {id && (
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="p-1 rounded border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
-                >
-                  <Trash2 size={10} />
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
+      {/* Delete Confirmation Portal */}
       {showDeleteConfirm && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[900] flex items-center justify-center pointer-events-auto p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
-          <div className="relative bg-slate-900/90 backdrop-blur-xl border border-red-500/30 rounded-2xl p-4 z-10 w-[220px] shadow-2xl animate-in zoom-in-95 text-center">
-            <h3 className="text-white font-bold text-sm mb-1">Delete Target?</h3>
-            <p className="text-white/60 text-[10px] mb-4">
-              Delete <span className="text-white font-bold">{examCountdown.title || 'this target'}</span>?
+          <div className="relative bg-slate-900/90 backdrop-blur-xl border border-red-500/40 rounded-2xl p-4 z-10 w-[240px] shadow-2xl animate-in zoom-in-95 text-center">
+            <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Trash2 className="text-red-400 w-5 h-5" />
+            </div>
+            <h3 className="text-white font-black text-sm mb-1">Delete Target?</h3>
+            <p className="text-white/60 text-[11px] mb-4">
+              Permanently delete <strong className="text-white">"{examCountdown.title || 'this target'}"</strong>?
             </p>
             <div className="flex gap-2">
               <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-[11px] font-bold text-white transition-colors">Cancel</button>
-              <button onClick={() => { setShowDeleteConfirm(false); if (id) deleteCountdown(id); }} className="flex-1 py-1.5 bg-red-500/80 hover:bg-red-500 rounded-md text-[11px] font-bold text-white transition-colors">Delete</button>
+              <button onClick={() => { setShowDeleteConfirm(false); setIsEditing(false); if (id) deleteCountdown(id); }} className="flex-1 py-1.5 bg-red-500 hover:bg-red-600 rounded-md text-[11px] font-bold text-white transition-colors">Delete</button>
             </div>
           </div>
         </div>,
@@ -419,42 +379,29 @@ export default function Countdown({
   );
 }
 
+// Simple Text Input Time Picker - Lively Wallpaper Compatible
 function CustomTimePicker({ value, onChange }: { value: string, onChange: (time: string) => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [tempTime, setTempTime] = useState(value);
-
-  useEffect(() => {
-    if (isOpen) setTempTime(value);
-  }, [isOpen, value]);
-
   return (
-    <>
-      <div
-        onClick={() => setIsOpen(true)}
-        className="w-full bg-black/30 border border-white/10 hover:border-cyan-500/50 rounded-md px-1.5 py-1 text-white cursor-pointer text-[9px] text-center min-h-[24px] flex items-center justify-center transition-colors"
-      >
-        <span className={value ? "font-bold text-cyan-300" : "text-white/40"}>{value || "Select Time (Today)"}</span>
-      </div>
+    <div className="w-full relative">
 
-      {isOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[900] flex items-center justify-center pointer-events-auto p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
-          <div className="relative bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-4 z-10 w-[220px] shadow-2xl animate-in zoom-in-95">
-            <h3 className="text-white text-center font-bold mb-3 text-xs">Set Time</h3>
-            <input
-              type="time"
-              value={tempTime}
-              onChange={e => setTempTime(e.target.value)}
-              className="w-full bg-black/40 text-white rounded-lg px-2 py-2 border border-white/10 outline-none mb-4 text-lg text-center font-mono"
-            />
-            <div className="flex gap-2">
-              <button onClick={() => { onChange(''); setIsOpen(false); }} className="flex-1 py-1.5 bg-red-500/20 text-red-400 rounded-md text-[11px] font-bold">Clear</button>
-              <button onClick={() => { onChange(tempTime); setIsOpen(false); }} className="flex-[2] py-1.5 bg-indigo-500/80 text-white rounded-md text-[11px] font-bold">Save</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => {
+          let val = e.target.value.replace(/[^0-9:]/g, ''); // Only allow numbers and colon
+          
+          // Auto-insert colon if user types 2 digits
+          if (val.length === 2 && !val.includes(':') && e.target.value.length === 2) {
+            val += ':';
+          }
+          if (val.length > 5) val = val.slice(0, 5); // Max length HH:MM
+          
+          onChange(val);
+        }}
+        placeholder="HH:MM"
+        maxLength={5}
+        className="w-full bg-black/40 border border-white/20 hover:border-pink-400/50 focus:border-pink-400 rounded-md px-1 py-1.5 text-[15px] font-bold text-pink-300 outline-none text-center transition-colors shadow-inner"
+      />
+    </div>
   );
 }

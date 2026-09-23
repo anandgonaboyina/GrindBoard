@@ -802,12 +802,12 @@ export default function GroupTaskManager({
             {canEdit && (
 <form 
   onSubmit={handleAddTask} 
-  className="p-1 border-t border-white/10 bg-white/[0.02] flex items-center gap-1.5 mt-0.5 backdrop-blur-sm shadow-sm"
+  className="p-1 border-t border-white/10 bg-white/[0.02] flex items-center gap-2 mt-0.5 backdrop-blur-sm shadow-sm"
 >
   {/* Task Input Container */}
   <div className="relative flex-1 flex items-center">
     <textarea 
-      placeholder={`New task for ${group?.title}...`} 
+      placeholder={`Add New task for ${group?.title}...`} 
       value={newTaskTitle} 
       onChange={(e) => { 
         e.target.style.height = 'auto'; 
@@ -821,7 +821,7 @@ export default function GroupTaskManager({
         } 
       }} 
       rows={1} 
-      className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[9.5px] text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 resize-none overflow-hidden h-[24px] min-h-[24px] max-h-[70px] flex items-center leading-normal" 
+      className="w-full bg-white/5 border border-white/30 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 resize-none overflow-hidden h-[32px] min-h-[32px] max-h-[80px] flex items-center leading-normal" 
     />
   </div>
 
@@ -832,16 +832,16 @@ export default function GroupTaskManager({
       placeholder="Min" 
       value={newTaskDuration} 
       onChange={(e) => setNewTaskDuration(e.target.value)} 
-      className="w-[45px] h-[24px] bg-white/5 border border-white/10 rounded-lg px-1 text-[9.5px] font-medium text-center text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+      className="w-[60px] h-[32px] bg-white/5 border border-white/30 rounded-lg px-1 text-xs font-medium text-center text-white outline-none focus:bg-white/10 focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
     />
   </div>
 
   {/* Submit Button */}
   <button 
     type="submit" 
-    className="h-[24px] w-[24px] bg-sky-500/10 hover:bg-sky-500 text-sky-400 hover:text-white border border-sky-500/20 rounded-lg transition-all shrink-0 active:scale-95 flex items-center justify-center shadow-md shadow-sky-500/5"
+    className="group h-[32px] w-[32px] bg-sky-500/10 hover:bg-sky-500 text-sky-400 hover:text-white border border-sky-500/20 rounded-lg transition-all shrink-0 active:scale-95 flex items-center justify-center shadow-md shadow-sky-500/5"
   >
-    <Plus className="w-3.5 h-3.5" />
+    <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
   </button>
 </form>
 

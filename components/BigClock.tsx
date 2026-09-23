@@ -194,7 +194,6 @@ export default function BigClock() {
       style={{ zoom: clockScale }}
     >
       {clockVisible && (
-        <Tooltip text="Toggle 12/24 Hour Format" position="bottom">
           <div
             data-tour="clock"
             className="flex flex-col items-center cursor-pointer pointer-events-auto group pr-2"
@@ -209,7 +208,6 @@ export default function BigClock() {
               {!is24HourClock && <span className="text-white/40 ml-1.5 md:ml-2 [-webkit-text-stroke:0px]">{ampm}</span>}
             </div>
           </div>
-        </Tooltip>
       )}
       <div className={isPanicHidden ? 'hidden' : 'block center pills fixed top-0 left-0 w-full flex justify-center  items-center'}>
         {/* Top Floating Pills (Global Focus + Global Timer) */}
