@@ -55,7 +55,7 @@ export default function DayStartModal() {
   const [celebrationQuote, setCelebrationQuote] = useState<{ text: string; author: string } | null>(null);
   const [celebrationTimer, setCelebrationTimer] = useState(5);
 
-  // Auto-open if missing wakeup time for today — validates against LIVE DB data, not just local flag
+// Auto-open if missing wakeup time for today — reads instantly from local state & cache
   useEffect(() => {
     if (!_hasHydrated) return;
 
@@ -63,13 +63,11 @@ export default function DayStartModal() {
       const storeState = useDashboardStore.getState();
       const currentDailyTimes = storeState.dailyTimes?.[today] || dailyTimes[today] || {};
 
-      // 1. Initial local check (optimistic)
-      let isLoggedLocally = !!currentDailyTimes?.wakeupTime ||
-                            !!currentDailyTimes?.workStartedTime ||
-                            !!currentDailyTimes?.sleepTime ||
-                            !!(currentDailyTimes as any)?.bedTime ||
-                            (Object.keys(currentDailyTimes).length > 0);
+      // 1. Check local Zustand store
+      let isLoggedLocally = !!currentDailyTimes?.wakeupTime || 
+                            Object.keys(currentDailyTimes).length > 0;
 
+      // 2. Check localStorage cache directly (Instant, zero network cost)
       if (!isLoggedLocally && typeof window !== 'undefined') {
         try {
           const rawLocal = localStorage.getItem('dashboard-storage');
@@ -88,57 +86,15 @@ export default function DayStartModal() {
 
       const sessionDismissed = typeof window !== 'undefined' && sessionStorage.getItem(`grindboard_wakeup_dismissed_${today}`) === 'true';
 
-      let isLoggedFinally = isLoggedLocally || sessionDismissed;
-
-      // 2. ALWAYS verify with the DB as the source of truth on mount
-      // This guarantees that if the DB wipe/400 error occurred, it will re-prompt!
-      try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('dashboard_sync_token') : null;
-        if (token) {
-          const res = await fetch('/api/store', {
-            headers: { 'Authorization': `Bearer ${token}` },
-            cache: 'no-store',
-            signal: AbortSignal.timeout(3000)
-          });
-          
-          if (res.ok) {
-            const json = await res.json();
-            const dbDailyTimes = json.data?.state?.dailyTimes || {};
-            const dbToday = dbDailyTimes[today] || {};
-            
-            if (Object.keys(dbToday).length > 0) {
-              // DB has it! Sync local state up.
-              isLoggedFinally = true;
-              useDashboardStore.setState((state) => ({
-                dailyTimes: { ...state.dailyTimes, [today]: dbToday }
-              }));
-              if (typeof window !== 'undefined') {
-                localStorage.setItem(`grindboard_wakeup_logged_${today}`, 'true');
-              }
-            } else if (isLoggedLocally) {
-              // Local has it, but DB doesn't (sync delay or offline).
-              // Trust local state and don't aggressively wipe or re-prompt.
-              isLoggedFinally = true;
-              // Silently push to DB to repair the missing cloud data
-              if (currentDailyTimes) {
-                useDashboardStore.getState().updateDailyTime(today, 'wakeupTime', currentDailyTimes.wakeupTime || Date.now());
-              }
-            }
-          }
-        }
-      } catch (e) {
-        // Network error / offline — trust the local optimistic state
-      }
+      const isLoggedFinally = isLoggedLocally || sessionDismissed;
 
       setHasCheckedDB(true);
 
       if (isLoggedFinally) {
-        // Guarantee modal stays CLOSED
         if (storeState.isDayStartModalOpen || isDayStartModalOpen) {
           useDashboardStore.setState({ isDayStartModalOpen: false });
         }
       } else {
-        // Not logged anywhere — open the modal
         if (!storeState.isDayStartModalOpen && !isDayStartModalOpen) {
           useDashboardStore.setState({ isDayStartModalOpen: true });
         }
@@ -147,7 +103,6 @@ export default function DayStartModal() {
 
     checkAndOpenModal();
   }, [_hasHydrated, today]);
-
 
   // Load fresh inspirational/fire-burning quote online (API first with keyword filter, local fallback if offline)
   useEffect(() => {

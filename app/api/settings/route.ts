@@ -60,18 +60,23 @@ export async function PATCH(request: Request) {
 
       for (const action of body.actions) {
         if (action.type === 'UPDATE_SETTINGS') {
-          // Dynamically set whatever specific keys were changed (e.g., { wallpaper: 'url' })
+          // STRICT SANITIZATION: Mongo will crash if we try to $set an _id
+          const safeUpdates = { ...action.updates };
+          delete safeUpdates._id;
+          delete safeUpdates.userId;
+          delete safeUpdates._hasHydrated;
+
           bulkOps.push({
             updateOne: {
               filter: { userId: user.userId },
-              update: { $set: { ...action.updates, lastModified: Date.now() } }
+              update: { $set: { ...safeUpdates, lastModified: Date.now() } }
             }
           });
         }
       }
 
       if (bulkOps.length > 0) {
-        await collection.bulkWrite(bulkOps as any);
+        const result = await collection.bulkWrite(bulkOps as any);
       }
       
       return NextResponse.json({ success: true, message: 'Queue processed atomically' });

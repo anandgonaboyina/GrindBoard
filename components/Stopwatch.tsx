@@ -29,10 +29,14 @@ export default function Stopwatch() {
 
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: React.ReactNode; isDestructive?: boolean; onConfirm: () => void; }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
+  const [showStillWorkingPrompt, setShowStillWorkingPrompt] = useState(false);
+
   const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
   const resolvedAlarmUrl = useAudioUrl(store.alarmSound);
   const stopwatchAlertedChunksRef = useRef<number>(0);
   const lastTickTimeRef = useRef<number>(Date.now());
+  const deadmanTriggeredAtRef = useRef<number | null>(null);
+  const deadmanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle sleep/wake and settings modal audio cleanup
   useEffect(() => {
@@ -124,6 +128,42 @@ export default function Stopwatch() {
           if (store.isStopwatchIntervalEnabled && store.stopwatchIntervalMins > 0) stopwatchAlertedChunksRef.current = Math.floor(currentElapsed / (store.stopwatchIntervalMins * 60));
           return;
         }
+
+        // 3-Hour Deadman Switch for stopwatch
+        if (isOwner && !deadmanTriggeredAtRef.current && currentElapsed >= 180 * 60) {
+          deadmanTriggeredAtRef.current = now;
+          setShowStillWorkingPrompt(true);
+          // Play interval audio as alert
+          if (intervalAudioRef.current && store.enableAlarmSound) {
+            intervalAudioRef.current.currentTime = 0;
+            intervalAudioRef.current.play().catch(() => {});
+          }
+          // 5-minute auto-stop timeout
+          deadmanTimeoutRef.current = setTimeout(() => {
+            const currentSt = useDashboardStore.getState();
+            if (currentSt.stopwatchAddToStats) {
+              const cappedElapsed = 180 * 60; // only up to 3h
+              const chunks = Math.floor(cappedElapsed / 300);
+              const savedSoFar = currentSt.stopwatchLastSavedChunks;
+              if (chunks > savedSoFar) {
+                currentSt.addMins(getLocalDateString(), (chunks - savedSoFar) * 5);
+                currentSt.setStopwatchLastSavedChunks(chunks);
+                triggerInstantSave();
+              }
+            }
+            currentSt.setStopwatchStartTime(null);
+            currentSt.setStopwatchDeviceId(null);
+            setIsRunning(false);
+            setElapsedSecs(180 * 60);
+            setShowStillWorkingPrompt(false);
+            deadmanTriggeredAtRef.current = null;
+            haltAudio(intervalAudioRef.current);
+          }, 5 * 60 * 1000);
+          return;
+        }
+
+        // While deadman prompt is showing, pause all chunk logic
+        if (deadmanTriggeredAtRef.current) return;
 
         if (store.stopwatchAddToStats && isOwner) {
           const chunks = Math.floor(currentElapsed / 300);
@@ -347,6 +387,32 @@ export default function Stopwatch() {
         onConfirm={() => { setShowContinuePrompt(false); setShowResumeModal(false); if (typeof window !== 'undefined') localStorage.removeItem('stopwatch_paused_secs'); updateInteraction(); store.setStopwatchStartTime(Date.now() - elapsedSecs * 1000); store.setStopwatchDeviceId(getDeviceId()); setIsRunning(true); }}
       />
       <ConfirmationModal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message} isDestructive={confirmModal.isDestructive} confirmText="Discard Session" />
+
+      {/* 3-Hour Deadman Switch: "Are you still working?" */}
+      {showStillWorkingPrompt && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-amber-500/40 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+            <div className="text-center mb-4">
+              <div className="text-3xl mb-2">⏳</div>
+              <h3 className="text-white font-bold text-lg">Are you still working?</h3>
+              <p className="text-white/60 text-sm mt-1">Your stopwatch has been running for <strong className="text-amber-400">3 hours</strong>. Just checking in!</p>
+              <p className="text-white/40 text-xs mt-2">Auto-stops in 5 minutes if no response.</p>
+            </div>
+            <button
+              onClick={() => {
+                if (deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
+                deadmanTriggeredAtRef.current = null;
+                setShowStillWorkingPrompt(false);
+                haltAudio(intervalAudioRef.current);
+              }}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all active:scale-95 text-sm"
+            >
+              ✅ Yes, I&apos;m here — Keep going!
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

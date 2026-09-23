@@ -20,10 +20,20 @@ export async function GET(request: Request) {
         const user = authenticate(request);
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+        // Grab local timestamp from URL
+        const url = new URL(request.url);
+        const localModified = parseInt(url.searchParams.get('localModified') || '0', 10);
+
         const client = await clientPromise;
         const db = client.db();
 
         const doc = await db.collection('Notes').findOne({ userId: user.userId });
+        const cloudLastModified = doc?.lastModified || 0;
+
+        // FAST EXIT: If local notes match or are newer than cloud, send tiny upToDate response
+        if (localModified >= cloudLastModified && cloudLastModified > 0) {
+            return NextResponse.json({ upToDate: true, lastModified: cloudLastModified });
+        }
 
         return NextResponse.json({ success: true, data: doc || { notes: [] } });
     } catch (error) {

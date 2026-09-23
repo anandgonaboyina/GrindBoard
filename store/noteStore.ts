@@ -189,22 +189,30 @@ export const useNoteStore = create<NoteState>()(
                 if (!token) return;
 
                 try {
-                    const res = await fetch(`/api/notes?t=${Date.now()}`, {
+                    // OPTIMIZATION: Pass local timestamp to check if cloud has newer notes
+                    const localLastMod = get().lastModified || 0;
+                    const res = await fetch(`/api/notes?t=${Date.now()}&localModified=${localLastMod}`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                         cache: 'no-store'
                     });
 
                     if (res.ok) {
                         const json = await res.json();
+
+                        // FAST EXIT: If cloud says notes are up-to-date, skip downloading 186KB!
+                        if (json.upToDate) {
+                            return;
+                        }
+
                         if (json.success && json.data) {
                             const cloudNotes = json.data.notes || [];
                             const cloudLastModified = json.data.lastModified || 0;
 
                             set((state) => {
-                                const localLastModified = state.lastModified || 0;
+                                const currentLocalLastMod = state.lastModified || 0;
 
                                 // Prevent empty defaults from wiping real cloud data
-                                const isLocalEmptyDefault = localLastModified === 0 ||
+                                const isLocalEmptyDefault = currentLocalLastMod === 0 ||
                                     (state.notes.length === 1 && state.notes[0].id === 'default' && Object.keys(state.notes[0].entries).length === 0);
 
                                 if (isLocalEmptyDefault && cloudNotes.length > 0) {
@@ -212,9 +220,9 @@ export const useNoteStore = create<NoteState>()(
                                 }
 
                                 // Strict Overwrite using exact timestamps
-                                if (cloudLastModified > localLastModified) {
+                                if (cloudLastModified > currentLocalLastMod) {
                                     return { notes: cloudNotes, lastModified: cloudLastModified };
-                                } else if (localLastModified > cloudLastModified) {
+                                } else if (currentLocalLastMod > cloudLastModified) {
                                     // Local is newer. Push up to cloud.
                                     queueNoteAction({ type: 'REPLACE_ALL', notes: state.notes });
                                     return state;

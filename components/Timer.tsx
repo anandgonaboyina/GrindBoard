@@ -54,6 +54,11 @@ export default function Timer() {
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [pausedAtString, setPausedAtString] = useState<string>('');
+  const [showStillWorkingPrompt, setShowStillWorkingPrompt] = useState(false);
+
+  // Refs for 3-hour deadman switch
+  const deadmanTriggeredAtRef = useRef<number | null>(null); // timestamp when 3h prompt was triggered
+  const deadmanTimeoutRef = useRef<NodeJS.Timeout | null>(null); // 5-min auto-stop timeout
 
   useEffect(() => {
     const d = new Date();
@@ -150,7 +155,7 @@ export default function Timer() {
     }
   }, [store.isSettingsOpen]);
 
-  // Main Tick Interval
+// Main Tick Interval
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (store.timerEndAt) {
@@ -160,61 +165,86 @@ export default function Timer() {
         const now = Date.now();
         const wasSleeping = (now - (lastTickTimeRef.current || now)) > 60000;
         lastTickTimeRef.current = now;
-        const remaining = Math.floor((store.timerEndAt! - now) / 1000);
-        const isOwner = store.timerDeviceId === getDeviceId();
+        
+        // Always grab fresh state inside the interval to avoid dependency array stutters
+        const st = useDashboardStore.getState();
+        if (!st.timerEndAt) return clearInterval(interval);
+
+        const remaining = Math.floor((st.timerEndAt - now) / 1000);
+        const isOwner = st.timerDeviceId === getDeviceId();
 
         if (wasSleeping) {
-          const actvMins = store.activeTaskId ? store.taskIntervalAlertMins : store.timerIntervalMins;
-          if (actvMins > 0 && store.timerInitialMins) alertedChunksRef.current = Math.floor(Math.max(0, (store.timerInitialMins * 60) - remaining) / (actvMins * 60));
+          const actvMins = st.activeTaskId ? st.taskIntervalAlertMins : st.timerIntervalMins;
+          if (actvMins > 0 && st.timerInitialMins) alertedChunksRef.current = Math.floor(Math.max(0, (st.timerInitialMins * 60) - remaining) / (actvMins * 60));
           return;
         }
 
-        if (Math.floor((now - lastInteractionTimeRef.current) / 1000) >= 7200 && isOwner && lastInteractionTimeRef.current < store.timerEndAt!) {
-          const actRem = Math.max(0, Math.floor((store.timerEndAt! - lastInteractionTimeRef.current) / 1000));
-          if (store.timerInitialMins) {
-            const chunksAtPause = Math.floor(Math.max(0, (store.timerInitialMins * 60) - actRem) / 300);
-            if (chunksAtPause > savedChunksRef.current) {
-              const diffMins = (chunksAtPause - savedChunksRef.current) * 5;
-              store.addMins(getLocalDateString(), diffMins);
-              if (store.activeTaskId) {
-                store.updateTaskDuration(store.activeTaskId, diffMins);
-                updateLocalTaskDuration(store.activeTaskId, diffMins);
-                store.incrementGroupTaskTimeSpent(store.activeTaskId, diffMins);
-              }
-              store.setTimerLastSavedChunks(chunksAtPause);
-              savedChunksRef.current = chunksAtPause;
+        // --- NEW 3-HOUR DEADMAN SWITCH ---
+        // (This replaces the old 7200s mouse-idle check completely)
+        if (st.timerInitialMins && isOwner && deadmanTriggeredAtRef && !deadmanTriggeredAtRef.current) {
+          const elapsedSecs = (st.timerInitialMins * 60) - remaining;
+          if (elapsedSecs >= 180 * 60) {
+            deadmanTriggeredAtRef.current = now;
+            playAlarm();
+            if (typeof setShowStillWorkingPrompt === 'function') setShowStillWorkingPrompt(true);
+            
+            // 5-minute auto-stop timeout
+            if (deadmanTimeoutRef) {
+              deadmanTimeoutRef.current = setTimeout(() => {
+                const currentSt = useDashboardStore.getState();
+                if (currentSt.timerInitialMins) {
+                  const savedSoFar = savedChunksRef.current * 5;
+                  const cappedMins = Math.max(0, 180 - savedSoFar); // Cap save at exactly 3 hours
+                  if (cappedMins > 0) {
+                    currentSt.addMins(getLocalDateString(), cappedMins);
+                    if (currentSt.activeTaskId) {
+                      currentSt.updateTaskDuration(currentSt.activeTaskId, cappedMins);
+                      updateLocalTaskDuration(currentSt.activeTaskId, cappedMins);
+                      currentSt.incrementGroupTaskTimeSpent(currentSt.activeTaskId, cappedMins);
+                    }
+                    triggerInstantSave();
+                  }
+                }
+                currentSt.setTimerEndAt(null);
+                currentSt.setTimerPausedLeft(null);
+                if (typeof setShowStillWorkingPrompt === 'function') setShowStillWorkingPrompt(false);
+                deadmanTriggeredAtRef.current = null;
+                stopAlarm();
+              }, 5 * 60 * 1000);
             }
+            return;
           }
-          store.setTimerPausedLeft(actRem);
-          store.setTimerEndAt(null);
-          setPausedAtString(new Date(lastInteractionTimeRef.current).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-          setShowContinuePrompt(true);
-          updateInteraction();
+        }
+
+        // While deadman prompt is showing, don't save chunks — just visually tick
+        if (deadmanTriggeredAtRef && deadmanTriggeredAtRef.current) {
+          setLocalTimeLeft(remaining > 0 ? remaining : 0);
           return;
         }
 
-        if (store.timerInitialMins) {
-          const elapsedSecs = (store.timerInitialMins * 60) - remaining;
+        // Normal 5-Minute Chunk Saving
+        if (st.timerInitialMins) {
+          const elapsedSecs = (st.timerInitialMins * 60) - remaining;
           if (elapsedSecs >= 0) {
             const chunks = Math.floor(elapsedSecs / 300);
             if (chunks > savedChunksRef.current) {
               if (isOwner) {
                 const diffMins = (chunks - savedChunksRef.current) * 5;
                 savedChunksRef.current = chunks;
-                store.addMins(getLocalDateString(), diffMins);
-                if (store.activeTaskId) {
-                  store.updateTaskDuration(store.activeTaskId, diffMins);
-                  updateLocalTaskDuration(store.activeTaskId, diffMins);
-                  store.incrementGroupTaskTimeSpent(store.activeTaskId, diffMins);
+                st.addMins(getLocalDateString(), diffMins);
+                if (st.activeTaskId) {
+                  st.updateTaskDuration(st.activeTaskId, diffMins);
+                  updateLocalTaskDuration(st.activeTaskId, diffMins);
+                  st.incrementGroupTaskTimeSpent(st.activeTaskId, diffMins);
                 }
-                store.setTimerLastSavedChunks(chunks);
+                st.setTimerLastSavedChunks(chunks);
                 triggerInstantSave();
               } else savedChunksRef.current = chunks;
             }
 
             if (remaining > 5 && !wasSleeping) {
-              const isIntvActive = store.activeTaskId ? (store.isTaskIntervalAlertEnabled && store.taskIntervalAlertMins > 0) : (store.isTimerIntervalEnabled && store.timerIntervalMins > 0);
-              const intvMins = store.activeTaskId ? store.taskIntervalAlertMins : store.timerIntervalMins;
+              const isIntvActive = st.activeTaskId ? (st.isTaskIntervalAlertEnabled && st.taskIntervalAlertMins > 0) : (st.isTimerIntervalEnabled && st.timerIntervalMins > 0);
+              const intvMins = st.activeTaskId ? st.taskIntervalAlertMins : st.timerIntervalMins;
               if (isIntvActive) {
                 const curChunk = Math.floor(elapsedSecs / (intvMins * 60));
                 if (lastIntervalAlertMinsRef.current !== intvMins || lastIsIntervalEnabledRef.current !== isIntvActive) {
@@ -222,11 +252,11 @@ export default function Timer() {
                 } else if (curChunk > alertedChunksRef.current && curChunk > 0) {
                   alertedChunksRef.current = curChunk;
                   if (isOwner) {
-                    store.setTimerLastAlertedChunks(curChunk);
-                    if (store.enableAlarmSound || store.enableAlarmVibration) {
+                    st.setTimerLastAlertedChunks(curChunk);
+                    if (st.enableAlarmSound || st.enableAlarmVibration) {
                       setIsIntervalRinging(true); isIntervalRingingRef.current = true; useDashboardStore.setState({ isTimerOpen: true });
-                      if (store.enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
-                      setTimeout(() => { setIsIntervalRinging(false); isIntervalRingingRef.current = false; }, (store.taskIntervalRingSecs || 1.5) * 1000);
+                      if (st.enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
+                      setTimeout(() => { setIsIntervalRinging(false); isIntervalRingingRef.current = false; }, (st.taskIntervalRingSecs || 1.5) * 1000);
                     }
                   }
                 }
@@ -235,35 +265,39 @@ export default function Timer() {
           }
         }
 
+        // Timer Ends
         if (remaining <= 0) {
           clearInterval(interval);
           setLocalTimeLeft(0);
-          store.setTimerEndAt(null);
-          store.setTimerPausedLeft(null);
+          const currentSt = useDashboardStore.getState();
+          currentSt.setTimerEndAt(null);
+          currentSt.setTimerPausedLeft(null);
           stopIntervalBeep();
 
           if (isOwner && !wasSleeping) playAlarm();
-          if (store.timerInitialMins && store.timerInitialMins > 0 && isOwner) {
-            const finalMins = Math.max(0, store.timerInitialMins - (savedChunksRef.current * 5));
+          if (currentSt.timerInitialMins && currentSt.timerInitialMins > 0 && isOwner) {
+            const finalMins = Math.max(0, currentSt.timerInitialMins - (savedChunksRef.current * 5));
             if (finalMins > 0) {
-              store.addMins(getLocalDateString(), finalMins);
-              if (store.activeTaskId) {
-                store.updateTaskDuration(store.activeTaskId, finalMins);
-                updateLocalTaskDuration(store.activeTaskId, finalMins);
-                store.incrementGroupTaskTimeSpent(store.activeTaskId, finalMins);
+              currentSt.addMins(getLocalDateString(), finalMins);
+              if (currentSt.activeTaskId) {
+                currentSt.updateTaskDuration(currentSt.activeTaskId, finalMins);
+                updateLocalTaskDuration(currentSt.activeTaskId, finalMins);
+                currentSt.incrementGroupTaskTimeSpent(currentSt.activeTaskId, finalMins);
               }
               triggerInstantSave();
             }
             savedChunksRef.current = 0;
-            fetchQuote().then(q => store.showQuotePopup(q));
+            fetchQuote().then(q => currentSt.showQuotePopup(q));
           }
-        } else setLocalTimeLeft(remaining);
+        } else {
+          setLocalTimeLeft(remaining);
+        }
 
         if (typeof window !== 'undefined') localStorage.setItem('timer_last_active', now.toString());
       }, 250);
     }
     return () => clearInterval(interval);
-  }, [store]);
+  }, [store.timerEndAt, store.timerInitialMins, store.timerDeviceId]);
 
   // Cross-device timer sync: after 5 min, poll DB every 60s to detect if timer was stopped on another device
   useEffect(() => {
@@ -612,6 +646,33 @@ export default function Timer() {
         confirmText="Yes, Continue" cancelText="Cancel"
         onConfirm={() => { setShowContinuePrompt(false); setShowResumeModal(false); if (store.timerPausedLeft !== null) { store.setTimerEndAt(Date.now() + store.timerPausedLeft * 1000); store.setTimerPausedLeft(null); store.setTimerDeviceId(getDeviceId()); updateInteraction(); } }}
       />
+
+      {/* 3-Hour Deadman Switch: "Are you still working?" */}
+      {showStillWorkingPrompt && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-amber-500/40 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+            <div className="text-center mb-4">
+              <div className="text-3xl mb-2">⏳</div>
+              <h3 className="text-white font-bold text-lg">Are you still working?</h3>
+              <p className="text-white/60 text-sm mt-1">Your timer has been running for <strong className="text-amber-400">3 hours</strong>. Just checking in!</p>
+              <p className="text-white/40 text-xs mt-2">Auto-stops in 5 minutes if no response.</p>
+            </div>
+            <button
+              onClick={() => {
+                // Clear the 5-min timeout — user confirmed they're here
+                if (deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
+                deadmanTriggeredAtRef.current = null;
+                setShowStillWorkingPrompt(false);
+                stopAlarm();
+              }}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all active:scale-95 text-sm"
+            >
+              ✅ Yes, I&apos;m here — Keep going!
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
 
     </>
   );

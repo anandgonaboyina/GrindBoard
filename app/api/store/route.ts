@@ -148,28 +148,50 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Grab the local timestamp from the query string
+    const url = new URL(request.url);
+    const localModified = parseInt(url.searchParams.get('localModified') || '0', 10);
+
     const client = await clientPromise;
     const db = client.db();
 
-    const existing = await db.collection('DashboardStorage').findOne({ userId: user.userId });
-    const notesRecord = await db.collection('Notes').findOne({ userId: user.userId });
-    const settingsRecord = await db.collection('Settings').findOne({ userId: user.userId });
-    const tasksRecord = await db.collection('Tasks').findOne({ userId: user.userId });
-    const roadmapsRecord = await db.collection('Roadmaps').findOne({ userId: user.userId });
-    const statsRecord = await db.collection('Stats').findOne({ userId: user.userId });
-    const dailyRoutineRecord = await db.collection('DailyRoutine').findOne({ userId: user.userId });
-    const timetableRecord = await db.collection('Timetable').findOne({ userId: user.userId });
-    const deadlinesRecord = await db.collection('Deadlines').findOne({ userId: user.userId });
-    const countdownsRecord = await db.collection('Countdowns').findOne({ userId: user.userId });
+    // OPTIMIZATION: Fetch all 10 collections in parallel instead of sequentially
+    const [
+      existing, notesRecord, settingsRecord, tasksRecord, roadmapsRecord, 
+      statsRecord, dailyRoutineRecord, timetableRecord, deadlinesRecord, countdownsRecord
+    ] = await Promise.all([
+      db.collection('DashboardStorage').findOne({ userId: user.userId }),
+      db.collection('Notes').findOne({ userId: user.userId }),
+      db.collection('Settings').findOne({ userId: user.userId }),
+      db.collection('Tasks').findOne({ userId: user.userId }),
+      db.collection('Roadmaps').findOne({ userId: user.userId }),
+      db.collection('Stats').findOne({ userId: user.userId }),
+      db.collection('DailyRoutine').findOne({ userId: user.userId }),
+      db.collection('Timetable').findOne({ userId: user.userId }),
+      db.collection('Deadlines').findOne({ userId: user.userId }),
+      db.collection('Countdowns').findOne({ userId: user.userId })
+    ]);
 
-    let maxLastModified = existing ? (existing.lastModified || 0) : 0;
-    const collections = [notesRecord, settingsRecord, tasksRecord, roadmapsRecord, statsRecord, dailyRoutineRecord, timetableRecord, deadlinesRecord, countdownsRecord];
-    for (const record of collections) {
-      if (record && record.lastModified && record.lastModified > maxLastModified) {
-        maxLastModified = record.lastModified;
-      }
+    const cloudLastModified = Math.max(
+      existing?.lastModified ? Number(existing.lastModified) : 0,
+      notesRecord?.lastModified ? Number(notesRecord.lastModified) : 0,
+      settingsRecord?.lastModified ? Number(settingsRecord.lastModified) : 0,
+      tasksRecord?.lastModified ? Number(tasksRecord.lastModified) : 0,
+      roadmapsRecord?.lastModified ? Number(roadmapsRecord.lastModified) : 0,
+      statsRecord?.lastModified ? Number(statsRecord.lastModified) : 0,
+      dailyRoutineRecord?.lastModified ? Number(dailyRoutineRecord.lastModified) : 0,
+      timetableRecord?.lastModified ? Number(timetableRecord.lastModified) : 0,
+      deadlinesRecord?.lastModified ? Number(deadlinesRecord.lastModified) : 0,
+      countdownsRecord?.lastModified ? Number(countdownsRecord.lastModified) : 0
+    );
+
+    // FAST EXIT: If local is equal to or newer than cloud, do not send data!
+    if (localModified >= cloudLastModified && cloudLastModified > 0) {
+      return NextResponse.json({ 
+        upToDate: true, 
+        lastModified: cloudLastModified 
+      });
     }
-    const cloudLastModified = maxLastModified || Date.now();
 
     if (!existing && !notesRecord && !settingsRecord && !tasksRecord && !roadmapsRecord && !statsRecord && !dailyRoutineRecord && !timetableRecord) {
       return NextResponse.json({ data: null, lastModified: cloudLastModified });
@@ -304,14 +326,14 @@ export async function GET(request: Request) {
       returnedData = { state: { notes: notesRecord?.notes || [] }, version: 2 };
     }
 
-
-
     console.log('GET /api/store returning for user', user.userId, ':', {
       hasExisting: !!existing,
       hasSettings: !!settingsRecord,
       hasTasks: !!tasksRecord,
-      hitElseBlock: !(existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord)
+      hitElseBlock: !(existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord),
+      upToDate: false
     });
+    
     return NextResponse.json({
       data: returnedData,
       lastModified: cloudLastModified
@@ -334,16 +356,35 @@ export async function POST(request: Request) {
     const client = await clientPromise;
     const db = client.db();
 
-    const existing = await db.collection('DashboardStorage').findOne({ userId: user.userId });
-    const existingNotes = await db.collection('Notes').findOne({ userId: user.userId });
-    const existingSettings = await db.collection('Settings').findOne({ userId: user.userId });
-    const existingTasks = await db.collection('Tasks').findOne({ userId: user.userId });
-    const existingRoadmaps = await db.collection('Roadmaps').findOne({ userId: user.userId });
-    const existingStats = await db.collection('Stats').findOne({ userId: user.userId });
-    const existingDailyRoutine = await db.collection('DailyRoutine').findOne({ userId: user.userId });
-    const existingTimetable = await db.collection('Timetable').findOne({ userId: user.userId });
-    const existingDeadlines = await db.collection('Deadlines').findOne({ userId: user.userId });
-    const existingCountdowns = await db.collection('Countdowns').findOne({ userId: user.userId });
+const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length === 0;
+
+    // OPTIMIZATION: Conditionally fetch ONLY the modified collections in parallel
+    const [
+      existing, existingNotes, existingSettings, existingTasks, 
+      existingRoadmaps, existingStats, existingDailyRoutine, 
+      existingTimetable, existingDeadlines, existingCountdowns
+    ] = await Promise.all([
+      (fetchAll || modifiedCollections.includes('DashboardStorage') || modifiedCollections.includes('Settings')) 
+        ? db.collection('DashboardStorage').findOne({ userId: user.userId }) : Promise.resolve(null),
+      (fetchAll || modifiedCollections.includes('Notes')) 
+        ? db.collection('Notes').findOne({ userId: user.userId }) : Promise.resolve(null),
+      (fetchAll || modifiedCollections.includes('Settings')) 
+        ? db.collection('Settings').findOne({ userId: user.userId }) : Promise.resolve(null),
+      (fetchAll || modifiedCollections.includes('Tasks')) 
+        ? db.collection('Tasks').findOne({ userId: user.userId }) : Promise.resolve(null),
+      (fetchAll || modifiedCollections.includes('Roadmaps')) 
+        ? db.collection('Roadmaps').findOne({ userId: user.userId }) : Promise.resolve(null),
+      (fetchAll || modifiedCollections.includes('Stats')) 
+        ? db.collection('Stats').findOne({ userId: user.userId }) : Promise.resolve(null),
+      (fetchAll || modifiedCollections.includes('DailyRoutine')) 
+        ? db.collection('DailyRoutine').findOne({ userId: user.userId }) : Promise.resolve(null),
+      (fetchAll || modifiedCollections.includes('Timetable')) 
+        ? db.collection('Timetable').findOne({ userId: user.userId }) : Promise.resolve(null),
+      (fetchAll || modifiedCollections.includes('Deadlines')) 
+        ? db.collection('Deadlines').findOne({ userId: user.userId }) : Promise.resolve(null),
+      (fetchAll || modifiedCollections.includes('Countdowns')) 
+        ? db.collection('Countdowns').findOne({ userId: user.userId }) : Promise.resolve(null)
+    ]);
 
     let existingCloudData: any = null;
     if (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine || existingTimetable || existingDeadlines || existingCountdowns) {
@@ -485,9 +526,54 @@ export async function POST(request: Request) {
     }
 
     if (hasConflict) {
+      // Optimization: Return ONLY the data for the collections that actually conflicted.
+      // This prevents sending the full 158KB payload when only a single setting changed.
+      const mc: string[] = (modifiedCollections && Array.isArray(modifiedCollections)) ? modifiedCollections : [];
+
+      const COLLECTION_KEY_MAP: Record<string, string[]> = {
+        'Settings': [
+          'wallpaper', 'bgIndex', 'currentBgType', 'lockedWallpaper', 'theme', 'is24HourClock',
+          'dashboardScale', 'mobileDashboardScale', 'dockScale', 'dockOffset', 'panicShortcutKey',
+          'panicWallpaperSwitch', 'hideConfig', 'mobileHideConfig', 'clockOffsets', 'widgetOffsets',
+          'clockStyle', 'fontFamily', 'activeTheme', 'soundEffectVolume', 'selectedSound', 'alarmVolume',
+          'enableAlarmSound', 'enableAlarmVibration', 'isTimerIntervalEnabled', 'timerIntervalMins',
+          'isTaskIntervalAlertEnabled', 'taskIntervalAlertMins', 'taskIntervalRingSecs',
+          'isStopwatchIntervalEnabled', 'stopwatchIntervalMins', 'stopwatchAddToStats',
+          'showTimer', 'showStopwatch', 'showCountdowns', 'showDeadlines', 'showNotes',
+          'showPlans', 'showStats', 'showLeaderboard', 'showTimetable', 'showNews',
+          'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers',
+          'manifestationDesktopPhotos', 'manifestationMobilePhotos', 'manifestationCustomQuotes',
+          'customQuotes', 'customAlarmSounds', 'lockedWidgets', 'rightWidgetsOffset',
+          'enableRightToolbarPeek', 'autoOpenCountdowns', 'selectedLocalWallpaperName',
+        ],
+        'Tasks': ['activeTaskId', 'activeTaskTitle', 'plans', 'tasks', 'tomorrowTasks', 'tasksDate', 'taskGroupNames'],
+        'DailyRoutine': ['dailyTimes'],
+        'Deadlines': ['deadlines', 'syntheticDeadlines', 'deadlineAlertDays', 'dismissedDeadlineAlerts', 'disableDeadlineLockOnToday', 'hideYouInLeaderboard'],
+        'Countdowns': ['countdowns'],
+        'Timetable': ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime'],
+        'Notes': ['notes'],
+        'Roadmaps': ['roadmaps'],
+        'Stats': ['history'],
+      };
+
+      let filteredState: Record<string, any> = {};
+      if (mc.length > 0 && existingCloudData?.state) {
+        mc.forEach(col => {
+          const keys = COLLECTION_KEY_MAP[col] || [];
+          keys.forEach(key => {
+            if (existingCloudData.state[key] !== undefined) {
+              filteredState[key] = existingCloudData.state[key];
+            }
+          });
+        });
+      } else {
+        // Full sync conflict or unknown collections — return everything
+        filteredState = existingCloudData?.state || {};
+      }
+
       return NextResponse.json({
         conflict: true,
-        cloudData: existingCloudData,
+        cloudData: { state: filteredState, version: existingCloudData?.version || 2 },
         cloudLastModified: cloudLastModified
       }, { status: 409 });
     }

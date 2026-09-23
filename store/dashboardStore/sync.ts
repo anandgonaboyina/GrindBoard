@@ -11,6 +11,7 @@ export let hasUnsavedChanges = false;
 export let pendingValue: string | null = null;
 export let lastSavedValue: string | null = null;
 export let isSaving = false;
+export let isSyncing = false; // Global lock to prevent overlapping saves
 export let isSyncingFromCloud = false;
 export let isAuthTransition = false;
 export let bypassCloudSync = false;
@@ -161,6 +162,7 @@ export const checkTimerStillActiveInDB = async (type: 'timer' | 'stopwatch'): Pr
   }
 };
 
+
 // ----------------------------------------------------------------------
 // MAIN STATE SAVE: Pushes UI state and settings to /api/store
 // ----------------------------------------------------------------------
@@ -172,10 +174,18 @@ export const performSave = async () => {
     return;
   }
 
+  // 1. SYNC LOCK: Prevent overlapping saves. If already saving, reschedule and bail.
+  if (isSyncing) {
+    if (!saveTimeout) saveTimeout = setTimeout(performSave, 1000);
+    return;
+  }
+  isSyncing = true; // Lock engaged
+
   if (typeof window !== 'undefined' && !navigator.onLine) {
     console.warn("Offline: Dashboard save paused, keeping local changes safe until Wi-Fi connects.");
     hasUnsavedChanges = true;
     isSaving = false;
+    isSyncing = false; // Release lock
     if (!saveTimeout) saveTimeout = setTimeout(performSave, 5000);
     return;
   }
@@ -190,6 +200,7 @@ export const performSave = async () => {
       saveTimeout = setTimeout(performSave, 5000);
     }
     isSaving = false;
+    isSyncing = false; // Release lock
     return;
   }
 
@@ -219,6 +230,7 @@ export const performSave = async () => {
         ...COUNTDOWN_KEYS
       ];
 
+      // ACTION SQUASHING: Detect and squash rapid slider/toggle changes
       Object.keys(newState).forEach(key => {
         if (JSON.stringify(newState[key]) !== JSON.stringify(oldState[key])) {
           modifiedKeys.push(key);
@@ -227,14 +239,17 @@ export const performSave = async () => {
           else if (DAILY_ROUTINE_KEYS.includes(key)) modifiedCollections.push('DailyRoutine');
           else if (NOTES_KEYS.includes(key)) modifiedCollections.push('Notes');
           else if (ROADMAPS_KEYS.includes(key)) modifiedCollections.push('Roadmaps');
-          else if (TIMETABLE_KEYS.includes(key)) modifiedCollections.push('Settings');
+          else if (TIMETABLE_KEYS.includes(key)) modifiedCollections.push('Timetable');
+          else if (DEADLINE_KEYS.includes(key)) modifiedCollections.push('Deadlines');
           else if (!TRANSIENT_KEYS.includes(key)) modifiedCollections.push('Settings');
         }
       });
       modifiedCollections = [...new Set(modifiedCollections)];
 
       if (modifiedCollections.length === 0) {
-        isSaving = false; hasUnsavedChanges = false; pendingValue = null; saveTimeout = null; return;
+        isSaving = false; hasUnsavedChanges = false; pendingValue = null; saveTimeout = null; 
+        isSyncing = false; // Release lock
+        return;
       }
     } else {
       // First save (no lastSavedValue): Treat as a FULL SYNC to prevent data loss on the server
@@ -248,7 +263,7 @@ export const performSave = async () => {
       parsedData = JSON.parse(valueToSave);
     } catch (parseErr) {
       console.error("Failed to parse valueToSave:", parseErr);
-      isSaving = false; return;
+      isSaving = false; isSyncing = false; return;
     }
 
     const LOCAL_ONLY_MEDIA_KEYS = ['customDesktopWallpapers', 'customMobileWallpapers', 'manifestationDesktopPhotos', 'manifestationMobilePhotos'];
@@ -273,7 +288,6 @@ export const performSave = async () => {
       delete parsedData.state.stopwatchStartTime;
 
       // 2. DELTA SYNC: Only send the exact keys that were modified!
-      // This prevents the payload from containing the entire store data every time a single setting is changed.
       if (modifiedKeys && modifiedKeys.length > 0) {
         const diffState: any = {};
         modifiedKeys.forEach(k => {
@@ -315,22 +329,23 @@ export const performSave = async () => {
       }
 
       const mergedState = {
-        ...parsedCloud.state,
-        ...userModifications,
-        history: parsedCloud.state.history || {},
-        dailyTimes: mergeDailyTimes(parsedLocal.state.dailyTimes || {}, parsedCloud.state.dailyTimes || {}),
-        timerEndAt: parsedLocal.state.timerEndAt !== undefined ? parsedLocal.state.timerEndAt : parsedCloud.state.timerEndAt,
-        timerPausedLeft: parsedLocal.state.timerPausedLeft !== undefined ? parsedLocal.state.timerPausedLeft : parsedCloud.state.timerPausedLeft,
-        timerInitialMins: parsedLocal.state.timerInitialMins !== undefined ? parsedLocal.state.timerInitialMins : parsedCloud.state.timerInitialMins,
-        timerDeviceId: parsedLocal.state.timerDeviceId !== undefined ? parsedLocal.state.timerDeviceId : parsedCloud.state.timerDeviceId,
-        timerLastSavedChunks: parsedLocal.state.timerLastSavedChunks !== undefined ? parsedLocal.state.timerLastSavedChunks : parsedCloud.state.timerLastSavedChunks,
-        timerLastAlertedChunks: parsedLocal.state.timerLastAlertedChunks !== undefined ? parsedLocal.state.timerLastAlertedChunks : parsedCloud.state.timerLastAlertedChunks,
-        timerLastUpdated: parsedLocal.state.timerLastUpdated !== undefined ? parsedLocal.state.timerLastUpdated : parsedCloud.state.timerLastUpdated,
-        stopwatchStartTime: parsedLocal.state.stopwatchStartTime !== undefined ? parsedLocal.state.stopwatchStartTime : parsedCloud.state.stopwatchStartTime,
-        stopwatchDeviceId: parsedLocal.state.stopwatchDeviceId !== undefined ? parsedLocal.state.stopwatchDeviceId : parsedCloud.state.stopwatchDeviceId,
-        stopwatchLastSavedChunks: parsedLocal.state.stopwatchLastSavedChunks !== undefined ? parsedLocal.state.stopwatchLastSavedChunks : parsedCloud.state.stopwatchLastSavedChunks,
-        activeTaskId: parsedLocal.state.activeTaskId !== undefined ? parsedLocal.state.activeTaskId : parsedCloud.state.activeTaskId,
-        activeTaskTitle: parsedLocal.state.activeTaskTitle !== undefined ? parsedLocal.state.activeTaskTitle : parsedCloud.state.activeTaskTitle,
+        ...parsedLocal.state,          // Base: full local state (preserves Notes, Tasks, etc.)
+        ...parsedCloud.state,          // Overlay: only the fields the server returned (e.g. just Settings)
+        ...userModifications,          // User's own unsaved edits win on top
+        history: parsedCloud.state?.history || parsedLocal.state?.history || {},
+        dailyTimes: mergeDailyTimes(parsedLocal.state?.dailyTimes || {}, parsedCloud.state?.dailyTimes || {}),
+        timerEndAt: (parsedLocal.state?.timerLastUpdated || 0) >= (parsedCloud.state?.timerLastUpdated || 0) ? parsedLocal.state?.timerEndAt : parsedCloud.state?.timerEndAt,
+        timerPausedLeft: (parsedLocal.state?.timerLastUpdated || 0) >= (parsedCloud.state?.timerLastUpdated || 0) ? parsedLocal.state?.timerPausedLeft : parsedCloud.state?.timerPausedLeft,
+        timerInitialMins: parsedLocal.state?.timerInitialMins !== undefined ? parsedLocal.state?.timerInitialMins : parsedCloud.state?.timerInitialMins,
+        timerDeviceId: parsedLocal.state?.timerDeviceId !== undefined ? parsedLocal.state?.timerDeviceId : parsedCloud.state?.timerDeviceId,
+        timerLastSavedChunks: parsedLocal.state?.timerLastSavedChunks !== undefined ? parsedLocal.state?.timerLastSavedChunks : parsedCloud.state?.timerLastSavedChunks,
+        timerLastAlertedChunks: parsedLocal.state?.timerLastAlertedChunks !== undefined ? parsedLocal.state?.timerLastAlertedChunks : parsedCloud.state?.timerLastAlertedChunks,
+        timerLastUpdated: parsedLocal.state?.timerLastUpdated !== undefined ? parsedLocal.state?.timerLastUpdated : parsedCloud.state?.timerLastUpdated,
+        stopwatchStartTime: parsedCloud.state?.stopwatchStartTime !== undefined ? parsedCloud.state?.stopwatchStartTime : parsedLocal.state?.stopwatchStartTime,
+        stopwatchDeviceId: parsedLocal.state?.stopwatchDeviceId !== undefined ? parsedLocal.state?.stopwatchDeviceId : parsedCloud.state?.stopwatchDeviceId,
+        stopwatchLastSavedChunks: parsedLocal.state?.stopwatchLastSavedChunks !== undefined ? parsedLocal.state?.stopwatchLastSavedChunks : parsedCloud.state?.stopwatchLastSavedChunks,
+        activeTaskId: parsedLocal.state?.activeTaskId !== undefined ? parsedLocal.state?.activeTaskId : parsedCloud.state?.activeTaskId,
+        activeTaskTitle: parsedLocal.state?.activeTaskTitle !== undefined ? parsedLocal.state?.activeTaskTitle : parsedCloud.state?.activeTaskTitle,
       };
 
       if (mergedState.timerEndAt && mergedState.timerEndAt < Date.now()) {
@@ -344,6 +359,7 @@ export const performSave = async () => {
       const mergedStr = JSON.stringify({ version: 2, state: mergedState });
 
       isSyncingFromCloud = true;
+      // CRITICAL: Update local timestamp instantly on conflict resolution
       setSyncLastModified(Math.max(Date.now(), (json.cloudLastModified || 0) + 1000));
       try { localStorage.setItem('dashboard-storage', mergedStr); } catch (e) { }
       useDashboardStore.setState(mergedState);
@@ -355,13 +371,17 @@ export const performSave = async () => {
 
       setTimeout(() => { isSyncingFromCloud = false; }, 500);
       isSaving = false;
+      isSyncing = false; // Release lock
       return;
     }
 
     if (!res.ok) throw new Error(`API save failed with status ${res.status}`);
 
     const json = await res.json();
+    
+    // 2. CRITICAL: Update local timestamp INSTANTLY on success to prevent 409 loop
     setSyncLastModified(json.lastModified);
+    
     success = true;
     lastSavedValue = valueToSave;
 
@@ -378,9 +398,28 @@ export const performSave = async () => {
     console.warn("Failed to save to DB, storing locally:", err);
   } finally {
     isSaving = false;
+    isSyncing = false; // 1. Always release the lock
+    
     if (success) {
-      if (pendingValue === valueToSave) { pendingValue = null; hasUnsavedChanges = false; saveTimeout = null; } 
-      else { saveTimeout = setTimeout(performSave, 500); }
+      // 3. FLUSH LOCAL QUEUE instantly on success
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('deadlines_offline_queue');
+        localStorage.removeItem('countdowns_offline_queue');
+        localStorage.removeItem('tasks_offline_queue');
+        localStorage.removeItem('notes_offline_queue');
+        localStorage.removeItem('settings_offline_queue');
+        localStorage.removeItem('timetable_offline_queue');
+        localStorage.removeItem('daily_routine_offline_queue');
+      }
+      
+      if (pendingValue === valueToSave) { 
+        pendingValue = null; 
+        hasUnsavedChanges = false; 
+        saveTimeout = null; 
+      } else { 
+        // 4. ACTION SQUASHING: if more changes happened while syncing, delay the next batch slightly to squash them
+        saveTimeout = setTimeout(performSave, 800); 
+      }
     } else {
       setSyncLastModified(Date.now());
       hasUnsavedChanges = true;
@@ -516,7 +555,10 @@ export const fileStorage = createJSONStorage(() => ({
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
-        const res = await fetch(`/api/store?t=${Date.now()}`, {
+        
+        // CONDITIONAL GET: Pass local timestamp to the server
+        const localLastMod = getSyncLastModified() || 0;
+        const res = await fetch(`/api/store?t=${Date.now()}&localModified=${localLastMod}`, {
           headers: { 'Authorization': `Bearer ${token}` },
           cache: 'no-store',
           signal: controller.signal
@@ -530,6 +572,12 @@ export const fileStorage = createJSONStorage(() => ({
           
           if (json.lastModified) {
             setSyncLastModified(json.lastModified);
+          }
+
+          // FAST EXIT: If cloud says we are up to date, just return local data!
+          if (json.upToDate) {
+             lastSavedValue = localDataStr;
+             return localDataStr;
           }
 
           if (json.data && json.data.state) {
