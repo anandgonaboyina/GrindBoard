@@ -139,14 +139,13 @@ export default function DraggableClock({ children }: { children: React.ReactNode
       onPointerCancel={handlePointerUp}
       onDoubleClick={handleDoubleClick}
     >
-      <Tooltip text={lockedWidgets.includes('clock') ? '' : "Drag to move."} position="top">
+
         {!lockedWidgets.includes('clock') && (
           <div className={`absolute inset-0 border-2 border-white/20 bg-white/5 rounded-3xl opacity-0 transition-opacity pointer-events-none ${isDragging ? 'opacity-100' : 'group-hover:opacity-100'}`}></div>
         )}
         <div className="relative pointer-events-auto">
           {children}
-        </div>
-      </Tooltip>
+        </div>    
     </div>
   );
 }

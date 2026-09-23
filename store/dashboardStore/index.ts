@@ -46,6 +46,7 @@ export const syncDeadlinesQueue = async () => {
         console.warn("[Deadlines] Failed to push offline queue.", e);
     }
 };
+let deadlineTypingTimer: NodeJS.Timeout | null = null
 
 const queueDeadlineAction = (action: DeadlineAction) => {
     if (typeof window === 'undefined') return;
@@ -712,10 +713,30 @@ export const useDashboardStore = create<DashboardState>()(
         });
         return id;
       },
-      updateDeadline: (id, text) => set((state) => {
-        queueDeadlineAction({ type: 'UPDATE_DEADLINE', deadlineId: id, updates: { text } });
-        return { deadlines: state.deadlines.map(d => d.id === id ? { ...d, text } : d) };
-      }),
+      updateDeadline: (id, text) => {
+      // 1. Instantly update local UI
+      set((state) => ({
+        deadlines: state.deadlines.map(d => d.id === id ? { ...d, text } : d)
+      }));
+
+      if (deadlineTypingTimer) clearTimeout(deadlineTypingTimer);
+
+      // 2. Only queue and sync if there is actual text content!
+      if (!text || text.trim() === '') return;
+
+      deadlineTypingTimer = setTimeout(() => {
+        const currentState = get();
+        const updatedDeadline = currentState.deadlines.find(d => d.id === id);
+        
+        if (updatedDeadline && updatedDeadline.text.trim() !== '') {
+          queueDeadlineAction({ 
+            type: 'UPDATE_DEADLINE', 
+            deadlineId: id, 
+            updates: { text: updatedDeadline.text } 
+          });
+        }
+      }, 3000);
+    },
       deleteDeadline: (id) => set((state) => {
         queueDeadlineAction({ type: 'DELETE_DEADLINE', deadlineId: id });
         return { deadlines: state.deadlines.filter(d => d.id !== id) };

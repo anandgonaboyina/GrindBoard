@@ -39,35 +39,6 @@ export default function Countdown({
   const [showMaxError, setShowMaxError] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Instantly drop out of edit mode if switching between existing countdowns
-  useEffect(() => {
-    if (examCountdown.title && examCountdown.endDate) {
-      setIsEditing(false);
-    }
-  }, [id]);
-
-
-useEffect(() => {
-  const fetchCountdowns = async () => {
-    const token = localStorage.getItem('dashboard_sync_token') || localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const res = await fetch('/api/countdowns', {
-        headers: { 'Authorization': `Bearer ${token}` },
-        cache: 'no-store'
-      });
-      const json = await res.json();
-      if (json.success && json.data && json.data.countdowns) {
-        useDashboardStore.setState({ countdowns: json.data.countdowns });
-      }
-    } catch (e) {
-      console.warn("Failed to fetch countdowns", e);
-    }
-  };
-
-  fetchCountdowns();
-}, []);
 
   // Initialize edit fields with smart defaults (Today + Current Time)
   useEffect(() => {

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDashboardStore, RoadmapItem, Roadmap } from '@/store/dashboardStore';
 import ConfirmationModal from './ConfirmationModal';
+import { ChevronUp, ChevronDown, Plus, Target, CheckCircle2, Circle, ArrowRightCircle, MoreVertical, Trash2, Edit3, Link as LinkIcon, FoldVertical, UnfoldVertical } from 'lucide-react';
 
 // --- Helper Functions ---
 const generateId = () =>
@@ -23,7 +24,7 @@ const getFormattedTimeLeft = (targetDate?: string) => {
   return `${diffDays} Days`;
 };
 
-// --- Sub-Component ---
+// --- Sub-Component: Timeline Node ---
 interface TreeNodeProps {
   item: RoadmapItem;
   depth: number;
@@ -37,7 +38,6 @@ interface TreeNodeProps {
   setEditingNode: (node: RoadmapItem | null) => void;
   toggleStatus: (item: RoadmapItem, e: React.MouseEvent) => void;
   isLight?: boolean;
-  isFirst?: boolean;
   isLast?: boolean;
 }
 
@@ -54,13 +54,17 @@ const TreeNode = ({
   setEditingNode,
   toggleStatus,
   isLight,
-  isFirst,
   isLast
 }: TreeNodeProps) => {
   const isExpanded = expandedNodes.has(item.id);
   const hasChildren = item.subItems && item.subItems.length > 0;
   const isRoot = depth === 0;
-  const isRight = isRoot && index % 2 === 1;
+
+  const completedCount = item.subItems?.filter(c => c.status === 'completed').length || 0;
+  const totalCount = item.subItems?.length || 0;
+  const progressPercent = totalCount === 0 
+    ? (item.status === 'completed' ? 100 : 0) 
+    : Math.round((completedCount / totalCount) * 100);
 
   const isMenuPath = (node: RoadmapItem): boolean => {
     if (node.id === activeMenuId) return true;
@@ -69,95 +73,139 @@ const TreeNode = ({
   };
   const activePath = isMenuPath(item);
 
-  const borderColors = {
-    'pending': 'border-white/10',
-    'in-progress': 'border-blue-500/80 shadow-[0_0_10px_rgba(59,130,246,0.2)]',
-    'completed': 'border-green-500/80'
-  };
+  return (
+    <div className="relative w-full group/node">
+      {/* Main Vertical Track Line */}
+      {!isLast && (
+        <div className={`absolute w-[2px] z-0 transition-colors duration-500
+          ${isRoot ? 'left-[15px] top-[32px] bottom-[-16px]' : 'left-[11px] top-[24px] bottom-[-12px]'}
+          ${item.status === 'completed' 
+              ? 'bg-green-500/70' 
+              : isLight ? 'bg-slate-300 border-dashed border-l-2 border-slate-300 bg-transparent' : 'bg-slate-700/50 border-dashed border-l-2 border-slate-600 bg-transparent'}
+        `} />
+      )}
 
-  const nodeContentJsx = (
-    <div className="w-full relative">
-      <div className={`flex flex-col p-2.5 backdrop-blur-md border bg-blue-300/50 ${borderColors[item.status]} rounded-lg shadow-md transition-all w-full relative ${activeMenuId === item.id ? 'z-[10000]' : activePath ? 'z-[9999]' : 'z-10'} ${isLight ? ' border-black' : 'bg-slate-800/90 border-white/10'}`}>
-        <div className={`flex items-start justify-between gap-1.5 `}>
+      <div className={`relative flex items-start ${isRoot ? 'mb-4' : 'mb-3'} ${activePath ? 'z-50' : 'z-10'}`}>
+        
+        {/* Timeline Indicator */}
+        <button 
+          onClick={(e) => toggleStatus(item, e)}
+          className={`relative shrink-0 flex items-center justify-center z-10 rounded-full transition-all duration-300 cursor-pointer
+          ${isRoot ? 'w-8 h-8 mt-0.5 border-[3px]' : 'w-6 h-6 mt-0.5 border-2'}
+          ${item.status === 'completed'
+              ? (isLight ? 'bg-green-500 border-green-200 text-white shadow-sm' : 'bg-green-500 border-green-800 text-white shadow-[0_0_10px_rgba(34,197,94,0.3)]')
+              : item.status === 'in-progress'
+              ? (isLight ? 'bg-blue-500 border-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.5)] ring-4 ring-blue-100 text-white animate-pulse' : 'bg-blue-500 border-blue-900 shadow-[0_0_15px_rgba(59,130,246,0.6)] ring-4 ring-blue-500/30 text-white animate-pulse')
+              : (isLight ? 'bg-white border-slate-300 text-slate-300 hover:border-slate-400 hover:text-slate-400' : 'bg-slate-800 border-slate-600 text-slate-600 hover:border-slate-500 hover:text-slate-500')
+          }
+        `}>
+           {item.status === 'completed' ? <CheckCircle2 className={isRoot ? "w-5 h-5" : "w-4 h-4"} /> :
+            item.status === 'in-progress' ? <ArrowRightCircle className={isRoot ? "w-5 h-5" : "w-4 h-4"} /> :
+            <Circle className={isRoot ? "w-3 h-3" : "w-2.5 h-2.5"} />}
+        </button>
 
-          <div
-            onClick={(e) => {
-              if (hasChildren) toggleExpand(item.id, e);
-              else setEditingNode(item);
-            }}
-            className={`flex-1 min-w-0 cursor-pointer flex gap-1.5 items-start`}
-          >
-            <span className={`font-bold w-3 flex justify-center text-[10px] mt-0.5 shrink-0 ${isLight ? 'text-slate-400' : 'text-white/40'}`}>
-              {hasChildren ? (isExpanded ? '▼' : '▶') : '•'}
-            </span>
-            <div className="min-w-0">
-              <div className={`font-medium text-xs sm:text-sm break-words leading-tight ${item.status === 'completed' ? (isLight ? 'text-green-600 line-through opacity-60' : 'text-green-400 line-through opacity-50') : (isLight ? 'text-slate-800' : 'text-white')}`}>
-                {item.title}
-              </div>
-              {item.description && <div className={`text-[11px] mt-0.5 break-words leading-tight ${isLight ? 'text-slate-500' : 'text-white/50'}`}>{item.description}</div>}
-            </div>
-          </div>
+        {/* Node Content Card */}
+        <div className={`flex-1 ml-3 sm:ml-4 rounded-xl border p-3 transition-all duration-300
+           ${item.status === 'completed' ? (isLight ? 'bg-slate-50 border-slate-200 opacity-70 hover:opacity-100' : 'bg-slate-800/20 border-white/5 opacity-60 hover:opacity-100') :
+             item.status === 'in-progress' ? (isLight ? 'bg-white border-blue-400 shadow-md scale-[1.01]' : 'bg-slate-800/95 border-blue-500/50 shadow-[0_4px_20px_rgba(59,130,246,0.15)] scale-[1.01]') :
+             (isLight ? 'bg-white border-slate-200 hover:shadow-sm' : 'bg-slate-800/50 border-white/10 hover:bg-slate-800/80')
+           }
+        `}>
+           <div className="flex justify-between items-start gap-2">
+               {/* Text Area */}
+               <div className="flex-1 min-w-0" onClick={(e) => { if (hasChildren) toggleExpand(item.id, e); else setEditingNode(item); }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                      item.status === 'completed' ? 'bg-green-500/20 text-green-600' :
+                      item.status === 'in-progress' ? 'bg-blue-500/20 text-blue-500' :
+                      isLight ? 'bg-slate-200 text-slate-500' : 'bg-slate-700 text-slate-400'
+                    }`}>
+                      {item.status === 'completed' ? 'Mastered' : item.status === 'in-progress' ? 'Focus' : 'Pending'}
+                    </span>
+                  </div>
+                  <h3 className={`font-bold text-sm sm:text-base leading-tight break-words cursor-pointer transition-colors
+                    ${item.status === 'completed' ? 'line-through' : ''}
+                    ${isLight ? 'text-slate-800' : 'text-white'}
+                  `}>
+                      {item.title}
+                  </h3>
+                  {item.description && <p className={`mt-1.5 text-xs leading-relaxed break-words font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{item.description}</p>}
+               </div>
 
-          {/* Actions */}
-          <div className="flex gap-1 items-center shrink-0 ml-1 relative">
-            <button onClick={(e) => toggleStatus(item, e)} className={`w-6 h-6 flex items-center justify-center rounded text-[11px] transition-colors ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'bg-slate-700/60 hover:bg-slate-600 text-white'}`}>
-              {item.status === 'pending' ? '⚪' : item.status === 'in-progress' ? '🔵' : '✅'}
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === item.id ? null : item.id); }}
-              className={`w-6 h-6 flex items-center justify-center rounded text-xs font-bold transition-colors ${isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'bg-white/5 hover:bg-white/10 text-white'}`}
-            >
-              ⋮
-            </button>
-
-            {activeMenuId === item.id && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className={`absolute right-0 top-7 mt-0.5 w-28 border rounded-md shadow-xl z-999 flex flex-col overflow-hidden ${isLight ? 'bg-black border-slate-200' : 'bg-slate-900 border-white/10'}`}
-              >
-                {depth < 3 && (
-                  <button onClick={() => handleAdd(item.id)} className={`px-3 py-1.5 text-left text-[11px] flex items-center gap-1.5 ${isLight ? 'text-slate-800 hover:bg-slate-100' : 'text-white hover:bg-white/10'}`}>
-                    <span>➕</span> Subtopic
+               {/* Menu Trigger */}
+               <div className="shrink-0 relative">
+                  <button onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === item.id ? null : item.id); }} className={`p-1.5 rounded-lg transition-colors
+                    ${isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-white/10 text-slate-400'}`}>
+                    <MoreVertical className="w-4 h-4" />
                   </button>
-                )}
-                <button onClick={() => { setEditingNode(item); setActiveMenuId(null); }} className={`px-3 py-1.5 text-left text-[11px] flex items-center gap-1.5 ${isLight ? 'text-slate-800 hover:bg-slate-100' : 'text-white hover:bg-white/10'}`}>
-                  <span>✎</span> Edit
-                </button>
-                <button onClick={() => handleDeleteNode(item)} className={`px-3 py-1.5 text-left text-[11px] flex items-center gap-1.5 border-t ${isLight ? 'text-red-500 hover:bg-slate-100 border-slate-100' : 'text-red-400 hover:bg-white/10 border-white/5'}`}>
-                  <span>✕</span> Delete
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {item.links && item.links.length > 0 && (
-          <div className="mt-1.5 ml-4 flex flex-wrap gap-1">
-            {item.links.map(link => (
-              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${isLight ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'bg-blue-950/40 text-blue-300 hover:bg-blue-900/50'}`}>
-                🔗 {link.label}
-              </a>
-            ))}
-          </div>
-        )}
+                  {/* Dropdown Menu */}
+                  {activeMenuId === item.id && (
+                     <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 top-8 w-36 border rounded-xl shadow-xl z-[9999] flex flex-col overflow-hidden backdrop-blur-xl
+                        ${isLight ? 'bg-white/95 border-slate-200' : 'bg-slate-900/95 border-slate-700'}`}>
+                        {depth < 3 && (
+                           <button onClick={() => handleAdd(item.id)} className={`px-3 py-2.5 text-left text-xs font-bold flex items-center gap-2 transition-colors ${isLight ? 'hover:bg-slate-50 text-slate-700' : 'hover:bg-slate-800 text-white'}`}>
+                              <Plus className="w-3.5 h-3.5" /> Add Sub-Step
+                           </button>
+                        )}
+                        <button onClick={() => { setEditingNode(item); setActiveMenuId(null); }} className={`px-3 py-2.5 text-left text-xs font-bold flex items-center gap-2 transition-colors ${isLight ? 'hover:bg-slate-50 text-slate-700' : 'hover:bg-slate-800 text-white'}`}>
+                           <Edit3 className="w-3.5 h-3.5" /> Edit Details
+                        </button>
+                        <button onClick={() => handleDeleteNode(item)} className={`px-3 py-2.5 text-left text-xs font-bold flex items-center gap-2 transition-colors border-t ${isLight ? 'hover:bg-red-50 text-red-600 border-slate-100' : 'hover:bg-red-900/30 text-red-400 border-slate-700'}`}>
+                           <Trash2 className="w-3.5 h-3.5" /> Delete Task
+                        </button>
+                     </div>
+                  )}
+               </div>
+           </div>
+
+           {/* Links */}
+           {item.links && item.links.length > 0 && (
+             <div className="mt-2.5 flex flex-wrap gap-1.5">
+               {item.links.map(link => (
+                 <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className={`text-[10px] px-2 py-1 rounded-md font-bold transition-transform active:scale-95 flex items-center gap-1
+                   ${isLight ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100' : 'bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 border border-indigo-500/20'}`}>
+                   <LinkIcon className="w-2.5 h-2.5" /> {link.label}
+                 </a>
+               ))}
+             </div>
+           )}
+
+           {/* Nested Progress Bar */}
+           {hasChildren && (
+               <div className="mt-3">
+                   <div className="flex justify-between items-center text-[9px] mb-1 font-black uppercase tracking-widest">
+                       <span className={isLight ? 'text-slate-400' : 'text-slate-500'}>Completion</span>
+                       <span className={progressPercent === 100 ? 'text-green-500' : isLight ? 'text-blue-600' : 'text-blue-400'}>{progressPercent}%</span>
+                   </div>
+                   <div className={`w-full h-1 rounded-full overflow-hidden ${isLight ? 'bg-slate-200' : 'bg-slate-700/50'}`}>
+                       <div className={`h-full transition-all duration-700 ease-out ${progressPercent === 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${progressPercent}%` }} />
+                   </div>
+               </div>
+           )}
+
+           {/* Expand/Collapse Toggle */}
+           {hasChildren && (
+               <div className={`mt-2.5 pt-2 border-t flex justify-center ${isLight ? 'border-slate-100' : 'border-white/5'}`}>
+                  <button onClick={(e) => toggleExpand(item.id, e)} className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5
+                    ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-slate-400 hover:bg-slate-700/50'}`}>
+                     {isExpanded ? (
+                       <><ChevronUp className="w-3 h-3" /> Hide</>
+                     ) : (
+                       <><ChevronDown className="w-3 h-3" /> Reveal {item.subItems!.length}</>
+                     )}
+                  </button>
+               </div>
+           )}
+        </div>
       </div>
 
+      {/* Children Node Rendering - Tighter Indentation */}
       {isExpanded && hasChildren && (
-        <div className={`ml-2 sm:ml-3 pl-2 sm:pl-3 relative mt-1 ${activePath ? 'z-[9999]' : 'z-50'}`}>
-          {item.subItems!.map((child, i) => {
-            const isLastChild = i === item.subItems!.length - 1;
-            return (
-              <div key={child.id} className={`relative ${activeMenuId && isMenuPath(child) ? 'z-[9999]' : 'z-10'} ${!isLastChild ? 'pb-1.5' : ''}`}>
-
-                {/* Vertical line segment for this child */}
-                <div className={`absolute -left-2 sm:-left-3 w-[1px] z-0 ${isLight ? 'bg-white' : 'bg-white'} 
-                 ${isLastChild ? 'top-0 h-4' : 'top-0 bottom-0'}
-              `} />
-
-                {/* Horizontal line to this child */}
-                <div className={`absolute -left-2 sm:-left-3 top-4 w-2 sm:w-3 border-t z-0 border-white`} />
-                <TreeNode
+         <div className="ml-4 sm:ml-5 pl-3 sm:pl-4 pt-1 pb-1">
+            {item.subItems!.map((child, i) => (
+               <TreeNode
+                  key={child.id}
                   item={child}
                   depth={depth + 1}
                   index={i}
@@ -170,51 +218,13 @@ const TreeNode = ({
                   setEditingNode={setEditingNode}
                   toggleStatus={toggleStatus}
                   isLight={isLight}
-                  isFirst={i === 0}
-                  isLast={isLastChild}
-                />
-              </div>
-            );
-          })}
-        </div>
+                  isLast={i === item.subItems!.length - 1}
+               />
+            ))}
+         </div>
       )}
     </div>
   );
-
-  if (isRoot) {
-    return (
-      <div className={`relative w-full md:w-1/2 pb-5 ${isRight
-        ? 'md:ml-auto md:pl-5 pl-8 pr-2'
-        : 'md:mr-auto md:pr-5 pl-8 md:pl-0 pr-2'
-        } ${activePath ? 'z-[9999]' : 'z-10'}`}>
-        {/* Connector Dot */}
-        <div className={`absolute top-4 w-2 h-2 rounded-full bg-teal-400 z-20 transform -translate-y-1/2 
-          left-4 -translate-x-[3px] 
-          md:-translate-x-0 
-          ${isRight ? 'md:left-[-4px] md:right-auto' : 'md:left-auto md:right-[-4px]'} 
-        `} />
-
-        {/* Horizontal Connector Line (Desktop Only) */}
-        <div className={`hidden md:block absolute top-4 w-5 h-[1px] z-10
-          ${isRight ? 'left-0' : 'right-0'}
-          ${isLight ? 'bg-black' : 'bg-white/40'}
-        `} />
-
-        {/* Node Line Segment */}
-        {!(isFirst && isLast) && (
-          <div className={`absolute w-[1px] z-10 transform -translate-x-1/2
-            left-4
-            ${isRight ? 'md:left-0 md:right-auto md:-translate-x-1/2' : 'md:right-0 md:left-auto md:translate-x-1/2'}
-            ${isFirst ? 'top-4 bottom-0' : isLast ? 'top-0 h-4' : 'top-0 bottom-0'}
-            ${isLight ? 'bg-black' : 'bg-white/40'}
-          `} />
-        )}
-
-        {nodeContentJsx}
-      </div>
-    );
-  }
-  return nodeContentJsx;
 };
 
 // --- Main Layout Export ---
@@ -246,45 +256,25 @@ export default function RoadmapManager() {
   const [scrollTop, setScrollTop] = useState(0);
 
   const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: React.ReactNode;
-    requireText?: string;
-    isDestructive?: boolean;
-    isPrompt?: boolean;
-    promptPlaceholder?: string;
-    confirmText?: string;
-    hideCancel?: boolean;
-    onConfirm: (val?: string) => void;
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {},
-  });
+    isOpen: boolean; title: string; message: React.ReactNode; requireText?: string;
+    isDestructive?: boolean; isPrompt?: boolean; promptPlaceholder?: string;
+    confirmText?: string; hideCancel?: boolean; onConfirm: (val?: string) => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
-  const showAlertModal = (title: string, message: React.ReactNode, onConfirm?: () => void) => {
+  const showAlertModal = (title: string, message: React.ReactNode) => {
     setConfirmModal({
-      isOpen: true,
-      title,
-      message,
-      hideCancel: true,
-      confirmText: 'Done',
-      onConfirm: () => {
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        if (onConfirm) onConfirm();
-      },
+      isOpen: true, title, message, hideCancel: true, confirmText: 'Got it',
+      onConfirm: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
     });
   };
 
+  // Scroll logic (Drag & Arrows)
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!scrollRef.current) return;
     setIsDragging(true);
     setStartY(e.pageY - scrollRef.current.offsetTop);
     setScrollTop(scrollRef.current.scrollTop);
   };
-  const handleMouseLeave = () => setIsDragging(false);
-  const handleMouseUp = () => setIsDragging(false);
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !scrollRef.current) return;
     e.preventDefault();
@@ -292,15 +282,16 @@ export default function RoadmapManager() {
     const walk = (y - startY) * 1.5;
     scrollRef.current.scrollTop = scrollTop - walk;
   };
+  const scrollWithArrows = (direction: 'up' | 'down') => {
+    if (!scrollRef.current) return;
+    const scrollAmount = 350;
+    scrollRef.current.scrollBy({ top: direction === 'up' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+  };
 
-  // If no roadmaps exist or active is broken, reset
+  // Initialization check
   useEffect(() => {
     if (!roadmaps || roadmaps.length === 0) {
-      const defaultRoadmap: Roadmap = {
-        id: 'default-roadmap-id',
-        name: 'My Personal Goals',
-        nodes: []
-      };
+      const defaultRoadmap: Roadmap = { id: 'default', name: 'Master Plan', nodes: [] };
       setRoadmaps([defaultRoadmap]);
       setActiveRoadmapId(defaultRoadmap.id);
     } else if (!roadmaps.find(r => r.id === activeRoadmapId)) {
@@ -308,64 +299,73 @@ export default function RoadmapManager() {
     }
   }, [roadmaps, activeRoadmapId, setRoadmaps]);
 
+  // View filtering logic
   const syntheticRoadmap = React.useMemo(() => {
     if (!statusFilter) return null;
-
     const filterNodeByStatus = (node: RoadmapItem, forceKeep = false): RoadmapItem | null => {
       let newSubItems: RoadmapItem[] = [];
       const matchesFilter = node.status === statusFilter;
       const shouldKeep = matchesFilter || forceKeep;
-
       if (node.subItems) {
         for (const child of node.subItems) {
           const filteredChild = filterNodeByStatus(child, shouldKeep);
-          if (filteredChild) {
-            newSubItems.push(filteredChild);
-          }
+          if (filteredChild) newSubItems.push(filteredChild);
         }
       }
-
-      if (shouldKeep || newSubItems.length > 0) {
-        return { ...node, subItems: newSubItems.length > 0 ? newSubItems : undefined };
-      }
+      if (shouldKeep || newSubItems.length > 0) return { ...node, subItems: newSubItems.length > 0 ? newSubItems : undefined };
       return null;
     };
-
     const syntheticNodes: RoadmapItem[] = [];
-    roadmaps.forEach(r => {
-      r.nodes.forEach(n => {
-        const filtered = filterNodeByStatus(n);
-        if (filtered) {
-          syntheticNodes.push(filtered);
-        }
-      });
-    });
-
+    roadmaps.forEach(r => { r.nodes.forEach(n => { const f = filterNodeByStatus(n); if (f) syntheticNodes.push(f); }); });
     return {
-      id: `synthetic-${statusFilter}`,
-      name: `All ${statusFilter === 'pending' ? 'Pending' : statusFilter === 'in-progress' ? 'In Progress' : 'Completed'}`,
-      targetDate: syntheticDeadlines?.[statusFilter] || undefined,
-      nodes: syntheticNodes
+      id: `synthetic-${statusFilter}`, name: `${statusFilter.toUpperCase()} TASKS`,
+      targetDate: syntheticDeadlines?.[statusFilter] || undefined, nodes: syntheticNodes
     } as Roadmap;
   }, [statusFilter, roadmaps, syntheticDeadlines]);
 
   const activeRoadmap = syntheticRoadmap || roadmaps?.find(r => r.id === activeRoadmapId) || roadmaps?.[0];
   const daysLeft = activeRoadmap ? getFormattedTimeLeft(activeRoadmap.targetDate) : null;
 
-  useEffect(() => {
-    // Replaced document listener with container onClick to avoid React event bubbling conflicts
-  }, []);
+  // Progress and Expansion Logic
+  const calculateOverallProgress = () => {
+    if (!activeRoadmap || activeRoadmap.nodes.length === 0) return 0;
+    let total = 0, completed = 0;
+    const traverse = (n: RoadmapItem) => {
+      total++;
+      if (n.status === 'completed') completed++;
+      if (n.subItems) n.subItems.forEach(traverse);
+    }
+    activeRoadmap.nodes.forEach(traverse);
+    return total === 0 ? 0 : Math.round((completed / total) * 100);
+  };
+  const overallProgress = calculateOverallProgress();
+
+  const toggleExpandAll = () => {
+    if (expandedNodes.size > 0) {
+      setExpandedNodes(new Set()); // Collapse
+    } else {
+      const allIds = new Set<string>();
+      const traverse = (nodes: RoadmapItem[]) => {
+        nodes.forEach(n => {
+          if (n.subItems && n.subItems.length > 0) {
+            allIds.add(n.id);
+            traverse(n.subItems);
+          }
+        });
+      };
+      traverse(activeRoadmap?.nodes || []);
+      setExpandedNodes(allIds); // Expand
+    }
+  };
 
   if (!isPlansOpen) return null;
   if (!activeRoadmap) return null;
 
+  // Actions
   const createNewRoadmap = () => {
     setConfirmModal({
-      isOpen: true,
-      title: 'New Roadmap',
-      message: 'Enter new roadmap name:',
-      isPrompt: true,
-      promptPlaceholder: 'Roadmap Name',
+      isOpen: true, title: 'New Master Plan', message: 'What is the goal of this new journey?',
+      isPrompt: true, promptPlaceholder: 'e.g. Learn System Design',
       onConfirm: (name?: string) => {
         if (!name || name.trim() === "") return;
         const newRoadmap: Roadmap = { id: generateId(), name: name.trim(), nodes: [] };
@@ -376,16 +376,10 @@ export default function RoadmapManager() {
   };
 
   const deleteActiveRoadmap = () => {
-    if (roadmaps.length === 1) {
-      showAlertModal("Cannot Delete Roadmap", "You must have at least one roadmap.");
-      return;
-    }
+    if (roadmaps.length === 1) return showAlertModal("Cannot Delete", "You must have at least one active journey.");
     setConfirmModal({
-      isOpen: true,
-      title: 'Delete Roadmap',
-      message: `Are you sure you want to permanently remove "${activeRoadmap.name}" and all its topics?`,
-      requireText: 'DELETE',
-      isDestructive: true,
+      isOpen: true, title: 'Abandon Journey?', message: `Permanently delete "${activeRoadmap.name}" and all associated progress?`,
+      requireText: 'DELETE', isDestructive: true,
       onConfirm: () => {
         const filtered = roadmaps.filter(r => r.id !== activeRoadmapId);
         setRoadmaps(filtered);
@@ -395,35 +389,24 @@ export default function RoadmapManager() {
   };
 
   const updateTargetDate = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (statusFilter) {
-      setSyntheticDeadline(statusFilter, e.target.value);
-    } else {
-      setRoadmaps(roadmaps.map(r =>
-        r.id === activeRoadmapId ? { ...r, targetDate: e.target.value } : r
-      ));
-    }
+    if (statusFilter) setSyntheticDeadline(statusFilter, e.target.value);
+    else setRoadmaps(roadmaps.map(r => r.id === activeRoadmapId ? { ...r, targetDate: e.target.value } : r));
   };
 
   const toggleExpand = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const newExpanded = new Set(expandedNodes);
-    if (newExpanded.has(id)) newExpanded.delete(id);
-    else newExpanded.add(id);
+    if (newExpanded.has(id)) newExpanded.delete(id); else newExpanded.add(id);
     setExpandedNodes(newExpanded);
   };
 
-  const updateActiveRoadmapNodes = (newNodes: RoadmapItem[]) => {
-    if (statusFilter) return; // Disallow manual root-level changes to synthetic active roadmap directly
-    setRoadmaps(roadmaps.map(r =>
-      r.id === activeRoadmapId ? { ...r, nodes: newNodes } : r
-    ));
-  };
-
   const handleAdd = (parentId: string | null) => {
-    if (statusFilter && !parentId) return; // Disallow adding root nodes in synthetic view
-    const newNode: RoadmapItem = { id: generateId(), title: 'New Topic', status: 'pending', subItems: [] };
-    if (!parentId) return updateActiveRoadmapNodes([...activeRoadmap.nodes, newNode]);
-
+    if (statusFilter && !parentId) return;
+    const newNode: RoadmapItem = { id: generateId(), title: 'New Milestone', status: 'pending', subItems: [] };
+    if (!parentId) {
+      setRoadmaps(roadmaps.map(r => r.id === activeRoadmapId ? { ...r, nodes: [...activeRoadmap.nodes, newNode] } : r));
+      return;
+    }
     const addGlobalNode = (nodes: RoadmapItem[]): RoadmapItem[] => {
       return nodes.map(node => {
         if (node.id === parentId) return { ...node, subItems: [...(node.subItems || []), newNode] };
@@ -438,46 +421,23 @@ export default function RoadmapManager() {
 
   const handleDeleteNode = (node: RoadmapItem) => {
     const isRootNode = activeRoadmap.nodes.some(n => n.id === node.id);
-
     const performDelete = () => {
       const deleteGlobalNode = (nodes: RoadmapItem[]): RoadmapItem[] => {
-        return nodes
-          .filter(n => n.id !== node.id)
-          .map(n => {
-            if (n.subItems) return { ...n, subItems: deleteGlobalNode(n.subItems) };
-            return n;
-          });
+        return nodes.filter(n => n.id !== node.id).map(n => { if (n.subItems) return { ...n, subItems: deleteGlobalNode(n.subItems) }; return n; });
       };
       setRoadmaps(roadmaps.map(r => ({ ...r, nodes: deleteGlobalNode(r.nodes) })));
       setActiveMenuId(null);
     };
-
-    if (isRootNode) {
-      setConfirmModal({
-        isOpen: true,
-        title: 'Delete Main Topic',
-        message: `Remove main topic "${node.title}" and all its subtopics?`,
-        requireText: 'DELETE',
-        isDestructive: true,
-        onConfirm: performDelete
-      });
-    } else {
-      setConfirmModal({
-        isOpen: true,
-        title: 'Remove Subtopic',
-        message: `Are you sure you want to remove "${node.title}"?`,
-        isDestructive: true,
-        onConfirm: performDelete
-      });
-    }
+    setConfirmModal({
+      isOpen: true, title: isRootNode ? 'Delete Milestone' : 'Remove Sub-Step',
+      message: `Are you sure you want to remove "${node.title}"?`, isDestructive: true, onConfirm: performDelete
+    });
   };
 
   const handleSaveNode = (updatedItem: RoadmapItem) => {
     const updateGlobalTree = (nodes: RoadmapItem[]): RoadmapItem[] => {
-      return nodes.map((node) => {
-        if (node.id === updatedItem.id) {
-          return { ...node, ...updatedItem, subItems: node.subItems };
-        }
+      return nodes.map(node => {
+        if (node.id === updatedItem.id) return { ...node, ...updatedItem, subItems: node.subItems };
         if (node.subItems) return { ...node, subItems: updateGlobalTree(node.subItems) };
         return node;
       });
@@ -493,239 +453,184 @@ export default function RoadmapManager() {
   };
 
   return (
-    <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300 pointer-events-auto ${isLight ? 'text-slate-800' : 'text-white'}`}>
+    <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 pointer-events-auto ${isLight ? 'text-slate-800' : 'text-white'}`}>
       <div className="absolute inset-0" onClick={togglePlans} />
-      <div className={`relative w-full max-w-5xl h-[80vh] flex flex-col rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300 border font-sans ${isLight ? 'bg-slate-300 border-slate-300' : 'bg-[#0f172a] border-white/20'}`}>
+      
+      <div className={`relative w-full h-full sm:h-[90vh] max-w-4xl flex flex-col rounded-xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300 font-sans ${isLight ? 'bg-slate-50 border-slate-300' : 'bg-[#090e17] sm:border sm:border-slate-800'}`}>
 
-        {/* Header */}
-        <div className={`p-3 sm:p-4 border-b flex justify-between items-center shrink-0 ${isLight ? 'border-slate-200 bg-black/30' : 'border-white/10 bg-black/40'}`}>
-          <h1 className="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500">
-            Roadmap Master
-          </h1>
-          <button
-            onClick={togglePlans}
-            className={`p-1.5 rounded-lg transition-colors border ${isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-200 border-transparent' : 'text-white/60 hover:text-white hover:bg-white/10 border-transparent hover:border-white/20'}`}
-          >
-            ✕
+        {/* Header Area */}
+        <div className={`px-4 py-3 border-b shrink-0 flex flex-col gap-3 ${isLight ? 'border-slate-200 bg-white' : 'border-slate-800 bg-[#0f172a]'}`}>
+          <div className="flex justify-between items-center">
+            <button onClick={() => setIsRoadmapSwitcherOpen(true)} className={`group flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'}`}>
+              <h1 className="text-lg md:text-xl font-black tracking-tight flex items-center gap-1.5">
+                {activeRoadmap.name}
+              </h1>
+              <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
+            </button>
+            <button onClick={togglePlans} className={`p-1.5 rounded-xl transition-colors ${isLight ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-800' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}>✕</button>
+          </div>
+
+          <div className="w-full">
+            <div className="flex justify-between items-end mb-1.5">
+              <span className={`text-[10px] font-black uppercase tracking-widest ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>Journey Progress</span>
+              <span className={`text-xs font-black ${overallProgress === 100 ? 'text-green-500' : isLight ? 'text-blue-600' : 'text-blue-400'}`}>{overallProgress}%</span>
+            </div>
+            <div className={`w-full h-1.5 md:h-2 rounded-full overflow-hidden ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
+              <div className={`h-full transition-all duration-1000 ease-out ${overallProgress === 100 ? 'bg-green-500' : 'bg-gradient-to-r from-blue-500 to-teal-400'}`} style={{ width: `${overallProgress}%` }} />
+            </div>
+          </div>
+        </div>
+
+        {/* SCROLL WITH ARROWS - Floating Controls */}
+        <div className="absolute right-3 bottom-6 z-[100] flex flex-col gap-2">
+          <button onClick={() => scrollWithArrows('up')} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full shadow-lg transition-transform active:scale-90 border opacity-80 hover:opacity-100 ${isLight ? 'bg-white text-slate-700 border-slate-200' : 'bg-slate-800 text-white border-slate-600'}`}>
+            <ChevronUp className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+          <button onClick={() => scrollWithArrows('down')} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full shadow-lg transition-transform active:scale-90 border opacity-80 hover:opacity-100 ${isLight ? 'bg-white text-slate-700 border-slate-200' : 'bg-slate-800 text-white border-slate-600'}`}>
+            <ChevronDown className="w-5 h-5 md:w-6 md:h-6" />
           </button>
         </div>
 
-        {/* Scrollable Content */}
+        {/* Scrollable Content Area */}
         <div
           ref={scrollRef}
-          className={`flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 flex flex-col items-center ${isDragging ? 'cursor-grabbing select-none' : ''}`}
+          className={`flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-5 flex flex-col items-center ${isDragging ? 'cursor-grabbing select-none' : ''}`}
           onClick={() => setActiveMenuId(null)}
           onMouseDown={handleMouseDown}
-          onMouseLeave={handleMouseLeave}
-          onMouseUp={handleMouseUp}
+          onMouseLeave={() => setIsDragging(false)}
+          onMouseUp={() => setIsDragging(false)}
           onMouseMove={handleMouseMove}
         >
-          {/* Legend */}
-          <div className="w-full max-w-2xl flex justify-center mb-2 px-2">
-            <div className={`text-[10px] flex gap-3 px-3 py-1.5 rounded-full border ${isLight ? ' border-slate-200 text-slate-500 bg-black' : 'bg-white/15 border-white/10 text-white/50'}`}>
-              <span
-                onClick={() => setStatusFilter(statusFilter === 'pending' ? null : 'pending')}
-                className={`flex items-center gap-1 cursor-pointer transition-colors ${statusFilter === 'pending' ? (isLight ? 'text-slate-800 font-bold scale-110' : 'text-white font-bold scale-110') : (isLight ? 'hover:text-slate-800' : 'hover:text-white')}`}
-              >⚪ Pending</span>
-              <span
-                onClick={() => setStatusFilter(statusFilter === 'in-progress' ? null : 'in-progress')}
-                className={`flex items-center gap-1 cursor-pointer hover:text-blue-400 transition-colors ${statusFilter === 'in-progress' ? 'text-blue-400 font-bold scale-110' : ''}`}
-              >🔵 In Progress</span>
-              <span
-                onClick={() => setStatusFilter(statusFilter === 'completed' ? null : 'completed')}
-                className={`flex items-center gap-1 cursor-pointer hover:text-green-400 transition-colors ${statusFilter === 'completed' ? 'text-green-400 font-bold scale-110' : ''}`}
-              >✅ Completed</span>
+          {/* Quick Filters & Expand/Collapse Toggle */}
+          <div className="w-full max-w-3xl flex flex-wrap justify-center items-center gap-2 mb-6 relative z-50">
+            <div className={`text-[10px] sm:text-xs flex gap-2 md:gap-4 px-3 py-1.5 rounded-full border shadow-sm ${isLight ? 'border-slate-200 text-slate-500 bg-white' : 'bg-slate-900/80 border-slate-700 text-slate-400'}`}>
+              <span onClick={() => setStatusFilter(statusFilter === 'pending' ? null : 'pending')} className={`flex items-center gap-1 cursor-pointer transition-all ${statusFilter === 'pending' ? (isLight ? 'text-slate-800 font-bold scale-105' : 'text-white font-bold scale-105') : (isLight ? 'hover:text-slate-800' : 'hover:text-white')}`}>⚪ Pending</span>
+              <span onClick={() => setStatusFilter(statusFilter === 'in-progress' ? null : 'in-progress')} className={`flex items-center gap-1 cursor-pointer transition-all ${statusFilter === 'in-progress' ? 'text-blue-500 font-bold scale-105' : 'hover:text-blue-500'}`}>🔵 Active</span>
+              <span onClick={() => setStatusFilter(statusFilter === 'completed' ? null : 'completed')} className={`flex items-center gap-1 cursor-pointer transition-all ${statusFilter === 'completed' ? 'text-green-500 font-bold scale-105' : 'hover:text-green-500'}`}>✅ Mastered</span>
             </div>
-          </div>
-
-          {/* Switcher Trigger */}
-          <div className="w-full max-w-2xl flex justify-center mb-8">
-            <button
-              onClick={() => setIsRoadmapSwitcherOpen(true)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition-colors shadow-sm ${isLight ? 'bg-black hover:bg-slate-100 border border-slate-200 text-slate-800' : 'bg-white/5 hover:bg-white/10 border border-white/10 text-white'}`}
+            
+            <button 
+              onClick={toggleExpandAll}
+              className={`text-[10px] sm:text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-sm transition-colors ${isLight ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:bg-slate-800'}`}
             >
-              <span>{activeRoadmap.name}</span>
-              <span className={`rounded-full w-4 h-4 flex items-center justify-center text-[9px] ${isLight ? 'text-teal-600 bg-teal-100' : 'text-teal-400 bg-teal-400/10'}`}>▼</span>
+              {expandedNodes.size > 0 ? <><FoldVertical className="w-3.5 h-3.5"/> Collapse All</> : <><UnfoldVertical className="w-3.5 h-3.5"/> Expand All</>}
             </button>
           </div>
 
-          {/* Switcher Overlay Modal */}
-          {isRoadmapSwitcherOpen && (
-            <div
-              className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-white/10 backdrop-blur-xs"
-              onClick={() => setIsRoadmapSwitcherOpen(false)}
-            >
-              <div
-                className={`rounded-xl p-4 w-full max-w-xs shadow-xl border ${isLight ? 'bg-black border-slate-200' : 'bg-slate-800 border-white/10'}`}
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="flex justify-between items-center mb-3">
-                  <h2 className={`text-sm font-semibold ${isLight ? 'text-white' : 'text-white'}`}>Select Roadmap</h2>
-                  <button onClick={() => setIsRoadmapSwitcherOpen(false)} className={`text-xs ${isLight ? 'text-slate-400 hover:text-slate-600' : 'text-white/40 hover:text-white'}`}>✕</button>
-                </div>
-
-                <div className="flex flex-col gap-1.5 max-h-[50vh] overflow-y-auto pr-0.5">
-                  {roadmaps.map(r => (
-                    <button
-                      key={r.id}
-                      onClick={() => { setActiveRoadmapId(r.id); setIsRoadmapSwitcherOpen(false); setStatusFilter(null); }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex justify-between items-center ${activeRoadmapId === r.id
-                        ? (isLight ? 'bg-teal-50 border border-teal-200 text-teal-700' : 'bg-teal-500/10 border border-teal-500/30 text-teal-300')
-                        : (isLight ? 'bg-white/50 text-slate-700 hover:bg-slate-100 border border-transparent' : 'bg-white/5 text-white/80 hover:bg-white/10 border border-transparent')
-                        }`}
-                    >
-                      {r.name}
-                      {activeRoadmapId === r.id && <span className={`${isLight ? 'text-teal-600' : 'text-teal-400'} text-sm`}>✓</span>}
-                    </button>
-                  ))}
-                </div>
-
-                <div className={`mt-3 pt-3 border-t ${isLight ? 'border-slate-100' : 'border-white/5'}`}>
-                  <button onClick={() => { createNewRoadmap(); setIsRoadmapSwitcherOpen(false); }} className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${isLight ? 'bg-teal-100 hover:bg-teal-200 text-teal-800' : 'bg-teal-600 hover:bg-teal-500 text-white'}`}>
-                    <span>+</span> Create Roadmap
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Central Area Tree Container */}
-          <div className="w-full max-w-2xl relative mt-4">
-
-            {/* Tracker Deadline */}
+          <div className="w-full max-w-3xl relative px-1 md:px-4">
+            {/* Target Deadline Banner */}
             {statusFilter !== 'pending' && statusFilter !== 'completed' && (
-              <div className="absolute top-[-38px] left-4 md:left-1/2 transform md:-translate-x-1/2 flex flex-row md:flex-col items-center md:items-center z-30">
-                <div className="md:hidden w-[16px] h-[1px] bg-teal-500 order-1" />
-                <div className={`rounded-full px-2.5 py-1 shadow-md text-center flex flex-col relative w-[110px] transition-colors order-2 md:order-1 border ${isLight ? 'bg-black border-blue-300 hover:bg-slate-50' : 'bg-slate-800 border-teal-500 hover:bg-slate-700'}`}>
-                  <span className={`font-semibold text-[10px] uppercase pointer-events-none relative z-0 ${isLight ? 'text-teal-600' : 'text-teal-400'}`}>
-                    {daysLeft !== null ? `${daysLeft} Left` : 'Set Deadline'}
-                  </span>
-                  <input
-                    type="date"
-                    value={activeRoadmap.targetDate || ''}
-                    onChange={updateTargetDate}
-                    onClick={(e) => {
-                      try {
-                        if ('showPicker' in HTMLInputElement.prototype) {
-                          e.currentTarget.showPicker();
-                        }
-                      } catch (err) { }
-                    }}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                  />
-                </div>
+              <div className="relative mb-8 flex items-center justify-center">
+                 <div className={`rounded-xl px-4 py-3 shadow-md flex items-center gap-3 relative z-10 border transition-all ${isLight ? 'bg-white border-blue-200' : 'bg-slate-900 border-teal-500/50'}`}>
+                    <Target className={`w-6 h-6 ${isLight ? 'text-blue-500' : 'text-teal-400'}`} />
+                    <div className="flex flex-col">
+                      <span className={`font-black text-[9px] uppercase tracking-widest ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>Ultimate Goal</span>
+                      <span className={`font-black text-sm md:text-base ${isLight ? 'text-slate-800' : 'text-white'}`}>{daysLeft !== null ? `${daysLeft} Left` : 'Set Deadline'}</span>
+                    </div>
+                    <input type="date" value={activeRoadmap.targetDate || ''} onChange={updateTargetDate} onClick={(e) => { try { if ('showPicker' in HTMLInputElement.prototype) e.currentTarget.showPicker(); } catch (err) { } }} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" />
+                 </div>
               </div>
             )}
 
-            {/* Connection from Deadline to First Node */}
-            {statusFilter !== 'pending' && statusFilter !== 'completed' && activeRoadmap.nodes.length > 0 && (
-              <div className="absolute w-[1px] bg-teal-500 z-20
-                left-4 transform -translate-x-1/2
-                md:left-1/2 md:-translate-x-1/2
-                top-[-26px] md:top-[-14px] h-[42px] md:h-[30px]
-              " />
+            {/* Empty State */}
+            {activeRoadmap.nodes.length === 0 && (
+                <div className={`text-center py-16 text-sm font-medium flex flex-col items-center gap-3 ${isLight ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <Target className="w-12 h-12 opacity-20" />
+                    Every grand ambition begins with a single step. <br/>Add your first milestone below.
+                </div>
             )}
 
-            {/* Dynamic Central Alignment Vector */}
+            {/* Timeline Mapping */}
             <div className="relative w-full">
               {activeRoadmap.nodes.map((node, index) => (
                 <TreeNode
-                  key={node.id}
-                  item={node}
-                  index={index}
-                  depth={0}
-                  expandedNodes={expandedNodes}
-                  toggleExpand={toggleExpand}
-                  activeMenuId={activeMenuId}
-                  setActiveMenuId={setActiveMenuId}
-                  handleAdd={handleAdd}
-                  handleDeleteNode={handleDeleteNode}
-                  setEditingNode={setEditingNode}
-                  toggleStatus={toggleStatus}
-                  isLight={isLight}
-                  isFirst={index === 0}
-                  isLast={index === activeRoadmap.nodes.length - 1}
+                  key={node.id} item={node} index={index} depth={0} expandedNodes={expandedNodes}
+                  toggleExpand={toggleExpand} activeMenuId={activeMenuId} setActiveMenuId={setActiveMenuId}
+                  handleAdd={handleAdd} handleDeleteNode={handleDeleteNode} setEditingNode={setEditingNode}
+                  toggleStatus={toggleStatus} isLight={isLight} isLast={index === activeRoadmap.nodes.length - 1}
                 />
               ))}
             </div>
 
             {!statusFilter && (
-              <>
-                {/* Add Main Item Action */}
-                <div className="flex justify-center mt-4">
-                  <button onClick={() => handleAdd(null)} className={`px-5 py-2 rounded-full text-xs font-medium shadow-md flex items-center gap-2 transition-colors border ${isLight ? 'bg-black border-slate-200 hover:bg-slate-50 text-slate-800' : 'bg-white/5 border-white/10 hover:bg-white/10 text-white'}`}>
-                    <span className={`rounded-full w-4 h-4 flex items-center justify-center text-sm ${isLight ? 'bg-teal-100 text-teal-700' : 'bg-teal-500'}`}>+</span>
-                    Add Main Topic
-                  </button>
-                </div>
+              <div className="flex flex-col items-start ml-2 sm:ml-3 mt-4 border-l-2 border-dashed border-transparent">
+                <button onClick={() => handleAdd(null)} className={`ml-[9px] md:ml-[9px] px-5 py-2.5 rounded-xl text-xs font-black shadow-md flex items-center gap-2 transition-transform active:scale-95 border ${isLight ? 'bg-white border-slate-300 hover:bg-slate-50 text-slate-800' : 'bg-blue-600 border-blue-500 hover:bg-blue-500 text-white'}`}>
+                  <Plus className="w-4 h-4" /> Next Milestone
+                </button>
 
-                {/* Core Destruct Action */}
-                <div className="flex justify-center mt-10 mb-4">
-                  <button onClick={deleteActiveRoadmap} className="px-3 py-1.5 text-[11px] text-red-500/50 hover:text-red-400 hover:bg-red-500/5 rounded-md transition-colors">
-                    Delete Entire Roadmap
+                <div className="mt-16 mb-6 w-full flex justify-center">
+                  <button onClick={deleteActiveRoadmap} className={`px-4 py-2 text-[11px] font-bold rounded-lg transition-colors flex items-center gap-1.5 ${isLight ? 'text-red-500 hover:bg-red-50' : 'text-red-400/60 hover:text-red-400 hover:bg-red-500/10'}`}>
+                    <Trash2 className="w-3.5 h-3.5" /> Abandon Journey
                   </button>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Minimal Node Editor Modal */}
+      {/* Switcher Overlay Modal */}
+      {isRoadmapSwitcherOpen && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setIsRoadmapSwitcherOpen(false)}>
+          <div className={`rounded-2xl p-5 w-full max-w-sm shadow-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-700'}`} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className={`text-base font-black tracking-tight ${isLight ? 'text-slate-800' : 'text-white'}`}>Select Journey</h2>
+              <button onClick={() => setIsRoadmapSwitcherOpen(false)} className={`p-1.5 rounded-lg ${isLight ? 'text-slate-400 hover:bg-slate-100' : 'text-slate-500 hover:bg-slate-800'}`}>✕</button>
+            </div>
+            <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto pr-1.5">
+              {roadmaps.map(r => (
+                <button
+                  key={r.id} onClick={() => { setActiveRoadmapId(r.id); setIsRoadmapSwitcherOpen(false); setStatusFilter(null); }}
+                  className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-colors flex justify-between items-center ${activeRoadmapId === r.id ? (isLight ? 'bg-blue-50 border border-blue-200 text-blue-700' : 'bg-blue-500/10 border border-blue-500/30 text-blue-400') : (isLight ? 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent' : 'bg-slate-800/50 text-slate-300 hover:bg-slate-800 border border-transparent')}`}
+                >
+                  {r.name}
+                  {activeRoadmapId === r.id && <CheckCircle2 className="w-4 h-4" />}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => { createNewRoadmap(); setIsRoadmapSwitcherOpen(false); }} className={`mt-4 w-full px-4 py-3 rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-2 ${isLight ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-white text-slate-900 hover:bg-slate-200'}`}>
+              <Plus className="w-4 h-4" /> Start New Journey
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Node Editor Modal */}
       {editingNode && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-3 bg-black/70 backdrop-blur-xs">
-          <div className={`rounded-xl p-4 w-full max-w-sm shadow-xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-800 border-white/10'}`}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className={`text-sm font-bold ${isLight ? 'text-slate-800' : 'text-white'}`}>Edit Topic</h2>
-              <button onClick={() => setEditingNode(null)} className={`text-xs ${isLight ? 'text-slate-400 hover:text-slate-600' : 'text-white/40 hover:text-white'}`}>✕</button>
-            </div>
-
-            <div className="space-y-3">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className={`rounded-2xl p-5 md:p-6 w-full max-w-sm shadow-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-700'}`}>
+            <h2 className={`text-lg font-black mb-4 ${isLight ? 'text-slate-800' : 'text-white'}`}>Edit Milestone</h2>
+            <div className="space-y-4">
               <div>
-                <label className={`block text-[11px] font-medium mb-1 ${isLight ? 'text-slate-600' : 'text-white/60'}`}>Title</label>
+                <label className={`block text-[10px] font-black uppercase tracking-wider mb-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Objective Title</label>
                 <input
-                  type="text"
-                  value={editingNode.title}
-                  onChange={(e) => setEditingNode({ ...editingNode, title: e.target.value })}
-                  className={`w-full rounded-lg p-2 text-xs outline-none focus:border-teal-400 transition-colors border ${isLight ? 'bg-slate-50 border-slate-200 text-slate-800 focus:bg-white' : 'bg-black/30 border-white/10 text-white'}`}
-                  placeholder="e.g., Learn Fundamentals"
+                  type="text" value={editingNode.title} onChange={(e) => setEditingNode({ ...editingNode, title: e.target.value })}
+                  className={`w-full rounded-xl p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all border ${isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-800 border-slate-700 text-white'}`}
                 />
               </div>
               <div>
-                <label className={`block text-[11px] font-medium mb-1 ${isLight ? 'text-slate-600' : 'text-white/60'}`}>Description (Optional)</label>
+                <label className={`block text-[10px] font-black uppercase tracking-wider mb-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tactical Notes (Optional)</label>
                 <textarea
-                  value={editingNode.description || ''}
-                  onChange={(e) => setEditingNode({ ...editingNode, description: e.target.value })}
-                  className={`w-full rounded-lg p-2 text-xs h-16 outline-none focus:border-teal-400 transition-colors resize-none border ${isLight ? 'bg-slate-50 border-slate-200 text-slate-800 focus:bg-white' : 'bg-black/30 border-white/10 text-white'}`}
-                  placeholder="Add notes..."
+                  value={editingNode.description || ''} onChange={(e) => setEditingNode({ ...editingNode, description: e.target.value })}
+                  className={`w-full rounded-xl p-3 text-sm h-24 outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none border ${isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-800 border-slate-700 text-white'}`}
+                  placeholder="Strategy, links, insights..."
                 />
               </div>
             </div>
-
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setEditingNode(null)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isLight ? 'text-slate-500 hover:bg-slate-100' : 'text-white/60 hover:bg-white/5'}`}>
-                Cancel
-              </button>
-              <button onClick={() => handleSaveNode(editingNode)} className="px-3 py-1.5 bg-teal-600 rounded-lg text-white hover:bg-teal-500 text-xs font-medium transition-colors shadow-sm">
-                Save
-              </button>
+            <div className="flex justify-end gap-2 mt-6">
+              <button onClick={() => setEditingNode(null)} className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-colors ${isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800'}`}>Cancel</button>
+              <button onClick={() => handleSaveNode(editingNode)} className="px-5 py-2.5 bg-blue-600 rounded-xl text-white hover:bg-blue-500 text-xs font-black transition-transform active:scale-95 shadow-md">Save Directives</button>
             </div>
           </div>
         </div>
       )}
 
       <ConfirmationModal
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        requireText={confirmModal.requireText}
-        isDestructive={confirmModal.isDestructive}
-        isPrompt={confirmModal.isPrompt}
-        promptPlaceholder={confirmModal.promptPlaceholder}
-        confirmText={confirmModal.confirmText}
-        hideCancel={confirmModal.hideCancel}
+        isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message}
+        requireText={confirmModal.requireText} isDestructive={confirmModal.isDestructive}
+        isPrompt={confirmModal.isPrompt} promptPlaceholder={confirmModal.promptPlaceholder}
+        confirmText={confirmModal.confirmText} hideCancel={confirmModal.hideCancel}
       />
     </div>
   );

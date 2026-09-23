@@ -29,7 +29,7 @@ export default function BigClock() {
   const stopwatchStartTime = useDashboardStore((state) => state.stopwatchStartTime);
   const isPanicHidden = useDashboardStore((state) => state.isPanicHidden);
   const [isMobile, setIsMobile] = useState(false);
-
+  const {lockedWidgets} = useDashboardStore();
   const [activeTimerSecs, setActiveTimerSecs] = useState<number | null>(null);
   const [activeStopwatchSecs, setActiveStopwatchSecs] = useState<number | null>(null);
 
@@ -59,6 +59,14 @@ export default function BigClock() {
 
   const handlePillTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
     if (swipeStartX.current === null) return;
+    
+    // FIX: If it's a mouse event and no buttons are pressed, cancel the tracking.
+    // This happens if the user released the mouse outside the pill and hovered back.
+    if ('buttons' in e && e.buttons === 0) {
+      swipeStartX.current = null;
+      return;
+    }
+
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const diffX = clientX - swipeStartX.current;
 
@@ -215,6 +223,8 @@ export default function BigClock() {
           <div className="fixed top-0 left-0 right-0 z-[40] flex items-start justify-center gap-3 transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] translate-y-0 pointer-events-none mt-2 md:mt-3">
             <div
               className="flex flex-row items-center justify-center gap-1.5 md:gap-2 px-2 max-w-full w-full md:w-auto"
+              // FIX: added onDragStart mapping to prevent browser ghost drag interruption
+              onDragStart={(e) => e.preventDefault()}
               onTouchStart={handlePillTouchStart}
               onTouchMove={handlePillTouchMove}
               onTouchEnd={handlePillTouchEnd}

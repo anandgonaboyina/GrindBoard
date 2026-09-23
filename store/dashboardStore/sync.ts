@@ -79,27 +79,45 @@ export const setSecureFocusQueue = (queueData: Record<string, number>) => {
 };
 
 
+// Removes duplicates from an array based on a unique 'id' field
+export const uniqueById = (arr: any[]) => {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set();
+  return arr.filter(item => {
+    if (!item || !item.id) return true; // keep items without IDs just in case
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+};
+
+let isSyncingQueue = false; // 🚀 FIX: Add a lock variable to prevent overlapping
+
 // ----------------------------------------------------------------------
 // DEDICATED QUEUE SYNC: Securely pushes offline minutes to the DB
 // ----------------------------------------------------------------------
 export const syncFocusQueue = async () => {
   if (typeof window === 'undefined' || !navigator.onLine) return;
+  if (isSyncingQueue) return; // 🚀 FIX: If already syncing, abort immediately!
+  
   const token = getSyncToken();
   if (!token) return;
 
   let queue = getSecureFocusQueue();
   if (Object.keys(queue).length === 0) return;
 
-  let updatedQueue = { ...queue };
-  let hasChanges = false;
+  isSyncingQueue = true; // Lock engaged
+
+  // FIX: Empty the local queue BEFORE sending to the server. 
+  // This guarantees that if performSave triggers a millisecond later, it sees an empty queue.
+  setSecureFocusQueue({});
+  
+  let failedQueue: Record<string, number> = {};
+  let hasFailures = false;
 
   for (const dateStr of Object.keys(queue)) {
     const mins = queue[dateStr];
-    if (mins <= 0) {
-      delete updatedQueue[dateStr];
-      hasChanges = true;
-      continue;
-    }
+    if (mins <= 0) continue;
 
     try {
       const res = await fetch('/api/users/streak', {
@@ -108,18 +126,27 @@ export const syncFocusQueue = async () => {
         body: JSON.stringify({ dateStr, minutes: mins })
       });
       
-      if (res.ok) {
-        delete updatedQueue[dateStr];
-        hasChanges = true;
+      if (!res.ok) {
+        failedQueue[dateStr] = (failedQueue[dateStr] || 0) + mins;
+        hasFailures = true;
       }
     } catch (e) {
       console.warn(`[Sync] Failed to push focus queue for ${dateStr}. Will retry later.`, e);
+      failedQueue[dateStr] = (failedQueue[dateStr] || 0) + mins;
+      hasFailures = true;
     }
   }
 
-  if (hasChanges) {
-    setSecureFocusQueue(updatedQueue);
+  // 🚀 FIX: If the internet drops while syncing, put the failed minutes safely BACK into the queue.
+  if (hasFailures) {
+    const currentQueue = getSecureFocusQueue();
+    for (const dateStr in failedQueue) {
+      currentQueue[dateStr] = (currentQueue[dateStr] || 0) + failedQueue[dateStr];
+    }
+    setSecureFocusQueue(currentQueue);
   }
+
+  isSyncingQueue = false; // Unlock
 };
 
 // ----------------------------------------------------------------------
@@ -285,15 +312,16 @@ export const performSave = async () => {
       if (typeof parsedData.state.peekModeWallpaper === 'string' && parsedData.state.peekModeWallpaper.startsWith('data:')) {
         delete parsedData.state.peekModeWallpaper;
       }
-      // delete parsedData.state.userGroups;
-      // delete parsedData.state.selectedGroupId;
-      // delete parsedData.state.viewingFriend;
-      // delete parsedData.state.syntheticDeadlines;
       delete parsedData.state.timerEndAt;
       delete parsedData.state.timerPausedLeft;
       delete parsedData.state.timerInitialMins;
       delete parsedData.state.stopwatchStartTime;
 
+      // Force the global save payload to NEVER include these atomic keys.
+      // This guarantees the server only gets them from your tiny action-queue updates!
+      delete parsedData.state.history;
+      delete parsedData.state.dailyTimes;
+      delete parsedData.state.countdowns;
       // 2. DELTA SYNC: Only send the exact keys that were modified!
       if (modifiedKeys && modifiedKeys.length > 0) {
         const diffState: any = {};
@@ -336,12 +364,41 @@ export const performSave = async () => {
         });
       }
 
-      const mergedState = {
-        ...parsedLocal.state,          // Base: full local state (preserves Notes, Tasks, etc.)
-        ...parsedCloud.state,          // Overlay: only the fields the server returned (e.g. just Settings)
+      //old mergeState logic code
+      // const mergedState = {
+      //   ...parsedLocal.state,          // Base: full local state (preserves Notes, Tasks, etc.)
+      //   ...parsedCloud.state,          // Overlay: only the fields the server returned (e.g. just Settings)
+      //   ...userModifications,          // User's own unsaved edits win on top
+      //   history: parsedCloud.state?.history || parsedLocal.state?.history || {},
+      //   dailyTimes: mergeDailyTimes(parsedLocal.state?.dailyTimes || {}, parsedCloud.state?.dailyTimes || {}),
+      //   timerEndAt: (parsedLocal.state?.timerLastUpdated || 0) >= (parsedCloud.state?.timerLastUpdated || 0) ? parsedLocal.state?.timerEndAt : parsedCloud.state?.timerEndAt,
+      //   timerPausedLeft: (parsedLocal.state?.timerLastUpdated || 0) >= (parsedCloud.state?.timerLastUpdated || 0) ? parsedLocal.state?.timerPausedLeft : parsedCloud.state?.timerPausedLeft,
+      //   timerInitialMins: parsedLocal.state?.timerInitialMins !== undefined ? parsedLocal.state?.timerInitialMins : parsedCloud.state?.timerInitialMins,
+      //   timerDeviceId: parsedLocal.state?.timerDeviceId !== undefined ? parsedLocal.state?.timerDeviceId : parsedCloud.state?.timerDeviceId,
+      //   timerLastSavedChunks: parsedLocal.state?.timerLastSavedChunks !== undefined ? parsedLocal.state?.timerLastSavedChunks : parsedCloud.state?.timerLastSavedChunks,
+      //   timerLastAlertedChunks: parsedLocal.state?.timerLastAlertedChunks !== undefined ? parsedLocal.state?.timerLastAlertedChunks : parsedCloud.state?.timerLastAlertedChunks,
+      //   timerLastUpdated: parsedLocal.state?.timerLastUpdated !== undefined ? parsedLocal.state?.timerLastUpdated : parsedCloud.state?.timerLastUpdated,
+      //   stopwatchStartTime: parsedCloud.state?.stopwatchStartTime !== undefined ? parsedCloud.state?.stopwatchStartTime : parsedLocal.state?.stopwatchStartTime,
+      //   stopwatchDeviceId: parsedLocal.state?.stopwatchDeviceId !== undefined ? parsedLocal.state?.stopwatchDeviceId : parsedCloud.state?.stopwatchDeviceId,
+      //   stopwatchLastSavedChunks: parsedLocal.state?.stopwatchLastSavedChunks !== undefined ? parsedLocal.state?.stopwatchLastSavedChunks : parsedCloud.state?.stopwatchLastSavedChunks,
+      //   activeTaskId: parsedLocal.state?.activeTaskId !== undefined ? parsedLocal.state?.activeTaskId : parsedCloud.state?.activeTaskId,
+      //   activeTaskTitle: parsedLocal.state?.activeTaskTitle !== undefined ? parsedLocal.state?.activeTaskTitle : parsedCloud.state?.activeTaskTitle,
+      // };
+
+        const mergedState = {
+        ...parsedLocal.state,          // Base: full local state 
+        ...parsedCloud.state,          // Overlay: fields from server
         ...userModifications,          // User's own unsaved edits win on top
+        
+        // 🚀 FIX: Safely merge arrays by ID to prevent duplicates/loss
+        tasks: mergeArraysById(parsedLocal.state?.tasks || [], parsedCloud.state?.tasks || []),
+        deadlines: mergeArraysById(parsedLocal.state?.deadlines || [], parsedCloud.state?.deadlines || []),
+        syntheticDeadlines: mergeArraysById(parsedLocal.state?.syntheticDeadlines || [], parsedCloud.state?.syntheticDeadlines || []),
+        countdowns: mergeArraysById(parsedLocal.state?.countdowns || [], parsedCloud.state?.countdowns || []),
+        
         history: parsedCloud.state?.history || parsedLocal.state?.history || {},
         dailyTimes: mergeDailyTimes(parsedLocal.state?.dailyTimes || {}, parsedCloud.state?.dailyTimes || {}),
+
         timerEndAt: (parsedLocal.state?.timerLastUpdated || 0) >= (parsedCloud.state?.timerLastUpdated || 0) ? parsedLocal.state?.timerEndAt : parsedCloud.state?.timerEndAt,
         timerPausedLeft: (parsedLocal.state?.timerLastUpdated || 0) >= (parsedCloud.state?.timerLastUpdated || 0) ? parsedLocal.state?.timerPausedLeft : parsedCloud.state?.timerPausedLeft,
         timerInitialMins: parsedLocal.state?.timerInitialMins !== undefined ? parsedLocal.state?.timerInitialMins : parsedCloud.state?.timerInitialMins,
@@ -350,11 +407,13 @@ export const performSave = async () => {
         timerLastAlertedChunks: parsedLocal.state?.timerLastAlertedChunks !== undefined ? parsedLocal.state?.timerLastAlertedChunks : parsedCloud.state?.timerLastAlertedChunks,
         timerLastUpdated: parsedLocal.state?.timerLastUpdated !== undefined ? parsedLocal.state?.timerLastUpdated : parsedCloud.state?.timerLastUpdated,
         stopwatchStartTime: parsedCloud.state?.stopwatchStartTime !== undefined ? parsedCloud.state?.stopwatchStartTime : parsedLocal.state?.stopwatchStartTime,
-        stopwatchDeviceId: parsedLocal.state?.stopwatchDeviceId !== undefined ? parsedLocal.state?.stopwatchDeviceId : parsedCloud.state?.stopwatchDeviceId,
+        stopwatchDeviceId: parsedCloud.state?.stopwatchDeviceId !== undefined ? parsedCloud.state?.stopwatchDeviceId : parsedLocal.state?.stopwatchDeviceId,
         stopwatchLastSavedChunks: parsedLocal.state?.stopwatchLastSavedChunks !== undefined ? parsedLocal.state?.stopwatchLastSavedChunks : parsedCloud.state?.stopwatchLastSavedChunks,
         activeTaskId: parsedLocal.state?.activeTaskId !== undefined ? parsedLocal.state?.activeTaskId : parsedCloud.state?.activeTaskId,
         activeTaskTitle: parsedLocal.state?.activeTaskTitle !== undefined ? parsedLocal.state?.activeTaskTitle : parsedCloud.state?.activeTaskTitle,
       };
+
+
 
       if (mergedState.timerEndAt && mergedState.timerEndAt < Date.now()) {
         mergedState.timerEndAt = null; mergedState.timerPausedLeft = null;
@@ -529,8 +588,64 @@ export const pushCountdownsToDB = async (countdownsArray: any[]) => {
     console.warn("Failed to atomic sync countdowns:", err);
   }
 };
-export const pushDeadlinesToDB = async (payload: any) => { };
-export const pushDailyRoutineToDB = async (payload: any) => { };
+
+// -------------------------------------------------------------
+// DEBOUNCED DEADLINES SYNC (Prevents keystroke spam)
+// -------------------------------------------------------------
+let deadlineDebounceTimer: NodeJS.Timeout | null = null;
+export const pushDeadlinesToDB = async (deadlinesArray: any[]) => {
+  const token = getSyncToken();
+  if (!token || typeof window === 'undefined') return;
+
+  if (deadlineDebounceTimer) clearTimeout(deadlineDebounceTimer);
+
+  deadlineDebounceTimer = setTimeout(async () => {
+    if (!navigator.onLine) {
+      try { localStorage.setItem('deadlines_offline_queue', JSON.stringify(deadlinesArray)); } catch(e){}
+      return;
+    }
+
+    try {
+      await fetch('/api/deadlines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ deadlines: deadlinesArray })
+      });
+    } catch (err) {
+      console.warn("Failed to sync deadlines:", err);
+    }
+  }, 600); // Waits 600ms after you stop typing before hitting the server
+};
+
+
+// -------------------------------------------------------------
+// DEBOUNCED DAILY ROUTINE SYNC
+// -------------------------------------------------------------
+let routineDebounceTimer: NodeJS.Timeout | null = null;
+export const pushDailyRoutineToDB = async (dailyTimesObj: any) => {
+  const token = getSyncToken();
+  if (!token || typeof window === 'undefined') return;
+
+  if (routineDebounceTimer) clearTimeout(routineDebounceTimer);
+
+  routineDebounceTimer = setTimeout(async () => {
+    if (!navigator.onLine) {
+      try { localStorage.setItem('daily_routine_offline_queue', JSON.stringify(dailyTimesObj)); } catch(e){}
+      return;
+    }
+
+    try {
+      await fetch('/api/daily-routine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ dailyTimes: dailyTimesObj })
+      });
+    } catch (err) {
+      console.warn("Failed to sync daily routine:", err);
+    }
+  }, 600);
+};
+
 export const pushStreakToDB = (dateKey: string, minutes: number) => {
   if (typeof window === 'undefined' || minutes <= 0) return;
 
@@ -635,14 +750,6 @@ export const fileStorage = createJSONStorage(() => ({
 
             const cloudState = json.data.state;
             const mergedHistory = { ...(cloudState.history || {}) };
-            
-            // Securely fetch queue to merge accurate UI history
-            const queue = getSecureFocusQueue();
-            for (const dateKey in queue) {
-                if (queue[dateKey] > 0) {
-                    mergedHistory[dateKey] = (mergedHistory[dateKey] || 0) + queue[dateKey];
-                }
-            }
 
             const mergedState = {
               ...cloudState,

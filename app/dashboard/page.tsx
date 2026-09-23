@@ -332,7 +332,7 @@ export default function Dashboard() {
 
           {/* Center Display Components */}
           <div className={(showClock || showTodayWork || showTimer || showStopwatch) ? 'block' : 'hidden'}>
-            <div style={{ zIndex: widgetZIndices.clock || 50 }} className={`absolute pointer-events-none transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] origin-top md:origin-top-left ${isTimetableOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100'} ${currentBgType === 'image' ? 'top-32 left-1/2 -translate-x-1/2 translate-y-0 scale-[0.85] md:scale-100 md:top-40 origin-top' : 'top-32 left-1/2 -translate-x-1/2 md:top-40 md:left-10 md:translate-x-0 translate-y-0 scale-[0.85] md:scale-100'}`}>
+            <div style={{ zIndex: widgetZIndices.clock || 50 }} className={`absolute pointer-events-none ease-[cubic-bezier(0.23,1,0.32,1)] origin-top md:origin-top-left  ${currentBgType === 'image' ? 'top-32 left-1/2 -translate-x-1/2 translate-y-0 scale-[0.85] md:scale-100 md:top-40 origin-top' : 'top-32 left-1/2 -translate-x-1/2 md:top-40 md:left-10 md:translate-x-0 translate-y-0 scale-[0.85] md:scale-100'}`}>
               <DraggableClock><BigClock /></DraggableClock>
             </div>
           </div>
