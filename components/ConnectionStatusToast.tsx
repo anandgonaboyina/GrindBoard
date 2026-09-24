@@ -73,7 +73,7 @@ export default function ConnectionStatusToast() {
     window.addEventListener('offline', handleOffline);
 
     // Periodically verify true connection in the background every 20 seconds
-    const interval = setInterval(checkRealConnection, 20000);
+    const interval = setInterval(checkRealConnection, 25000);
 
     return () => {
       clearTimeout(initialTimer);

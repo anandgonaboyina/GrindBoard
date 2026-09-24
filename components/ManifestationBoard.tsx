@@ -265,38 +265,37 @@ export default function ManifestationBoard() {
 
             {/* SMALL WIDTH PILL SIZE TOP HEADER (Z-30) */}
             <div className="w-full flex flex-col items-center justify-center gap-2 z-30 shrink-0 pt-2 sm:pt-1 pointer-events-none">
-                {/* QUOTE PILL */}
+                {/* QUOTE PILL / MOBILE PARAGRAPH CARD */}
                 <div
-                    className="pointer-events-auto relative flex items-center gap-2 sm:gap-3 px-3.5 py-1.5 sm:px-4 sm:py-1.5 rounded-full bg-black/60 backdrop-blur-xl border border-amber-500/30 shadow-2xl max-w-[95%] sm:max-w-fit"
+                    className="pointer-events-auto relative flex items-start sm:items-center gap-2.5 sm:gap-3 px-4 py-2.5 sm:px-4 sm:py-1.5 rounded-2xl sm:rounded-full bg-black/60 backdrop-blur-xl border border-amber-500/30 shadow-2xl max-w-[92%] sm:max-w-fit transition-all"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                        <div className="p-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                        </div>
-                        <div className="relative group min-w-0 flex items-center">
-                            <span
-                                className="text-xs font-semibold italic text-amber-200/90 tracking-wide max-w-[220px] sm:max-w-[400px] md:max-w-[500px] cursor-pointer hover:text-amber-100 transition-colors truncate sm:whitespace-normal"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const next = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];
-                                    setRandomQuote(next);
-                                }}
-                            >
-                                "{randomQuote}"
-                            </span>
+                    <div className="p-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 mt-0.5 sm:mt-0">
+                        <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                    </div>
+                    
+                    <div className="relative group min-w-0 flex items-start sm:items-center gap-2 sm:gap-1.5">
+                        <span
+                            className="text-[11px] sm:text-xs font-semibold italic text-amber-200/90 tracking-wide max-w-full sm:max-w-[400px] md:max-w-[500px] cursor-pointer hover:text-amber-100 transition-colors whitespace-normal leading-relaxed sm:leading-normal text-left"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const next = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];
+                                setRandomQuote(next);
+                            }}
+                        >
+                            "{randomQuote}"
+                        </span>
 
-                            {/* Copy Quote Button directly inside the pill */}
-                            <button
-                                onClick={handleCopyQuote}
-                                className="ml-1.5 p-1 rounded-md hover:bg-amber-500/20 transition-colors pointer-events-auto shrink-0 flex items-center justify-center"
-                                title="Copy quote"
-                            >
-                                {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-amber-400/80" />}
-                            </button>
+                        {/* Copy Quote Button */}
+                        <button
+                            onClick={handleCopyQuote}
+                            className="p-1.5 sm:p-1 rounded-md hover:bg-amber-500/20 transition-colors pointer-events-auto shrink-0 flex items-center justify-center -mr-1 sm:mr-0 mt-0.5 sm:mt-0"
+                            title="Copy quote"
+                        >
+                            {copied ? <Check className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-green-400" /> : <Copy className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-amber-400/80" />}
+                        </button>
 
-                            <Tooltip text="Click text for another quote" position="bottom" />
-                        </div>
+                        <Tooltip text="Click text for another quote" position="bottom" />
                     </div>
                 </div>
             </div>
@@ -308,7 +307,7 @@ export default function ManifestationBoard() {
             >
                 {/* DEFAULT OPEN STATE WHEN NO MEDIA EXIST */}
                 {isLoadingAvailable ? (
-                    <div className="flex flex-col items-center justify-center p-6 text-center text-white/50 bg-black/80 backdrop-blur-md rounded-3xl border border-white/10 max-w-sm">
+                    <div className="flex flex-col items-center justify-center p-4 text-center text-white/50 bg-black/80 backdrop-blur-md rounded-3xl border border-white/10 max-w-sm">
                         <Sparkles className="w-6 h-6 animate-spin text-amber-500/50 mb-2" />
                         <span className="text-xs">Loading vision board...</span>
                     </div>

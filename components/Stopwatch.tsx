@@ -19,7 +19,7 @@ const haltAudio = (audioEl: HTMLAudioElement | null) => {
 };
 
 // ----------------------------------------------------------------------------------
-// 🚀 THE ULTIMATE ATOMIC LOCK (Placed OUTSIDE React to prevent duplicate-mount bugs)
+//  THE ULTIMATE ATOMIC LOCK (Placed OUTSIDE React to prevent duplicate-mount bugs)
 // ----------------------------------------------------------------------------------
 
 const processStopwatchChunks = (currentElapsedSecs: number, forceFinalize: boolean = false) => {
@@ -193,7 +193,7 @@ export default function Stopwatch() {
 
         if (deadmanTriggeredAtRef.current) return;
 
-        // 🚀 Puts standard interval processing through the mathematical choke-point
+        //  Puts standard interval processing through the mathematical choke-point
         if (store.stopwatchAddToStats && isOwner) {
           processStopwatchChunks(currentElapsed, false);
         }

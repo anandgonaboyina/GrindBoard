@@ -2,13 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { Info, Music, Play, Pause, Upload, Trash2, Volume2, Bell } from 'lucide-react';
+import { Info, Music, Play, Pause, Upload, Trash2, Volume2, Bell, Vibrate, Clock } from 'lucide-react';
 import { saveAudioToDB, deleteAudioFromDB } from '@/lib/indexedDB';
 import { getResolvedAudioUrl } from '@/hooks/useAudioUrl';
 import ScrollableWithArrows from '../ScrollableWithArrows';
 
 const DEFAULT_ALARM_SOUNDS = [
-  { id: 'naruto', name: 'naruto BGM ( default )', url: '/ringtones/narutoBGM.mp3' },
+  { id: 'naruto', name: 'Naruto BGM (Default)', url: '/ringtones/narutoBGM.mp3' },
   { id: 'demonslayer', name: 'Demon Slayer', url: '/ringtones/Demon Slayer.mp3' },
   { id: 'fightsong', name: 'Fight Song', url: '/ringtones/Fight Song.mp3' },
   { id: 'heartbroken', name: 'Heart broken', url: '/ringtones/Heart broken.mp3' },
@@ -71,7 +71,6 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
     }
   };
 
-  // Cleanup audio when component unmounts
   useEffect(() => {
     return () => {
       stopPreviewAudio();
@@ -108,29 +107,30 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
   };
 
   return (
-    <div className="flex flex-col gap-3 md:gap-4">
+    <div className="flex flex-col gap-3 md:gap-4 h-full pb-4 animate-in fade-in duration-300">
+      {/* Header */}
       <div className="flex items-start justify-between gap-2 px-1">
         <div className="flex flex-col">
-          <h3 className="text-sm md:text-base font-bold text-white/90">Sound Settings</h3>
+          <h3 className="text-sm md:text-base font-bold text-white tracking-tight">Sound Settings</h3>
           <p className="text-white/50 text-[10px] md:text-[11px] leading-snug break-words mt-0.5">Configure audio ringtones, alarm durations, and focus interval beeps.</p>
         </div>
-        <button onClick={() => setInfoModalKey('sound')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 rounded-full transition-colors shrink-0">
+        <button onClick={() => setInfoModalKey('sound')} className="hidden md:flex p-1.5 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 rounded-full transition-all hover:scale-105 shrink-0 shadow-sm">
           <Info className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2.5">
         {/* SECTION 1: DEFAULT ALARM RINGTONES */}
-        <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
-          <div className="flex items-center justify-between px-1 pb-1 border-b border-white/5 gap-2">
-            <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-blue-400 flex items-center gap-1.5 break-words">
+        <div className="flex flex-col gap-1.5 p-2 md:p-2.5 rounded-xl bg-white/[0.02] border border-white/10 shadow-sm">
+          <div className="flex items-center justify-between px-1 pb-1.5 border-b border-white/5 gap-2">
+            <h4 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-blue-400 flex items-center gap-1.5 break-words">
               <Music className="w-3.5 h-3.5" /> Default Ringtones
             </h4>
-            <span className="text-[8px] md:text-[9px] text-white/40 italic break-words text-right">Drag to scroll</span>
+            <span className="text-[8px] md:text-[9px] text-white/30 italic break-words text-right">Drag to scroll</span>
           </div>
 
-          <div className="h-[28vh] md:h-52 rounded-xl bg-black/40 border border-white/10 overflow-hidden relative mt-1">
-            <ScrollableWithArrows className="p-1.5 flex flex-col gap-1.5" downArrowOffset="bottom-2">
+          <div className="h-[26vh] md:h-48 rounded-lg bg-black/30 border border-white/5 overflow-hidden relative mt-0.5">
+            <ScrollableWithArrows className="p-1.5 flex flex-col gap-1" downArrowOffset="bottom-2">
               {DEFAULT_ALARM_SOUNDS.map((sound) => {
                 const isActive = alarmSound === sound.url || (sound.url === '/ringtones/narutoBGM.mp3' && alarmSound === '/ringtones/alarm.mp3');
                 const isPreviewing = previewingAudioUrl === sound.url;
@@ -142,18 +142,17 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
                       stopPreviewAudio();
                       setAlarmSound(sound.url);
                     }}
-                    className={`flex items-center justify-between p-2.5 rounded-lg border transition-all select-none cursor-pointer ${isActive
-                        ? 'bg-blue-600/20 border-blue-500/50 text-white shadow-sm'
-                        : 'bg-white/5 border-transparent hover:bg-white/10 text-white/80 hover:text-white'
+                    className={`group flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all select-none cursor-pointer ${isActive
+                        ? 'bg-blue-600/10 border-blue-500/40 text-blue-50 shadow-sm'
+                        : 'bg-black/20 border-transparent hover:bg-white/5 text-white/70 hover:text-white'
                       }`}
                   >
-                    <div className="flex items-start gap-2.5 min-w-0 pr-2 flex-1">
-                      <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${isActive ? 'border-blue-400 bg-blue-500/30' : 'border-white/30'}`}>
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2 flex-1">
+                      <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-blue-400 bg-blue-500/20' : 'border-white/20 group-hover:border-white/40'}`}>
                         {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
                       </div>
                       <div className="flex flex-col min-w-0 flex-1">
-                        <span className="text-[10px] md:text-xs font-bold break-words leading-tight">{sound.name}</span>
-                        {isActive && <span className="text-[8px] md:text-[9px] text-blue-300 font-bold uppercase tracking-wider mt-0.5">Active Default</span>}
+                        <span className="text-[10px] md:text-[11px] font-bold break-words leading-tight truncate">{sound.name}</span>
                       </div>
                     </div>
 
@@ -163,9 +162,9 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
                         e.stopPropagation();
                         handleTogglePreviewAudio(sound.url);
                       }}
-                      className="p-1.5 md:p-2 rounded-lg bg-black/40 hover:bg-black/60 border border-white/10 text-white/80 hover:text-white transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+                      className={`p-1.5 md:p-2 rounded-lg border transition-all shrink-0 flex items-center justify-center cursor-pointer ${isPreviewing ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-300' : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/80 hover:text-white'}`}
                     >
-                      {isPreviewing ? <Pause className="w-3.5 h-3.5 text-yellow-300 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
+                      {isPreviewing ? <Pause className="w-3 h-3 animate-pulse" /> : <Play className="w-3 h-3" />}
                     </button>
                   </div>
                 );
@@ -175,9 +174,9 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
         </div>
 
         {/* SECTION 2: CUSTOM RINGTONES */}
-        <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
-          <div className="flex items-center justify-between px-1 pb-1 border-b border-white/5 gap-2">
-            <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-purple-400 flex items-center gap-1.5 break-words">
+        <div className="flex flex-col gap-1.5 p-2 md:p-2.5 rounded-xl bg-white/[0.02] border border-white/10 shadow-sm">
+          <div className="flex items-center justify-between px-1 pb-1.5 border-b border-white/5 gap-2">
+            <h4 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-purple-400 flex items-center gap-1.5 break-words">
               <Upload className="w-3.5 h-3.5" /> Custom Ringtones
             </h4>
 
@@ -188,8 +187,8 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
               onClick={() => audioFileInputRef.current?.click()}
               disabled={(customAlarmSounds || []).length >= 3}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[9px] md:text-[10px] font-bold transition-all border shrink-0 cursor-pointer ${(customAlarmSounds || []).length >= 3
-                  ? 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed'
-                  : 'bg-purple-600/20 hover:bg-purple-600/40 border-purple-500/40 text-purple-200 hover:text-white'
+                  ? 'bg-white/5 border-white/10 text-white/30 cursor-not-allowed'
+                  : 'bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/30 text-purple-300 hover:text-white hover:scale-105 active:scale-95'
                 }`}
             >
               <Upload className="w-3 h-3" />
@@ -197,9 +196,9 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
             </button>
           </div>
 
-          <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex flex-col gap-1 mt-0.5">
             {(customAlarmSounds || []).length === 0 ? (
-              <div className="p-4 text-center border border-dashed border-white/10 rounded-xl text-white/40 text-[10px] md:text-xs bg-black/20 break-words">
+              <div className="p-4 text-center border border-dashed border-white/10 rounded-lg text-white/40 text-[9px] md:text-[10px] bg-black/20 break-words font-medium">
                 No custom ringtones uploaded yet. Max 3 files.
               </div>
             ) : (
@@ -209,24 +208,23 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
                 return (
                   <div
                     key={sound.id}
-                    className={`flex items-center justify-between p-2 md:p-2.5 rounded-xl border transition-all ${isActive
+                    className={`group flex items-center justify-between p-2 md:p-2.5 rounded-lg border transition-all ${isActive
                         ? 'bg-purple-500/10 border-purple-500/40 shadow-sm'
-                        : 'bg-black/40 border-white/5 hover:border-white/10 hover:bg-black/60'
+                        : 'bg-black/20 border-white/5 hover:border-white/10 hover:bg-black/40'
                       }`}
                   >
                     <div
-                      className="flex items-start gap-2.5 cursor-pointer flex-1 min-w-0 pr-2"
+                      className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0 pr-2"
                       onClick={() => {
                         stopPreviewAudio();
                         setAlarmSound(sound.url);
                       }}
                     >
-                      <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${isActive ? 'border-purple-400 bg-purple-500/30' : 'border-white/30'}`}>
+                      <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isActive ? 'border-purple-400 bg-purple-500/20' : 'border-white/20 group-hover:border-white/40'}`}>
                         {isActive && <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />}
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-[10px] md:text-[11px] font-bold break-words leading-tight text-white/90">{sound.name}</span>
-                        {isActive && <span className="text-[8px] md:text-[9px] text-purple-300 font-bold uppercase tracking-wider mt-0.5">Active Custom</span>}
+                        <span className={`text-[10px] md:text-[11px] font-bold break-words leading-tight truncate ${isActive ? 'text-purple-100' : 'text-white/80'}`}>{sound.name}</span>
                       </div>
                     </div>
 
@@ -234,9 +232,9 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
                       <button
                         type="button"
                         onClick={() => handleTogglePreviewAudio(sound.url)}
-                        className="p-1.5 md:p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
+                        className={`p-1.5 md:p-2 rounded-lg border transition-all cursor-pointer ${isPreviewing ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-300' : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/80 hover:text-white'}`}
                       >
-                        {isPreviewing ? <Pause className="w-3.5 h-3.5 text-yellow-300 animate-pulse" /> : <Play className="w-3.5 h-3.5" />}
+                        {isPreviewing ? <Pause className="w-3 h-3 animate-pulse" /> : <Play className="w-3 h-3" />}
                       </button>
                       <button
                         type="button"
@@ -249,7 +247,7 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
                         }}
                         className="p-1.5 md:p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
@@ -260,98 +258,170 @@ export default React.memo(function SoundTab({ setInfoModalKey, showAlertModal }:
         </div>
 
         {/* SECTION 3: ALARM DURATION & SOUND TOGGLES */}
-        <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
-          <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5 px-1 pb-1 border-b border-white/5">
-            <Volume2 className="w-3.5 h-3.5" /> Alarm Duration & Toggles
+        <div className="flex flex-col gap-1.5 p-2 md:p-2.5 rounded-xl bg-white/[0.02] border border-white/10 shadow-sm">
+          <h4 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-amber-400 flex items-center gap-1.5 px-1 pb-1.5 border-b border-white/5">
+            <Volume2 className="w-3.5 h-3.5" /> Alarm & Duration
           </h4>
 
-          <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex flex-col gap-1 mt-0.5">
             {/* Auto Stop Timer */}
-            <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-black/40 border border-white/5">
+            <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-black/30 border border-white/5 hover:border-white/10 transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col min-w-0">
-                  <label className="text-[11px] md:text-xs font-bold text-white/90 break-words">Auto Stop Timer</label>
-                  <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">How long the alarm rings before stopping automatically.</p>
+                  <label className="text-[10px] md:text-[11px] font-bold text-white/90 break-words flex items-center gap-1.5">
+                    <Clock className="w-3 h-3 text-amber-400" /> Auto Stop Timer
+                  </label>
+                  <p className="text-[9px] text-white/50 leading-snug break-words mt-0.5">How long the alarm rings before stopping.</p>
                 </div>
-                <span className="text-[9px] md:text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">{alarmDurationSecs}s</span>
+                
+                {/* Custom Numeric Input combined with Badge styling */}
+                <div className="flex items-center bg-amber-500/10 border border-amber-500/30 rounded-md overflow-hidden focus-within:border-amber-400/80 transition-colors shrink-0">
+                  <input
+                    type="number"
+                    value={alarmDurationSecs === undefined ? 60 : alarmDurationSecs}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setAlarmDurationSecs(isNaN(val) ? 0 : val);
+                    }}
+                    onBlur={(e) => {
+                      let val = parseInt(e.target.value);
+                      if (isNaN(val) || val < 5) setAlarmDurationSecs(5);
+                      else if (val > 120) setAlarmDurationSecs(120);
+                    }}
+                    className="w-8 h-6 bg-transparent text-[10px] md:text-[11px] text-amber-300 font-mono font-bold text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-[9px] text-amber-500 font-bold font-mono pr-1.5 select-none">s</span>
+                </div>
               </div>
               <input
                 type="range" min="5" max="120" step="5"
                 value={alarmDurationSecs || 60}
                 onChange={(e) => setAlarmDurationSecs(parseInt(e.target.value))}
-                className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400"
               />
-              <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-white/40">
+              <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-white/30 px-1">
                 <span>5s</span><span>60s</span><span>120s</span>
               </div>
             </div>
 
             {/* Enable Sound */}
-            <div className="flex flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
-              <div className="flex flex-col pr-2 min-w-0">
-                <span className="text-[11px] md:text-xs font-bold text-white/90 break-words">Enable Alarm Sound</span>
-                <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">Play ringtone when timer completes.</p>
+            <div className="group flex flex-row items-center justify-between p-2.5 rounded-lg bg-black/30 border border-white/5 gap-3 hover:border-white/10 transition-colors cursor-pointer" onClick={() => setEnableAlarmSound(!enableAlarmSound)}>
+              <div className="flex items-center gap-2 min-w-0 pr-2">
+                <Music className={`w-3.5 h-3.5 shrink-0 transition-colors ${enableAlarmSound ? 'text-blue-400' : 'text-white/30 group-hover:text-white/50'}`} />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] md:text-[11px] font-bold text-white/90 break-words">Enable Alarm Sound</span>
+                  <p className="text-[9px] text-white/50 leading-snug break-words">Play ringtone when timer completes.</p>
+                </div>
               </div>
-              <button onClick={() => setEnableAlarmSound(!enableAlarmSound)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${enableAlarmSound ? 'bg-blue-500' : 'bg-white/20'}`}>
-                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${enableAlarmSound ? 'translate-x-4.5' : 'translate-x-1'}`} />
+              <button className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 outline-none ${enableAlarmSound ? 'bg-blue-500' : 'bg-white/10 group-hover:bg-white/20'}`}>
+                <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${enableAlarmSound ? 'translate-x-4' : 'translate-x-1'}`} />
               </button>
             </div>
 
             {/* Enable Vibrate */}
-            <div className="flex flex-row items-start sm:items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 gap-3">
-              <div className="flex flex-col pr-2 min-w-0">
-                <span className="text-[11px] md:text-xs font-bold text-white/90 break-words">Enable Device Vibration</span>
-                <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">Vibrate supported devices on timer end.</p>
+            <div className="group flex flex-row items-center justify-between p-2.5 rounded-lg bg-black/30 border border-white/5 gap-3 hover:border-white/10 transition-colors cursor-pointer" onClick={() => setEnableAlarmVibration(!enableAlarmVibration)}>
+              <div className="flex items-center gap-2 min-w-0 pr-2">
+                <Vibrate className={`w-3.5 h-3.5 shrink-0 transition-colors ${enableAlarmVibration ? 'text-blue-400' : 'text-white/30 group-hover:text-white/50'}`} />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] md:text-[11px] font-bold text-white/90 break-words">Enable Device Vibration</span>
+                  <p className="text-[9px] text-white/50 leading-snug break-words">Vibrate supported devices on timer end.</p>
+                </div>
               </div>
-              <button onClick={() => setEnableAlarmVibration(!enableAlarmVibration)} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${enableAlarmVibration ? 'bg-blue-500' : 'bg-white/20'}`}>
-                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${enableAlarmVibration ? 'translate-x-4.5' : 'translate-x-1'}`} />
+              <button className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors shrink-0 outline-none ${enableAlarmVibration ? 'bg-blue-500' : 'bg-white/10 group-hover:bg-white/20'}`}>
+                <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${enableAlarmVibration ? 'translate-x-4' : 'translate-x-1'}`} />
               </button>
             </div>
           </div>
         </div>
 
         {/* SECTION 4: TASK TIMER INTERVAL ALERTS */}
-        <div className="flex flex-col gap-2 p-2.5 md:p-3 rounded-xl bg-white/[0.03] border border-white/10 shadow-sm">
-          <h4 className="text-[10px] md:text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5 px-1 pb-1 border-b border-white/5">
+        <div className="flex flex-col gap-1.5 p-2 md:p-2.5 rounded-xl bg-white/[0.02] border border-white/10 shadow-sm">
+          <h4 className="text-[10px] md:text-xs font-black uppercase tracking-widest text-cyan-400 flex items-center gap-1.5 px-1 pb-1.5 border-b border-white/5">
             <Bell className="w-3.5 h-3.5" /> Interval Focus Beeps
           </h4>
 
-          <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-black/40 border border-white/5 mt-1">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col min-w-0">
-                <label className="text-[11px] md:text-xs font-bold text-white/90 break-words">Alert Frequency</label>
-                <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">Plays a short beep every X mins during active tasks.</p>
+          <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-black/30 border border-white/5 hover:border-white/10 transition-colors mt-0.5">
+            
+            {/* Alert Frequency */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col min-w-0">
+                  <label className="text-[10px] md:text-[11px] font-bold text-white/90 break-words">Alert Frequency</label>
+                  <p className="text-[9px] text-white/50 leading-snug break-words mt-0.5">Plays a short beep every X mins during active tasks.</p>
+                </div>
+                
+                {/* Custom Numeric Input */}
+                <div className="flex items-center bg-cyan-500/10 border border-cyan-500/30 rounded-md overflow-hidden focus-within:border-cyan-400/80 transition-colors shrink-0">
+                  <input
+                    type="number"
+                    value={taskIntervalAlertMins === undefined ? 10 : taskIntervalAlertMins}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setTaskIntervalAlertMins(isNaN(val) ? 0 : val);
+                    }}
+                    onBlur={(e) => {
+                      let val = parseInt(e.target.value);
+                      if (isNaN(val) || val < 1) setTaskIntervalAlertMins(1);
+                      else if (val > 60) setTaskIntervalAlertMins(60);
+                    }}
+                    className="w-7 h-6 bg-transparent text-[10px] md:text-[11px] text-cyan-300 font-mono font-bold text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-[9px] text-cyan-500 font-bold font-mono pr-1.5 select-none">m</span>
+                </div>
               </div>
-              <span className="text-[9px] md:text-[10px] bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">{taskIntervalAlertMins}m</span>
-            </div>
-            <input
-              type="range" min="1" max="60" step="1"
-              value={taskIntervalAlertMins || 10}
-              onChange={(e) => setTaskIntervalAlertMins(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400 mt-1"
-            />
-            <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-white/40">
-              <span>1m</span><span>30m</span><span>60m</span>
+              
+              <input
+                type="range" min="1" max="60" step="1"
+                value={taskIntervalAlertMins || 10}
+                onChange={(e) => setTaskIntervalAlertMins(parseInt(e.target.value))}
+                className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+              <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-white/30 px-1">
+                <span>1m</span><span>30m</span><span>60m</span>
+              </div>
             </div>
 
-            <div className="h-px bg-white/10 w-full my-1.5" />
+            <div className="h-px bg-white/5 w-full my-1.5" />
 
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col min-w-0">
-                <label className="text-[11px] md:text-xs font-bold text-white/90 break-words">Beep Duration</label>
-                <p className="text-[9px] md:text-[10px] text-white/50 leading-snug break-words mt-0.5">How long the interval rings before stopping.</p>
+            {/* Beep Duration */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col min-w-0">
+                  <label className="text-[10px] md:text-[11px] font-bold text-white/90 break-words">Beep Duration</label>
+                  <p className="text-[9px] text-white/50 leading-snug break-words mt-0.5">How long the interval rings before stopping.</p>
+                </div>
+                
+                {/* Custom Numeric Input */}
+                <div className="flex items-center bg-cyan-500/10 border border-cyan-500/30 rounded-md overflow-hidden focus-within:border-cyan-400/80 transition-colors shrink-0">
+                  <input
+                    type="number"
+                    value={taskIntervalRingSecs === undefined ? 10 : taskIntervalRingSecs}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setTaskIntervalRingSecs(isNaN(val) ? 0 : val);
+                    }}
+                    onBlur={(e) => {
+                      let val = parseInt(e.target.value);
+                      if (isNaN(val) || val < 1) setTaskIntervalRingSecs(1);
+                      else if (val > 30) setTaskIntervalRingSecs(30);
+                    }}
+                    className="w-7 h-6 bg-transparent text-[10px] md:text-[11px] text-cyan-300 font-mono font-bold text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-[9px] text-cyan-500 font-bold font-mono pr-1.5 select-none">s</span>
+                </div>
               </div>
-              <span className="text-[9px] md:text-[10px] bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">{taskIntervalRingSecs}s</span>
+              
+              <input
+                type="range" min="1" max="30" step="1"
+                value={taskIntervalRingSecs || 10}
+                onChange={(e) => setTaskIntervalRingSecs(parseInt(e.target.value))}
+                className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+              <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-white/30 px-1">
+                <span>1s</span><span>15s</span><span>30s</span>
+              </div>
             </div>
-            <input
-              type="range" min="1" max="30" step="1"
-              value={taskIntervalRingSecs || 10}
-              onChange={(e) => setTaskIntervalRingSecs(parseInt(e.target.value))}
-              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400 mt-1"
-            />
-            <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-white/40">
-              <span>1s</span><span>15s</span><span>30s</span>
-            </div>
+
           </div>
         </div>
 

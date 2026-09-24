@@ -22,8 +22,6 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
   const [aliasLoading, setAliasLoading] = useState(false);
   const [aliasSuccess, setAliasSuccess] = useState('');
   
-  // Danger Zone
-  const [isAliasUnlocked, setIsAliasUnlocked] = useState(false);
   // Danger Zone / Profile Lock
   const [isProfileUnlocked, setIsProfileUnlocked] = useState(false);
   const [aliasPassword, setAliasPassword] = useState('');
@@ -136,7 +134,6 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
               const canvas = document.createElement('canvas');
               const ctx = canvas.getContext('2d');
               
-              // Max dimensions
               const MAX_WIDTH = 800;
               const MAX_HEIGHT = 800;
               let width = img.width;
@@ -163,7 +160,7 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
                 } else {
                   resolve(null);
                 }
-              }, 'image/jpeg', 0.7); // 70% quality
+              }, 'image/jpeg', 0.7);
             };
           };
         });
@@ -185,7 +182,6 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
       
       const data = await res.json();
       if (res.ok && data.url) {
-        // Automatically save to profile
         await updateProfilePicture(data.url);
       } else {
         alert("Upload failed: " + (data.error || "Unknown error"));
@@ -195,12 +191,11 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
       alert("Error uploading image");
     } finally {
       setProfilePictureLoading(false);
-      if (e.target) e.target.value = ''; // Reset input
+      if (e.target) e.target.value = ''; 
     }
   };
 
   const handleRemoveAvatarCloudinary = async () => {
-    // Deletion logic is now centralized inside updateProfilePicture
     await updateProfilePicture('');
   };
 
@@ -217,85 +212,131 @@ export default function ProfileTab({ username, handleLogout, setConfirmModal, se
           isOpen: true, title: 'Account Deleted', message: 'Your account has been deleted successfully.', hideCancel: true, confirmText: 'Done', onConfirm: handleLogout
         });
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err) {}
+  };
+
+  const handleUnlockProfile = async () => {
+    if (!aliasPassword || aliasUnlockLoading) return;
+    setAliasUnlockLoading(true); 
+    setAliasUnlockError('');
+    try {
+      const res = await fetch('/api/auth/login', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ username, password: aliasPassword }) 
+      });
+      if (res.ok) { 
+        setIsProfileUnlocked(true); 
+        setAliasPassword(''); 
+      } else { 
+        setAliasUnlockError("Hmm, that password isn't right. Try again!"); 
+      }
+    } catch (err) { 
+      setAliasUnlockError("Connection error. Please try again."); 
+    } finally { 
+      setAliasUnlockLoading(false); 
     }
   };
 
   if (!isProfileUnlocked) {
     if (username?.toLowerCase() === process.env.DEMO_USERNAME) {
       return (
-        <div className="flex flex-col items-center justify-center w-full min-h-[250px] gap-3 animate-in fade-in slide-in-from-bottom-2">
-          <ShieldAlert className="w-10 h-10 text-blue-400 mb-1 opacity-80" />
-          <h3 className="text-sm font-bold text-white">Profile Locked</h3>
-          <p className="text-blue-300 text-[10px] text-center max-w-[200px] leading-snug bg-blue-500/10 p-2 rounded-lg border border-blue-500/20">
-            <strong>Demo Mode:</strong> No password needed! Just click unlock below.
-          </p>
-          <button onClick={() => setIsProfileUnlocked(true)} className="w-full max-w-[240px] py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors font-bold text-xs shadow-md mt-2">
-            Unlock Demo Profile
+        <div className="flex flex-col items-center justify-center w-full min-h-[300px] gap-4 p-6 bg-white/5 border border-white/10 rounded-2xl shadow-xl backdrop-blur-sm animate-in zoom-in-95 duration-300">
+          <div className="p-3 bg-blue-500/10 rounded-full">
+            <ShieldAlert className="w-8 h-8 text-blue-400 opacity-90" />
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-bold text-white">Demo Profile</h3>
+            <p className="text-blue-300/80 text-xs mt-1">No password required in demo mode</p>
+          </div>
+          <button 
+            onClick={() => setIsProfileUnlocked(true)} 
+            className="w-full max-w-[240px] py-2.5 mt-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl transition-all font-bold text-sm shadow-lg shadow-blue-500/25 hover:scale-[1.02] active:scale-95"
+          >
+            Unlock Settings
           </button>
         </div>
       );
     }
 
     return (
-      <div className="flex flex-col items-center justify-center w-full min-h-[250px] gap-3 animate-in fade-in slide-in-from-bottom-2">
-        <ShieldAlert className="w-10 h-10 text-blue-400 mb-1 opacity-80" />
-        <h3 className="text-sm font-bold text-white">Profile Locked</h3>
-        <p className="text-white/40 text-[10px] text-center max-w-[200px] leading-snug">Enter your password to view and manage your profile settings.</p>
+      <div className="flex flex-col items-center justify-center w-full min-h-[300px] gap-4 p-6 bg-white/5 border border-white/10 rounded-2xl shadow-xl backdrop-blur-sm animate-in zoom-in-95 duration-300">
+        <div className="p-3 bg-blue-500/10 rounded-full">
+          <ShieldAlert className="w-8 h-8 text-blue-400" />
+        </div>
+        <div className="text-center">
+          <h3 className="text-lg font-bold text-white">Profile Locked</h3>
+          <p className="text-white/50 text-xs mt-1">Enter your password to access settings</p>
+        </div>
         
-        <div className="flex flex-col gap-2 w-full max-w-[240px] mt-2 relative">
-          <div className="relative w-full">
-            <input 
-              type={showAliasPassword ? "text" : "password"} 
-              placeholder="Enter password..." 
-              value={aliasPassword} 
-              onChange={e => setAliasPassword(e.target.value)} 
-              onKeyDown={async (e) => {
-                if (e.key === 'Enter' && aliasPassword && !aliasUnlockLoading) {
-                  setAliasUnlockLoading(true); setAliasUnlockError('');
-                  try {
-                    const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password: aliasPassword }) });
-                    if (res.ok) { setIsProfileUnlocked(true); setAliasPassword(''); } else { setAliasUnlockError('Incorrect password'); }
-                  } catch (err) { setAliasUnlockError('Error'); } finally { setAliasUnlockLoading(false); }
-                }
-              }}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-blue-500 transition-colors text-xs text-white/90 pr-10" 
-            />
-            <button type="button" onClick={() => setShowAliasPassword(!showAliasPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors">
-              {showAliasPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-          <button onClick={async () => {
-            setAliasUnlockLoading(true); setAliasUnlockError('');
-            try {
-              const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password: aliasPassword }) });
-              if (res.ok) { setIsProfileUnlocked(true); setAliasPassword(''); } else { setAliasUnlockError('Incorrect password'); }
-            } catch (err) { setAliasUnlockError('Error'); } finally { setAliasUnlockLoading(false); }
-          }} disabled={aliasUnlockLoading || !aliasPassword} className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors font-bold text-xs shadow-md">
-            {aliasUnlockLoading ? 'Unlocking...' : 'Unlock Profile'}
-          </button>
-          <div className="flex justify-between items-center mt-1">
-            <span className="text-red-400 text-[10px] font-medium">{aliasUnlockError || ''}</span>
-            <button 
-              type="button" 
-              onClick={() => {
-                if (window.confirm("You will be signed out to reset your password. Continue?")) {
-                  handleLogout();
-                }
-              }} 
-              className="text-[10px] text-blue-400 hover:text-blue-300 underline ml-auto"
-            >
-              Forgot Password?
-            </button>
-          </div>
+        <div className="flex flex-col gap-3 w-full max-w-[260px] mt-2">
+          {aliasUnlockLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-6 animate-in fade-in duration-300">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              <p className="text-blue-400 text-xs font-medium animate-pulse">Verifying credentials...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 animate-in fade-in duration-300">
+              {aliasUnlockError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] p-2.5 rounded-lg flex items-center gap-2 shadow-sm animate-in slide-in-from-top-2">
+                  <Info size={16} className="shrink-0" />
+                  <span className="leading-tight">{aliasUnlockError}</span>
+                </div>
+              )}
+
+              <div className="relative group">
+                <input 
+                  type={showAliasPassword ? "text" : "password"} 
+                  placeholder="Enter password..." 
+                  value={aliasPassword} 
+                  onChange={e => {
+                    setAliasPassword(e.target.value);
+                    if (aliasUnlockError) setAliasUnlockError('');
+                  }} 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleUnlockProfile();
+                  }}
+                  className={`w-full bg-black/40 border ${aliasUnlockError ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-blue-500'} rounded-xl px-4 py-2.5 outline-none transition-all text-sm text-white/90 pr-10 focus:ring-2 focus:ring-blue-500/20`}
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowAliasPassword(!showAliasPassword)} 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors p-1"
+                >
+                  {showAliasPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+
+              <button 
+                onClick={handleUnlockProfile} 
+                disabled={!aliasPassword} 
+                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl transition-all font-bold text-sm shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none active:scale-95 mt-1"
+              >
+                Unlock Profile
+              </button>
+
+              <div className="flex justify-center mt-2">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    if (window.confirm("You will be signed out to reset your password. Continue?")) {
+                      handleLogout();
+                    }
+                  }} 
+                  className="text-[11px] text-white/40 hover:text-blue-400 transition-colors underline-offset-2 hover:underline"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center w-full gap-2.5 md:gap-3 animate-in fade-in slide-in-from-bottom-2">
+    <div className="flex flex-col items-center w-full gap-2.5 md:gap-3 animate-in fade-in zoom-in-95 duration-300">
       {/* Header Card */}
       <div className="flex items-center w-full gap-3 bg-gradient-to-r from-white/5 to-transparent p-2 rounded-2xl border border-white/10 shadow-sm relative">
         <button onClick={() => setIsProfileUnlocked(false)} className="absolute top-2 right-2 p-1.5 text-white/30 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-transparent hover:border-white/10" title="Lock Profile">
