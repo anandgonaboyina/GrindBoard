@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
     const userQuery = friendObjId ? { _id: friendObjId } : { _id: friendId };
 
-    // 🚀 PARALLEL QUERIES: Only fetch exactly what the frontend asked for!
+    //  PARALLEL QUERIES: Only fetch exactly what the frontend asked for!
     const [
       friendAccount,
       friendDashboard,

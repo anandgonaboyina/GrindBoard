@@ -35,7 +35,7 @@ import ConnectionStatusToast from "@/components/ConnectionStatusToast";
 import Tooltip from "@/components/Tooltip";
 import GuidedTour from "@/components/GuidedTour";
 import ManifestationBoard from "@/components/ManifestationBoard";
-
+import BurnoutRadar from '@/components/modals/BurnoutRadar';
 // Logic & Stores
 import { useDashboardStore } from "@/store/dashboardStore";
 import { useTaskStore } from "@/store/taskStore";
@@ -369,6 +369,7 @@ export default function Dashboard() {
           <div className="pointer-events-none relative z-10"><RightToolbar /></div>
         </div>
 
+        <BurnoutRadar/>
         <SettingsModal />
         <StartupUpdateChecker />
         <ManifestationBoard />

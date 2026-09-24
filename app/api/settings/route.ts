@@ -15,6 +15,55 @@ const authenticate = (request: Request) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// TRUE ATOMIC DOT-NOTATION FLATTENER
+// Protects nested objects from being completely overwritten by partial payloads
+// ---------------------------------------------------------------------------
+const NESTED_SETTING_KEYS = [
+  'displaySettings', 
+  'generalSettings', 
+  'hideConfig', 
+  'mobileHideConfig', 
+  'clockOffsets', 
+  'widgetOffsets'
+];
+
+const LOCAL_MEDIA_ARRAY_KEYS = [
+  'customDesktopWallpapers', 
+  'customMobileWallpapers',
+  'manifestationDesktopPhotos', 
+  'manifestationMobilePhotos'
+];
+
+function buildDotNotation(updates: any) {
+  const flattened: Record<string, any> = {};
+  
+  for (const key in updates) {
+    const val = updates[key];
+
+    // 1. Strip out heavy base64 Image strings (they belong only in IndexedDB)
+    if (LOCAL_MEDIA_ARRAY_KEYS.includes(key) && Array.isArray(val)) {
+      flattened[key] = val.filter((v: string) => typeof v === 'string' && !v.startsWith('data:'));
+      continue;
+    }
+    if (key === 'peekModeWallpaper' && typeof val === 'string' && val.startsWith('data:')) {
+      continue; // Skip saving massive string
+    }
+
+    // 2. Flatten nested setting objects so MongoDB updates them safely
+    if (NESTED_SETTING_KEYS.includes(key) && typeof val === 'object' && val !== null && !Array.isArray(val)) {
+      for (const subKey in val) {
+        flattened[`${key}.${subKey}`] = val[subKey];
+      }
+    } else {
+      // 3. Arrays and primitive values map normally
+      flattened[key] = val;
+    }
+  }
+  
+  return flattened;
+}
+
 export async function GET(request: Request) {
   try {
     const user = authenticate(request);
@@ -66,17 +115,20 @@ export async function PATCH(request: Request) {
           delete safeUpdates.userId;
           delete safeUpdates._hasHydrated;
 
+          //  Convert to safe dot-notation
+          const dotNotationUpdates = buildDotNotation(safeUpdates);
+
           bulkOps.push({
             updateOne: {
               filter: { userId: user.userId },
-              update: { $set: { ...safeUpdates, lastModified: Date.now() } }
+              update: { $set: { ...dotNotationUpdates, lastModified: Date.now() } }
             }
           });
         }
       }
 
       if (bulkOps.length > 0) {
-        const result = await collection.bulkWrite(bulkOps as any);
+        await collection.bulkWrite(bulkOps as any);
       }
       
       return NextResponse.json({ success: true, message: 'Queue processed atomically' });
@@ -84,9 +136,17 @@ export async function PATCH(request: Request) {
 
     // 3. FALLBACK FOR INSTANT SAVES
     if (body.updates) {
+      const safeUpdates = { ...body.updates };
+      delete safeUpdates._id;
+      delete safeUpdates.userId;
+      delete safeUpdates._hasHydrated;
+
+      //  Convert to safe dot-notation
+      const dotNotationUpdates = buildDotNotation(safeUpdates);
+
       await collection.updateOne(
         { userId: user.userId },
-        { $set: { ...body.updates, lastModified: Date.now() } }
+        { $set: { ...dotNotationUpdates, lastModified: Date.now() } }
       );
       return NextResponse.json({ success: true });
     }

@@ -7,7 +7,6 @@ import { Shield, Lock, User as UserIcon, Loader2, Eye, EyeOff, BookOpen, Externa
 import FeatureCarousel from '@/components/FeatureCarousel';
 import UserManualModal from '@/components/UserManualModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
-
 export default function CloudLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

@@ -76,6 +76,17 @@ export const syncTasksQueue = async () => {
 
 const queueTaskAction = (action: TaskAction) => {
     if (typeof window === 'undefined') return;
+
+    // UNIVERSAL HYDRATION LOCK: Never allow queueing database changes if local data hasn't loaded
+    try {
+        if (!useTaskStore.getState()._hasHydrated) {
+            console.warn("Blocked a ghost save! Tasks haven't hydrated yet.", action.type);
+            return;
+        }
+    } catch (e) {
+        // Prevents ReferenceError if called during initial app boot
+        return;
+    }
     
     let queue: TaskAction[] = [];
     try {
@@ -289,6 +300,9 @@ export const useTaskStore = create<TaskState>()(
             }),
 
             checkTasksRollover: () => set((state) => {
+                //  HYDRATION LOCK: Do not run rollover if the store hasn't booted from local memory yet!
+                if (!state._hasHydrated) return state;
+
                 const todayStr = getLocalDateString();
                 if (!state.tasksDate || state.tasksDate !== todayStr) {
                     if (!state.tomorrowTasks || state.tomorrowTasks.length === 0) {
@@ -301,7 +315,7 @@ export const useTaskStore = create<TaskState>()(
                     queueTaskAction({ type: 'REPLACE_ALL', data: updates });
                     return { ...updates, lastModified: Date.now() };
                 }
-                return {};
+                return state; // Changed from {} to state to be completely safe
             }),
 
             fetchTasks: async () => {

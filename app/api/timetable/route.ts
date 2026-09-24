@@ -16,6 +16,30 @@ const authenticate = (request: Request) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+//  RECURSIVE ATOMIC DOT-NOTATION FLATTENER
+// Deeply flattens complex nested structures (like Timetable grids) 
+// to guarantee 100% atomic updates without wiping sibling data.
+// ---------------------------------------------------------------------------
+function buildDotNotation(updates: any, prefix = '') {
+  const flattened: Record<string, any> = {};
+  
+  for (const key in updates) {
+    const val = updates[key];
+    const newKey = prefix ? `${prefix}.${key}` : key;
+
+    // If it's a nested object (and not an array), recurse deeper
+    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+      Object.assign(flattened, buildDotNotation(val, newKey));
+    } else {
+      // Primitive values and arrays map directly
+      flattened[newKey] = val;
+    }
+  }
+  
+  return flattened;
+}
+
 export async function GET(request: Request) {
   try {
     const user = authenticate(request);
@@ -50,11 +74,17 @@ export async function PATCH(request: Request) {
 
       for (const action of body.actions) {
         if (action.type === 'UPDATE_TIMETABLE') {
-          // Dynamically sets exactly what was changed (supports dot notation like "timetableGrid.Mon.09:00 AM")
+          //  Clean and flatten the queue updates
+          const safeUpdates = { ...action.updates };
+          delete safeUpdates._id;
+          delete safeUpdates.userId;
+
+          const dotNotationUpdates = buildDotNotation(safeUpdates);
+
           bulkOps.push({
             updateOne: {
               filter: { userId: user.userId },
-              update: { $set: { ...action.updates, lastModified: Date.now() } }
+              update: { $set: { ...dotNotationUpdates, lastModified: Date.now() } }
             }
           });
         }
@@ -69,9 +99,16 @@ export async function PATCH(request: Request) {
 
     // 3. FALLBACK FOR INSTANT SAVES
     if (body.updates) {
+      //  Clean and flatten the fallback updates
+      const safeUpdates = { ...body.updates };
+      delete safeUpdates._id;
+      delete safeUpdates.userId;
+
+      const dotNotationUpdates = buildDotNotation(safeUpdates);
+
       const updatedTimetable = await Timetable.findOneAndUpdate(
         { userId: user.userId },
-        { $set: { ...body.updates, lastModified: Date.now() } },
+        { $set: { ...dotNotationUpdates, lastModified: Date.now() } },
         { new: true }
       );
       return NextResponse.json({ success: true, data: updatedTimetable });

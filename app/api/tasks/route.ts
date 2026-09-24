@@ -15,6 +15,27 @@ const authenticate = (request: Request) => {
     }
 };
 
+// ---------------------------------------------------------------------------
+//  TRUE ATOMIC DOT-NOTATION FLATTENER (Backdoor Protection)
+// Protects nested objects from being completely overwritten by partial payloads
+// ---------------------------------------------------------------------------
+function buildDotNotation(updates: any) {
+    const flattened: Record<string, any> = {};
+    for (const key in updates) {
+        const val = updates[key];
+        // Flatten nested setting objects so MongoDB updates them safely
+        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+            for (const subKey in val) {
+                flattened[`${key}.${subKey}`] = val[subKey];
+            }
+        } else {
+            // Arrays and primitive values map normally
+            flattened[key] = val;
+        }
+    }
+    return flattened;
+}
+
 export async function GET(request: Request) {
     try {
         const user = authenticate(request);
@@ -101,11 +122,16 @@ export async function PATCH(request: Request) {
                     });
                 } 
                 else if (action.type === 'REPLACE_ALL') {
-                    // Fallback for full array replacements (like Drag & Drop reordering)
+                    //  SEAL THE BACKDOOR: Sanitize and flatten
+                    const safeData = { ...action.data };
+                    delete safeData._id;
+                    delete safeData.userId;
+                    const dotNotationUpdates = buildDotNotation(safeData);
+
                     bulkOps.push({
                         updateOne: {
                             filter: { userId: user.userId },
-                            update: { $set: { ...action.data, lastModified: Date.now() } }
+                            update: { $set: { ...dotNotationUpdates, lastModified: Date.now() } }
                         }
                     });
                 }
@@ -120,9 +146,15 @@ export async function PATCH(request: Request) {
 
         // 3. FALLBACK FOR INSTANT SAVES (If queue isn't used)
         if (body.updates) {
+            //  SEAL THE BACKDOOR: Sanitize and flatten
+            const safeUpdates = { ...body.updates };
+            delete safeUpdates._id;
+            delete safeUpdates.userId;
+            const dotNotationUpdates = buildDotNotation(safeUpdates);
+
             const updated = await collection.findOneAndUpdate(
                 { userId: user.userId },
-                { $set: { ...body.updates, lastModified: Date.now() } },
+                { $set: { ...dotNotationUpdates, lastModified: Date.now() } },
                 { returnDocument: 'after' }
             );
             return NextResponse.json({ success: true, data: updated });

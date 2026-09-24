@@ -40,82 +40,6 @@ function mergeArraysByIdServer(incoming: any[] = [], existing: any[] = []) {
   return Array.from(map.values());
 }
 
-function mergeNotesServer(incomingNotes: any[] = [], existingNotes: any[] = []): any[] {
-  if (!Array.isArray(incomingNotes)) incomingNotes = [];
-  if (!Array.isArray(existingNotes)) existingNotes = [];
-  if (incomingNotes.length === 0) return existingNotes;
-  if (existingNotes.length === 0) return incomingNotes;
-
-  const map = new Map<string, any>();
-  existingNotes.forEach(eNote => {
-    if (eNote && eNote.id) {
-      map.set(eNote.id, { ...eNote, entries: { ...(eNote.entries || {}) } });
-    }
-  });
-
-  incomingNotes.forEach(iNote => {
-    if (iNote && iNote.id) {
-      const prev = map.get(iNote.id);
-      if (!prev) {
-        map.set(iNote.id, { ...iNote, entries: { ...(iNote.entries || {}) } });
-      } else {
-        const mergedEntries = { ...(prev.entries || {}) };
-        const incEntries = iNote.entries || {};
-        for (const date in incEntries) {
-          const incText = incEntries[date];
-          const prevText = mergedEntries[date];
-          if (incText && !prevText) {
-            mergedEntries[date] = incText;
-          } else if (prevText && !incText) {
-            mergedEntries[date] = prevText;
-          } else if (incText && prevText) {
-            mergedEntries[date] = incText.length >= prevText.length ? incText : prevText;
-          }
-        }
-        map.set(iNote.id, {
-          ...prev,
-          ...iNote,
-          title: (iNote.title && iNote.title !== 'New Note') ? iNote.title : (prev.title || iNote.title),
-          entries: mergedEntries,
-        });
-      }
-    }
-  });
-
-  return Array.from(map.values());
-}
-
-
-
-function mergeStringArraysServer(incoming: any[] = [], existing: any[] = []): any[] {
-  if (!Array.isArray(incoming)) incoming = [];
-  if (!Array.isArray(existing)) existing = [];
-  if (incoming.length === 0) return existing;
-  if (existing.length === 0) return incoming;
-
-  const set = new Set<any>();
-  existing.forEach(item => {
-    if (item !== undefined && item !== null) {
-      set.add(typeof item === 'string' ? item.trim() : JSON.stringify(item));
-    }
-  });
-  incoming.forEach(item => {
-    if (item !== undefined && item !== null) {
-      set.add(typeof item === 'string' ? item.trim() : JSON.stringify(item));
-    }
-  });
-  return Array.from(set).map(item => {
-    if (typeof item === 'string' && (item.startsWith('{') || item.startsWith('['))) {
-      try {
-        return JSON.parse(item);
-      } catch {
-        return item;
-      }
-    }
-    return item;
-  });
-}
-
 const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime'];
 
 const SETTING_ARRAY_KEYS = [
@@ -148,14 +72,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Grab the local timestamp from the query string
     const url = new URL(request.url);
     const localModified = parseInt(url.searchParams.get('localModified') || '0', 10);
 
     const client = await clientPromise;
     const db = client.db();
 
-    // OPTIMIZATION: Fetch all 10 collections in parallel instead of sequentially
     const [
       existing, notesRecord, settingsRecord, tasksRecord, roadmapsRecord, 
       statsRecord, dailyRoutineRecord, timetableRecord, deadlinesRecord, countdownsRecord
@@ -185,7 +107,6 @@ export async function GET(request: Request) {
       countdownsRecord?.lastModified ? Number(countdownsRecord.lastModified) : 0
     );
 
-    // FAST EXIT: If local is equal to or newer than cloud, do not send data!
     if (localModified >= cloudLastModified && cloudLastModified > 0) {
       return NextResponse.json({ 
         upToDate: true, 
@@ -198,65 +119,27 @@ export async function GET(request: Request) {
     }
 
     let returnedData: any = null;
+    
     // Backwards compatibility for old stringified format
     if (existing && existing.data && typeof existing.data === 'string') {
-      try {
-        returnedData = JSON.parse(existing.data);
-      } catch (e) {
-        returnedData = { state: {} };
-      }
+      try { returnedData = JSON.parse(existing.data); } catch (e) { returnedData = { state: {} }; }
       returnedData.state = returnedData.state || {};
-      if (notesRecord && notesRecord.notes) {
-        returnedData.state.notes = notesRecord.notes;
-      }
+      
+      if (notesRecord?.notes) returnedData.state.notes = notesRecord.notes;
+      
       if (settingsRecord) {
-        returnedData.state = {
-          ...returnedData.state,
-          ...(settingsRecord.displaySettings || {}),
-          ...(settingsRecord.generalSettings || {})
-        };
-        SETTING_ARRAY_KEYS.forEach(key => {
-          if (settingsRecord[key] !== undefined) returnedData.state[key] = settingsRecord[key];
-        });
+        returnedData.state = { ...returnedData.state, ...(settingsRecord.displaySettings || {}), ...(settingsRecord.generalSettings || {}) };
+        SETTING_ARRAY_KEYS.forEach(key => { if (settingsRecord[key] !== undefined) returnedData.state[key] = settingsRecord[key]; });
       }
-      if (tasksRecord) {
-        TASK_KEYS.forEach(key => {
-          if (tasksRecord[key] !== undefined) returnedData.state[key] = tasksRecord[key];
-        });
-      }
-      if (roadmapsRecord && roadmapsRecord.roadmaps) {
-        returnedData.state.roadmaps = roadmapsRecord.roadmaps;
-      }
-      if (statsRecord) {
-        STATS_KEYS.forEach(key => {
-          if (statsRecord[key] !== undefined) returnedData.state[key] = statsRecord[key];
-        });
-      }
-      if (dailyRoutineRecord) {
-        DAILY_ROUTINE_KEYS.forEach(key => {
-          if (dailyRoutineRecord[key] !== undefined) returnedData.state[key] = dailyRoutineRecord[key];
-        });
-      }
-      // Backward compatibility: If dailyTimes is still inside Stats, grab it
-      if (statsRecord && statsRecord.dailyTimes !== undefined && returnedData.state.dailyTimes === undefined) {
-        returnedData.state.dailyTimes = statsRecord.dailyTimes;
-      }
-      if (timetableRecord) {
-        TIMETABLE_KEYS.forEach(key => {
-          if (timetableRecord[key] !== undefined) returnedData.state[key] = timetableRecord[key];
-        });
-      }
-      if (deadlinesRecord) {
-        DEADLINE_KEYS.forEach(key => {
-          if (deadlinesRecord[key] !== undefined) returnedData.state[key] = deadlinesRecord[key];
-        });
-      }
-      if (countdownsRecord) {
-        COUNTDOWN_KEYS.forEach(key => {
-          if (countdownsRecord[key] !== undefined) returnedData.state[key] = countdownsRecord[key];
-        });
-      }
-    } else if (existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord || timetableRecord || deadlinesRecord || countdownsRecord) {
+      if (tasksRecord) { TASK_KEYS.forEach(key => { if (tasksRecord[key] !== undefined) returnedData.state[key] = tasksRecord[key]; }); }
+      if (roadmapsRecord?.roadmaps) returnedData.state.roadmaps = roadmapsRecord.roadmaps;
+      if (statsRecord) { STATS_KEYS.forEach(key => { if (statsRecord[key] !== undefined) returnedData.state[key] = statsRecord[key]; }); }
+      if (dailyRoutineRecord) { DAILY_ROUTINE_KEYS.forEach(key => { if (dailyRoutineRecord[key] !== undefined) returnedData.state[key] = dailyRoutineRecord[key]; }); }
+      if (statsRecord?.dailyTimes !== undefined && returnedData.state.dailyTimes === undefined) returnedData.state.dailyTimes = statsRecord.dailyTimes;
+      if (timetableRecord) { TIMETABLE_KEYS.forEach(key => { if (timetableRecord[key] !== undefined) returnedData.state[key] = timetableRecord[key]; }); }
+      if (deadlinesRecord) { DEADLINE_KEYS.forEach(key => { if (deadlinesRecord[key] !== undefined) returnedData.state[key] = deadlinesRecord[key]; }); }
+      if (countdownsRecord) { COUNTDOWN_KEYS.forEach(key => { if (countdownsRecord[key] !== undefined) returnedData.state[key] = countdownsRecord[key]; }); }
+    } else {
       const { _id, userId, lastModified, updatedAt, version, displaySettings: legacyDS, generalSettings: legacyGS, ...coreData } = (existing || {}) as any;
       const reconstructedState = {
         ...coreData,
@@ -264,80 +147,22 @@ export async function GET(request: Request) {
         ...(settingsRecord?.generalSettings || legacyGS || {})
       };
 
-      SETTING_ARRAY_KEYS.forEach(key => {
-        if (settingsRecord && settingsRecord[key] !== undefined) {
-          reconstructedState[key] = settingsRecord[key];
-        }
-      });
+      SETTING_ARRAY_KEYS.forEach(key => { if (settingsRecord?.[key] !== undefined) reconstructedState[key] = settingsRecord[key]; });
+      TASK_KEYS.forEach(key => { if (tasksRecord?.[key] !== undefined) reconstructedState[key] = tasksRecord[key]; });
+      STATS_KEYS.forEach(key => { if (statsRecord?.[key] !== undefined) reconstructedState[key] = statsRecord[key]; });
+      DAILY_ROUTINE_KEYS.forEach(key => { if (dailyRoutineRecord?.[key] !== undefined) reconstructedState[key] = dailyRoutineRecord[key]; });
+      if (statsRecord?.dailyTimes !== undefined && reconstructedState.dailyTimes === undefined) reconstructedState.dailyTimes = statsRecord.dailyTimes;
+      TIMETABLE_KEYS.forEach(key => { if (timetableRecord?.[key] !== undefined) reconstructedState[key] = timetableRecord[key]; });
+      DEADLINE_KEYS.forEach(key => { if (deadlinesRecord?.[key] !== undefined) reconstructedState[key] = deadlinesRecord[key]; });
+      COUNTDOWN_KEYS.forEach(key => { if (countdownsRecord?.[key] !== undefined) reconstructedState[key] = countdownsRecord[key]; });
 
-      TASK_KEYS.forEach(key => {
-        if (tasksRecord && tasksRecord[key] !== undefined) {
-          reconstructedState[key] = tasksRecord[key];
-        }
-      });
+      if (notesRecord?.notes) reconstructedState.notes = notesRecord.notes;
+      if (roadmapsRecord?.roadmaps) reconstructedState.roadmaps = roadmapsRecord.roadmaps;
 
-      STATS_KEYS.forEach(key => {
-        if (statsRecord && statsRecord[key] !== undefined) {
-          reconstructedState[key] = statsRecord[key];
-        }
-      });
-
-      DAILY_ROUTINE_KEYS.forEach(key => {
-        if (dailyRoutineRecord && dailyRoutineRecord[key] !== undefined) {
-          reconstructedState[key] = dailyRoutineRecord[key];
-        }
-      });
-      // Backward compatibility: If dailyTimes is still inside Stats, grab it
-      if (statsRecord && statsRecord.dailyTimes !== undefined && reconstructedState.dailyTimes === undefined) {
-        reconstructedState.dailyTimes = statsRecord.dailyTimes;
-      }
-
-      TIMETABLE_KEYS.forEach(key => {
-        if (timetableRecord && timetableRecord[key] !== undefined) {
-          reconstructedState[key] = timetableRecord[key];
-        }
-      });
-
-      DEADLINE_KEYS.forEach(key => {
-        if (deadlinesRecord && deadlinesRecord[key] !== undefined) {
-          reconstructedState[key] = deadlinesRecord[key];
-        }
-      });
-
-      COUNTDOWN_KEYS.forEach(key => {
-        if (countdownsRecord && countdownsRecord[key] !== undefined) {
-          reconstructedState[key] = countdownsRecord[key];
-        }
-      });
-
-      if (notesRecord && notesRecord.notes) {
-        reconstructedState.notes = notesRecord.notes;
-      }
-
-      if (roadmapsRecord && roadmapsRecord.roadmaps) {
-        reconstructedState.roadmaps = roadmapsRecord.roadmaps;
-      }
-
-      returnedData = {
-        state: reconstructedState,
-        version: version || 2
-      };
-    } else {
-      returnedData = { state: { notes: notesRecord?.notes || [] }, version: 2 };
+      returnedData = { state: reconstructedState, version: version || 2 };
     }
 
-    console.log('GET /api/store returning for user', user.userId, ':', {
-      hasExisting: !!existing,
-      hasSettings: !!settingsRecord,
-      hasTasks: !!tasksRecord,
-      hitElseBlock: !(existing || settingsRecord || tasksRecord || roadmapsRecord || statsRecord || dailyRoutineRecord),
-      upToDate: false
-    });
-    
-    return NextResponse.json({
-      data: returnedData,
-      lastModified: cloudLastModified
-    });
+    return NextResponse.json({ data: returnedData, lastModified: cloudLastModified });
   } catch (error) {
     console.error('Error reading store from DB:', error);
     return NextResponse.json({ error: 'Failed to read store' }, { status: 500 });
@@ -356,9 +181,28 @@ export async function POST(request: Request) {
     const client = await clientPromise;
     const db = client.db();
 
-const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length === 0;
+    // Support both direct { clearAll: true } and wrapped versions
+    if (payload.clearAll === true || (payload.data && payload.data.clearAll === true)) {
+      await Promise.all([
+        db.collection('DashboardStorage').deleteOne({ userId: user.userId }),
+        db.collection('Settings').deleteOne({ userId: user.userId }),
+        db.collection('Notes').deleteOne({ userId: user.userId }),
+        db.collection('Tasks').deleteOne({ userId: user.userId }),
+        db.collection('Roadmaps').deleteOne({ userId: user.userId }),
+        db.collection('Stats').deleteOne({ userId: user.userId }),
+        db.collection('DailyRoutine').deleteOne({ userId: user.userId }),
+        db.collection('Timetable').deleteOne({ userId: user.userId }),
+        db.collection('Deadlines').deleteOne({ userId: user.userId })
+      ]);
+      return NextResponse.json({ success: true, message: 'All data cleared' });
+    }
 
-    // OPTIMIZATION: Conditionally fetch ONLY the modified collections in parallel
+    if (!body) return NextResponse.json({ error: 'No data provided' }, { status: 400 });
+
+    const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length === 0;
+
+    // We still fetch collections to resolve 409 Conflicts cleanly, 
+    // and for complex manual merges like Roadmaps Arrays
     const [
       existing, existingNotes, existingSettings, existingTasks, 
       existingRoadmaps, existingStats, existingDailyRoutine, 
@@ -389,56 +233,22 @@ const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length ===
     let existingCloudData: any = null;
     if (existing || existingNotes || existingSettings || existingTasks || existingRoadmaps || existingStats || existingDailyRoutine || existingTimetable || existingDeadlines || existingCountdowns) {
       if (existing && existing.data && typeof existing.data === 'string') {
-        try {
-          existingCloudData = JSON.parse(existing.data);
-        } catch (e) {
-          existingCloudData = { state: {} };
-        }
+        try { existingCloudData = JSON.parse(existing.data); } catch (e) { existingCloudData = { state: {} }; }
         existingCloudData.state = existingCloudData.state || {};
-        if (existingNotes && existingNotes.notes) {
-          existingCloudData.state.notes = existingNotes.notes;
-        }
+        
+        if (existingNotes?.notes) existingCloudData.state.notes = existingNotes.notes;
+        
         if (existingSettings) {
-          existingCloudData.state = {
-            ...existingCloudData.state,
-            ...(existingSettings.displaySettings || {}),
-            ...(existingSettings.generalSettings || {})
-          };
-          SETTING_ARRAY_KEYS.forEach(key => {
-            if (existingSettings[key] !== undefined) existingCloudData.state[key] = existingSettings[key];
-          });
+          existingCloudData.state = { ...existingCloudData.state, ...(existingSettings.displaySettings || {}), ...(existingSettings.generalSettings || {}) };
+          SETTING_ARRAY_KEYS.forEach(key => { if (existingSettings[key] !== undefined) existingCloudData.state[key] = existingSettings[key]; });
         }
-        if (existingRoadmaps && existingRoadmaps.roadmaps) {
-          existingCloudData.state.roadmaps = existingRoadmaps.roadmaps;
-        }
-        if (existingStats) {
-          STATS_KEYS.forEach(key => {
-            if (existingStats[key] !== undefined) existingCloudData.state[key] = existingStats[key];
-          });
-        }
-        if (existingDailyRoutine) {
-          DAILY_ROUTINE_KEYS.forEach(key => {
-            if (existingDailyRoutine[key] !== undefined) existingCloudData.state[key] = existingDailyRoutine[key];
-          });
-        }
-        if (existingStats && existingStats.dailyTimes !== undefined && existingCloudData.state.dailyTimes === undefined) {
-          existingCloudData.state.dailyTimes = existingStats.dailyTimes;
-        }
-        if (existingTimetable) {
-          TIMETABLE_KEYS.forEach(key => {
-            if (existingTimetable[key] !== undefined) existingCloudData.state[key] = existingTimetable[key];
-          });
-        }
-        if (existingDeadlines) {
-          DEADLINE_KEYS.forEach(key => {
-            if (existingDeadlines[key] !== undefined) existingCloudData.state[key] = existingDeadlines[key];
-          });
-        }
-        if (existingCountdowns) {
-          COUNTDOWN_KEYS.forEach(key => {
-            if (existingCountdowns[key] !== undefined) existingCloudData.state[key] = existingCountdowns[key];
-          });
-        }
+        if (existingRoadmaps?.roadmaps) existingCloudData.state.roadmaps = existingRoadmaps.roadmaps;
+        if (existingStats) { STATS_KEYS.forEach(key => { if (existingStats[key] !== undefined) existingCloudData.state[key] = existingStats[key]; }); }
+        if (existingDailyRoutine) { DAILY_ROUTINE_KEYS.forEach(key => { if (existingDailyRoutine[key] !== undefined) existingCloudData.state[key] = existingDailyRoutine[key]; }); }
+        if (existingStats?.dailyTimes !== undefined && existingCloudData.state.dailyTimes === undefined) existingCloudData.state.dailyTimes = existingStats.dailyTimes;
+        if (existingTimetable) { TIMETABLE_KEYS.forEach(key => { if (existingTimetable[key] !== undefined) existingCloudData.state[key] = existingTimetable[key]; }); }
+        if (existingDeadlines) { DEADLINE_KEYS.forEach(key => { if (existingDeadlines[key] !== undefined) existingCloudData.state[key] = existingDeadlines[key]; }); }
+        if (existingCountdowns) { COUNTDOWN_KEYS.forEach(key => { if (existingCountdowns[key] !== undefined) existingCloudData.state[key] = existingCountdowns[key]; }); }
       } else {
         const { _id, userId, lastModified, updatedAt, version, displaySettings: legacyDS, generalSettings: legacyGS, ...coreData } = (existing || {}) as any;
         const reconstructedState = {
@@ -447,50 +257,16 @@ const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length ===
           ...(existingSettings?.generalSettings || legacyGS || {})
         };
 
-        SETTING_ARRAY_KEYS.forEach(key => {
-          if (existingSettings && existingSettings[key] !== undefined) {
-            reconstructedState[key] = existingSettings[key];
-          }
-        });
-
-        TASK_KEYS.forEach(key => {
-          if (existingTasks && existingTasks[key] !== undefined) {
-            reconstructedState[key] = existingTasks[key];
-          }
-        });
-
-        STATS_KEYS.forEach(key => {
-          if (existingStats && existingStats[key] !== undefined) {
-            reconstructedState[key] = existingStats[key];
-          }
-        });
-
-        DAILY_ROUTINE_KEYS.forEach(key => {
-          if (existingDailyRoutine && existingDailyRoutine[key] !== undefined) {
-            reconstructedState[key] = existingDailyRoutine[key];
-          }
-        });
-
-        if (existingStats && existingStats.dailyTimes !== undefined && reconstructedState.dailyTimes === undefined) {
-          reconstructedState.dailyTimes = existingStats.dailyTimes;
-        }
-
-        if (existingNotes && existingNotes.notes) {
-          reconstructedState.notes = existingNotes.notes;
-        }
-        if (existingRoadmaps && existingRoadmaps.roadmaps) {
-          reconstructedState.roadmaps = existingRoadmaps.roadmaps;
-        }
-        DEADLINE_KEYS.forEach(key => {
-          if (existingDeadlines && existingDeadlines[key] !== undefined) {
-            reconstructedState[key] = existingDeadlines[key];
-          }
-        });
-        COUNTDOWN_KEYS.forEach(key => {
-          if (existingCountdowns && existingCountdowns[key] !== undefined) {
-            reconstructedState[key] = existingCountdowns[key];
-          }
-        });
+        SETTING_ARRAY_KEYS.forEach(key => { if (existingSettings?.[key] !== undefined) reconstructedState[key] = existingSettings[key]; });
+        TASK_KEYS.forEach(key => { if (existingTasks?.[key] !== undefined) reconstructedState[key] = existingTasks[key]; });
+        STATS_KEYS.forEach(key => { if (existingStats?.[key] !== undefined) reconstructedState[key] = existingStats[key]; });
+        DAILY_ROUTINE_KEYS.forEach(key => { if (existingDailyRoutine?.[key] !== undefined) reconstructedState[key] = existingDailyRoutine[key]; });
+        if (existingStats?.dailyTimes !== undefined && reconstructedState.dailyTimes === undefined) reconstructedState.dailyTimes = existingStats.dailyTimes;
+        if (existingNotes?.notes) reconstructedState.notes = existingNotes.notes;
+        if (existingRoadmaps?.roadmaps) reconstructedState.roadmaps = existingRoadmaps.roadmaps;
+        DEADLINE_KEYS.forEach(key => { if (existingDeadlines?.[key] !== undefined) reconstructedState[key] = existingDeadlines[key]; });
+        COUNTDOWN_KEYS.forEach(key => { if (existingCountdowns?.[key] !== undefined) reconstructedState[key] = existingCountdowns[key]; });
+        
         existingCloudData = { state: reconstructedState, version: version || 2 };
       }
     }
@@ -501,8 +277,6 @@ const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length ===
       existingSettings?.lastModified ? Number(existingSettings.lastModified) : 0,
       existingTasks?.lastModified ? Number(existingTasks.lastModified) : 0,
       existingRoadmaps?.lastModified ? Number(existingRoadmaps.lastModified) : 0,
-      // NOTE: Stats is intentionally excluded — it is only updated by /api/users/streak
-      // via $inc and must never cause a false 409 conflict for settings/other saves.
       existingDailyRoutine?.lastModified ? Number(existingDailyRoutine.lastModified) : 0,
       existingTimetable?.lastModified ? Number(existingTimetable.lastModified) : 0,
       existingDeadlines?.lastModified ? Number(existingDeadlines.lastModified) : 0
@@ -526,10 +300,7 @@ const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length ===
     }
 
     if (hasConflict) {
-      // Optimization: Return ONLY the data for the collections that actually conflicted.
-      // This prevents sending the full 158KB payload when only a single setting changed.
       const mc: string[] = (modifiedCollections && Array.isArray(modifiedCollections)) ? modifiedCollections : [];
-
       const COLLECTION_KEY_MAP: Record<string, string[]> = {
         'Settings': [
           'wallpaper', 'bgIndex', 'currentBgType', 'lockedWallpaper', 'theme', 'is24HourClock',
@@ -561,13 +332,10 @@ const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length ===
         mc.forEach(col => {
           const keys = COLLECTION_KEY_MAP[col] || [];
           keys.forEach(key => {
-            if (existingCloudData.state[key] !== undefined) {
-              filteredState[key] = existingCloudData.state[key];
-            }
+            if (existingCloudData.state[key] !== undefined) filteredState[key] = existingCloudData.state[key];
           });
         });
       } else {
-        // Full sync conflict or unknown collections — return everything
         filteredState = existingCloudData?.state || {};
       }
 
@@ -578,32 +346,9 @@ const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length ===
       }, { status: 409 });
     }
 
-    // Support both direct { clearAll: true } and wrapped versions
-    if (payload.clearAll === true || (payload.data && payload.data.clearAll === true)) {
-      await Promise.all([
-        db.collection('DashboardStorage').deleteOne({ userId: user.userId }),
-        db.collection('Settings').deleteOne({ userId: user.userId }),
-        db.collection('Notes').deleteOne({ userId: user.userId }),
-        db.collection('Tasks').deleteOne({ userId: user.userId }),
-        db.collection('Roadmaps').deleteOne({ userId: user.userId }),
-        db.collection('Stats').deleteOne({ userId: user.userId }),
-        db.collection('DailyRoutine').deleteOne({ userId: user.userId }),
-        db.collection('Timetable').deleteOne({ userId: user.userId }),
-        db.collection('Deadlines').deleteOne({ userId: user.userId })
-      ]);
-      return NextResponse.json({ success: true, message: 'All data cleared' });
-    }
-
-    if (!body) {
-      console.error('400 Error - No data provided. Payload keys:', Object.keys(payload));
-      return NextResponse.json({ error: 'No data provided' }, { status: 400 });
-    }
-
     const { state, version } = body;
 
-    // CRITICAL: Strip any base64/data-URL strings from local-only media arrays.
-    // Local file uploads should ONLY live in the browser's IndexedDB — never in MongoDB.
-    // Keys starting with "custom-" are local IndexedDB references; http(s) URLs are fine.
+    // CRITICAL: Strip any base64 strings from local IndexedDB media arrays.
     const LOCAL_MEDIA_ARRAY_KEYS = [
       'customDesktopWallpapers', 'customMobileWallpapers',
       'manifestationDesktopPhotos', 'manifestationMobilePhotos',
@@ -611,73 +356,47 @@ const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length ===
     if (state) {
       LOCAL_MEDIA_ARRAY_KEYS.forEach(key => {
         if (Array.isArray(state[key])) {
-          // Keep ONLY http(s) URLs and custom- local IndexedDB keys.
-          // Drop data: base64 strings to prevent DB bloat.
-          state[key] = (state[key] as string[]).filter(
-            (v: string) => typeof v === 'string' && !v.startsWith('data:')
-          );
+          state[key] = (state[key] as string[]).filter((v: string) => typeof v === 'string' && !v.startsWith('data:'));
         }
       });
-      // Only strip base64 data URIs (data:image/...) from scalar fields to prevent DB bloat. Keep custom- string references.
       if (typeof state.peekModeWallpaper === 'string' && state.peekModeWallpaper.startsWith('data:')) {
         delete state.peekModeWallpaper;
       }
     }
 
-
+    // Sort incoming data into buckets
     const tasksSpecificData: Record<string, any> = {};
     const unsetTasksKeys: Record<string, string> = {};
-
     TASK_KEYS.forEach(key => {
-      if (state && state[key] !== undefined) {
-        tasksSpecificData[key] = state[key];
-        delete state[key];
-      }
+      if (state && state[key] !== undefined) { tasksSpecificData[key] = state[key]; delete state[key]; }
       unsetTasksKeys[key] = "";
     });
 
     const statsSpecificData: Record<string, any> = {};
     const unsetStatsKeys: Record<string, string> = {};
-
     STATS_KEYS.forEach(key => {
-      if (state && state[key] !== undefined) {
-        statsSpecificData[key] = state[key];
-        delete state[key];
-      }
+      if (state && state[key] !== undefined) { statsSpecificData[key] = state[key]; delete state[key]; }
       unsetStatsKeys[key] = "";
     });
 
     const dailyRoutineSpecificData: Record<string, any> = {};
     const unsetDailyRoutineKeys: Record<string, string> = {};
-
     DAILY_ROUTINE_KEYS.forEach(key => {
-      if (state && state[key] !== undefined) {
-        dailyRoutineSpecificData[key] = state[key];
-        delete state[key];
-      }
+      if (state && state[key] !== undefined) { dailyRoutineSpecificData[key] = state[key]; delete state[key]; }
       unsetDailyRoutineKeys[key] = "";
     });
 
-
-
     const deadlineSpecificData: Record<string, any> = {};
     const unsetDeadlineKeys: Record<string, string> = {};
-
     DEADLINE_KEYS.forEach(key => {
-      if (state && state[key] !== undefined) {
-        deadlineSpecificData[key] = state[key];
-        delete state[key];
-      }
+      if (state && state[key] !== undefined) { deadlineSpecificData[key] = state[key]; delete state[key]; }
       unsetDeadlineKeys[key] = "";
     });
 
     const settingsSpecificData: Record<string, any> = {};
-
     SETTING_ARRAY_KEYS.forEach(key => {
       if (state && state[key] !== undefined) {
-        if (isFullSync || modifiedKeys.includes(key)) {
-          settingsSpecificData[key] = state[key];
-        }
+        if (isFullSync || modifiedKeys.includes(key)) settingsSpecificData[key] = state[key];
         delete state[key];
       }
     });
@@ -697,252 +416,170 @@ const fetchAll = isFullSync || body?.forceSync || modifiedCollections.length ===
     });
 
     const { notes, roadmaps, ...restCoreData } = coreData;
-
-    try {
-      require('fs').appendFileSync('D:/productivedashborad/dashboard-cloud/debug-store.txt',
-        `[${new Date().toISOString()}] POST\n` +
-        `modifiedKeys: ${modifiedKeys.join(', ')}\n` +
-        `isFullSync: ${isFullSync}\n` +
-        `settingsSpecificData has timetableGrid: ${!!settingsSpecificData.timetableGrid}\n\n`
-      );
-    } catch (e) { }
-
     const unsetLegacyKeys: Record<string, string> = { notes: "", roadmaps: "", displaySettings: "", generalSettings: "", ...unsetTasksKeys, ...unsetStatsKeys, ...unsetDailyRoutineKeys, ...unsetDeadlineKeys };
-
     const newLastModified = Date.now();
 
+    // ------------------------------------------------------------------------------------
+    // TRUE ATOMIC DOT-NOTATION UPDATES (Eliminates full overwrites & race conditions)
+    // ------------------------------------------------------------------------------------
+
+    // 1. Deadlines Update
     if (isFullSync || modifiedCollections.includes('Deadlines')) {
-      const deadlinesDoc = {
-        ...deadlineSpecificData,
-        lastModified: newLastModified
-      };
-      await db.collection('Deadlines').updateOne(
-        { userId: user.userId },
-        {
-          $set: deadlinesDoc,
-          $setOnInsert: { userId: user.userId }
-        },
-        { upsert: true }
-      );
+      let deadlineSetQuery: Record<string, any> = { lastModified: newLastModified };
+      Object.keys(deadlineSpecificData).forEach(k => deadlineSetQuery[k] = deadlineSpecificData[k]);
+      
+      if (Object.keys(deadlineSetQuery).length > 1) {
+        await db.collection('Deadlines').updateOne(
+          { userId: user.userId },
+          { $set: deadlineSetQuery,$setOnInsert: { userId: user.userId } },
+          { upsert: true }
+        );
+      }
     }
 
+    // 2. DashboardStorage (Core Data)
     if (isFullSync || modifiedCollections.includes('DashboardStorage') || modifiedCollections.includes('Settings')) {
-      const updateDoc = {
-        version: version || 2,
-        username: user.username,
-        lastModified: newLastModified,
-        updatedAt: new Date(),
-        ...restCoreData
-      };
+      let coreSetQuery: Record<string, any> = { lastModified: newLastModified, updatedAt: new Date() };
+      if (version) coreSetQuery.version = version;
+      if (user.username) coreSetQuery.username = user.username;
+      
+      Object.keys(restCoreData).forEach(k => coreSetQuery[k] = restCoreData[k]);
 
-      await db.collection('DashboardStorage').updateOne(
-        { userId: user.userId },
-        {
-          $set: updateDoc,
-          $unset: unsetLegacyKeys,
-          $setOnInsert: { userId: user.userId }
-        },
-        { upsert: true }
-      );
+      const updateOp: any = { $set: coreSetQuery,$setOnInsert: { userId: user.userId } };
+      if (Object.keys(unsetLegacyKeys).length > 0) updateOp.$unset = unsetLegacyKeys;
+
+      await db.collection('DashboardStorage').updateOne({ userId: user.userId }, updateOp, { upsert: true });
     }
 
-    // 2. Save Settings to the isolated Settings collection
+    // 3.  SETTINGS (The ultimate atomic solution using Dot Notation)
     if (isFullSync || modifiedCollections.includes('Settings')) {
-      let settingsDoc: any = {
-        displaySettings,
-        generalSettings,
-        ...settingsSpecificData,
-        lastModified: newLastModified
-      };
+      let settingsSetQuery: Record<string, any> = { lastModified: newLastModified };
 
-      if (existingSettings) {
-        // Non-destructive preservation for Settings array collections in DB
-        const SETTING_PRESERVE_ARRAY_KEYS = [
-          'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers',
-          'manifestationDesktopPhotos', 'manifestationMobilePhotos',
-          'manifestationCustomQuotes', 'customQuotes', 'customAlarmSounds',
-          'lockedWidgets', 'weekdayTimes', 'weekendTimes'
-        ];
-
-        SETTING_PRESERVE_ARRAY_KEYS.forEach(key => {
-          const srvArr = existingSettings[key];
-          const incArr = settingsDoc[key];
-
-          if (Array.isArray(incArr)) {
-            settingsDoc[key] = incArr;
-          } else if (Array.isArray(srvArr)) {
-            settingsDoc[key] = srvArr;
-          }
-        });
-
-        // Merge displaySettings & generalSettings preserving existing DB values if incoming is missing
-        settingsDoc.displaySettings = { ...(existingSettings?.displaySettings || {}), ...(displaySettings || {}) };
-        settingsDoc.generalSettings = { ...(existingSettings?.generalSettings || {}), ...(generalSettings || {}) };
-
-        // Deep merge hideConfig & mobileHideConfig
-        settingsDoc.hideConfig = { ...(existingSettings?.hideConfig || {}), ...(settingsDoc.hideConfig || {}) };
-        settingsDoc.mobileHideConfig = { ...(existingSettings?.mobileHideConfig || {}), ...(settingsDoc.mobileHideConfig || {}) };
-
-        // Deep merge clockOffsets and widgetOffsets
-        settingsDoc.clockOffsets = { ...(existingSettings?.clockOffsets || {}), ...(settingsDoc.clockOffsets || {}) };
-        settingsDoc.widgetOffsets = { ...(existingSettings?.widgetOffsets || {}), ...(settingsDoc.widgetOffsets || {}) };
-
-        if (settingsDoc.timetableGrid === undefined && existingSettings.timetableGrid && typeof existingSettings.timetableGrid === 'object') {
-          settingsDoc.timetableGrid = existingSettings.timetableGrid;
+      // Safely drill into objects instead of rewriting them completely!
+      Object.keys(displaySettings).forEach(k => settingsSetQuery[`displaySettings.${k}`] = displaySettings[k]);
+      Object.keys(generalSettings).forEach(k => settingsSetQuery[`generalSettings.${k}`] = generalSettings[k]);
+      
+      Object.keys(settingsSpecificData).forEach(k => {
+        const val = settingsSpecificData[k];
+        // Deep nested update for specific config objects to preserve other keys
+        if (['hideConfig', 'mobileHideConfig', 'clockOffsets', 'widgetOffsets'].includes(k) && typeof val === 'object' && val !== null && !Array.isArray(val)) {
+          Object.keys(val).forEach(subKey => {
+            settingsSetQuery[`${k}.${subKey}`] = val[subKey];
+          });
+        } else {
+          // Arrays and entire objects (like timetableGrid) are replaced natively
+          settingsSetQuery[k] = val;
         }
-        if (settingsDoc.timetableColors === undefined && existingSettings.timetableColors && typeof existingSettings.timetableColors === 'object') {
-          settingsDoc.timetableColors = existingSettings.timetableColors;
-        }
+      });
+
+      if (Object.keys(settingsSetQuery).length > 1) {
+        await db.collection('Settings').updateOne(
+          { userId: user.userId },
+          { $set: settingsSetQuery,$setOnInsert: { userId: user.userId } },
+          { upsert: true }
+        );
       }
-
-      await db.collection('Settings').updateOne(
-        { userId: user.userId },
-        {
-          $set: settingsDoc,
-          $setOnInsert: { userId: user.userId }
-        },
-        { upsert: true }
-      );
     }
 
-    // 3. Save Tasks to the isolated Tasks collection
+    // 4. Tasks
     if ((isFullSync || modifiedCollections.includes('Tasks')) && Object.keys(tasksSpecificData).length > 0) {
-      let tasksDoc: any = { ...tasksSpecificData, lastModified: newLastModified };
-
-      if (existingTasks) {
-        const TASK_ARRAY_KEYS = ['tasks', 'tomorrowTasks', 'deadlines', 'countdowns', 'plans'];
-        TASK_ARRAY_KEYS.forEach(key => {
-          const srvArr = existingTasks[key];
-          const incArr = tasksDoc[key];
-
-          // If the client explicitly sent an array (even an empty one, meaning they deleted the last item),
-          // we must accept it as the new source of truth. Otherwise, preserve the server's array.
-          if (incArr === undefined && srvArr !== undefined) {
-            tasksDoc[key] = srvArr;
-          }
-        });
-      }
+      let tasksSetQuery: Record<string, any> = { lastModified: newLastModified };
+      Object.keys(tasksSpecificData).forEach(k => tasksSetQuery[k] = tasksSpecificData[k]);
 
       await db.collection('Tasks').updateOne(
         { userId: user.userId },
-        {
-          $set: tasksDoc,
-          $setOnInsert: { userId: user.userId }
-        },
+        { $set: tasksSetQuery,$setOnInsert: { userId: user.userId } },
         { upsert: true }
       );
     }
 
-    // 4. Save Notes to the isolated Notes collection
+    // 5. Notes (Replaced fully if provided)
     if ((isFullSync || modifiedCollections.includes('Notes')) && notes !== undefined) {
       await db.collection('Notes').updateOne(
         { userId: user.userId },
-        {
-          $set: { notes: notes, lastModified: newLastModified },
-          $setOnInsert: { userId: user.userId }
-        },
+        { $set: { notes: notes, lastModified: newLastModified },$setOnInsert: { userId: user.userId } },
         { upsert: true }
       );
     }
 
-    // 5. Save Roadmaps to the isolated Roadmaps collection
+    // 6. Roadmaps (Still requires manual merging based on internal IDs)
     if ((isFullSync || modifiedCollections.includes('Roadmaps')) && roadmaps !== undefined) {
       let roadmapsToSave = roadmaps;
       if (existingRoadmaps && Array.isArray(existingRoadmaps.roadmaps) && existingRoadmaps.roadmaps.length > 0) {
-        if (!Array.isArray(roadmaps) || roadmaps.length === 0) {
-          roadmapsToSave = existingRoadmaps.roadmaps;
-        } else {
-          roadmapsToSave = mergeArraysByIdServer(roadmaps, existingRoadmaps.roadmaps);
-        }
+        if (!Array.isArray(roadmaps) || roadmaps.length === 0) roadmapsToSave = existingRoadmaps.roadmaps;
+        else roadmapsToSave = mergeArraysByIdServer(roadmaps, existingRoadmaps.roadmaps);
       }
       await db.collection('Roadmaps').updateOne(
         { userId: user.userId },
-        {
-          $set: { roadmaps: roadmapsToSave, lastModified: newLastModified },
-          $setOnInsert: { userId: user.userId }
-        },
+        { $set: { roadmaps: roadmapsToSave, lastModified: newLastModified },$setOnInsert: { userId: user.userId } },
         { upsert: true }
       );
     }
 
-    // 6. Save Stats to the isolated Stats collection
+    // 7. Stats
     if (isFullSync || modifiedCollections.includes('Stats')) {
-      const statsDoc: any = { ...statsSpecificData, lastModified: newLastModified };
-      delete statsDoc.history; // Completely handled by /api/users/streak now via $inc
+      const statsSetQuery: Record<string, any> = { lastModified: newLastModified };
+      Object.keys(statsSpecificData).forEach(k => {
+        if (k !== 'history') statsSetQuery[k] = statsSpecificData[k];
+      });
 
-      await db.collection('Stats').updateOne(
-        { userId: user.userId },
-        {
-          $set: statsDoc,
-          $setOnInsert: { userId: user.userId }
-        },
-        { upsert: true }
-      );
-    }
-
-    // 7. Save DailyRoutines to the isolated DailyRoutine collection
-    if ((isFullSync || modifiedCollections.includes('DailyRoutine')) && Object.keys(dailyRoutineSpecificData).length > 0) {
-      let dailyRoutineDoc: any = { ...dailyRoutineSpecificData, lastModified: newLastModified };
-      const existingDailyTimes = existingDailyRoutine?.dailyTimes || existingStats?.dailyTimes || {};
-      if (existingDailyTimes && Object.keys(existingDailyTimes).length > 0) {
-        const incomingDailyTimes = dailyRoutineDoc.dailyTimes || {};
-        const mergedDailyTimes: Record<string, any> = { ...existingDailyTimes };
-
-        for (const dateKey in incomingDailyTimes) {
-          const incDate = incomingDailyTimes[dateKey] || {};
-          const srvDate = existingDailyTimes[dateKey] || {};
-
-          mergedDailyTimes[dateKey] = {
-            ...srvDate,
-            ...incDate,
-          };
-
-          // Non-destructive preservation of logged timestamps: NEVER overwrite or clear existing logged fields
-          ['wakeupTime', 'workStartedTime', 'sleepTime', 'bedTime'].forEach(field => {
-            if (srvDate[field] && !incDate[field]) {
-              mergedDailyTimes[dateKey][field] = srvDate[field];
-            }
-          });
-        }
-        dailyRoutineDoc.dailyTimes = mergedDailyTimes;
+      if (Object.keys(statsSetQuery).length > 1) {
+        await db.collection('Stats').updateOne(
+          { userId: user.userId },
+          { $set: statsSetQuery,$setOnInsert: { userId: user.userId } },
+          { upsert: true }
+        );
       }
-
-      await db.collection('DailyRoutine').updateOne(
-        { userId: user.userId },
-        {
-          $set: dailyRoutineDoc,
-          $setOnInsert: { userId: user.userId }
-        },
-        { upsert: true }
-      );
     }
 
+    // 8.  DailyRoutines (Deep nested dot notation to protect logged timestamps)
+    if ((isFullSync || modifiedCollections.includes('DailyRoutine')) && Object.keys(dailyRoutineSpecificData).length > 0) {
+      let dailySetQuery: Record<string, any> = { lastModified: newLastModified };
+      Object.keys(dailyRoutineSpecificData).forEach(k => {
+        if (k !== 'dailyTimes') dailySetQuery[k] = dailyRoutineSpecificData[k];
+      });
 
+      const incomingDailyTimes = dailyRoutineSpecificData.dailyTimes || {};
+      Object.keys(incomingDailyTimes).forEach(dateKey => {
+        const incDate = incomingDailyTimes[dateKey];
+        Object.keys(incDate).forEach(field => {
+          // If a protected timestamp field comes in falsy, we skip it, making it impossible to accidentally delete
+          if (['wakeupTime', 'workStartedTime', 'sleepTime', 'bedTime'].includes(field)) {
+            if (incDate[field]) dailySetQuery[`dailyTimes.${dateKey}.${field}`] = incDate[field];
+          } else {
+            dailySetQuery[`dailyTimes.${dateKey}.${field}`] = incDate[field];
+          }
+        });
+      });
+
+      if (Object.keys(dailySetQuery).length > 1) {
+        await db.collection('DailyRoutine').updateOne(
+          { userId: user.userId },
+          { $set: dailySetQuery,$setOnInsert: { userId: user.userId } },
+          { upsert: true }
+        );
+      }
+    }
+
+    // Update active status
     let userQuery: any;
-    try {
-      userQuery = { _id: new ObjectId(user.userId) };
-    } catch {
-      userQuery = { _id: user.userId };
-    }
-
-    // Auto-update the active status in the Users collection
-    await db.collection('User').updateOne(
-      userQuery,
-      { $set: { lastActiveAt: new Date() } }
-    );
-
+    try { userQuery = { _id: new ObjectId(user.userId) }; } catch { userQuery = { _id: user.userId }; }
+    await db.collection('User').updateOne(userQuery, { $set: { lastActiveAt: new Date() } });
 
     const responseObj: any = { success: true, lastModified: newLastModified };
     if (incrementHistory) {
-      // Re-fetch the updated history to ensure the client gets the merged truth immediately
       const latestStats = await db.collection('Stats').findOne({ userId: user.userId });
-      if (latestStats && latestStats.history) {
-        responseObj.updatedHistory = latestStats.history;
-      }
+      if (latestStats?.history) responseObj.updatedHistory = latestStats.history;
     }
+    
     return NextResponse.json(responseObj);
   } catch (error) {
     console.error('Error writing store to DB:', error);
     return NextResponse.json({ error: 'Failed to write store' }, { status: 500 });
   }
+}
+
+export async function HEAD(request: Request) {
+  // Lightning-fast, auth-free response specifically for the ConnectionStatusToast ping
+  return new NextResponse(null, { status: 200 });
 }
