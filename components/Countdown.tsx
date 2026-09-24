@@ -198,7 +198,7 @@ export default function Countdown({
 
   // --- Render Main Component ---
   return (
-    <div className="group w-[160px] sm:w-[220px] bg-indigo-950/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl p-1 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300 flex flex-col gap-2">
+    <div className="group w-[160px] sm:w-[180px] md:w-[200px] bg-indigo-950/40 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl p-1 text-white pointer-events-auto select-none relative overflow-hidden transition-all duration-300 flex flex-col gap-2">
       
       {/* Glow Effect */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-cyan-500/20 blur-[30px] pointer-events-none rounded-full" />
@@ -292,7 +292,7 @@ export default function Countdown({
             {timeLeft.days > 0 ? (
               // > 24 Hours: Show Huge Days, Smaller Hours
               <div className="flex items-baseline gap-1.5 justify-center">
-                <span className="text-4xl sm:text-5xl font-black text-white leading-none tracking-tighter">{String(timeLeft.days).padStart(2, '0')}</span>
+                <span className="text-5xl sm:text-5xl font-black text-white leading-none tracking-tighter">{String(timeLeft.days).padStart(2, '0')}</span>
                 <span className="text-[10px] font-bold text-white/50 tracking-widest">DAYS</span>
                 <span className="text-xl sm:text-2xl font-black text-cyan-300 leading-none ml-1">{String(timeLeft.hours).padStart(2, '0')}</span>
                 <span className="text-[10px] font-bold text-cyan-300/50 tracking-widest">HRS</span>

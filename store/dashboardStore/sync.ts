@@ -91,27 +91,25 @@ export const uniqueById = (arr: any[]) => {
   });
 };
 
-let isSyncingQueue = false; // 🚀 FIX: Add a lock variable to prevent overlapping
-
 // ----------------------------------------------------------------------
 // DEDICATED QUEUE SYNC: Securely pushes offline minutes to the DB
 // ----------------------------------------------------------------------
+let isSyncingQueue = false;
+
 export const syncFocusQueue = async () => {
   if (typeof window === 'undefined' || !navigator.onLine) return;
-  if (isSyncingQueue) return; // 🚀 FIX: If already syncing, abort immediately!
-  
+  if (isSyncingQueue) return;
+
   const token = getSyncToken();
   if (!token) return;
 
   let queue = getSecureFocusQueue();
   if (Object.keys(queue).length === 0) return;
 
-  isSyncingQueue = true; // Lock engaged
+  isSyncingQueue = true;
+  // 🚀 Clear queue locally before sending to prevent race condition duplicates
+  setSecureFocusQueue({}); 
 
-  // FIX: Empty the local queue BEFORE sending to the server. 
-  // This guarantees that if performSave triggers a millisecond later, it sees an empty queue.
-  setSecureFocusQueue({});
-  
   let failedQueue: Record<string, number> = {};
   let hasFailures = false;
 
@@ -120,24 +118,28 @@ export const syncFocusQueue = async () => {
     if (mins <= 0) continue;
 
     try {
+      // 🚀 Removed AbortController timeout so slow internet doesn't cause double-counting
       const res = await fetch('/api/users/streak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ dateStr, minutes: mins })
       });
       
-      if (!res.ok) {
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}));
+        // 🚀 CRITICAL: Update timestamp so performSave doesn't throw a 409 Conflict!
+        if (json.lastModified) setSyncLastModified(json.lastModified);
+      } else {
         failedQueue[dateStr] = (failedQueue[dateStr] || 0) + mins;
         hasFailures = true;
       }
     } catch (e) {
-      console.warn(`[Sync] Failed to push focus queue for ${dateStr}. Will retry later.`, e);
       failedQueue[dateStr] = (failedQueue[dateStr] || 0) + mins;
       hasFailures = true;
     }
   }
 
-  // 🚀 FIX: If the internet drops while syncing, put the failed minutes safely BACK into the queue.
+  // Put any genuine failures back in the queue
   if (hasFailures) {
     const currentQueue = getSecureFocusQueue();
     for (const dateStr in failedQueue) {
@@ -146,7 +148,7 @@ export const syncFocusQueue = async () => {
     setSecureFocusQueue(currentQueue);
   }
 
-  isSyncingQueue = false; // Unlock
+  isSyncingQueue = false;
 };
 
 // ----------------------------------------------------------------------
@@ -201,14 +203,16 @@ export const checkTimerStillActiveInDB = async (type: 'timer' | 'stopwatch'): Pr
 // MAIN STATE SAVE: Pushes UI state and settings to /api/store
 // ----------------------------------------------------------------------
 export const performSave = async () => {
-  syncFocusQueue();
+  
+  // 🚀 FIX: AWAIT the queue so it finishes updating the timestamp BEFORE we save!
+  await syncFocusQueue();
 
   if (!pendingValue || isSyncingFromCloud || isAuthTransition) {
     saveTimeout = null;
     return;
   }
 
-  // 1. SYNC LOCK: Prevent overlapping saves. If already saving, reschedule and bail.
+  // 1. SYNC LOCK: Prevent overlapping saves
   if (isSyncing) {
     if (!saveTimeout) saveTimeout = setTimeout(performSave, 1000);
     return;
@@ -646,13 +650,15 @@ export const pushDailyRoutineToDB = async (dailyTimesObj: any) => {
   }, 600);
 };
 
+// ----------------------------------------------------------------------
+// PUSH STREAK: Handles live minute chunks
+// ----------------------------------------------------------------------
 export const pushStreakToDB = (dateKey: string, minutes: number) => {
   if (typeof window === 'undefined' || minutes <= 0) return;
 
   const token = getSyncToken();
 
   if (!token || !navigator.onLine) {
-    // Offline: write to queue, will flush when back online
     try {
       const queue = getSecureFocusQueue();
       queue[dateKey] = (queue[dateKey] || 0) + minutes;
@@ -661,16 +667,20 @@ export const pushStreakToDB = (dateKey: string, minutes: number) => {
     return;
   }
 
-  // Online: fire directly — only fall back to queue on network failure
   fetch('/api/users/streak', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: JSON.stringify({ dateStr: dateKey, minutes })
-  }).then(res => {
+  })
+  .then(res => {
     if (!res.ok) throw new Error(`streak API ${res.status}`);
-    // Success — nothing to queue, already committed to DB via $inc
-  }).catch(() => {
-    // Network failure: queue so syncFocusQueue retries later
+    return res.json();
+  })
+  .then(json => {
+     // 🚀 Update timestamp on every live chunk to completely eliminate 409 conflicts
+     if (json.lastModified) setSyncLastModified(json.lastModified);
+  })
+  .catch(() => {
     try {
       const queue = getSecureFocusQueue();
       queue[dateKey] = (queue[dateKey] || 0) + minutes;

@@ -8,7 +8,6 @@ import ConfirmationModal from './ConfirmationModal';
 import { getLocalDateString } from '@/utils/date';
 import { getDeviceId } from '@/utils/deviceId';
 import Tooltip from './Tooltip';
-// 🚀 FIX: Imported our surgical atomic APIs!
 import { checkTimerStillActiveInDB, triggerInstantSave, pushStreakToDB, forcePushTimerState } from '@/store/dashboardStore/sync';
 
 const haltAudio = (audioEl: HTMLAudioElement | null) => {
@@ -18,6 +17,44 @@ const haltAudio = (audioEl: HTMLAudioElement | null) => {
     try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
   }
 };
+
+// ----------------------------------------------------------------------------------
+// 🚀 THE ULTIMATE ATOMIC LOCK (Placed OUTSIDE React to prevent duplicate-mount bugs)
+// ----------------------------------------------------------------------------------
+
+const processStopwatchChunks = (currentElapsedSecs: number, forceFinalize: boolean = false) => {
+  if (typeof window === 'undefined') return;
+  
+  const storeState = useDashboardStore.getState();
+  if (!storeState.stopwatchAddToStats || storeState.stopwatchDeviceId !== getDeviceId()) return;
+
+  const totalMinsToSave = forceFinalize 
+    ? Math.floor(currentElapsedSecs / 60)         
+    : Math.floor(currentElapsedSecs / 300) * 5;   
+
+  const latestSavedChunks = storeState.stopwatchLastSavedChunks || 0;
+  const savedMinsSoFar = latestSavedChunks * 5;
+  
+  const diffMins = totalMinsToSave - savedMinsSoFar;
+
+  if (diffMins > 0) {
+    // 1. Instantly lock the new total chunks
+    storeState.setStopwatchLastSavedChunks(totalMinsToSave / 5);
+    
+    // DEV PROOF: Check your console! It will prove the stopwatch is only sending 5.
+    console.log(` STOPWATCH EXTRACTED: Exactly ${diffMins} minutes.`);
+
+    // 2. THE DUAL-WRITE FIX 
+    // We only call addMins. If your store's addMins already updates the DB/Queue, 
+    // calling pushStreakToDB here was creating the instant '10'.
+    storeState.addMins(getLocalDateString(), diffMins);
+    
+    // pushStreakToDB(getLocalDateString(), diffMins); // <-- REMOVED TO PREVENT DOUBLE COUNT
+    
+    forcePushTimerState();
+  }
+};
+
 
 export default function Stopwatch() {
   const store = useDashboardStore();
@@ -29,7 +66,6 @@ export default function Stopwatch() {
   const [isIntervalRinging, setIsIntervalRinging] = useState(false);
 
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: React.ReactNode; isDestructive?: boolean; onConfirm: () => void; }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
-
   const [showStillWorkingPrompt, setShowStillWorkingPrompt] = useState(false);
 
   const intervalAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -39,13 +75,11 @@ export default function Stopwatch() {
   const deadmanTriggeredAtRef = useRef<number | null>(null);
   const deadmanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 🚀 FIX: Added the missing function to silence the interval beep
   const stopIntervalBeep = () => {
     haltAudio(intervalAudioRef.current);
     setIsIntervalRinging(false);
   };
 
-  // Handle sleep/wake and settings modal audio cleanup
   useEffect(() => {
     const handleSleepWakeCleanup = () => { if (!useDashboardStore.getState().isAlarmPlaying) haltAudio(intervalAudioRef.current); };
     if (typeof window !== 'undefined') {
@@ -56,17 +90,13 @@ export default function Stopwatch() {
 
   useEffect(() => { if (store.isSettingsOpen) haltAudio(intervalAudioRef.current); }, [store.isSettingsOpen]);
 
-  // Interval Audio Playback
   useEffect(() => {
     if (intervalAudioRef.current) {
       if (isIntervalRinging && store.enableAlarmSound) {
         intervalAudioRef.current.muted = false;
         intervalAudioRef.current.volume = ((store.alarmVolume || 1) > 1 ? (store.alarmVolume || 1) / 100 : (store.alarmVolume || 1)) * 0.4;
         intervalAudioRef.current.currentTime = 0;
-        intervalAudioRef.current.play().catch(error => { if (error.name !== 'NotAllowedError') {
-                console.warn("Audio playback issue:", error);
-                  }
-                  });
+        intervalAudioRef.current.play().catch(error => { if (error.name !== 'NotAllowedError') console.warn("Audio playback issue:", error); });
         if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
       } else haltAudio(intervalAudioRef.current);
     }
@@ -74,7 +104,6 @@ export default function Stopwatch() {
 
   const updateInteraction = () => { if (typeof window !== 'undefined') localStorage.setItem('stopwatch_last_active', Date.now().toString()); };
 
-  // Initialization & Cloud Sync checks
   useEffect(() => {
     const pausedSecs = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_paused_secs') : null;
     if (store.stopwatchStartTime) {
@@ -86,6 +115,10 @@ export default function Stopwatch() {
         const cappedElapsed = Math.max(0, Math.floor((lastActive - store.stopwatchStartTime) / 1000));
         setIsRunning(false); setElapsedSecs(cappedElapsed); setPausedAtString(new Date(lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         setShowContinuePrompt(true); useDashboardStore.setState({ isStopwatchOpen: true });
+        
+        // Processes chunks automatically using the universal helper
+        processStopwatchChunks(cappedElapsed, false); 
+        
         if (typeof window !== 'undefined') localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
         store.setStopwatchStartTime(null); store.setStopwatchDeviceId(null);
       } else {
@@ -119,18 +152,10 @@ export default function Stopwatch() {
             setPausedAtString(new Date(lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             setShowContinuePrompt(true); updateInteraction();
 
-            const chunks = Math.floor(cappedElapsed / 300);
-            if (chunks > store.stopwatchLastSavedChunks) {
-              const diffMins = (chunks - store.stopwatchLastSavedChunks) * 5;
-              store.addMins(getLocalDateString(), diffMins);
-              store.setStopwatchLastSavedChunks(chunks);
-              
-              // 🚀 ATOMIC SYNC: Swap sledgehammer for scalpels!
-              pushStreakToDB(getLocalDateString(), diffMins);
-              forcePushTimerState();
-            }
+            processStopwatchChunks(cappedElapsed, false);
+            
             if (typeof window !== 'undefined') localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
-            store.setStopwatchStartTime(null); store.setStopwatchDeviceId(null); setElapsedSecs(cappedElapsed);
+            useDashboardStore.getState().setStopwatchStartTime(null); useDashboardStore.getState().setStopwatchDeviceId(null); setElapsedSecs(cappedElapsed);
             return;
           } else if (typeof window !== 'undefined') localStorage.setItem('stopwatch_tainted', 'true');
         }
@@ -143,31 +168,17 @@ export default function Stopwatch() {
           return;
         }
 
-        // 3-Hour Deadman Switch for stopwatch
         if (isOwner && !deadmanTriggeredAtRef.current && currentElapsed >= 180 * 60) {
           deadmanTriggeredAtRef.current = now;
           setShowStillWorkingPrompt(true);
-          // Play interval audio as alert
           if (intervalAudioRef.current && store.enableAlarmSound) {
             intervalAudioRef.current.currentTime = 0;
             intervalAudioRef.current.play().catch(() => {});
           }
-          // 5-minute auto-stop timeout
           deadmanTimeoutRef.current = setTimeout(() => {
             const currentSt = useDashboardStore.getState();
             if (currentSt.stopwatchAddToStats) {
-              const cappedElapsed = 180 * 60; // only up to 3h
-              const chunks = Math.floor(cappedElapsed / 300);
-              const savedSoFar = currentSt.stopwatchLastSavedChunks;
-              if (chunks > savedSoFar) {
-                const diffMins = (chunks - savedSoFar) * 5;
-                currentSt.addMins(getLocalDateString(), diffMins);
-                currentSt.setStopwatchLastSavedChunks(chunks);
-                
-                // End of session, sledgehammer is fine here!
-                pushStreakToDB(getLocalDateString(), diffMins);
-                triggerInstantSave();
-              }
+              processStopwatchChunks(180 * 60, true);
             }
             currentSt.setStopwatchStartTime(null);
             currentSt.setStopwatchDeviceId(null);
@@ -180,22 +191,11 @@ export default function Stopwatch() {
           return;
         }
 
-        // While deadman prompt is showing, pause all chunk logic
         if (deadmanTriggeredAtRef.current) return;
 
+        // 🚀 Puts standard interval processing through the mathematical choke-point
         if (store.stopwatchAddToStats && isOwner) {
-          const chunks = Math.floor(currentElapsed / 300);
-          if (chunks > store.stopwatchLastSavedChunks) {
-            const diffMins = (chunks - store.stopwatchLastSavedChunks) * 5;
-            
-            // 1. Update UI state
-            store.addMins(getLocalDateString(), diffMins);
-            store.setStopwatchLastSavedChunks(chunks);
-            
-            // 🚀 2. ATOMIC SYNC: Tiny payloads!
-            pushStreakToDB(getLocalDateString(), diffMins);
-            forcePushTimerState(); 
-          }
+          processStopwatchChunks(currentElapsed, false);
         }
 
         if (store.isStopwatchIntervalEnabled && store.stopwatchIntervalMins > 0 && currentElapsed > 0) {
@@ -212,9 +212,9 @@ export default function Stopwatch() {
       }, 250);
     }
     return () => clearInterval(interval);
-  }, [isRunning, store.stopwatchStartTime, store.stopwatchAddToStats, store.stopwatchLastSavedChunks, store.isStopwatchIntervalEnabled, store.stopwatchIntervalMins, store.enableAlarmSound, store.enableAlarmVibration, store.alarmVolume, store.taskIntervalRingSecs]);
+  }, [isRunning, store.stopwatchStartTime, store.stopwatchAddToStats, store.isStopwatchIntervalEnabled, store.stopwatchIntervalMins, store.enableAlarmSound, store.enableAlarmVibration, store.alarmVolume, store.taskIntervalRingSecs]);
 
-  // Cross-device stopwatch sync: after 5 min, poll DB every 60s
+  // Cross-device stopwatch sync
   useEffect(() => {
     if (!isRunning || !store.stopwatchStartTime) return;
     const isOwner = store.stopwatchDeviceId === getDeviceId();
@@ -238,23 +238,17 @@ export default function Stopwatch() {
         if (status === 'stopped') {
           if (pollInterval) clearInterval(pollInterval);
           const currentSt = useDashboardStore.getState();
+          
           if (currentSt.stopwatchStartTime && currentSt.stopwatchAddToStats) {
             const elapsed = Math.max(0, Math.floor((Date.now() - currentSt.stopwatchStartTime) / 1000));
-            const chunks = Math.floor(elapsed / 300);
-            if (chunks > currentSt.stopwatchLastSavedChunks) {
-              const diffMins = (chunks - currentSt.stopwatchLastSavedChunks) * 5;
-              currentSt.addMins(getLocalDateString(), diffMins);
-              currentSt.setStopwatchLastSavedChunks(chunks);
-              pushStreakToDB(getLocalDateString(), diffMins);
-            }
+            processStopwatchChunks(elapsed, true);
           }
-          // Clear state — stopped on other device
+          
           setIsRunning(false);
           store.setStopwatchStartTime(null);
           store.setStopwatchDeviceId(null);
           setShowContinuePrompt(true);
           setPausedAtString('another device');
-          triggerInstantSave(); // Sledgehammer is correct here (session ended)
         }
       }, 60 * 1000);
     };
@@ -269,13 +263,15 @@ export default function Stopwatch() {
   const handleStart = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!isRunning) {
-      if (elapsedSecs === 0) { store.setStopwatchLastSavedChunks(0); stopwatchAlertedChunksRef.current = 0; }
+      if (elapsedSecs === 0) { 
+        store.setStopwatchLastSavedChunks(0); 
+        stopwatchAlertedChunksRef.current = 0; 
+      }
       store.setStopwatchStartTime(Date.now() - elapsedSecs * 1000); store.setStopwatchDeviceId(getDeviceId()); setIsRunning(true);
       if (typeof window !== 'undefined') localStorage.removeItem('stopwatch_paused_secs');
       updateInteraction();
       if (typeof window !== 'undefined' && window.innerWidth < 768) setTimeout(() => useDashboardStore.setState({ isStopwatchOpen: false }), 3000);
 
-      // Web Audio Unlock
       if (store.enableAlarmSound && typeof window !== 'undefined') {
         try { const AudioCtx = window.AudioContext || (window as any).webkitAudioContext; if (AudioCtx) { const ctx = new AudioCtx(); if (ctx.state === 'suspended') ctx.resume(); ctx.createBufferSource().start(0); } } catch (e) {}
       }
@@ -298,18 +294,31 @@ export default function Stopwatch() {
   };
 
   const finalizeStop = (saveToStats: boolean) => {
-    if (elapsedSecs >= 300 && saveToStats && store.stopwatchDeviceId === getDeviceId()) {
-      const finalUnsavedMins = Math.max(0, Math.floor(elapsedSecs / 60) - (store.stopwatchLastSavedChunks * 5));
-      if (finalUnsavedMins > 0) {
-        store.addMins(getLocalDateString(), finalUnsavedMins);
-        pushStreakToDB(getLocalDateString(), finalUnsavedMins);
-      }
+    const currentSt = useDashboardStore.getState(); 
+    
+    const liveElapsedSecs = currentSt.stopwatchStartTime 
+      ? Math.max(0, Math.floor((Date.now() - currentSt.stopwatchStartTime) / 1000)) 
+      : elapsedSecs;
+
+    if (liveElapsedSecs >= 300 && saveToStats && currentSt.stopwatchDeviceId === getDeviceId()) {
+      //  Runs through the global mathematical choke-point for precision
+      processStopwatchChunks(liveElapsedSecs, true);
     }
-    setIsRunning(false); setElapsedSecs(0); store.setStopwatchStartTime(null); store.setStopwatchDeviceId(null); store.setStopwatchLastSavedChunks(0); stopwatchAlertedChunksRef.current = 0;
-    if (typeof window !== 'undefined') { localStorage.removeItem('stopwatch_paused_secs'); localStorage.removeItem('stopwatch_last_active'); localStorage.removeItem('stopwatch_tainted'); }
+    
+    setIsRunning(false); setElapsedSecs(0); 
+    currentSt.setStopwatchStartTime(null); 
+    currentSt.setStopwatchDeviceId(null); 
+    currentSt.setStopwatchLastSavedChunks(0); 
+    stopwatchAlertedChunksRef.current = 0;
+    
+    if (typeof window !== 'undefined') { 
+      localStorage.removeItem('stopwatch_paused_secs'); 
+      localStorage.removeItem('stopwatch_last_active'); 
+      localStorage.removeItem('stopwatch_tainted'); 
+    }
     haltAudio(intervalAudioRef.current); setIsIntervalRinging(false); 
     
-    triggerInstantSave(); // Global sync at the very end of the session
+    forcePushTimerState(); 
   };
 
   const toggleStatsCheckbox = (e: React.MouseEvent) => {
@@ -358,7 +367,6 @@ export default function Stopwatch() {
                 <span className="text-[8px] uppercase tracking-wider font-bold">Add to Today's Focus</span>
               </div>
 
-              {/* 🚀 FIX: Replaces the controls seamlessly when ringing without taking extra height! */}
               {isIntervalRinging ? (
                 <button onClick={stopIntervalBeep} className="w-full h-8 flex flex-row items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 rounded-xl animate-pulse shadow-lg active:scale-95 border border-sky-300/40">
                   <span className="text-[10px] uppercase tracking-wider font-semibold text-sky-100/90">{store.stopwatchIntervalMins || 5}m</span>
@@ -387,7 +395,6 @@ export default function Stopwatch() {
                 </div>
               )}
 
-              {/* Interval Settings seamlessly integrated with bottom edge */}
               <div className="flex items-center justify-between gap-1 mt-0.5 pt-1 pb-1 px-3 -mx-3 -mb-3 bg-black/40 border-t border-white/10 w-[calc(100%+1.5rem)]">
                 <div className="flex items-center gap-1 cursor-pointer" onClick={() => store.setIsStopwatchIntervalEnabled(!store.isStopwatchIntervalEnabled)}>
                   <BellRing size={12} className={store.isStopwatchIntervalEnabled ? "text-sky-400" : "text-white/40"} />

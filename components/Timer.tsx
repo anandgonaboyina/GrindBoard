@@ -22,10 +22,56 @@ const haltAudio = (audioEl: HTMLAudioElement | null) => {
   }
 };
 
-export default function Timer() {
+// ----------------------------------------------------------------------------------
+//  THE ULTIMATE ATOMIC LOCK (Placed OUTSIDE React to prevent duplicate-mount bugs)
+// ----------------------------------------------------------------------------------
+const processTimerChunks = (currentRemainingSecs: number, forceFinalize: boolean = false) => {
+  if (typeof window === 'undefined') return;
+  
+  const storeState = useDashboardStore.getState();
+  const taskStoreState = useTaskStore.getState();
 
+  if (!storeState.timerInitialMins || storeState.timerDeviceId !== getDeviceId()) return;
+
+  const elapsedSecs = (storeState.timerInitialMins * 60) - currentRemainingSecs;
+  if (elapsedSecs <= 0) return;
+
+  // 1. Calculate exact total minutes that should be saved up to this point
+  const totalMinsToSave = forceFinalize 
+    ? Math.floor(elapsedSecs / 60)         
+    : Math.floor(elapsedSecs / 300) * 5;   
+
+  // 2. ATOMIC READ: Get absolute latest saved chunks directly from the store (bypasses React)
+  const latestSavedChunks = storeState.timerLastSavedChunks || 0;
+  const savedMinsSoFar = latestSavedChunks * 5;
+  
+  const diffMins = totalMinsToSave - savedMinsSoFar;
+
+  // 3. SYNCHRONOUS LOCK: If there are unsaved minutes, lock them instantly
+  if (diffMins > 0) {
+    //  Lock the new total in the global store immediately. 
+    storeState.setTimerLastSavedChunks(totalMinsToSave / 5);
+    
+    //  DEV PROOF: Check your console!
+    console.log(` TIMER EXTRACTED: Exactly ${diffMins} minutes.`);
+
+    //  THE DUAL-WRITE FIX 
+    // We strictly use addMins. Calling pushStreakToDB() here created the double-counting!
+    storeState.addMins(getLocalDateString(), diffMins);
+
+    if (storeState.activeTaskId) {
+      storeState.updateTaskDuration(storeState.activeTaskId, diffMins);
+      taskStoreState.updateTaskDuration(storeState.activeTaskId, diffMins);
+      storeState.incrementGroupTaskTimeSpent(storeState.activeTaskId, diffMins);
+    }
+    
+    forcePushTimerState();
+  }
+};
+
+export default function Timer() {
+  
   const store = useDashboardStore();
-  const { updateTaskDuration: updateLocalTaskDuration } = useTaskStore();
   const resolvedAlarmUrl = useAudioUrl(store.alarmSound);
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -35,7 +81,6 @@ export default function Timer() {
   const [isIntervalRinging, setIsIntervalRinging] = useState(false);
   const [localTimeLeft, setLocalTimeLeft] = useState(0);
 
-  const savedChunksRef = useRef(store.timerLastSavedChunks);
   const alertedChunksRef = useRef(store.timerLastAlertedChunks);
   const isIntervalRingingRef = useRef(false);
   const lastIntervalAlertMinsRef = useRef(store.taskIntervalAlertMins);
@@ -58,9 +103,8 @@ export default function Timer() {
   const [pausedAtString, setPausedAtString] = useState<string>('');
   const [showStillWorkingPrompt, setShowStillWorkingPrompt] = useState(false);
 
-  // Refs for 3-hour deadman switch
-  const deadmanTriggeredAtRef = useRef<number | null>(null); // timestamp when 3h prompt was triggered
-  const deadmanTimeoutRef = useRef<NodeJS.Timeout | null>(null); // 5-min auto-stop timeout
+  const deadmanTriggeredAtRef = useRef<number | null>(null); 
+  const deadmanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const d = new Date();
@@ -70,7 +114,6 @@ export default function Timer() {
     setSelectedMin(d.getMinutes().toString().padStart(2, '0'));
   }, []);
 
-  // Suppress harmless Web Audio play() NotSupported errors
   useEffect(() => {
     const handler = (e: PromiseRejectionEvent) => {
       const err = String(e.reason?.name || e.reason?.message || e.reason);
@@ -82,7 +125,6 @@ export default function Timer() {
     return () => window.removeEventListener('unhandledrejection', handler, { capture: true });
   }, []);
 
-  useEffect(() => { savedChunksRef.current = store.timerLastSavedChunks; }, [store.timerLastSavedChunks]);
   useEffect(() => { alertedChunksRef.current = store.timerLastAlertedChunks; }, [store.timerLastAlertedChunks]);
 
   useEffect(() => {
@@ -112,20 +154,10 @@ export default function Timer() {
   const saveAndClearActiveTaskTimer = () => {
     if (store.timerInitialMins && (store.timerEndAt || store.timerPausedLeft !== null)) {
       const currentRemaining = store.timerEndAt ? Math.max(0, Math.floor((store.timerEndAt - Date.now()) / 1000)) : store.timerPausedLeft!;
-      const elapsedMins = Math.floor(((store.timerInitialMins * 60) - currentRemaining) / 60);
-      const finalUnsavedMins = Math.max(0, elapsedMins - (savedChunksRef.current * 5));
-
-      if (finalUnsavedMins > 0) {
-        store.addMins(getLocalDateString(), finalUnsavedMins);
-        if (store.activeTaskId) {
-          store.updateTaskDuration(store.activeTaskId, finalUnsavedMins);
-          updateLocalTaskDuration(store.activeTaskId, finalUnsavedMins);
-          store.incrementGroupTaskTimeSpent(store.activeTaskId, finalUnsavedMins);
-        }
-        
-      }
+      
+      //  Runs through the global mathematical choke-point for perfect precision
+      processTimerChunks(currentRemaining, true);
     }
-    savedChunksRef.current = 0;
     store.setActiveTask(null, null);
     store.setTimerLastSavedChunks(0);
     store.setTimerLastAlertedChunks(0);
@@ -157,7 +189,7 @@ export default function Timer() {
     }
   }, [store.isSettingsOpen]);
 
-// Main Tick Interval
+  // Main Tick Interval
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (store.timerEndAt) {
@@ -168,7 +200,6 @@ export default function Timer() {
         const wasSleeping = (now - (lastTickTimeRef.current || now)) > 60000;
         lastTickTimeRef.current = now;
         
-        // Always grab fresh state inside the interval to avoid dependency array stutters
         const st = useDashboardStore.getState();
         if (!st.timerEndAt) return clearInterval(interval);
 
@@ -180,8 +211,7 @@ export default function Timer() {
           if (actvMins > 0 && st.timerInitialMins) alertedChunksRef.current = Math.floor(Math.max(0, (st.timerInitialMins * 60) - remaining) / (actvMins * 60));
         }
 
-        // --- NEW 3-HOUR DEADMAN SWITCH ---
-        // (This replaces the old 7200s mouse-idle check completely)
+        // 3-HOUR DEADMAN SWITCH
         if (st.timerInitialMins && isOwner && deadmanTriggeredAtRef && !deadmanTriggeredAtRef.current) {
           const elapsedSecs = (st.timerInitialMins * 60) - remaining;
           if (elapsedSecs >= 180 * 60) {
@@ -189,22 +219,13 @@ export default function Timer() {
             playAlarm();
             if (typeof setShowStillWorkingPrompt === 'function') setShowStillWorkingPrompt(true);
             
-            // 5-minute auto-stop timeout
             if (deadmanTimeoutRef) {
               deadmanTimeoutRef.current = setTimeout(() => {
                 const currentSt = useDashboardStore.getState();
                 if (currentSt.timerInitialMins) {
-                  const savedSoFar = savedChunksRef.current * 5;
-                  const cappedMins = Math.max(0, 180 - savedSoFar); // Cap save at exactly 3 hours
-                  if (cappedMins > 0) {
-                    currentSt.addMins(getLocalDateString(), cappedMins);
-                    if (currentSt.activeTaskId) {
-                      currentSt.updateTaskDuration(currentSt.activeTaskId, cappedMins);
-                      updateLocalTaskDuration(currentSt.activeTaskId, cappedMins);
-                      currentSt.incrementGroupTaskTimeSpent(currentSt.activeTaskId, cappedMins);
-                    }
-                    
-                  }
+                  // Pass a hardcoded remaining time corresponding to exactly 180 minutes elapsed
+                  const maxRemaining = (currentSt.timerInitialMins * 60) - (180 * 60);
+                  processTimerChunks(maxRemaining, true);
                 }
                 currentSt.setTimerEndAt(null);
                 currentSt.setTimerPausedLeft(null);
@@ -217,7 +238,6 @@ export default function Timer() {
           }
         }
 
-        // While deadman prompt is showing, don't save chunks — just visually tick
         if (deadmanTriggeredAtRef && deadmanTriggeredAtRef.current) {
           setLocalTimeLeft(remaining > 0 ? remaining : 0);
           return;
@@ -225,51 +245,27 @@ export default function Timer() {
 
         // Normal 5-Minute Chunk Saving
         if (st.timerInitialMins) {
+          //  Instantly routed to our atomic calculator to check if 5 minutes have passed
+          if (isOwner && remaining >= 0) {
+            processTimerChunks(remaining, false);
+          }
+
           const elapsedSecs = (st.timerInitialMins * 60) - remaining;
-          if (elapsedSecs >= 0) {
-            const chunks = Math.floor(elapsedSecs / 300);
-            if (chunks > savedChunksRef.current) {
-              if (isOwner) {
-                const diffMins = (chunks - savedChunksRef.current) * 5;
-                savedChunksRef.current = chunks;
-                
-                // 1. Update Local State
-                st.addMins(getLocalDateString(), diffMins);
-                
-                // 2. ATOMIC SYNC: Send only the tiny {date, minutes} payload to DB
-                pushStreakToDB(getLocalDateString(), diffMins);
-
-                if (st.activeTaskId) {
-                // 3. Update local task (Your taskStore already pushes the tiny {actions: [...]} payload automatically!)
-                  st.updateTaskDuration(st.activeTaskId, diffMins);
-                  updateLocalTaskDuration(st.activeTaskId, diffMins);
-                  st.incrementGroupTaskTimeSpent(st.activeTaskId, diffMins);
-                }
-                
-                st.setTimerLastSavedChunks(chunks);
-                
-                //  4. ATOMIC SYNC: Only sync the 5 specific timer variables (ignores tasks/history)
-                forcePushTimerState(); 
-                
-              } else savedChunksRef.current = chunks;
-            }
-
-            if (remaining > 5 && !wasSleeping) {
-              const isIntvActive = st.activeTaskId ? (st.isTaskIntervalAlertEnabled && st.taskIntervalAlertMins > 0) : (st.isTimerIntervalEnabled && st.timerIntervalMins > 0);
-              const intvMins = st.activeTaskId ? st.taskIntervalAlertMins : st.timerIntervalMins;
-              if (isIntvActive) {
-                const curChunk = Math.floor(elapsedSecs / (intvMins * 60));
-                if (lastIntervalAlertMinsRef.current !== intvMins || lastIsIntervalEnabledRef.current !== isIntvActive) {
-                  lastIntervalAlertMinsRef.current = intvMins; lastIsIntervalEnabledRef.current = isIntvActive; alertedChunksRef.current = curChunk;
-                } else if (curChunk > alertedChunksRef.current && curChunk > 0) {
-                  alertedChunksRef.current = curChunk;
-                  if (isOwner) {
-                    st.setTimerLastAlertedChunks(curChunk);
-                    if (st.enableAlarmSound || st.enableAlarmVibration) {
-                      setIsIntervalRinging(true); isIntervalRingingRef.current = true; useDashboardStore.setState({ isTimerOpen: true });
-                      if (st.enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
-                      setTimeout(() => { setIsIntervalRinging(false); isIntervalRingingRef.current = false; }, (st.taskIntervalRingSecs || 1.5) * 1000);
-                    }
+          if (remaining > 5 && !wasSleeping && elapsedSecs >= 0) {
+            const isIntvActive = st.activeTaskId ? (st.isTaskIntervalAlertEnabled && st.taskIntervalAlertMins > 0) : (st.isTimerIntervalEnabled && st.timerIntervalMins > 0);
+            const intvMins = st.activeTaskId ? st.taskIntervalAlertMins : st.timerIntervalMins;
+            if (isIntvActive) {
+              const curChunk = Math.floor(elapsedSecs / (intvMins * 60));
+              if (lastIntervalAlertMinsRef.current !== intvMins || lastIsIntervalEnabledRef.current !== isIntvActive) {
+                lastIntervalAlertMinsRef.current = intvMins; lastIsIntervalEnabledRef.current = isIntvActive; alertedChunksRef.current = curChunk;
+              } else if (curChunk > alertedChunksRef.current && curChunk > 0) {
+                alertedChunksRef.current = curChunk;
+                if (isOwner) {
+                  st.setTimerLastAlertedChunks(curChunk);
+                  if (st.enableAlarmSound || st.enableAlarmVibration) {
+                    setIsIntervalRinging(true); isIntervalRingingRef.current = true; useDashboardStore.setState({ isTimerOpen: true });
+                    if (st.enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
+                    setTimeout(() => { setIsIntervalRinging(false); isIntervalRingingRef.current = false; }, (st.taskIntervalRingSecs || 1.5) * 1000);
                   }
                 }
               }
@@ -282,25 +278,17 @@ export default function Timer() {
           clearInterval(interval);
           setLocalTimeLeft(0);
           const currentSt = useDashboardStore.getState();
+
+          if (currentSt.timerInitialMins && currentSt.timerInitialMins > 0 && isOwner) {
+            // End of timer, sync the final minute accurately!
+            processTimerChunks(0, true);
+            fetchQuote().then(q => currentSt.showQuotePopup(q));
+          }
           currentSt.setTimerEndAt(null);
           currentSt.setTimerPausedLeft(null);
           stopIntervalBeep();
 
           if (isOwner && !wasSleeping) playAlarm();
-          if (currentSt.timerInitialMins && currentSt.timerInitialMins > 0 && isOwner) {
-            const finalMins = Math.max(0, currentSt.timerInitialMins - (savedChunksRef.current * 5));
-            if (finalMins > 0) {
-              currentSt.addMins(getLocalDateString(), finalMins);
-              if (currentSt.activeTaskId) {
-                currentSt.updateTaskDuration(currentSt.activeTaskId, finalMins);
-                updateLocalTaskDuration(currentSt.activeTaskId, finalMins);
-                currentSt.incrementGroupTaskTimeSpent(currentSt.activeTaskId, finalMins);
-              }
-              
-            }
-            savedChunksRef.current = 0;
-            fetchQuote().then(q => currentSt.showQuotePopup(q));
-          }
         } else {
           setLocalTimeLeft(remaining);
         }
@@ -311,13 +299,12 @@ export default function Timer() {
     return () => clearInterval(interval);
   }, [store.timerEndAt, store.timerInitialMins, store.timerDeviceId]);
 
-  // Cross-device timer sync: after 5 min, poll DB every 60s to detect if timer was stopped on another device
+  // Cross-device timer sync
   useEffect(() => {
     if (!store.timerEndAt || !store.timerInitialMins) return;
     const isOwner = store.timerDeviceId === getDeviceId();
-    if (!isOwner) return; // Only the owner device polls
+    if (!isOwner) return;
 
-    // Only start polling after 5 minutes have elapsed (avoid false positives on quick stops)
     const timerStartedAt = store.timerEndAt - (store.timerInitialMins * 60 * 1000);
     const elapsedMs = Date.now() - timerStartedAt;
     const FIVE_MINS_MS = 5 * 60 * 1000;
@@ -328,7 +315,6 @@ export default function Timer() {
     const startPolling = () => {
       pollInterval = setInterval(async () => {
         const st = useDashboardStore.getState();
-        // Stop polling if timer ended naturally
         if (!st.timerEndAt && st.timerPausedLeft === null) {
           if (pollInterval) clearInterval(pollInterval);
           return;
@@ -336,33 +322,21 @@ export default function Timer() {
 
         const status = await checkTimerStillActiveInDB('timer');
         if (status === 'stopped') {
-          // Cloud says no timer — another device stopped it
           if (pollInterval) clearInterval(pollInterval);
           const currentSt = useDashboardStore.getState();
           if (currentSt.timerEndAt) {
-            // Save chunks up to now before discarding
             const remaining = Math.max(0, Math.floor((currentSt.timerEndAt - Date.now()) / 1000));
-            if (currentSt.timerInitialMins) {
-              const elapsedSecs = (currentSt.timerInitialMins * 60) - remaining;
-              const chunks = Math.floor(Math.max(0, elapsedSecs) / 300);
-              if (chunks > savedChunksRef.current) {
-                const diffMins = (chunks - savedChunksRef.current) * 5;
-                currentSt.addMins(getLocalDateString(), diffMins);
-                savedChunksRef.current = chunks;
-                currentSt.setTimerLastSavedChunks(chunks);
-              }
-            }
-            // Clear timer state — other device ended it
-            currentSt.setTimerEndAt(null);
-            currentSt.setTimerPausedLeft(null);
-            currentSt.clearTimerState();
-            setShowContinuePrompt(true);
-            setPausedAtString('another device');
-            
+            // Trigger final chunk sync before overriding state
+            processTimerChunks(remaining, true);
           }
+          
+          currentSt.setTimerEndAt(null);
+          currentSt.setTimerPausedLeft(null);
+          currentSt.clearTimerState();
+          setShowContinuePrompt(true);
+          setPausedAtString('another device');
         }
-        // If 'active' or 'unknown' — continue as normal
-      }, 60 * 1000); // poll every 60 seconds
+      }, 60 * 1000); 
     };
 
     const delayTimeout = setTimeout(startPolling, initialDelay);
@@ -436,7 +410,7 @@ export default function Timer() {
   const startTimer = (seconds: number, isTask = false) => {
     if (!isTask) saveAndClearActiveTaskTimer();
     store.setTimerInitialMins(Math.round(seconds / 60)); store.setTimerPausedLeft(null); store.setTimerEndAt(Date.now() + seconds * 1000);
-    savedChunksRef.current = 0; alertedChunksRef.current = 0; lastIntervalAlertMinsRef.current = 0; lastIsIntervalEnabledRef.current = false;
+    alertedChunksRef.current = 0; lastIntervalAlertMinsRef.current = 0; lastIsIntervalEnabledRef.current = false;
     store.setTimerLastSavedChunks(0); store.setTimerLastAlertedChunks(0); store.setTimerDeviceId(getDeviceId()); lastTickTimeRef.current = Date.now();
     stopAlarm(); updateInteraction();
 
@@ -466,11 +440,6 @@ export default function Timer() {
 
   const handleStopClick = async () => {
     if (!store.timerInitialMins || typeof window === 'undefined') { saveAndClearActiveTaskTimer(); return stopAlarm(); }
-    
-    // We previously checked the cloud here to see if timerEndAt === null,
-    // but if the user stops the timer within 2 seconds of starting it,
-    // the start action hasn't synced yet, causing a false positive "Ended on another device" error.
-    // Trusting the local state is safer and prevents this race condition.
     
     saveAndClearActiveTaskTimer(); 
     store.clearTimerState(); 
@@ -664,7 +633,7 @@ export default function Timer() {
         onConfirm={() => { setShowContinuePrompt(false); setShowResumeModal(false); if (store.timerPausedLeft !== null) { store.setTimerEndAt(Date.now() + store.timerPausedLeft * 1000); store.setTimerPausedLeft(null); store.setTimerDeviceId(getDeviceId()); updateInteraction(); } }}
       />
 
-      {/* 3-Hour Deadman Switch: "Are you still working?" */}
+      {/* 3-Hour Deadman Switch */}
       {showStillWorkingPrompt && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="bg-zinc-900 border border-amber-500/40 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
@@ -676,7 +645,6 @@ export default function Timer() {
             </div>
             <button
               onClick={() => {
-                // Clear the 5-min timeout — user confirmed they're here
                 if (deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
                 deadmanTriggeredAtRef.current = null;
                 setShowStillWorkingPrompt(false);

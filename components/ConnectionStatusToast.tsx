@@ -8,23 +8,61 @@ export default function ConnectionStatusToast() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const onlineStatus = typeof navigator !== 'undefined' ? navigator.onLine : true;
-    setIsOnline(onlineStatus);
-    setIsVisible(true);
+    let previousState = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-    }, 3200);
-
-    const handleOnline = () => {
-      setIsOnline(true);
-      setIsVisible(true);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('app_sync_now'));
+    const checkRealConnection = async () => {
+      if (!navigator.onLine) {
+        if (previousState !== false) {
+          previousState = false;
+          setIsOnline(false);
+          setIsVisible(true);
+          setTimeout(() => setIsVisible(false), 3500);
+        }
+        return;
       }
-      setTimeout(() => setIsVisible(false), 3200);
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        
+        // Real network ping test
+        const res = await fetch('/api/store?ping=true', {
+          method: 'HEAD',
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        const realStatus = res.ok;
+        if (previousState !== realStatus) {
+          previousState = realStatus;
+          setIsOnline(realStatus);
+          setIsVisible(true);
+          if (realStatus && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('app_sync_now'));
+          }
+          setTimeout(() => setIsVisible(false), 3200);
+        }
+      } catch (e) {
+        if (previousState !== false) {
+          previousState = false;
+          setIsOnline(false);
+          setIsVisible(true);
+          setTimeout(() => setIsVisible(false), 3500);
+        }
+      }
     };
 
+    // Run initial check after a tiny delay so it doesn't pop up instantly on page load unless offline
+    const initialTimer = setTimeout(() => {
+      if (!navigator.onLine) {
+        setIsOnline(false);
+        setIsVisible(true);
+        setTimeout(() => setIsVisible(false), 3500);
+      }
+    }, 1000);
+
+    const handleOnline = () => checkRealConnection();
     const handleOffline = () => {
       setIsOnline(false);
       setIsVisible(true);
@@ -34,8 +72,12 @@ export default function ConnectionStatusToast() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Periodically verify true connection in the background every 20 seconds
+    const interval = setInterval(checkRealConnection, 20000);
+
     return () => {
-      clearTimeout(timer);
+      clearTimeout(initialTimer);
+      clearInterval(interval);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
@@ -65,10 +107,11 @@ export default function ConnectionStatusToast() {
         <div className="relative flex items-center justify-center my-1">
           {/* Inner Glass Icon Container */}
           <div
-            className={`w-20 h-20 rounded-2xl flex items-center justify-center border backdrop-blur-xl shadow-2xl ${isOnline
-              ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 shadow-emerald-500/30'
-              : 'bg-red-950/40 border-red-500/40 text-red-400 shadow-red-500/30'
-              }`}
+            className={`w-20 h-20 rounded-2xl flex items-center justify-center border backdrop-blur-xl shadow-2xl ${
+              isOnline
+                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 shadow-emerald-500/30'
+                : 'bg-red-950/40 border-red-500/40 text-red-400 shadow-red-500/30'
+            }`}
           >
             {isOnline ? (
               <Wifi className="w-10 h-10 animate-pulse text-emerald-400" />
@@ -96,10 +139,11 @@ export default function ConnectionStatusToast() {
             {isOnline ? 'Connected to Internet' : 'Offline Mode Active'}
           </h3>
           <span
-            className={`text-[10px] font-mono font-bold uppercase px-3 py-0.5 rounded-full border backdrop-blur-md shadow-md ${isOnline
-              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-              : 'bg-red-500/20 text-red-300 border-red-500/40'
-              }`}
+            className={`text-[10px] font-mono font-bold uppercase px-3 py-0.5 rounded-full border backdrop-blur-md shadow-md ${
+              isOnline
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                : 'bg-red-500/20 text-red-300 border-red-500/40'
+            }`}
           >
             {isOnline ? 'Online' : 'Offline — Not Connected'}
           </span>
