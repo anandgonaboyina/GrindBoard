@@ -1,37 +1,37 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Target, Calendar, ListTodo, Trophy, Paintbrush, CloudRain, Sparkles, ShieldAlert, Map, BellRing, LayoutTemplate, Swords, CalendarDays, Users } from 'lucide-react';
+import { Target, Calendar, ListTodo, Trophy, Paintbrush, CloudRain, Sparkles, ShieldAlert, BarChart2, BellRing, LayoutTemplate, Swords, CalendarDays, Users } from 'lucide-react';
 
 // Define the divisions with rich metadata for colored, icon-based tabs
 const DIVISIONS = [
-  { id: 'Workspace', label: 'Workspace', icon: LayoutTemplate, color: 'text-blue-400', activeBg: 'bg-blue-500/20', border: 'border-blue-500/50', shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.3)]' },
   { id: 'Planning', label: 'Planning', icon: CalendarDays, color: 'text-purple-400', activeBg: 'bg-purple-500/20', border: 'border-purple-500/50', shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.3)]' },
+  { id: 'Workspace', label: 'Workspace', icon: LayoutTemplate, color: 'text-blue-400', activeBg: 'bg-blue-500/20', border: 'border-blue-500/50', shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.3)]' },
   { id: 'Social', label: 'Social', icon: Users, color: 'text-yellow-400', activeBg: 'bg-yellow-500/20', border: 'border-yellow-500/50', shadow: 'shadow-[0_0_15px_rgba(234,179,8,0.3)]' },
   { id: 'Lifestyle', label: 'Lifestyle', icon: Sparkles, color: 'text-pink-400', activeBg: 'bg-pink-500/20', border: 'border-pink-500/50', shadow: 'shadow-[0_0_15px_rgba(236,72,153,0.3)]' },
 ];
 type Division = typeof DIVISIONS[number]['id'];
 
 const features = [
+ // PLANNING
+  { id: 4, category: 'Planning', title: 'Next-Level Analytics', desc: 'Chase yourself every single day. Dive into deep focus heatmaps, track weekly averages, and monitor your consistency to break your own records week after week.', icon: BarChart2, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30', glow: 'shadow-orange-500/20' },
+  { id: 5, category: 'Planning', title: 'Interactive Timetable', desc: 'Take absolute control of your schedule. Map out your week hour-by-hour with our precision interactive, draggable color-coded timetable.', icon: Calendar, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', glow: 'shadow-purple-500/20' },
+  { id: 6, category: 'Planning', title: 'Smart Task Manager', desc: 'Never miss a beat. Stay on top of your workflow with intuitive daily task tracking, tomorrow planning, and automated deadline alerts.', icon: ListTodo, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', glow: 'shadow-emerald-500/20' },
+
   // WORKSPACE
   { id: 1, category: 'Workspace', title: 'Deep Focus Hub', desc: 'Eliminate distractions with a unified workspace. Utilize Pomodoro timers, stopwatches, and manifestation overlays to stay locked in.', icon: Target, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', glow: 'shadow-blue-500/20' },
-  { id: 11, category: 'Workspace', title: 'Free-form Workspace', desc: 'Your dashboard, your rules. Drag, drop, scale, and layer floating widgets, clocks, and docks exactly where you need them across multiple screens.', icon: LayoutTemplate, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/30', glow: 'shadow-teal-500/20' },
-  { id: 8, category: 'Workspace', title: 'Privacy Shield & Panic Mode', desc: 'Instantly conceal your workspace with custom shortcut keys. Trigger Peek Mode or hide specific widgets to protect your workflow from prying eyes.', icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', glow: 'shadow-red-500/20' },
-
-  // PLANNING
-  { id: 2, category: 'Planning', title: 'Interactive Timetable', desc: 'Take absolute control of your schedule. Map out your week hour-by-hour with our precision interactive, draggable color-coded timetable.', icon: Calendar, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', glow: 'shadow-purple-500/20' },
-  { id: 3, category: 'Planning', title: 'Smart Task Manager', desc: 'Never miss a beat. Stay on top of your workflow with intuitive daily task tracking, tomorrow planning, and automated deadline alerts.', icon: ListTodo, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', glow: 'shadow-emerald-500/20' },
-  { id: 9, category: 'Planning', title: 'Roadmaps & Milestones', desc: 'Break down massive goals into actionable steps. Track long-term progress with nested sub-tasks, resource links, and synthetic deadlines.', icon: Map, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30', glow: 'shadow-orange-500/20' },
+  { id: 2, category: 'Workspace', title: 'Free-form Workspace', desc: 'Your dashboard, your rules. Drag, drop, scale, and layer floating widgets, clocks, and docks exactly where you need them across multiple screens.', icon: LayoutTemplate, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/30', glow: 'shadow-teal-500/20' },
+  { id: 3, category: 'Workspace', title: 'Privacy Shield & Panic Mode', desc: 'Instantly conceal your workspace with custom shortcut keys. Trigger Peek Mode or hide specific widgets to protect your workflow from prying eyes.', icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', glow: 'shadow-red-500/20' },
 
   // SOCIAL
-  { id: 4, category: 'Social', title: 'Connect & Compete', desc: 'Turn productivity into a game! Climb the global leaderboard, add friends, and compare focus stats in real-time to stay motivated.', icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', glow: 'shadow-yellow-500/20' },
-  { id: 12, category: 'Social', title: 'Squads & Rivalries', desc: 'Form elite study groups or challenge rivals head-to-head. Track their live compute hours and outwork the competition to dominate the ranks.', icon: Swords, color: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/30', glow: 'shadow-rose-500/20' },
+  { id: 7, category: 'Social', title: 'Global Ranks & Public Stats', desc: 'Climb the global ranks and study the competition. View detailed, anonymous public analytics of top performers to see exactly what it takes to be the best.', icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', glow: 'shadow-yellow-500/20' },
+  { id: 8, category: 'Social', title: 'Squads & Rivalries', desc: 'Form elite study groups or challenge rivals head-to-head. Track their live compute hours and outwork the competition to dominate the ranks.', icon: Swords, color: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/30', glow: 'shadow-rose-500/20' },
 
   // LIFESTYLE
-  { id: 7, category: 'Lifestyle', title: 'Vision & Manifestation', desc: 'Keep your goals front and center. Upload desktop and mobile vision boards, and display custom motivational quotes to fuel your daily grind.', icon: Sparkles, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', glow: 'shadow-amber-500/20' },
-  { id: 5, category: 'Lifestyle', title: 'Deep Customization', desc: 'Personalize your space. Set live PC & mobile wallpapers, upload custom ringtones, tweak UI scaling, and utilize privacy Peek Mode.', icon: Paintbrush, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/30', glow: 'shadow-pink-500/20' },
-  { id: 10, category: 'Lifestyle', title: 'Alerts & Sleep Logs', desc: 'Maintain peak discipline. Track your wake-up and sleep routines while utilizing custom interval alarms to stay anchored in deep work sessions.', icon: BellRing, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', glow: 'shadow-indigo-500/20' },
-  { id: 6, category: 'Lifestyle', title: 'Offline & Cloud Sync', desc: 'Your data, everywhere. Work seamlessly offline and instantly sync to the cloud via AES-256 encryption the moment you reconnect.', icon: CloudRain, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', glow: 'shadow-cyan-500/20' },
+  { id: 9, category: 'Lifestyle', title: 'Vision & Manifestation', desc: 'Keep your goals front and center. Upload desktop and mobile vision boards, and display custom motivational quotes to fuel your daily grind.', icon: Sparkles, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', glow: 'shadow-amber-500/20' },
+  { id: 10, category: 'Lifestyle', title: 'Sleep & Consistency Logs', desc: 'Maintain peak discipline. Track your wake-up and sleep routines to ensure you are physically primed to hit your daily targets.', icon: BellRing, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', glow: 'shadow-indigo-500/20' },
+  { id: 11, category: 'Lifestyle', title: 'Deep Customization', desc: 'Personalize your space. Set live PC & mobile wallpapers, upload custom ringtones, tweak UI scaling, and utilize privacy Peek Mode.', icon: Paintbrush, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/30', glow: 'shadow-pink-500/20' },
+  { id: 12, category: 'Lifestyle', title: 'Offline & Cloud Sync', desc: 'Your data, everywhere. Work seamlessly offline and instantly sync to the cloud via AES-256 encryption the moment you reconnect.', icon: CloudRain, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', glow: 'shadow-cyan-500/20' },
 ];
 
 export default function FeatureCarousel() {
@@ -100,7 +100,6 @@ export default function FeatureCarousel() {
           const currentDivIndex = DIVISIONS.findIndex(d => d.id === activeDivision);
           const nextDivIndex = (currentDivIndex + 1) % DIVISIONS.length;
           setActiveDivision(DIVISIONS[nextDivIndex].id);
-          // Note: setActiveIndex(0) is handled automatically by the division dependency useEffect above
         } else {
           // Slide to the next feature in the current tab
           const targetElement = scrollRef.current.children[nextIndex] as HTMLElement;
@@ -132,7 +131,7 @@ export default function FeatureCarousel() {
       ` }} />
 
       {/* Modern UI: Responsive, Scrollable, Icon-based Division Tabs */}
-      <div className="mb-4 lg:mb-2 z-20 w-full max-w-[95vw] sm:max-w-3xl hide-scrollbar px-2 flex justify-start sm:justify-center">
+      <div className="mb-4 lg:mb-2 z-20 w-full max-w-[95vw] sm:max-w-4xl hide-scrollbar px-2 flex justify-start sm:justify-center overflow-x-auto">
         <div className="flex flex-nowrap items-center gap-1 sm:gap-3 bg-black/20 p-1 sm:p-2 rounded-full border border-white/10 backdrop-blur-md mx-auto w-max">
           {DIVISIONS.map((div) => {
             const Icon = div.icon;
@@ -142,8 +141,8 @@ export default function FeatureCarousel() {
               <button
                 key={div.id}
                 onClick={() => setActiveDivision(div.id)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-1 sm:px-5 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-sm font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${isActive
-                  ? `${div.activeBg} ${div.color} ${div.shadow} ${div.border} border`
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-[10px] sm:text-sm font-bold tracking-wide transition-all duration-300 whitespace-nowrap ${isActive
+                  ? `${div.activeBg}${div.color} ${div.shadow}${div.border} border`
                   : 'text-white/40 hover:text-white/70 hover:bg-white/5 border border-transparent'
                   }`}
               >
@@ -178,7 +177,7 @@ export default function FeatureCarousel() {
               <div
                 className={`relative w-full p-2 sm:p-4 lg:p-6 rounded-2xl md:rounded-3xl backdrop-blur-xl flex flex-col gap-2 sm:gap-4 transition-all duration-700 overflow-hidden group border
                   ${isActive
-                    ? `scale-100 lg:scale-105 bg-slate-900/80 ${feat.border} opacity-100 z-10 shadow-2xl ${feat.glow}`
+                    ? `scale-100 lg:scale-105 bg-slate-900/80 ${feat.border} opacity-100 z-10 shadow-2xl${feat.glow}`
                     : 'scale-[0.90] bg-black/30 border-white/5 opacity-50 z-0 shadow-none'
                   }`}
               >

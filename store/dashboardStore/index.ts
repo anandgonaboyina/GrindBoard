@@ -347,6 +347,11 @@ export const useDashboardStore = create<DashboardState>()(
       }),
 
       isSettingsOpen: false,
+      lastSeenNewsTime: 0,
+      updateLastSeenNews: (timestamp) => set((state) => {
+          // Optional: send to your settings queue here if you sync this to settings DB!
+          return { lastSeenNewsTime: timestamp, lastModified: Date.now() };
+      }),
       isNewsOpen: false,
       hasUnreadNews: true,
       toggleNews: () => set((state) => ({ isNewsOpen: !state.isNewsOpen })),

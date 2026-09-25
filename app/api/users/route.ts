@@ -62,13 +62,18 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { alias, profilePicture, readNewsIds } = body;
+    //  Changed readNewsIds to lastSeenNewsTime
+    const { alias, profilePicture, lastSeenNewsTime } = body;
 
     if (alias !== undefined && typeof alias !== 'string') {
       return NextResponse.json({ error: 'Invalid alias format' }, { status: 400 });
     }
     if (profilePicture !== undefined && typeof profilePicture !== 'string') {
       return NextResponse.json({ error: 'Invalid profile picture format' }, { status: 400 });
+    }
+    // Validate the new timestamp
+    if (lastSeenNewsTime !== undefined && typeof lastSeenNewsTime !== 'number') {
+      return NextResponse.json({ error: 'Invalid lastSeenNewsTime format' }, { status: 400 });
     }
 
     const client = await clientPromise;
@@ -77,14 +82,12 @@ export async function PATCH(request: Request) {
     const updateFields: any = {};
     if (alias !== undefined) updateFields.alias = alias ? alias.trim() : "";
     if (profilePicture !== undefined) updateFields.profilePicture = profilePicture.trim();
+    // Simply set the new timestamp!
+    if (lastSeenNewsTime !== undefined) updateFields.lastSeenNewsTime = lastSeenNewsTime;
 
     const updateOp: any = {};
     if (Object.keys(updateFields).length > 0) {
       updateOp.$set = updateFields;
-    }
-    
-    if (readNewsIds && Array.isArray(readNewsIds)) {
-      updateOp.$addToSet = { readNewsIds: { $each: readNewsIds } };
     }
 
     if (Object.keys(updateOp).length > 0) {

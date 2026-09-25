@@ -13,7 +13,7 @@ import Timer from "@/components/Timer";
 import Stopwatch from "@/components/Stopwatch";
 import TaskManager from "@/components/TaskManager";
 import QuotePopup from "@/components/QuotePopup";
-import StatsModal from "@/components/StatsModal";
+import StatsModal from "@/components/modals/StatsModal";
 import NotesManager from "@/components/NotesManager";
 import RoadmapManager from "@/components/RoadmapManager";
 import MiniCalendar from "@/components/MiniCalendar";

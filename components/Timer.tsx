@@ -214,7 +214,7 @@ export default function Timer() {
         // 3-HOUR DEADMAN SWITCH
         if (st.timerInitialMins && isOwner && deadmanTriggeredAtRef && !deadmanTriggeredAtRef.current) {
           const elapsedSecs = (st.timerInitialMins * 60) - remaining;
-          if (elapsedSecs >= 180 * 60) {
+          if (elapsedSecs >= 180 * 60 && remaining > 0) { // Triggers after 3 hours
             deadmanTriggeredAtRef.current = now;
             playAlarm();
             if (typeof setShowStillWorkingPrompt === 'function') setShowStillWorkingPrompt(true);
@@ -238,10 +238,10 @@ export default function Timer() {
           }
         }
 
-        if (deadmanTriggeredAtRef && deadmanTriggeredAtRef.current) {
-          setLocalTimeLeft(remaining > 0 ? remaining : 0);
-          return;
-        }
+        if (deadmanTriggeredAtRef && deadmanTriggeredAtRef.current && deadmanTriggeredAtRef.current !== -1) {
+        setLocalTimeLeft(remaining > 0 ? remaining : 0);
+        return;
+      }
 
         // Normal 5-Minute Chunk Saving
         if (st.timerInitialMins) {
@@ -407,19 +407,19 @@ export default function Timer() {
     setTimeout(() => useDashboardStore.getState().setIsAlarmPlaying(false), (store.alarmDurationSecs || 60) * 1000);
   };
 
-  const startTimer = (seconds: number, isTask = false) => {
-    if (!isTask) saveAndClearActiveTaskTimer();
-    store.setTimerInitialMins(Math.round(seconds / 60)); store.setTimerPausedLeft(null); store.setTimerEndAt(Date.now() + seconds * 1000);
-    alertedChunksRef.current = 0; lastIntervalAlertMinsRef.current = 0; lastIsIntervalEnabledRef.current = false;
-    store.setTimerLastSavedChunks(0); store.setTimerLastAlertedChunks(0); store.setTimerDeviceId(getDeviceId()); lastTickTimeRef.current = Date.now();
-    stopAlarm(); updateInteraction();
-
-    if (typeof window !== 'undefined' && window.innerWidth < 768) setTimeout(() => useDashboardStore.setState({ isTimerOpen: false }), 3000);
-    if (store.enableAlarmSound && typeof window !== 'undefined') {
-      try { const AudioCtx = window.AudioContext || (window as any).webkitAudioContext; if (AudioCtx) { const ctx = new AudioCtx(); if (ctx.state === 'suspended') ctx.resume(); ctx.createBufferSource().start(0); } } catch (e) {}
-    }
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') scheduleNotification(Date.now() + seconds * 1000);
-  };
+const startTimer = (seconds: number, isTask = false) => {
+  if (!isTask) saveAndClearActiveTaskTimer();
+  store.setTimerInitialMins(Math.round(seconds / 60)); store.setTimerPausedLeft(null); store.setTimerEndAt(Date.now() + seconds * 1000);
+  alertedChunksRef.current = 0; lastIntervalAlertMinsRef.current = 0; lastIsIntervalEnabledRef.current = false;
+  store.setTimerLastSavedChunks(0); store.setTimerLastAlertedChunks(0); store.setTimerDeviceId(getDeviceId()); lastTickTimeRef.current = Date.now();
+  stopAlarm(); updateInteraction();
+  if (deadmanTriggeredAtRef) deadmanTriggeredAtRef.current = null;
+  if (typeof window !== 'undefined' && window.innerWidth < 768) setTimeout(() => useDashboardStore.setState({ isTimerOpen: false }), 3000);
+  if (store.enableAlarmSound && typeof window !== 'undefined') {
+    try { const AudioCtx = window.AudioContext || (window as any).webkitAudioContext; if (AudioCtx) { const ctx = new AudioCtx(); if (ctx.state === 'suspended') ctx.resume(); ctx.createBufferSource().start(0); } } catch (e) {}
+  }
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') scheduleNotification(Date.now() + seconds * 1000);
+};
 
   const scheduleNotification = async (targetTime: number) => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && (window as any).TimestampTrigger) {
@@ -438,14 +438,17 @@ export default function Timer() {
     }
   };
 
-  const handleStopClick = async () => {
-    if (!store.timerInitialMins || typeof window === 'undefined') { saveAndClearActiveTaskTimer(); return stopAlarm(); }
-    
-    saveAndClearActiveTaskTimer(); 
-    store.clearTimerState(); 
-    stopAlarm(); 
-    stopIntervalBeep();
-  };
+const handleStopClick = async () => {
+  if (!store.timerInitialMins || typeof window === 'undefined') { saveAndClearActiveTaskTimer(); return stopAlarm(); }
+  saveAndClearActiveTaskTimer(); 
+  store.clearTimerState(); 
+  stopAlarm(); 
+  stopIntervalBeep();
+
+  if (typeof setShowStillWorkingPrompt === 'function') setShowStillWorkingPrompt(false);
+  if (deadmanTimeoutRef && deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
+  if (deadmanTriggeredAtRef) deadmanTriggeredAtRef.current = null;
+};
 
   const handleCustomStart = () => {
     let m = parseInt(customMins);
@@ -643,17 +646,17 @@ export default function Timer() {
               <p className="text-white/60 text-sm mt-1">Your timer has been running for <strong className="text-amber-400">3 hours</strong>. Just checking in!</p>
               <p className="text-white/40 text-xs mt-2">Auto-stops in 5 minutes if no response.</p>
             </div>
-            <button
-              onClick={() => {
-                if (deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
-                deadmanTriggeredAtRef.current = null;
-                setShowStillWorkingPrompt(false);
-                stopAlarm();
-              }}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all active:scale-95 text-sm"
-            >
-              ✅ Yes, I&apos;m here — Keep going!
-            </button>
+        <button
+          onClick={() => {
+            if (deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
+            deadmanTriggeredAtRef.current = -1; 
+            setShowStillWorkingPrompt(false);
+            stopAlarm();
+          }}
+          className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all active:scale-95 text-sm"
+        >
+          ✅ Yes, I'm here — Keep going!
+        </button>
           </div>
         </div>,
         document.body

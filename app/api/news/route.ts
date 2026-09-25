@@ -8,7 +8,8 @@ export async function GET() {
   try {
     const client = await clientPromise;
     const db = client.db();
-    const news = await db.collection('News').find({}).sort({ createdAt: -1 }).toArray();
+//.limit(5) so it only fetches the most recent announcements!
+const news = await db.collection('News').find({}).sort({ createdAt: -1 }).limit(5).toArray();
     return NextResponse.json({ news });
   } catch (error) {
     console.error('Failed to fetch news:', error);

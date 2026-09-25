@@ -128,7 +128,7 @@ export const useTaskStore = create<TaskState>()(
             tomorrowTasks: [],
             tasksDate: getLocalDateString(),
             taskGroupNames: ['Core Tasks', 'Daily Routine', 'Milestones'],
-            lastModified: Date.now(),
+            lastModified: 0,
 
             setTaskGroupName: (index, name) => {
                 set((state) => {
@@ -349,10 +349,10 @@ export const useTaskStore = create<TaskState>()(
                             if (cloudModified >= localModified) {
                                 console.log("Cloud is newer or equal. Syncing tasks DOWN.");
                                 set({
-                                    tasks: json.data.tasks || get().tasks,
-                                    tomorrowTasks: json.data.tomorrowTasks || get().tomorrowTasks,
-                                    tasksDate: json.data.tasksDate || get().tasksDate,
-                                    taskGroupNames: json.data.taskGroupNames || get().taskGroupNames,
+                                    tasks: json.data.tasks ?? get().tasks,
+                                    tomorrowTasks: json.data.tomorrowTasks ?? get().tomorrowTasks,
+                                    tasksDate: json.data.tasksDate ?? get().tasksDate,
+                                    taskGroupNames: json.data.taskGroupNames ?? get().taskGroupNames,
                                     lastModified: cloudModified
                                 });
                             } else {

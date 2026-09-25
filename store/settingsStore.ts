@@ -69,7 +69,14 @@ let syncSettingsTimeout: any = null;
 
 const queueSettingsAction = (action: SettingsAction) => {
     if (typeof window === 'undefined') return;
-    
+    try {
+        if (!useSettingsStore.getState()._hasHydrated) {
+            console.warn("Blocked a ghost save! Settings haven't hydrated yet.", action.type);
+            return;
+        }
+    } catch (e) {
+        return; // Prevents errors during initial app boot
+    }
     let queue: SettingsAction[] = [];
     try {
         const queueStr = localStorage.getItem('settings_offline_queue');
@@ -157,9 +164,9 @@ export const useSettingsStore = create<SettingsState>()(
                             // Protect local un-synced data, only accept cloud if strictly newer
                             if (cloudModified >= localModified) {
                                 set({
-                                    wallpaper: json.data.wallpaper || get().wallpaper,
-                                    theme: json.data.theme || get().theme,
-                                    hideConfig: json.data.hideConfig || get().hideConfig,
+                                    wallpaper: json.data.wallpaper ?? get().wallpaper,
+                                    theme: json.data.theme ?? get().theme,
+                                    hideConfig: json.data.hideConfig ?? get().hideConfig,
                                     lastModified: cloudModified
                                 });
                             } else {

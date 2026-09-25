@@ -26,33 +26,33 @@ export async function GET(request: Request) {
     // Fire and forget cleanup
     deleteInactiveUsers().catch(console.error);
 
-    // 1. Fetch all users
-    const users = await db.collection('User').find({}, {
-      projection: { password: 0, email: 0 }
-    }).toArray();
-
-    // 2. Fetch friendships of current user
-    const friendships = await db.collection('Friendship').find({
-      $or: [
-        { senderId: decoded.userId },
-        { receiverId: decoded.userId }
-      ],
-      status: 'ACCEPTED'
-    }).toArray();
+    // 🚀 THE MAGIC FIX: Fire ALL 4 database queries simultaneously
+    // This cuts the database wait time by up to 75%
+    const [users, friendships, stats, dailyRoutines] = await Promise.all([
+      db.collection('User').find({}, { 
+        projection: { _id: 1, username: 1, alias: 1, profilePicture: 1 } // Only grab exactly what we need
+      }).toArray(),
+      
+      db.collection('Friendship').find({
+        $or: [
+          { senderId: decoded.userId },
+          { receiverId: decoded.userId }
+        ],
+        status: 'ACCEPTED'
+      }).toArray(),
+      
+      db.collection('Stats').find({}, { 
+        projection: { userId: 1, history: 1 } 
+      }).toArray(),
+      
+      db.collection('DailyRoutine').find({}, { 
+        projection: { userId: 1, dailyTimes: 1 } 
+      }).toArray()
+    ]);
 
     const friendIds = new Set(friendships.map(f => 
       f.senderId === decoded.userId ? f.receiverId : f.senderId
     ));
-
-    // 3. Fetch all stats to get history
-    const stats = await db.collection('Stats').find({}, {
-      projection: { userId: 1, history: 1 }
-    }).toArray();
-
-    // 4. Fetch all daily routines to get wake/sleep times
-    const dailyRoutines = await db.collection('DailyRoutine').find({}, {
-      projection: { userId: 1, dailyTimes: 1 }
-    }).toArray();
 
     const userHistories: Record<string, Record<string, number>> = {};
     const userDailyTimes: Record<string, Record<string, any>> = {};
@@ -69,13 +69,9 @@ export async function GET(request: Request) {
     const clientOffsetParam = url.searchParams.get('offset');
     const clientOffset = clientOffsetParam ? parseInt(clientOffsetParam, 10) : new Date().getTimezoneOffset();
 
-    // Shift current time by client offset so that UTC methods return client's local time
-    // clientOffset is (UTC - Local) in minutes
     const now = Date.now();
     const localMs = now - (clientOffset * 60 * 1000);
-
     const getStr = (ms: number) => new Date(ms).toISOString().split('T')[0];
-
     const todayStr = getStr(localMs);
 
     const localDate = new Date(localMs);
@@ -120,7 +116,6 @@ export async function GET(request: Request) {
       
       const yesterdayMs = localMs - 86400000;
       const yesterdayStr = getStr(yesterdayMs);
-      
       const todayDaily = dailyTimes[todayStr] || {};
       
       let userBedTime = 0;
@@ -134,20 +129,15 @@ export async function GET(request: Request) {
       const yesterdayDaily = dailyTimes[yesterdayStr] || {};
       let yesterdayBedTime = yesterdayDaily.bedTime || null;
       if (!yesterdayBedTime) {
-        // Fallback to yesterday 10 PM local time
-        // Using Date.UTC with the local year, month, date of yesterday
         const yDate = new Date(yesterdayMs);
         const yYear = yDate.getUTCFullYear();
         const yMonth = yDate.getUTCMonth();
         const yDay = yDate.getUTCDate();
         
-        // This is 22:00 in "local" time (which is mapped to UTC)
         const y10pmLocalMapped = Date.UTC(yYear, yMonth, yDay, 22, 0, 0, 0);
-        // Shift back to true epoch: Add the offset
         yesterdayBedTime = y10pmLocalMapped + (clientOffset * 60 * 1000);
       }
 
-      
       const todayFocused = history[todayStr] || 0;
       const yesterdayFocused = history[yesterdayStr] || 0;
       const thisWeekFocused = thisWeekDays.reduce((acc, date) => acc + (history[date] || 0), 0);
@@ -172,7 +162,7 @@ export async function GET(request: Request) {
       
       if (Object.keys(history).length > 0) {
         let tempStreak = 0;
-        const sortedDates = Object.keys(history).sort((a, b) => a.localeCompare(b));
+        const sortedDates = Object.keys(history).sort(); // String sort is slightly faster here
         
         for (let i = 0; i < sortedDates.length; i++) {
           const dStr = sortedDates[i];
@@ -180,7 +170,7 @@ export async function GET(request: Request) {
             if (i > 0) {
               const prevDate = new Date(sortedDates[i-1]);
               const currDate = new Date(dStr);
-              const diffDays = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 3600 * 24));
+              const diffDays = Math.round((currDate.getTime() - prevDate.getTime()) / 86400000);
               if (diffDays === 1) {
                 tempStreak++;
               } else {

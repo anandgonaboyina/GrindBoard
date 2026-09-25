@@ -96,6 +96,8 @@ export interface DashboardState {
   isClockOpen: boolean;
   toggleClock: () => void;
   isSettingsOpen: boolean;
+  lastSeenNewsTime: number;
+  updateLastSeenNews: (timestamp: number) => void;
   isNewsOpen: boolean;
   hasUnreadNews: boolean;
   toggleNews: () => void;

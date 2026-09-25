@@ -78,6 +78,54 @@ export async function GET(request: Request) {
     const client = await clientPromise;
     const db = client.db();
 
+    // PHASE 1: LIGHTWEIGHT HEAD CHECK
+    // Only fetch the 'lastModified' field. This uses indexes and returns kilobytes of data instead of megabytes.
+    const projectionOnlyLastModified = { projection: { lastModified: 1 } };
+    
+    const [
+      existingMeta, notesMeta, settingsMeta, tasksMeta, roadmapsMeta, 
+      statsMeta, dailyRoutineMeta, timetableMeta, deadlinesMeta, countdownsMeta
+    ] = await Promise.all([
+      db.collection('DashboardStorage').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('Notes').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('Settings').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('Tasks').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('Roadmaps').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('Stats').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('DailyRoutine').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('Timetable').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('Deadlines').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('Countdowns').findOne({ userId: user.userId }, projectionOnlyLastModified)
+    ]);
+
+    const cloudLastModified = Math.max(
+      existingMeta?.lastModified ? Number(existingMeta.lastModified) : 0,
+      notesMeta?.lastModified ? Number(notesMeta.lastModified) : 0,
+      settingsMeta?.lastModified ? Number(settingsMeta.lastModified) : 0,
+      tasksMeta?.lastModified ? Number(tasksMeta.lastModified) : 0,
+      roadmapsMeta?.lastModified ? Number(roadmapsMeta.lastModified) : 0,
+      statsMeta?.lastModified ? Number(statsMeta.lastModified) : 0,
+      dailyRoutineMeta?.lastModified ? Number(dailyRoutineMeta.lastModified) : 0,
+      timetableMeta?.lastModified ? Number(timetableMeta.lastModified) : 0,
+      deadlinesMeta?.lastModified ? Number(deadlinesMeta.lastModified) : 0,
+      countdownsMeta?.lastModified ? Number(countdownsMeta.lastModified) : 0
+    );
+
+    //  FAST EXIT: If the client already has the latest data, instantly return.
+    // This instantly unmounts the loading screen on the frontend!
+    if (localModified >= cloudLastModified && cloudLastModified > 0) {
+      return NextResponse.json({ 
+        upToDate: true, 
+        lastModified: cloudLastModified 
+      });
+    }
+
+    if (!existingMeta && !notesMeta && !settingsMeta && !tasksMeta && !roadmapsMeta && !statsMeta && !dailyRoutineMeta && !timetableMeta) {
+      return NextResponse.json({ data: null, lastModified: cloudLastModified });
+    }
+
+    //  PHASE 2: HEAVY DATA FETCH
+    // We only reach this point if the cloud has newer data than the local device.
     const [
       existing, notesRecord, settingsRecord, tasksRecord, roadmapsRecord, 
       statsRecord, dailyRoutineRecord, timetableRecord, deadlinesRecord, countdownsRecord
@@ -93,30 +141,6 @@ export async function GET(request: Request) {
       db.collection('Deadlines').findOne({ userId: user.userId }),
       db.collection('Countdowns').findOne({ userId: user.userId })
     ]);
-
-    const cloudLastModified = Math.max(
-      existing?.lastModified ? Number(existing.lastModified) : 0,
-      notesRecord?.lastModified ? Number(notesRecord.lastModified) : 0,
-      settingsRecord?.lastModified ? Number(settingsRecord.lastModified) : 0,
-      tasksRecord?.lastModified ? Number(tasksRecord.lastModified) : 0,
-      roadmapsRecord?.lastModified ? Number(roadmapsRecord.lastModified) : 0,
-      statsRecord?.lastModified ? Number(statsRecord.lastModified) : 0,
-      dailyRoutineRecord?.lastModified ? Number(dailyRoutineRecord.lastModified) : 0,
-      timetableRecord?.lastModified ? Number(timetableRecord.lastModified) : 0,
-      deadlinesRecord?.lastModified ? Number(deadlinesRecord.lastModified) : 0,
-      countdownsRecord?.lastModified ? Number(countdownsRecord.lastModified) : 0
-    );
-
-    if (localModified >= cloudLastModified && cloudLastModified > 0) {
-      return NextResponse.json({ 
-        upToDate: true, 
-        lastModified: cloudLastModified 
-      });
-    }
-
-    if (!existing && !notesRecord && !settingsRecord && !tasksRecord && !roadmapsRecord && !statsRecord && !dailyRoutineRecord && !timetableRecord) {
-      return NextResponse.json({ data: null, lastModified: cloudLastModified });
-    }
 
     let returnedData: any = null;
     
@@ -168,7 +192,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to read store' }, { status: 500 });
   }
 }
-
 export async function POST(request: Request) {
   try {
     const user = authenticate(request);

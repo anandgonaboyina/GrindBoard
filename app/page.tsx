@@ -28,21 +28,28 @@ export default function CloudLogin() {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [demoAuthData, setDemoAuthData] = useState<{token: string, username: string} | null>(null);
 
-  // --- NEW: Video Expand State & Hydration Fix ---
+  // -- Video Expand State & Hydration Fix ---
   const [isVideoExpanded, setIsVideoExpanded] = useState(false);
   const [isMounted, setIsMounted] = useState(false); // Prevents extension hydration crashes
 
-  // --- NEW: Animated Business Taglines ---
+  // --- Animated Business Taglines ---
   const taglines = [
     "The Ultimate Dashboard for Deep Work.",
     "Outwork Your Rivals in Real-Time.",
     "Take Absolute Control of Your Schedule.",
-    "Manifest Your Biggest Ambitions.",
-    "Your Personalized Productivity Hub."
+    "Chase Yourself Every Day and Own Your Pace.",
+    "Crush Your Daily Rhythm and Outwork Yesterday.",
+    "Master Your Focus, Month by Month, Day by Day.",
+    "The Ultimate Engine to Measure and Beat Your Best Self.",
+    "Build Relentless Discipline and Dominate Your Schedule.",
+    "Your Personalized Productivity Hub.",
+    "Manifest Your Biggest Ambitions."
   ];
+
+
   const [taglineIndex, setTaglineIndex] = useState(0);
 
-  // Hydration Fix & Query Params
+  // Hydration & Query Params
   useEffect(() => {
     setIsMounted(true);
     if (window.location.search.includes('mode=register')) {

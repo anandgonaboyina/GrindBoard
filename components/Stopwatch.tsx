@@ -104,35 +104,21 @@ export default function Stopwatch() {
 
   const updateInteraction = () => { if (typeof window !== 'undefined') localStorage.setItem('stopwatch_last_active', Date.now().toString()); };
 
-  useEffect(() => {
-    const pausedSecs = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_paused_secs') : null;
-    if (store.stopwatchStartTime) {
-      const now = Date.now();
-      const lastActive = parseInt((typeof window !== 'undefined' ? localStorage.getItem('stopwatch_last_active') : null) || now.toString());
-      const isOwner = store.stopwatchDeviceId === getDeviceId();
+useEffect(() => {
+  const pausedSecs = typeof window !== 'undefined' ? localStorage.getItem('stopwatch_paused_secs') : null;
+  if (store.stopwatchStartTime) {
+    setIsRunning(true); 
+    setElapsedSecs(Math.max(0, Math.floor((Date.now() - store.stopwatchStartTime) / 1000)));
+  } else if (pausedSecs) {
+    setIsRunning(false); 
+    setElapsedSecs(Math.max(0, parseInt(pausedSecs)));
+  } else {
+    setIsRunning(false); 
+    setElapsedSecs(0);
+  }
+}, [store.stopwatchStartTime]);
 
-      if (Math.floor((now - lastActive) / 1000) >= 3600 && isOwner && store.stopwatchAddToStats) {
-        const cappedElapsed = Math.max(0, Math.floor((lastActive - store.stopwatchStartTime) / 1000));
-        setIsRunning(false); setElapsedSecs(cappedElapsed); setPausedAtString(new Date(lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        setShowContinuePrompt(true); useDashboardStore.setState({ isStopwatchOpen: true });
-        
-        // Processes chunks automatically using the universal helper
-        processStopwatchChunks(cappedElapsed, false); 
-        
-        if (typeof window !== 'undefined') localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
-        store.setStopwatchStartTime(null); store.setStopwatchDeviceId(null);
-      } else {
-        if (Math.floor((now - lastActive) / 1000) >= 3600 && isOwner && !store.stopwatchAddToStats && typeof window !== 'undefined') localStorage.setItem('stopwatch_tainted', 'true');
-        setIsRunning(true); setElapsedSecs(Math.max(0, Math.floor((now - store.stopwatchStartTime) / 1000)));
-      }
-    } else if (pausedSecs) {
-      setIsRunning(false); setElapsedSecs(Math.max(0, parseInt(pausedSecs)));
-    } else {
-      setIsRunning(false); setElapsedSecs(0);
-    }
-  }, [store.stopwatchStartTime]);
-
-  // Main Tick Interval
+// Main Tick Interval
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isRunning && store.stopwatchStartTime) {
@@ -141,34 +127,20 @@ export default function Stopwatch() {
         const now = Date.now();
         const systemJustWoke = (now - (lastTickTimeRef.current || now)) > 3000;
         lastTickTimeRef.current = now;
-        const lastActive = parseInt((typeof window !== 'undefined' ? localStorage.getItem('stopwatch_last_active') : null) || now.toString());
         const isOwner = store.stopwatchDeviceId === getDeviceId();
         const currentElapsed = Math.max(0, Math.floor((now - store.stopwatchStartTime!) / 1000));
 
-        if (Math.floor((now - lastActive) / 1000) >= 3600 && isOwner) {
-          if (store.stopwatchAddToStats) {
-            const cappedElapsed = Math.max(0, Math.floor((lastActive - store.stopwatchStartTime!) / 1000));
-            setIsRunning(false); useDashboardStore.setState({ isStopwatchOpen: true });
-            setPausedAtString(new Date(lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-            setShowContinuePrompt(true); updateInteraction();
-
-            processStopwatchChunks(cappedElapsed, false);
-            
-            if (typeof window !== 'undefined') localStorage.setItem('stopwatch_paused_secs', cappedElapsed.toString());
-            useDashboardStore.getState().setStopwatchStartTime(null); useDashboardStore.getState().setStopwatchDeviceId(null); setElapsedSecs(cappedElapsed);
-            return;
-          } else if (typeof window !== 'undefined') localStorage.setItem('stopwatch_tainted', 'true');
-        }
-
         setElapsedSecs(currentElapsed);
-        if (typeof window !== 'undefined') localStorage.setItem('stopwatch_last_active', now.toString());
+        
+        // Removed the 3600-second 1-hour auto-pause logic completely!
 
         if (systemJustWoke) {
           if (store.isStopwatchIntervalEnabled && store.stopwatchIntervalMins > 0) stopwatchAlertedChunksRef.current = Math.floor(currentElapsed / (store.stopwatchIntervalMins * 60));
           return;
         }
 
-        if (isOwner && !deadmanTriggeredAtRef.current && currentElapsed >= 180 * 60) {
+        // 3-Hour Deadman Switch
+        if (isOwner && deadmanTriggeredAtRef.current !== -1 && currentElapsed >= 180 * 60) {
           deadmanTriggeredAtRef.current = now;
           setShowStillWorkingPrompt(true);
           if (intervalAudioRef.current && store.enableAlarmSound) {
@@ -191,13 +163,15 @@ export default function Stopwatch() {
           return;
         }
 
-        if (deadmanTriggeredAtRef.current) return;
+        // Ignore tick if Deadman Switch is visible but not bypassed
+        if (deadmanTriggeredAtRef.current && deadmanTriggeredAtRef.current !== -1) return;
 
-        //  Puts standard interval processing through the mathematical choke-point
+        // Standard 5-minute background save processing
         if (store.stopwatchAddToStats && isOwner) {
           processStopwatchChunks(currentElapsed, false);
         }
 
+        // Standard Interval Ringing logic
         if (store.isStopwatchIntervalEnabled && store.stopwatchIntervalMins > 0 && currentElapsed > 0) {
           const chunks = Math.floor(currentElapsed / (store.stopwatchIntervalMins * 60));
           if (chunks > stopwatchAlertedChunksRef.current) {
@@ -213,7 +187,6 @@ export default function Stopwatch() {
     }
     return () => clearInterval(interval);
   }, [isRunning, store.stopwatchStartTime, store.stopwatchAddToStats, store.isStopwatchIntervalEnabled, store.stopwatchIntervalMins, store.enableAlarmSound, store.enableAlarmVibration, store.alarmVolume, store.taskIntervalRingSecs]);
-
   // Cross-device stopwatch sync
   useEffect(() => {
     if (!isRunning || !store.stopwatchStartTime) return;
@@ -260,23 +233,27 @@ export default function Stopwatch() {
     };
   }, [isRunning, store.stopwatchStartTime, store.stopwatchDeviceId]);
 
-  const handleStart = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (!isRunning) {
-      if (elapsedSecs === 0) { 
-        store.setStopwatchLastSavedChunks(0); 
-        stopwatchAlertedChunksRef.current = 0; 
-      }
-      store.setStopwatchStartTime(Date.now() - elapsedSecs * 1000); store.setStopwatchDeviceId(getDeviceId()); setIsRunning(true);
-      if (typeof window !== 'undefined') localStorage.removeItem('stopwatch_paused_secs');
-      updateInteraction();
-      if (typeof window !== 'undefined' && window.innerWidth < 768) setTimeout(() => useDashboardStore.setState({ isStopwatchOpen: false }), 3000);
-
-      if (store.enableAlarmSound && typeof window !== 'undefined') {
-        try { const AudioCtx = window.AudioContext || (window as any).webkitAudioContext; if (AudioCtx) { const ctx = new AudioCtx(); if (ctx.state === 'suspended') ctx.resume(); ctx.createBufferSource().start(0); } } catch (e) {}
-      }
+const handleStart = (e?: React.MouseEvent) => {
+  e?.stopPropagation();
+  if (!isRunning) {
+    if (elapsedSecs === 0) { 
+      store.setStopwatchLastSavedChunks(0); 
+      stopwatchAlertedChunksRef.current = 0; 
     }
-  };
+    
+
+    if (deadmanTriggeredAtRef) deadmanTriggeredAtRef.current = null;
+
+    store.setStopwatchStartTime(Date.now() - elapsedSecs * 1000); store.setStopwatchDeviceId(getDeviceId()); setIsRunning(true);
+    if (typeof window !== 'undefined') localStorage.removeItem('stopwatch_paused_secs');
+    updateInteraction();
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setTimeout(() => useDashboardStore.setState({ isStopwatchOpen: false }), 3000);
+
+    if (store.enableAlarmSound && typeof window !== 'undefined') {
+      try { const AudioCtx = window.AudioContext || (window as any).webkitAudioContext; if (AudioCtx) { const ctx = new AudioCtx(); if (ctx.state === 'suspended') ctx.resume(); ctx.createBufferSource().start(0); } } catch (e) {}
+    }
+  }
+};
 
   const handlePause = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -293,39 +270,40 @@ export default function Stopwatch() {
     } else finalizeStop(store.stopwatchAddToStats);
   };
 
-  const finalizeStop = (saveToStats: boolean) => {
-    const currentSt = useDashboardStore.getState(); 
-    
-    const liveElapsedSecs = currentSt.stopwatchStartTime 
-      ? Math.max(0, Math.floor((Date.now() - currentSt.stopwatchStartTime) / 1000)) 
-      : elapsedSecs;
+const finalizeStop = (saveToStats: boolean) => {
+  const currentSt = useDashboardStore.getState(); 
+  
+  const liveElapsedSecs = currentSt.stopwatchStartTime 
+    ? Math.max(0, Math.floor((Date.now() - currentSt.stopwatchStartTime) / 1000)) 
+    : elapsedSecs;
 
-    if (liveElapsedSecs >= 300 && saveToStats && currentSt.stopwatchDeviceId === getDeviceId()) {
-      //  Runs through the global mathematical choke-point for precision
-      processStopwatchChunks(liveElapsedSecs, true);
-    }
-    
-    setIsRunning(false); setElapsedSecs(0); 
-    currentSt.setStopwatchStartTime(null); 
-    currentSt.setStopwatchDeviceId(null); 
-    currentSt.setStopwatchLastSavedChunks(0); 
-    stopwatchAlertedChunksRef.current = 0;
-    
-    if (typeof window !== 'undefined') { 
-      localStorage.removeItem('stopwatch_paused_secs'); 
-      localStorage.removeItem('stopwatch_last_active'); 
-      localStorage.removeItem('stopwatch_tainted'); 
-    }
-    haltAudio(intervalAudioRef.current); setIsIntervalRinging(false); 
-    
-    forcePushTimerState(); 
-  };
+  if (liveElapsedSecs >= 300 && saveToStats && currentSt.stopwatchDeviceId === getDeviceId()) {
+    processStopwatchChunks(liveElapsedSecs, true);
+  }
+  
+  setIsRunning(false); setElapsedSecs(0); 
+  currentSt.setStopwatchStartTime(null); 
+  currentSt.setStopwatchDeviceId(null); 
+  currentSt.setStopwatchLastSavedChunks(0); 
+  stopwatchAlertedChunksRef.current = 0;
+  if (typeof setShowStillWorkingPrompt === 'function') setShowStillWorkingPrompt(false);
+  if (deadmanTimeoutRef && deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
+  if (deadmanTriggeredAtRef) deadmanTriggeredAtRef.current = null;
+  
+  if (typeof window !== 'undefined') { 
+    localStorage.removeItem('stopwatch_paused_secs'); 
+    localStorage.removeItem('stopwatch_last_active'); 
+    localStorage.removeItem('stopwatch_tainted'); 
+  }
+  haltAudio(intervalAudioRef.current); setIsIntervalRinging(false); 
+  
+  forcePushTimerState(); 
+};
 
-  const toggleStatsCheckbox = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!store.stopwatchAddToStats && typeof window !== 'undefined' && localStorage.getItem('stopwatch_tainted') === 'true') return alert('Cannot enable: this session was left running unattended for over 1 hour. Please stop and start a new session to log focus time.');
-    store.setStopwatchAddToStats(!store.stopwatchAddToStats);
-  };
+const toggleStatsCheckbox = (e: React.MouseEvent) => {
+  e.stopPropagation();
+  store.setStopwatchAddToStats(!store.stopwatchAddToStats);
+};
 
   const formatTime = (secs: number) => {
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -447,7 +425,7 @@ export default function Stopwatch() {
             <button
               onClick={() => {
                 if (deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
-                deadmanTriggeredAtRef.current = null;
+                deadmanTriggeredAtRef.current = -1;
                 setShowStillWorkingPrompt(false);
                 haltAudio(intervalAudioRef.current);
               }}
