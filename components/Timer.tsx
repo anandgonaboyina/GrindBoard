@@ -6,7 +6,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { useTaskStore } from '@/store/taskStore';
 import { fetchQuote } from '@/utils/quoteEngine';
 import { getLocalDateString } from '@/utils/date';
-import { useAudioUrl } from '@/hooks/useAudioUrl';
+import { useAudioUrl } from '@/hooks';
 import { getDeviceId } from '@/utils/deviceId';
 import { triggerInstantSave, checkTimerStillActiveInDB, forcePushTimerState, pushStreakToDB } from '@/store/dashboardStore/sync';
 import Tooltip from './Tooltip';

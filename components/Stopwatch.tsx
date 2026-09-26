@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useAudioUrl } from '@/hooks/useAudioUrl';
+import { useAudioUrl } from '@/hooks';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Play, Pause, Square, Trash2, Check, BellRing, ChevronUp, ChevronDown, X } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
@@ -14,7 +14,7 @@ const haltAudio = (audioEl: HTMLAudioElement | null) => {
   if (!audioEl) return;
   try { audioEl.pause(); audioEl.currentTime = 0; audioEl.removeAttribute('src'); audioEl.load(); } catch (e) {}
   if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
-    try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+    try { navigator.mediaSession.playbackState = 'none'; } catch (e) {} 
   }
 };
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus, CheckCircle, RotateCcw, BellRing, Info, ArrowRight, ArrowLeft, ChevronDown } from 'lucide-react';
-import { useTaskManagerLogic } from '@/hooks/useTaskManagerLogic';
+import { useTaskManagerLogic } from '@/hooks';
 import { useDashboardStore } from '@/store/dashboardStore';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';

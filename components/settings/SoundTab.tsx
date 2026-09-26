@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Info, Music, Play, Pause, Upload, Trash2, Volume2, Bell, Vibrate, Clock } from 'lucide-react';
 import { saveAudioToDB, deleteAudioFromDB } from '@/lib/indexedDB';
-import { getResolvedAudioUrl } from '@/hooks/useAudioUrl';
+import { getResolvedAudioUrl } from '@/hooks';
 import ScrollableWithArrows from '../ScrollableWithArrows';
 
 const DEFAULT_ALARM_SOUNDS = [

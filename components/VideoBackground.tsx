@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useDashboardStore } from "@/store/dashboardStore";
-import { useWallpaperUrl } from "@/hooks/useWallpaperUrl";
+import { useWallpaperUrl } from "@/hooks";
 import { getWallpaperFromDB } from "@/lib/indexedDB";
 
 export default function VideoBackground() {

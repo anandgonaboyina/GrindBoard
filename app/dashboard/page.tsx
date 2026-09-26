@@ -42,7 +42,7 @@ import { useTaskStore } from "@/store/taskStore";
 import { useTimetableStore } from "@/store/timetableStore";
 import { useNoteStore } from "@/store/noteStore";
 import { useSettingsStore } from "@/store/settingsStore";
-import { useDashboardLogic } from "@/hooks/useDashboardLogic";
+import { useDashboardLogic } from "@/hooks";
 
 export default function Dashboard() {
   const [isMobile, setIsMobile] = useState(false);

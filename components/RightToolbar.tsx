@@ -191,28 +191,6 @@ export default function RightToolbar() {
                 </button>
               </Tooltip>
             )}
-        {/* removed as from right toolbar since kept as edge peek toggle */}
-        {/* Calendar Toggle Button */}
-        {/* {showCalendar && (
-          <button
-            onClick={toggleCalendar}
-            className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isCalendarOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.calendar ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-            title="Calendar"
-          >
-            <Calendar size={20} className="sm:w-6 sm:h-6" />
-          </button>
-        )} */}
-
-        {/* Task Manager Toggle Button */}
-        {/* {showTasks && (
-          <button
-            onClick={toggleTaskManager}
-            className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/20 shadow-xl transition-all ${isTaskManagerOpen ? 'glass-btn-active' : 'glass-btn'} ${isHidden && hideConfig.tasks ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-            title="Toggle Tasks"
-          >
-            <ListTodo size={20} className="sm:w-6 sm:h-6" />
-          </button>
-        )} */}
 
         {/* Stats Toggle Button */}
         {showStats && (
