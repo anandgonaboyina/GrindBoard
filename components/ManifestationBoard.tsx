@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
-import { useWallpaperUrl } from '@/hooks/useWallpaperUrl';
+import { useWallpaperUrl } from '@/hooks';
 import { saveWallpaperToDB, deleteWallpaperFromDB, getWallpaperFromDB } from '@/lib/indexedDB';
 import { prepareFileForStorage } from '@/lib/imageUtils';
 import { Sparkles, ChevronLeft, ChevronRight, X, Flame, Volume2, VolumeX, Settings, Copy, Check } from 'lucide-react';

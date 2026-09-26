@@ -1,6 +1,6 @@
 import React from 'react';
 import { BadgeCheck, AlertCircle } from 'lucide-react';
-import { useWallpaperUrl } from '@/hooks/useWallpaperUrl';
+import { useWallpaperUrl } from '@/hooks';
 
 interface CustomWallpaperPreviewProps {
   url: string;

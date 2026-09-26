@@ -107,7 +107,7 @@ export const syncFocusQueue = async () => {
   if (Object.keys(queue).length === 0) return;
 
   isSyncingQueue = true;
-  // 🚀 Clear queue locally before sending to prevent race condition duplicates
+  //  Clear queue locally before sending to prevent race condition duplicates
   setSecureFocusQueue({}); 
 
   let failedQueue: Record<string, number> = {};
@@ -118,7 +118,7 @@ export const syncFocusQueue = async () => {
     if (mins <= 0) continue;
 
     try {
-      // 🚀 Removed AbortController timeout so slow internet doesn't cause double-counting
+      //  Removed AbortController timeout so slow internet doesn't cause double-counting
       const res = await fetch('/api/users/streak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -127,7 +127,7 @@ export const syncFocusQueue = async () => {
       
       if (res.ok) {
         const json = await res.json().catch(() => ({}));
-        // 🚀 CRITICAL: Update timestamp so performSave doesn't throw a 409 Conflict!
+        //  CRITICAL: Update timestamp so performSave doesn't throw a 409 Conflict!
         if (json.lastModified) setSyncLastModified(json.lastModified);
       } else {
         failedQueue[dateStr] = (failedQueue[dateStr] || 0) + mins;
@@ -204,7 +204,7 @@ export const checkTimerStillActiveInDB = async (type: 'timer' | 'stopwatch'): Pr
 // ----------------------------------------------------------------------
 export const performSave = async () => {
   
-  // 🚀 FIX: AWAIT the queue so it finishes updating the timestamp BEFORE we save!
+  //  FIX: AWAIT the queue so it finishes updating the timestamp BEFORE we save!
   await syncFocusQueue();
 
   if (!pendingValue || isSyncingFromCloud || isAuthTransition) {
@@ -394,7 +394,7 @@ export const performSave = async () => {
         ...parsedCloud.state,          // Overlay: fields from server
         ...userModifications,          // User's own unsaved edits win on top
         
-        // 🚀 FIX: Safely merge arrays by ID to prevent duplicates/loss
+        //  FIX: Safely merge arrays by ID to prevent duplicates/loss
         tasks: mergeArraysById(parsedLocal.state?.tasks || [], parsedCloud.state?.tasks || []),
         deadlines: mergeArraysById(parsedLocal.state?.deadlines || [], parsedCloud.state?.deadlines || []),
         syntheticDeadlines: mergeArraysById(parsedLocal.state?.syntheticDeadlines || [], parsedCloud.state?.syntheticDeadlines || []),
@@ -677,7 +677,7 @@ export const pushStreakToDB = (dateKey: string, minutes: number) => {
     return res.json();
   })
   .then(json => {
-     // 🚀 Update timestamp on every live chunk to completely eliminate 409 conflicts
+     //  Update timestamp on every live chunk to completely eliminate 409 conflicts
      if (json.lastModified) setSyncLastModified(json.lastModified);
   })
   .catch(() => {

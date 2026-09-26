@@ -316,7 +316,7 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isA
                               )}
                               {user.workStartedTime && (
                                 <div className="flex items-center gap-0.5 sm:gap-1 bg-orange-500/15 border border-orange-500/25 px-1 sm:px-1.5 py-0.5 rounded min-w-0 shrink-0">
-                                  <span className="text-[7.5px] sm:text-[9.5px] md:text-[10px] text-orange-300/80 font-medium leading-none shrink-0">Work:</span>
+                                  <span className="text-[7.5px] sm:text-[9.5px] md:text-[10px] text-orange-300/80 font-medium leading-none shrink-0">start:</span>
                                   <span className="text-[8px] sm:text-[9.5px] md:text-[10px] text-orange-200 font-bold leading-none whitespace-nowrap">
                                     {new Date(user.workStartedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </span>

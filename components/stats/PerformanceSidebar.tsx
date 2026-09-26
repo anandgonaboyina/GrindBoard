@@ -47,18 +47,22 @@ export default function PerformanceSidebar({ stats, isLight, formatMins, formatD
           <div className="flex justify-between items-end mb-1.5">
             <div className="flex flex-col">
               <span className={`text-[8px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Vs Yesterday</span>
-              <span className={`text-xs md:text-sm font-black tracking-tight mt-0.5 ${defeatedGhost ? 'text-green-500 drop-shadow-sm' : isLight ? 'text-indigo-600' : 'text-indigo-400'}`}>
-                {defeatedGhost ? 'Ghost Defeated! 🏆' : `${formatMins(stats.todayMins)} / ${formatMins(stats.yesterdayMins)}`}
+              <span className={`text-xs md:text-sm font-black tracking-tight mt-0.5 ${defeatedGhost ? 'text-green-500 drop-shadow-sm' : isLight ? 'text-rose-600' : 'text-rose-400'}`}>
+                {formatMins(stats.todayMins)} / {formatMins(stats.yesterdayMins)}
               </span>
             </div>
-            {!defeatedGhost && stats.yesterdayMins > 0 && (
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isLight ? 'bg-slate-100 text-slate-500' : 'bg-slate-700/50 text-slate-300'}`}>
-                {formatMins(stats.yesterdayMins - stats.todayMins)} left
+            
+            {/* New Trending Indicator Pill replacing 'Time Left' */}
+            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded border shadow-inner ${defeatedGhost ? (isLight ? 'bg-green-50 text-green-700 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') : (isLight ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-rose-500/10 text-rose-400 border-rose-500/20')}`}>
+              {defeatedGhost ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              <span className="text-[9px] font-black">
+                {defeatedGhost ? '+' : ''}{formatMins(stats.todayMins - stats.yesterdayMins)}
               </span>
-            )}
+            </div>
           </div>
+          
           <div className={`w-full h-1.5 rounded-full overflow-hidden shadow-inner ${isLight ? 'bg-slate-200' : 'bg-slate-900'}`}>
-            <div className={`h-full transition-all duration-1000 ease-out relative ${defeatedGhost ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]'}`} style={{ width: `${ghostPercent}%` }}>
+            <div className={`h-full transition-all duration-1000 ease-out relative ${defeatedGhost ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`} style={{ width: `${ghostPercent}%` }}>
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/30 to-transparent" />
             </div>
           </div>
@@ -116,7 +120,7 @@ export default function PerformanceSidebar({ stats, isLight, formatMins, formatD
             <span className={`text-[8px] font-black uppercase tracking-widest ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>30d Base (≥1h)</span>
           </div>
           <div className={`text-sm font-black leading-none tracking-tight ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{stats.consistency1h}%</div>
-          <div className={`text-[8px] font-medium mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Consistency Score</div>
+          <div className={`text-[12px] font-medium mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Consistency Score</div>
         </div>
         
         <div className={`group flex flex-col p-2 rounded-xl border shadow-sm transition-transform cursor-default ${isLight ? 'bg-emerald-50/50 border-emerald-200' : 'bg-emerald-500/5 border-emerald-500/20'}`}>
@@ -132,7 +136,7 @@ export default function PerformanceSidebar({ stats, isLight, formatMins, formatD
             </div>
           </div>
           <div className={`text-sm font-black leading-none tracking-tight ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{stats.consistencyDeep}%</div>
-          <div className={`text-[8px] font-medium mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Consistency Score</div>
+          <div className={`text-[12px] font-medium mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Consistency Score</div>
         </div>
       </div>
 
