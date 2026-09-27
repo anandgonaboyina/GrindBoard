@@ -36,6 +36,7 @@ export interface DailyTime {
 export interface DashboardState {
   history: Record<string, number>;
   addMins: (dateKey: string, mins: number) => void;
+  syncTodayFocus:()=>Promise<void>;
   wallpaper: string;
   bgIndex: number;
   currentBgType: 'image' | 'video' | null;

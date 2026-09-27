@@ -196,6 +196,39 @@ export const useDashboardStore = create<DashboardState>()(
       currentBgType: null,
       lockedWallpaper: null,
       history: {},
+      syncTodayFocus: async () => {
+          if (typeof window === 'undefined' || !navigator.onLine) return;
+          
+          try {
+            const token = localStorage.getItem('dashboard_sync_token');
+            if (!token) return;
+
+            const res = await fetch('/api/store', {
+              method: 'GET',
+              headers: { 'Authorization': `Bearer ${token}` },
+              signal: AbortSignal.timeout(5000)
+            });
+            
+            const json = await res.json();
+            if (res.ok && json.data?.state?.history) {
+              
+              const clientOffset = new Date().getTimezoneOffset();
+              const now = Date.now();
+              const localMs = now - (clientOffset * 60 * 1000);
+              const todayStr = new Date(localMs).toISOString().split('T')[0];
+              const dbToday = json.data.state.history[todayStr] || 0;
+              const currentLocal = get().history[todayStr] || 0;
+              
+              // Update local UI only if DB mismatched
+              if (dbToday != currentLocal) {
+                set((state) => ({
+                  history: { ...state.history, [todayStr]: dbToday }
+                }));
+              }
+            }
+          } catch (e) {
+          }
+        },
       isHidden: false,
       _hasHydrated: false,
       theme: 'dark',

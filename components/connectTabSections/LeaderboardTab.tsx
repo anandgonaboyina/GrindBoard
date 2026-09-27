@@ -5,7 +5,7 @@ import { Trophy, Info, RefreshCw, WifiOff, Clock, ShieldAlert, Flame, Search, Sp
 import ScrollableWithArrows from '../ScrollableWithArrows';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { getLocalDateString } from '@/utils/date';
-
+import {LeaderboardInfo} from '@/components/modals/info/LeaderboardInfo'
 // Sub-components for the Public Stats Modal
 import PublicStatsModal from '../stats/PublicStatsModal';
 
@@ -22,7 +22,7 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isA
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardSearch, setLeaderboardSearch] = useState('');
   const [showInfoModal, setShowInfoModal] = useState(false);
-
+  const syncTodayFocus = useDashboardStore((state) => state.syncTodayFocus);
   // New Public Stats State
   const [fetchingStatsId, setFetchingStatsId] = useState<string | null>(null);
   const [publicUserStats, setPublicUserStats] = useState<any>(null);
@@ -38,6 +38,7 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isA
   useEffect(() => {
     if (isActive) {
       fetchLeaderboard();
+      syncTodayFocus();
     }
   }, [isActive]);
 
@@ -52,20 +53,6 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isA
       const data = await res.json();
       if (res.ok && data.leaderboard) {
         setLeaderboardData(data.leaderboard);
-        
-        const me = data.leaderboard.find((u: any) => u.isMe);
-        if (me) {
-          const store = useDashboardStore.getState();
-          const todayKey = getLocalDateString();
-          const localToday = store.history[todayKey] || 0;
-          
-          if (localToday !== me.todayFocused) {
-            const { hasUnsavedChanges, isSaving } = await import('@/store/dashboardStore/sync');
-            if (me.todayFocused > localToday || (!hasUnsavedChanges && !isSaving)) {
-              useDashboardStore.setState({ history: { ...store.history, [todayKey]: me.todayFocused } });
-            }
-          }
-        }
       }
     } catch (e) {} finally {
       setLeaderboardLoading(false);
@@ -377,18 +364,7 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isA
         </div>
 
         {showInfoModal && (
-          <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-white/10 p-5 rounded-xl w-full max-w-sm flex flex-col gap-3 relative max-h-[80vh] overflow-y-auto shadow-2xl">
-              <button onClick={() => setShowInfoModal(false)} className="absolute top-3 right-3 text-white/40 hover:text-white p-1 bg-white/5 hover:bg-white/10 rounded-full transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-              <h3 className="text-sm md:text-base font-bold flex items-center gap-2 text-white"><Info className="w-4 h-4 text-blue-400" /> About Leaderboard</h3>
-              <p className="text-xs text-white/70 leading-relaxed">The Global Leaderboard ranks users based on their total focus time...</p>
-              <button onClick={() => setShowInfoModal(false)} className="mt-2 w-full py-2 bg-white/10 hover:bg-white/15 text-white/90 text-xs font-bold rounded-lg transition-colors">
-                Got it
-              </button>
-            </div>
-          </div>
+          <LeaderboardInfo close= {()=>setShowInfoModal(false)} />
         )}
       </div>
 

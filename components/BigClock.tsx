@@ -37,6 +37,8 @@ export default function BigClock() {
   const mobileHideConfig = useDashboardStore((state) => state.mobileHideConfig);
   const isHidden = useDashboardStore((state) => state.isHidden);
   const hideConfig = isMobile ? mobileHideConfig : baseHideConfig;
+  const syncTodayFocus = useDashboardStore((state) => state.syncTodayFocus);
+
 
   // Detect mobile viewport size
   useEffect(() => {
@@ -138,6 +140,12 @@ export default function BigClock() {
     };
   }, []);
 
+  const today = getLocalDateString();
+  const todayMins = history[today] || 0;
+  useEffect(() => {
+    syncTodayFocus();
+  }, [todayMins]);
+
   const formatPillTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -163,9 +171,6 @@ export default function BigClock() {
   const minutes = time.getMinutes().toString().padStart(2, '0');
   const seconds = time.getSeconds().toString().padStart(2, '0');
   const ampm = rawHours >= 12 ? 'PM' : 'AM';
-
-  const today = getLocalDateString();
-  const todayMins = history[today] || 0;
   const focusHours = Math.floor(todayMins / 60);
   const focusMins = todayMins % 60;
 

@@ -16,6 +16,7 @@ import {useIsMobile} from '@/hooks';
 
 export default function StatsModal() {
   const { history: myHistory, dailyTimes: myDailyTimes, isStatsOpen, toggleStats, viewingFriend, setViewingFriend, theme } = useDashboardStore();
+  const syncTodayFocus = useDashboardStore((state) => state.syncTodayFocus);
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
   const [showFriendTimetable, setShowFriendTimetable] = useState(false);
   const [deepThresholdHrs, setDeepThresholdHrs] = useState(3);
@@ -28,8 +29,16 @@ export default function StatsModal() {
       setResolvedTheme(new Date().getHours() >= 6 && new Date().getHours() < 18 ? 'light' : 'dark');
     } else setResolvedTheme(theme as 'light' | 'dark');
   }, [theme]);
-  const isLight = resolvedTheme === 'light';
+    useEffect(() => {
+    // Only trigger the sync if the modal is actively open AND user is viewing own stats
+    if (isStatsOpen && !viewingFriend) {
+      syncTodayFocus();
+    }
+  }, [isStatsOpen, viewingFriend, syncTodayFocus]);
 
+
+
+  const isLight = resolvedTheme === 'light';
   const handleClose = () => {
     const wasViewingFriend = !!viewingFriend;
     const shouldReturn = wasViewingFriend || (typeof window !== 'undefined' && sessionStorage.getItem('returnToConnect') === 'true');
