@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Trophy, Info, RefreshCw, WifiOff, Clock, ShieldAlert, Flame, Search, Sparkles, X, BarChart2, Loader2 } from 'lucide-react';
-import ScrollableWithArrows from '../ScrollableWithArrows';
+import ScrollableWithArrows from '@/components/ScrollableWithArrows';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { getLocalDateString } from '@/utils/date';
 import {LeaderboardInfo} from '@/components/modals/info/LeaderboardInfo'
 // Sub-components for the Public Stats Modal
-import PublicStatsModal from '../stats/PublicStatsModal';
+import PublicStatsModal from '@/components/stats/PublicStatsModal';
+import ConfirmationModal from '@/components/ConfirmationModal'
 
 interface LeaderboardTabProps {
   setSelectedImageOverlay: (overlay: any) => void;
@@ -28,6 +29,15 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isA
   const [publicUserStats, setPublicUserStats] = useState<any>(null);
 
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
+
+  const [showGrindWallModal, setShowGrindWallModal] = useState(false);
+  const REQUIRED_MINS = 180; // 3 hours
+
+  // user own focus time for today
+  const myHistory = useDashboardStore(state => state.history);
+  const todayStr = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+  const myTodayMins = myHistory[todayStr] || 0;
+
   useEffect(() => {
     if (theme === 'auto') {
       setResolvedTheme(new Date().getHours() >= 6 && new Date().getHours() < 18 ? 'light' : 'dark');
@@ -340,6 +350,12 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isA
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              // --- THE GRIND WALL CHECK ---
+                              if (myTodayMins < REQUIRED_MINS) {
+                                setShowGrindWallModal(true);
+                                return;
+                              }
+                              // If they passed, fetch the stats!
                               fetchPublicStats(safeId, displayName);
                             }}
                             disabled={fetchingStatsId === safeId}
@@ -366,8 +382,57 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isA
         {showInfoModal && (
           <LeaderboardInfo close= {()=>setShowInfoModal(false)} />
         )}
-      </div>
+      {/* THE GRIND WALL MODAL */}
+      <ConfirmationModal
+        isOpen={showGrindWallModal}
+        onClose={() => setShowGrindWallModal(false)}
+        title="Earn Your Rank 🔒"
+        message={
+          <div className="flex flex-col gap-4 mt-2">
+            
+            {/* Clear, Competitive Eligibility Message */}
+            <p className="text-[13px] sm:text-sm font-medium text-white/90 text-center leading-relaxed px-1">
+              You aren't eligible to check on your Rivals yet. To see how you stack up against the competition, you first need to prove you are putting in the effort.
+            </p>
+            
+            {/* Clean Progress Bar UI */}
+            <div className="flex flex-col gap-2.5 p-4 rounded-xl bg-black/40 border border-white/10 shadow-inner relative overflow-hidden">
+              {/* Subtle background glow inside the box */}
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-rose-500/5 to-transparent pointer-events-none" />
+              
+              <div className="flex justify-between items-center text-[10px] sm:text-xs font-black uppercase tracking-wider relative z-10">
+                <span className="text-white/60">Your Daily Grind</span>
+                <span className="text-rose-400 drop-shadow-sm">Target: 3 Hours</span>
+              </div>
+              
+              {/* The Bar Container */}
+              <div className="w-full h-3 sm:h-3.5 bg-black/60 border border-white/10 rounded-full overflow-hidden relative z-10 shadow-inner">
+                {/* Active Colored Fill with Glow */}
+                <div 
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-rose-600 to-rose-400 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(244,63,94,0.4)]"
+                  style={{ width: `${Math.min(100, (myTodayMins / REQUIRED_MINS) * 100)}%` }}
+                >
+                  <div className="absolute top-0 left-0 w-full h-[3px] bg-white/20 rounded-t-full"></div>
+                </div>
+              </div>
+              
+              {/* Exact Time Text */}
+              <div className="text-center text-xs sm:text-sm font-black text-white mt-0.5 relative z-10 tracking-wide">
+                {Math.floor(myTodayMins / 60)}h {myTodayMins % 60}m <span className="text-white/30 font-semibold tracking-normal">/ 3h 0m</span>
+              </div>
+            </div>
 
+            {/* Final Reminder */}
+            <p className="text-[11px] sm:text-xs text-white/50 text-center px-3 font-medium">
+              Complete the minimum 3-hour grind today to unlock the leaderboard and see where you stand among your Rivals.
+            </p>
+          </div>
+        }
+        confirmText="Back to Work"
+        hideCancel={true}
+        onConfirm={() => setShowGrindWallModal(false)}
+      />
+      </div>
       {/* Render Public Stats Modal when data is successfully fetched */}
       {publicUserStats && (
         <PublicStatsModal 

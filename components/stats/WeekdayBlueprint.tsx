@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Flame, Star, Activity, CalendarDays, TrendingUp, TrendingDown } from 'lucide-react';
+import { Flame, Star, Activity, CalendarDays, TrendingUp, TrendingDown, Ghost } from 'lucide-react';
 
 interface Props {
   history: Record<string, number>;
   isLight: boolean;
   formatMins: (mins: number) => string;
+  ownerName?: string | null;
 }
 
 const RANGES = [
@@ -26,7 +27,7 @@ const DAYS_ORDER = [
   { id: 0, label: 'Sun' },
 ];
 
-export default function WeekdayBlueprint({ history, isLight, formatMins }: Props) {
+export default function WeekdayBlueprint({ history, isLight, formatMins, ownerName=null}: Props) {
   const [selectedRange, setSelectedRange] = useState<number>(14); 
   const currentDayOfWeek = new Date().getDay();
 
@@ -150,8 +151,37 @@ export default function WeekdayBlueprint({ history, isLight, formatMins }: Props
         {/* Vertical Bar Chart Container */}
         <div className={`w-full h-32 md:h-36 mt-0.5 flex items-end justify-between px-1 pb-1 relative ${isLight ? 'bg-slate-50/50' : 'bg-black/20'} rounded-xl border border-transparent dark:border-white/5`}>
           {!stats.hasAnyData ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={`text-[9px] font-semibold ${isLight ? 'text-slate-400' : 'text-white/40'}`}>No Data Found</span>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4 z-20 animate-in fade-in duration-500">
+              {/* Animated Floating Icon */}
+              <div className="relative flex items-center justify-center">
+                <div className={`absolute inset-0 rounded-full animate-ping opacity-30 ${isLight ? 'bg-blue-400' : 'bg-blue-500'}`} />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center relative z-10 shadow-sm border
+                  ${isLight ? 'bg-white border-slate-200' : 'bg-slate-800 border-slate-700/50'}
+                `}>
+                  {ownerName ? (
+                    <Ghost className={`w-5 h-5 animate-bounce ${isLight ? 'text-slate-400' : 'text-white/60'}`} style={{ animationDuration: '2s' }} />
+                  ) : (
+                    <Activity className={`w-5 h-5 ${isLight ? 'text-blue-500' : 'text-blue-400'}`} />
+                  )}
+                </div>
+              </div>
+
+              {/* High-Visibility Dynamic Text */}
+              <div className="flex flex-col gap-1 max-w-[260px]">
+                <span className={`text-[11px] font-black uppercase tracking-wider drop-shadow-sm
+                  ${isLight ? 'text-slate-700' : 'text-white/90'}
+                `}>
+                  {ownerName ? "No Signal Detected" : "Your Canvas is Blank"}
+                </span>
+                <span className={`text-[10px] font-medium leading-relaxed drop-shadow-sm
+                  ${isLight ? 'text-slate-600' : 'text-white/70'}
+                `}>
+                  {ownerName
+                    ? `${ownerName} hasn't logged any focus time in the last ${selectedRange} days.`
+                    : `You haven't tracked any focus in the last ${selectedRange} days. Start a session to map out your rhythm!`
+                  }
+                </span>
+              </div>
             </div>
           ) : (
             DAYS_ORDER.map(({ id: dow, label }) => {

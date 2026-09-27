@@ -4,10 +4,10 @@ import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { Search, RefreshCw, BarChart2, Check, X, Calendar, Settings, Sparkles, Users, UserPlus, UserX } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import Timetable from '../Timetable'; // Adjust import paths
-import FriendTimetableModal from '../modals/FriendTimetableModal';
-import FriendTasksModal from '../modals/FriendTasksModal';
-import FriendSettingsModal from '../modals/FriendSettingsModal';
+import Timetable from '@/components/Timetable'; // Adjust import paths
+import FriendTimetableModal from '@/components/modals/FriendTimetableModal';
+import FriendTasksModal from '@/components/modals/FriendTasksModal';
+import FriendSettingsModal from '@/components/modals/FriendSettingsModal';
 
 interface FriendsTabProps {
   setPendingRequestsCount: (count: number) => void;
@@ -293,6 +293,9 @@ const FriendsTab = memo(function FriendsTab({ setPendingRequestsCount, setConfir
       });
       const data = await res.json();
       if (res.ok) {
+        // const [f] = friends.filter((f)=>f.id==friendId);
+        // const friendName = f.user?.alias
+        console.log(data)
         useDashboardStore.getState().setViewingFriend({ username: friendUsername, stats: data.stats });
         useDashboardStore.getState().setConnectInitialTab('friends');
         sessionStorage.setItem('returnToConnect', 'true');
@@ -416,13 +419,13 @@ const FriendsTab = memo(function FriendsTab({ setPendingRequestsCount, setConfir
                       </div>
                       <div className="flex flex-col min-w-0 overflow-hidden justify-center gap-0.5">
                         <div className="flex items-center gap-1.5 mt-0.5 w-full overflow-hidden">
-                          <span className="font-bold text-[9px] md:text-[11px] tracking-wide truncate leading-none w-full">{f.user.username}</span>
+                          <span className="font-bold text-[9px] md:text-[11px] tracking-wide leading-none w-full">{f.user?.alias}</span>
                         </div>
                         <div className="grid grid-cols-1 gap-0.5 mt-0.5 w-full max-w-[220px] md:max-w-[280px]">
                           {f.user.lastActive ? (
                             <span className="text-[8px] md:text-[9px] text-indigo-300 font-bold bg-indigo-500/20 px-1 py-0.5 rounded flex items-center justify-center leading-none gap-1 truncate w-full">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
-                              <span className="truncate">Active: {new Date(f.user.lastActive).toLocaleString([], { year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="">Active: {new Date(f.user.lastActive).toLocaleString([], { year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                             </span>
                           ) : (
                             <span className="text-[8px] md:text-[9px] text-white/50 font-bold bg-white/5 px-1 py-0.5 rounded flex items-center justify-center leading-none gap-1 truncate w-full">
@@ -449,7 +452,7 @@ const FriendsTab = memo(function FriendsTab({ setPendingRequestsCount, setConfir
                           ) : (
                             <>
                               <Check size={10} className="md:w-3 md:h-3 shrink-0" />
-                              <span>View Tasks</span>
+                              <span>Tasks</span>
                             </>
                           )}
                         </button>
@@ -473,7 +476,7 @@ const FriendsTab = memo(function FriendsTab({ setPendingRequestsCount, setConfir
                         )}
                       </button>
                       <button
-                        onClick={() => viewFriendStats(f.user.id, f.user.username)}
+                        onClick={() => viewFriendStats(f.user.id, f.user?.alias || f.user.username)}
                         disabled={!!loadingFriendAction}
                         className="p-1 md:px-2 md:py-1 bg-blue-500/10 text-blue-300 rounded border border-blue-500/20 flex items-center justify-center gap-1 text-[8px] md:text-[9px] font-semibold hover:bg-blue-500/20 transition-all h-6 md:h-7 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer active:scale-95 shadow-sm"
                         title="View Stats"

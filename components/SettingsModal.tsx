@@ -5,7 +5,7 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { X, Settings as SettingsIcon, Sliders, MonitorPlay, RefreshCw, Clock, MessageSquare, Bell, EyeOff, Database, Globe, BookOpen, Info, ChevronLeft, BadgeCheck, Send, Briefcase, Newspaper, Loader2 } from 'lucide-react';
 
 // Global Modals
-import ConnectTab from './ConnectTab';
+import ConnectTab from '@/components/settings/ConnectTab';
 import UserManualModal from './UserManualModal';
 import ScrollableWithArrows from './ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';

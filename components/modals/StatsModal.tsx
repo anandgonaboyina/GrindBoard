@@ -23,7 +23,7 @@ export default function StatsModal() {
 
   const history = viewingFriend ? viewingFriend.stats.history || {} : myHistory;
   const dailyTimes = viewingFriend ? viewingFriend.stats.dailyTimes || {} : myDailyTimes;
-
+  const isMobileView = useIsMobile();
   useEffect(() => {
     if (theme === 'auto') {
       setResolvedTheme(new Date().getHours() >= 6 && new Date().getHours() < 18 ? 'light' : 'dark');
@@ -214,7 +214,9 @@ export default function StatsModal() {
   const MainAreaElements = (
     <div className="flex flex-col gap-2.5 p-2.5 md:p-3">
       <div className="flex justify-center w-full">
-        <WeekdayBlueprint history={history} isLight={isLight} formatMins={formatMins} />
+        <WeekdayBlueprint history={history} isLight={isLight} formatMins={formatMins}
+        ownerName={viewingFriend?.username || viewingFriend?.username}
+        />
       </div>
       <FocusHeatmap 
         heatmapMonths={stats.heatmapMonths} 
@@ -247,9 +249,9 @@ export default function StatsModal() {
               {viewingFriend ? `${viewingFriend.username}'s Daily Rival` : 'Your Daily Rival'}
             </h2>
             {stats.currentStreak >= 0 && (
-              <div className={` p-0.5 rounded-md flex items-center gap-1.5 shadow-sm border ${isLight ? 'bg-red-50 border-red-200 text-red-600' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+              <div className={` p-0.5  md:px-2 md:py-1 rounded-md flex items-center gap-1.5 shadow-sm border ${isLight ? 'bg-red-50 border-red-200 text-red-600' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
                 <Flame className="w-3 h-3 md:w-3.5 md:h-3.5 animate-pulse drop-shadow-md" />
-                <span className="text-[10px] font-bold shrink-0">streak : {stats.currentStreak} D</span>
+                <span className="text-[10px] font-bold shrink-0 md:text-[14px]">streak : {stats.currentStreak} D</span>
               </div>
             )}
           </div>
@@ -257,8 +259,8 @@ export default function StatsModal() {
             <X className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
-      useIsMobile?
-       ( {/* --- MOBILE LAYOUT: Full Scroll --- */}
+      {isMobileView ?
+       ( /* --- MOBILE LAYOUT: Full Scroll --- */
         <div className="flex md:hidden flex-1 relative z-10 min-h-0 flex-col overflow-hidden">
           <ScrollableWithArrows className="h-full w-full pb-10 custom-scrollbar overflow-y-auto">
             <div className={`flex flex-col border-b ${isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-slate-800/20 border-slate-800'}`}>
@@ -268,7 +270,7 @@ export default function StatsModal() {
           </ScrollableWithArrows>
         </div>
         ) : (
-        {/* --- DESKTOP LAYOUT: Split Pane Layout --- */}
+        /* --- DESKTOP LAYOUT: Split Pane Layout --- */
         <div className="hidden md:flex flex-1 relative z-10 min-h-0 flex-row overflow-hidden">
           {/* Left Sidebar Fixed Scroll */}
           <div className={`w-[35%] lg:w-[32%] border-r flex flex-col shrink-0 overflow-y-auto custom-scrollbar ${isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-slate-800/20 border-slate-800'}`}>
@@ -282,7 +284,7 @@ export default function StatsModal() {
             </ScrollableWithArrows>
           </div>
         </div>
-        )
+        )}
       </div>
       {/* FRIEND TIMETABLE OVERLAY */}
       {showFriendTimetable && viewingFriend && (

@@ -37,6 +37,8 @@ export default function DayStartModal() {
   useEffect(() => {
     if (!_hasHydrated) return;
 
+    let timeoutId: NodeJS.Timeout; // Store timeout at the top level for proper cleanup!
+
     const checkAndOpenModal = () => {
       const storeState = useDashboardStore.getState();
       const currentDailyTimes = storeState.dailyTimes?.[today] || dailyTimes[today] || {};
@@ -52,27 +54,17 @@ export default function DayStartModal() {
 
         // B. SINGLE KEY CHECK (`grindboard_wakeup_date`)
         const localDate = localStorage.getItem('grindboard_wakeup_date');
-        
-        // If the local key is from yesterday, delete it automatically!
         if (localDate && localDate !== today) {
           localStorage.removeItem('grindboard_wakeup_date');
         }
 
-        // C. CLOUD SYNC OVERRIDE
-        if (hasCloudWakeup) {
+        // C. CLOUD & LOCAL SYNC OVERRIDE
+        if (hasCloudWakeup || localStorage.getItem('grindboard_wakeup_date') === today) {
           localStorage.setItem('grindboard_wakeup_date', today);
           if (storeState.isDayStartModalOpen || isDayStartModalOpen) {
             useDashboardStore.setState({ isDayStartModalOpen: false });
           }
-          return;
-        }
-
-        // D. LOCAL KEY CHECK 
-        if (localStorage.getItem('grindboard_wakeup_date') === today) {
-          if (storeState.isDayStartModalOpen || isDayStartModalOpen) {
-            useDashboardStore.setState({ isDayStartModalOpen: false });
-          }
-          return;
+          return; // Stop here, already logged!
         }
 
         // E. SNOOZE CHECK
@@ -80,10 +72,12 @@ export default function DayStartModal() {
         if (snoozeUntil) {
           const timeRemaining = parseInt(snoozeUntil, 10) - Date.now();
           if (timeRemaining > 0) {
-            useDashboardStore.setState({ isDayStartModalOpen: false });
+            if (storeState.isDayStartModalOpen || isDayStartModalOpen) {
+                useDashboardStore.setState({ isDayStartModalOpen: false });
+            }
             
             // Wake it back up exactly when snooze expires
-            const timer = setTimeout(() => {
+            timeoutId = setTimeout(() => {
               const latestStore = useDashboardStore.getState();
               const cloudHasIt = !!latestStore.dailyTimes?.[today]?.wakeupTime;
               const localHasIt = localStorage.getItem('grindboard_wakeup_date') === today;
@@ -93,7 +87,8 @@ export default function DayStartModal() {
               }
               localStorage.removeItem('wakeup_snooze_until');
             }, timeRemaining);
-            return () => clearTimeout(timer);
+            
+            return; // Stop here, we are snoozing!
           } else {
             localStorage.removeItem('wakeup_snooze_until');
           }
@@ -107,6 +102,11 @@ export default function DayStartModal() {
     };
 
     checkAndOpenModal();
+
+    // PERFECT CLEANUP: Prevents multiple 2-hour timers from stacking!
+    return () => {
+        if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [_hasHydrated, today, dailyTimes]);
 
   // 2. STRICT CUSTOM QUOTES ENGINE (No Hardcoded, No APIs)
@@ -121,8 +121,6 @@ export default function DayStartModal() {
     if (combinedQuotes.length > 0) {
       const randomQuote = combinedQuotes[Math.floor(Math.random() * combinedQuotes.length)];
       setQuote(randomQuote);
-    } else {
-      // Clean fallback if user deleted ALL quotes from settings
     }
   }, [isDayStartModalOpen, customQuotes, manifestationCustomQuotes]);
 
@@ -154,7 +152,11 @@ export default function DayStartModal() {
 
   const confirmAction = () => {
     if (confirming && pendingTime) {
-      updateDailyTime(today, confirming, pendingTime);
+      // Never overwrite a wake-up time if the cloud just delivered one!
+      const currentCloudWakeup = useDashboardStore.getState().dailyTimes?.[today]?.wakeupTime;
+      if (!currentCloudWakeup) {
+          updateDailyTime(today, confirming, pendingTime);
+      }
 
       if (typeof window !== 'undefined') {
         // Set the single key for today!
@@ -188,13 +190,15 @@ export default function DayStartModal() {
     setPendingTime(null);
   };
 
-const handleSnooze = () => {
+  const handleSnooze = () => {
     if (typeof window !== 'undefined') {
-      const snoozeDuration = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+      // `2 * 60 * 60 * 1000` = 2hrs
+      const snoozeDuration = 2 * 60 * 60 * 1000; 
       const twoHoursFromNow = Date.now() + snoozeDuration;
       
       // 1. Save to local storage in case they refresh or close the tab
       localStorage.setItem('wakeup_snooze_until', twoHoursFromNow.toString());
+      
       // 2. Start the live countdown for the current active session
       setTimeout(() => {
         const latestStore = useDashboardStore.getState();

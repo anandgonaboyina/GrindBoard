@@ -14,6 +14,9 @@ export default function Tooltip({ text, position = 'top', children, className = 
   const [isVisible, setIsVisible] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // 1. ADDED: Ref to track the 3-second auto-hide timer
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const updatePosition = () => {
     if (containerRef.current) {
@@ -46,14 +49,37 @@ export default function Tooltip({ text, position = 'top', children, className = 
     }
   };
 
-  const handleMouseEnter = () => {
+  // 2. ADDED: Unified show function that triggers the 3-second auto-hide
+  const showTooltip = () => {
+    if (!text || disabled) return;
+    
     updatePosition();
     setIsVisible(true);
+
+    // Clear any existing timer so it doesn't close prematurely if you hover twice
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Auto-hide after 3 seconds for BOTH desktop and mobile
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(false);
+    }, 3000);
   };
 
   const handleMouseLeave = () => {
     setIsVisible(false);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
   };
+
+  // 3. ADDED: Cleanup the timer if the component unmounts
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   if (!text || disabled) return <>{children}</>;
 
@@ -75,7 +101,6 @@ export default function Tooltip({ text, position = 'top', children, className = 
   ) : null;
 
   if (!children) {
-    // If no children, we can't attach hover events easily without a wrapper anyway
     return null;
   }
 
@@ -83,8 +108,11 @@ export default function Tooltip({ text, position = 'top', children, className = 
     <div 
       ref={containerRef}
       className={`relative inline-flex items-center justify-center ${className}`}
-      onMouseEnter={handleMouseEnter}
+      onMouseEnter={showTooltip}
       onMouseLeave={handleMouseLeave}
+      // 4. ADDED: Mobile tap/touch support to instantly trigger the tooltip
+      onClick={showTooltip}
+      onTouchStart={showTooltip}
     >
       {children}
       {tooltipBox}

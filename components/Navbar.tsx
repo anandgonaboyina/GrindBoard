@@ -138,7 +138,7 @@ export default function Dock({ onOpenNotes }: DockProps) {
             </div>
 
             {/* Antigravity (Desktop Only Wrapper) */}
-            <div className="hidden sm:flex">
+            {/* <div className="hidden sm:flex">
                 <Tooltip text="Antigravity" position="top">
                     <button
                         onClick={() => openLink('antigravity://')}
@@ -150,7 +150,7 @@ export default function Dock({ onOpenNotes }: DockProps) {
                         </svg>
                     </button>
                 </Tooltip>
-            </div>
+            </div> */}
         </div>
     );
 }

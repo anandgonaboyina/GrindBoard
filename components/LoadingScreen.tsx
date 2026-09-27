@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ShieldCheck, Wifi, WifiOff, Zap, ExternalLink, Quote } from 'lucide-react';
 import { useDashboardStore } from "@/store/dashboardStore";
-import { setBypassCloudSync, setAbortInstantLoad} from "@/store/dashboardStore/sync";
+import { setBypassCloudSync, setAbortInstantLoad, failedToLoadDB } from "@/store/dashboardStore/sync";
 import { useTaskStore } from '@/store/taskStore';
 import { useTimetableStore } from '@/store/timetableStore';
 import { useNoteStore } from '@/store/noteStore';
@@ -46,12 +46,18 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
   const [isExtraDataFetched, setIsExtraDataFetched] = useState(false);
   const [hasFinishedRendering, setHasFinishedRendering] = useState(false);
 
+  // NEW: State to detect if we have an empty local cache and must wait for the cloud
+  const [isAwaitingCloudInjection, setIsAwaitingCloudInjection] = useState(true);
+
   // Subscribe to hydration states cleanly
   const _hasHydratedDashboard = useDashboardStore((state) => state._hasHydrated);
   const _hasHydratedTask = useTaskStore((state) => state._hasHydrated);
   const _hasHydratedTimetable = useTimetableStore((state) => state._hasHydrated);
   const _hasHydratedNote = useNoteStore((state) => state._hasHydrated);
   const _hasHydratedSettings = useSettingsStore((state) => state._hasHydrated);
+  
+  // We subscribe to history here so the component re-renders when cloud data arrives
+  const history = useDashboardStore((state) => state.history);
   
   const _hasHydrated = _hasHydratedDashboard && _hasHydratedTask && _hasHydratedTimetable && _hasHydratedNote && _hasHydratedSettings;
   const initialHydratedRef = useRef(_hasHydrated);
@@ -71,11 +77,19 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
       setLoadingState({ progress: 100, statusText: 'Offline Mode — Loading Local Workspace...' });
       setBypassCloudSync(true);
       setIsExtraDataFetched(true);
+      setIsAwaitingCloudInjection(false);
       return;
     }
 
     // Step 1: Initial load state
     setLoadingState({ progress: 30, statusText: 'Authenticating & Loading Profile...' });
+
+    // Check if local storage is completely empty (First Load on a new device/Lively)
+    const localData = localStorage.getItem('dashboard-storage');
+    if (localData && localData.length > 50) {
+      // If we already have local data, we don't need to wait for the cloud injection to render the UI!
+      setIsAwaitingCloudInjection(false);
+    }
 
     // Step 2: Fetch tasks and notes dynamically
     const fetchExtraData = async () => {
@@ -93,11 +107,12 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
 
     // Fallback: If sync/hydration absolutely stalls after a long time (5s), execute automated local recovery
     const timerSafety = setTimeout(() => {
-      if (!checkAllStoresHydrated()) {
+      if (!checkAllStoresHydrated() || isAwaitingCloudInjection) {
         console.warn("Hydration safety trigger activated: bypassing cloud hang.");
         setBypassCloudSync(true);
         forceHydrateAllStores();
         setIsExtraDataFetched(true);
+        setIsAwaitingCloudInjection(false);
       }
     }, 5000);
 
@@ -106,9 +121,19 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
     };
   }, []);
 
+  // NEW: Listen for the moment the cloud data gets injected into the local state
+  useEffect(() => {
+    if (isAwaitingCloudInjection && _hasHydratedDashboard) {
+      // If history exists, or if failedToLoadDB was flagged (meaning network failed), we are done waiting!
+      if (Object.keys(history || {}).length > 0 || failedToLoadDB) {
+        setIsAwaitingCloudInjection(false);
+      }
+    }
+  }, [_hasHydratedDashboard, history, isAwaitingCloudInjection]);
+
   // Completion sequence & smooth real-time progress steps
   useEffect(() => {
-    if (_hasHydrated && isExtraDataFetched) {
+    if (_hasHydrated && isExtraDataFetched && !isAwaitingCloudInjection) {
       setLoadingState({ progress: 100, statusText: 'Workspace Ready!' });
 
       const settlementDelay = initialHydratedRef.current ? 50 : 150;
@@ -126,12 +151,12 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
         clearTimeout(timerFade);
         clearTimeout(timerUnmount);
       };
-    } else if (_hasHydrated && !isExtraDataFetched) {
+    } else if (_hasHydrated && (!isExtraDataFetched || isAwaitingCloudInjection)) {
       setLoadingState({ progress: 75, statusText: 'Synchronizing Cloud Data...' });
     } else if (!_hasHydrated && isExtraDataFetched) {
       setLoadingState({ progress: 75, statusText: 'Decrypting Workspace & Timetable...' });
     }
-  }, [_hasHydrated, isExtraDataFetched, onFinished]);
+  }, [_hasHydrated, isExtraDataFetched, isAwaitingCloudInjection, onFinished]);
 
   // handler to bypass stalled connections instantly
   const handleLoadOffline = () => {
@@ -139,6 +164,7 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
     setBypassCloudSync(true);
     setLoadingState({ progress: 100, statusText: 'Loading Offline Instantly...' });
     setIsExtraDataFetched(true);
+    setIsAwaitingCloudInjection(false);
 
     // Yield short processing macro-tick before forcefully hydrating
     setTimeout(() => {

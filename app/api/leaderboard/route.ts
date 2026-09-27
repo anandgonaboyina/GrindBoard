@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     // Fire and forget cleanup
     deleteInactiveUsers().catch(console.error);
 
-    // 🚀 THE MAGIC FIX: Fire ALL 4 database queries simultaneously
+    //  Fire ALL 4 database queries simultaneously
     // This cuts the database wait time by up to 75%
     const [users, friendships, stats, dailyRoutines] = await Promise.all([
       db.collection('User').find({}, { 

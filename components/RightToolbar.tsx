@@ -41,6 +41,8 @@ export default function RightToolbar() {
   const baseHideConfig = useDashboardStore((state) => state.hideConfig);
   const mobileHideConfig = useDashboardStore((state) => state.mobileHideConfig);
   const [isMobile, setIsMobile] = useState(false);
+  const toggleHide = useDashboardStore(state=>state.toggleHide);
+
 
   useEffect(() => {
     setIsMobile(window.innerWidth <= 768);
@@ -58,7 +60,6 @@ export default function RightToolbar() {
   const enablePanicButton = useDashboardStore((state) => state.enablePanicButton);
   const panicButtonMode = useDashboardStore((state) => state.panicButtonMode);
   const togglePanicHide = useDashboardStore((state) => state.togglePanicHide);
-  const toggleHide = useDashboardStore((state) => state.toggleHide);
 
   const handlePanic = () => {
     togglePanicHide();
@@ -81,7 +82,9 @@ export default function RightToolbar() {
       });
       if (res.ok) {
         useDashboardStore.getState().togglePanicHide();
+        useDashboardStore.getState().toggleHide();
         setIsUnlockModalOpen(false);
+
       } else {
         setUnlockError("Incorrect password!");
         // Keep modal open so they can try again
@@ -126,7 +129,7 @@ export default function RightToolbar() {
       <div
         className={`relative z-20 flex flex-col gap-2 md:gap-3`}
       >
-        {isPanicHidden ? (
+        {(isPanicHidden || isHidden ) ? (
           <>
             <Tooltip text="Unlock Peek Mode" position="left">
               <button
@@ -154,6 +157,9 @@ export default function RightToolbar() {
               inputType="password"
               promptPlaceholder="Password"
               confirmText={unlockLoading ? "Verifying..." : "Unlock"}
+              isLoading={unlockLoading}
+              closeOnConfirm={false} // Stops it from vanishing instantly!
+              
               inputFooter={
                 <div className="flex justify-between items-center mt-1">
                   {unlockError && <span className="text-red-400 text-xs">{unlockError}</span>}

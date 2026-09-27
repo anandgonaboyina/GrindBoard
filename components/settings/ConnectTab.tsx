@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useDashboardStore } from "@/store/dashboardStore";
 import { setAuthTransition } from "@/store/dashboardStore/sync";
 import { UserCircle, Users, Trophy, X } from 'lucide-react';
-import ConfirmationModal from './ConfirmationModal';
+import ConfirmationModal from '../ConfirmationModal';
 import ConnectGroupsTab from './connectTabSections/ConnectGroupsTab';
 
 // Subcomponents

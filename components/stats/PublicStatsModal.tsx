@@ -47,7 +47,6 @@ export default function PublicStatsModal({ user, isLight, onClose }: PublicStats
     const prevMonthObj = new Date(todayObj.getFullYear(), todayObj.getMonth() - 1, 1);
     const daysInLastMonth = new Date(prevMonthObj.getFullYear(), prevMonthObj.getMonth() + 1, 0).getDate();
     const targetLastMonthDay = Math.min(currentDayOfMonth, daysInLastMonth);
-
     for (let day = 1; day <= currentDayOfMonth; day++) thisMonthSoFar += (history[getLocalStr(new Date(todayObj.getFullYear(), todayObj.getMonth(), day))] as number) || 0;
     for (let day = 1; day <= targetLastMonthDay; day++) lastMonthToSameDay += (history[getLocalStr(new Date(prevMonthObj.getFullYear(), prevMonthObj.getMonth(), day))] as number) || 0;
 
@@ -145,7 +144,7 @@ export default function PublicStatsModal({ user, isLight, onClose }: PublicStats
     const formattedTime = m > 0 ? `${h}h ${m}m` : `${h}h`;
     return isNegative ? `-${formattedTime}` : formattedTime;
   };
-  
+  const isMobileView = useIsMobile();
   const formatDate = (dateStr: string) => !dateStr ? '' : new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
   const formatDisplayDate = (dateStr: string) => !dateStr ? '' : new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -208,9 +207,9 @@ const MainAreaElements = (
             <X className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
-            useIsMobile?
+       {  isMobileView?
         (
-          {/* --- MOBILE LAYOUT: Full Scroll --- */}
+          /* --- MOBILE LAYOUT: Full Scroll --- */
           <div className="flex md:hidden flex-1 relative z-10 min-h-0 flex-col overflow-hidden">
             <ScrollableWithArrows className="h-full w-full pb-10 custom-scrollbar overflow-y-auto">
               <div className={`flex flex-col border-b ${isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-slate-800/20 border-slate-800'}`}>
@@ -220,14 +219,12 @@ const MainAreaElements = (
             </ScrollableWithArrows>
           </div>
         ) : (
-        {/* Desktop View */}
-                {/* --- DESKTOP LAYOUT: Split Pane Layout --- */}
+            /* --- DESKTOP LAYOUT: Split Pane Layout --- */
           <div className="hidden md:flex flex-1 relative z-10 min-h-0 flex-row overflow-hidden">
             {/* Left Sidebar Fixed Scroll */}
             <div className={`w-[35%] lg:w-[32%] border-r flex flex-col shrink-0 overflow-y-auto custom-scrollbar ${isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-slate-800/20 border-slate-800'}`}>
               {SidebarElements}
             </div>
-            
             {/* Right Main Area with Arrows */}
             <div className="flex-1 relative flex flex-col overflow-hidden min-h-0">
               <ScrollableWithArrows className="h-full w-full pb-10">
@@ -235,7 +232,7 @@ const MainAreaElements = (
               </ScrollableWithArrows>
             </div>
           </div>
-        )
+        )}
       </div>
     </div>,
     document.body

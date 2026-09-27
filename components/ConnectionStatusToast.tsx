@@ -23,7 +23,7 @@ export default function ConnectionStatusToast() {
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000);
         
         // Real network ping test
         const res = await fetch('/api/store?ping=true', {

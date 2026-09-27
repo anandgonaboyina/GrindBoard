@@ -4,186 +4,128 @@ import { DashboardState, CustomAlarmSound } from './types';
 import { getLocalDateString } from '@/utils/date';
 import { filterActiveDeadlines, mergeDailyTimes } from './helpers';
 import { useTaskStore } from '@/store/taskStore';
+
 import {
-  fileStorage, triggerInstantSave, pushCountdownsToDB,
-  pushDailyRoutineToDB, pushStreakToDB, clearOldDataAPI, clearAllDataAPI, forcePushTimerState, getSecureFocusQueue, setSecureFocusQueue
+  getSyncToken, getSyncLastModified, setSyncLastModified,
+  mergeArraysById
+} from './helpers';
+
+import { 
+  fileStorage, triggerInstantSave, pushStreakToDB, 
+  clearOldDataAPI, clearAllDataAPI, forcePushTimerState, checkTimerStillActiveInDB
 } from './sync';
 
 // ----------------------------------------------------------------------
-// DEADLINES QUEUE & SYNC ENGINE
+// ATOMIC OFFLINE QUEUES
 // ----------------------------------------------------------------------
-interface DeadlineAction {
-    type: 'ADD_DEADLINE' | 'UPDATE_DEADLINE' | 'DELETE_DEADLINE' | 'UPDATE_SETTINGS' | 'REPLACE_ALL';
-    deadlineId?: string;
-    deadline?: any;
-    updates?: Record<string, any>;
-    data?: any;
-}
-
-export const syncDeadlinesQueue = async () => {
+const processQueue = async (queueName: string, url: string) => {
     if (typeof window === 'undefined' || !navigator.onLine) return;
     const token = localStorage.getItem('dashboard_sync_token');
     if (!token) return;
 
-    const queueStr = localStorage.getItem('deadlines_offline_queue');
+    const queueStr = localStorage.getItem(queueName);
     if (!queueStr) return;
 
-    let actions: DeadlineAction[] = [];
+    let actions: any[] = [];
     try { actions = JSON.parse(queueStr); } catch (e) { return; }
     if (actions.length === 0) return;
 
     try {
-        const res = await fetch('/api/deadlines', {
+        const res = await fetch(url, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ actions })
         });
-        
-        if (res.ok) {
-            localStorage.removeItem('deadlines_offline_queue');
-        }
-    } catch (e) {
-        console.warn("[Deadlines] Failed to push offline queue.", e);
+        if (res.ok) localStorage.removeItem(queueName);
+    } catch (e) { console.warn(`[Queue] Failed to push ${queueName}`); }
+};
+
+// Settings
+export const syncSettingsQueue = () => processQueue('settings_offline_queue', '/api/settings');
+let syncSettingsTimeout: NodeJS.Timeout | null = null;
+export const queueSettingsAction = (updates: Record<string, any>) => {
+    if (typeof window === 'undefined') return;
+    let queue: any[] = [];
+    try { const qs = localStorage.getItem('settings_offline_queue'); if (qs) queue = JSON.parse(qs); } catch (e) {}
+    if (queue.length > 0 && queue[queue.length - 1].type === 'UPDATE_SETTINGS') {
+        queue[queue.length - 1].updates = { ...queue[queue.length - 1].updates, ...updates };
+    } else queue.push({ type: 'UPDATE_SETTINGS', updates });
+    localStorage.setItem('settings_offline_queue', JSON.stringify(queue));
+    if (navigator.onLine) {
+        if (syncSettingsTimeout) clearTimeout(syncSettingsTimeout);
+        syncSettingsTimeout = setTimeout(syncSettingsQueue, 1500);
     }
 };
-let deadlineTypingTimer: NodeJS.Timeout | null = null
 
-const queueDeadlineAction = (action: DeadlineAction) => {
+const SETTING_ARRAY_KEYS = [
+  'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers', 'activeDesktopCustomIndex', 'activeMobileCustomIndex', 'customLocalWallpaperName',
+  'widgetOffsets', 'clockOffsets', 'lockedWidgets', 'panicWallpaperSwitch', 'enableAlarmSound', 'enableAlarmVibration', 'enablePanicButton',
+  'manifestationDesktopPhotos', 'manifestationMobilePhotos', 'activeManifestationDesktopIndex', 'activeManifestationMobileIndex',
+  'manifestationCustomQuotes', 'customQuotes', 'customAlarmSounds', 'showManifestationBoard', 'hasSeenOnboarding', 'hideConfig', 'mobileHideConfig', 
+  'panicButtonMode', 'panicShortcutKey', 'focusShortcutKey', 'selectedSound', 'alarmVolume', 'dashboardScale', 'mobileDashboardScale', 'dockScale',
+  'dockOffset', 'rightWidgetsOffset', 'enableRightToolbarPeek', 'autoOpenCountdowns', 'activeTheme', 'clockStyle', 'fontFamily', 'soundEffectVolume', 'currentBgType',
+  'selectedLocalWallpaperName', 'timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime'
+];
+export const queueSetting = (key: string, value: any) => {
+   if (SETTING_ARRAY_KEYS.includes(key)) queueSettingsAction({ [key]: value });
+   else if ((key.startsWith('show') || key.startsWith('hide') || key.startsWith('is')) && key !== 'hideConfig' && key !== 'mobileHideConfig') queueSettingsAction({ [`displaySettings.${key}`]: value });
+   else queueSettingsAction({ [`generalSettings.${key}`]: value });
+};
+
+// Deadlines
+export const syncDeadlinesQueue = () => processQueue('deadlines_offline_queue', '/api/deadlines');
+const queueDeadlineAction = (action: any) => {
     if (typeof window === 'undefined') return;
-    
-    let queue: DeadlineAction[] = [];
-    try {
-        const queueStr = localStorage.getItem('deadlines_offline_queue');
-        if (queueStr) queue = JSON.parse(queueStr);
-    } catch (e) {}
-
+    let queue: any[] = [];
+    try { const qs = localStorage.getItem('deadlines_offline_queue'); if (qs) queue = JSON.parse(qs); } catch (e) {}
     queue.push(action);
     localStorage.setItem('deadlines_offline_queue', JSON.stringify(queue));
-
     if (navigator.onLine) syncDeadlinesQueue();
 };
+let deadlineTypingTimer: NodeJS.Timeout | null = null;
 
-if (typeof window !== 'undefined') {
-    window.addEventListener('online', syncDeadlinesQueue);
-    window.addEventListener('app_sync_now', syncDeadlinesQueue);
-}
-
-// ----------------------------------------------------------------------
-// COUNTDOWNS QUEUE & SYNC ENGINE
-// ----------------------------------------------------------------------
-interface CountdownAction {
-    type: 'ADD_COUNTDOWN' | 'UPDATE_COUNTDOWN' | 'DELETE_COUNTDOWN' | 'REPLACE_ALL';
-    countdownId?: string;
-    countdown?: any;
-    updates?: Record<string, any>;
-    countdowns?: any[];
-}
-
-export const syncCountdownsQueue = async () => {
-    if (typeof window === 'undefined' || !navigator.onLine) return;
-    const token = localStorage.getItem('dashboard_sync_token');
-    if (!token) return;
-
-    const queueStr = localStorage.getItem('countdowns_offline_queue');
-    if (!queueStr) return;
-
-    let actions: CountdownAction[] = [];
-    try { actions = JSON.parse(queueStr); } catch (e) { return; }
-    if (actions.length === 0) return;
-
-    try {
-        const res = await fetch('/api/countdowns', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ actions })
-        });
-        
-        if (res.ok) {
-            localStorage.removeItem('countdowns_offline_queue');
-        }
-    } catch (e) {
-        console.warn("[Countdowns] Failed to push offline queue.", e);
-    }
-};
-
-const queueCountdownAction = (action: CountdownAction) => {
+// Countdowns
+export const syncCountdownsQueue = () => processQueue('countdowns_offline_queue', '/api/countdowns');
+const queueCountdownAction = (action: any) => {
     if (typeof window === 'undefined') return;
-    
-    let queue: CountdownAction[] = [];
-    try {
-        const queueStr = localStorage.getItem('countdowns_offline_queue');
-        if (queueStr) queue = JSON.parse(queueStr);
-    } catch (e) {}
-
+    let queue: any[] = [];
+    try { const qs = localStorage.getItem('countdowns_offline_queue'); if (qs) queue = JSON.parse(qs); } catch (e) {}
     queue.push(action);
     localStorage.setItem('countdowns_offline_queue', JSON.stringify(queue));
-
     if (navigator.onLine) syncCountdownsQueue();
 };
 
-if (typeof window !== 'undefined') {
-    window.addEventListener('online', syncCountdownsQueue);
-    window.addEventListener('app_sync_now', syncCountdownsQueue);
-}
-
-// ----------------------------------------------------------------------
-// DAILY ROUTINE QUEUE & SYNC ENGINE
-// ----------------------------------------------------------------------
-interface DailyRoutineAction {
-    type: 'UPDATE_DAILY_TIME' | 'REPLACE_ALL';
-    dateKey?: string;
-    field?: string;
-    timestamp?: number;
-    dailyTimes?: any;
-}
-
-export const syncDailyRoutineQueue = async () => {
-    if (typeof window === 'undefined' || !navigator.onLine) return;
-    const token = localStorage.getItem('dashboard_sync_token');
-    if (!token) return;
-
-    const queueStr = localStorage.getItem('daily_routine_offline_queue');
-    if (!queueStr) return;
-
-    let actions: DailyRoutineAction[] = [];
-    try { actions = JSON.parse(queueStr); } catch (e) { return; }
-    if (actions.length === 0) return;
-
-    try {
-        const res = await fetch('/api/daily-routine', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ actions })
-        });
-        
-        if (res.ok) {
-            localStorage.removeItem('daily_routine_offline_queue');
-        }
-    } catch (e) {
-        console.warn("[Daily Routine] Failed to push offline queue.", e);
-    }
-};
-
-const queueDailyRoutineAction = (action: DailyRoutineAction) => {
+// Daily Routine
+export const syncDailyRoutineQueue = () => processQueue('daily_routine_offline_queue', '/api/daily-routine');
+const queueDailyRoutineAction = (action: any) => {
     if (typeof window === 'undefined') return;
-    
-    let queue: DailyRoutineAction[] = [];
-    try {
-        const queueStr = localStorage.getItem('daily_routine_offline_queue');
-        if (queueStr) queue = JSON.parse(queueStr);
-    } catch (e) {}
-
+    let queue: any[] = [];
+    try { const qs = localStorage.getItem('daily_routine_offline_queue'); if (qs) queue = JSON.parse(qs); } catch (e) {}
     queue.push(action);
     localStorage.setItem('daily_routine_offline_queue', JSON.stringify(queue));
-
     if (navigator.onLine) syncDailyRoutineQueue();
 };
 
-if (typeof window !== 'undefined') {
-    window.addEventListener('online', syncDailyRoutineQueue);
-    window.addEventListener('app_sync_now', syncDailyRoutineQueue);
-}
+// Roadmaps 
+export const syncRoadmapsQueue = () => processQueue('roadmaps_offline_queue', '/api/roadmap');
+let roadmapDebounceTimer: NodeJS.Timeout | null = null;
+const queueRoadmapAction = (action: any) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('roadmaps_offline_queue', JSON.stringify([action]));
+    if (navigator.onLine) {
+        if (roadmapDebounceTimer) clearTimeout(roadmapDebounceTimer);
+        roadmapDebounceTimer = setTimeout(syncRoadmapsQueue, 1500);
+    }
+};
 
+if (typeof window !== 'undefined') {
+    const runAllQueues = () => {
+        syncSettingsQueue(); syncDeadlinesQueue(); syncCountdownsQueue(); 
+        syncDailyRoutineQueue(); syncRoadmapsQueue();
+    };
+    window.addEventListener('online', runAllQueues);
+    window.addEventListener('app_sync_now', runAllQueues);
+}
 
 // ----------------------------------------------------------------------
 // MAIN DASHBOARD STORE
@@ -198,20 +140,19 @@ export const useDashboardStore = create<DashboardState>()(
       history: {},
       syncTodayFocus: async () => {
           if (typeof window === 'undefined' || !navigator.onLine) return;
-          
           try {
             const token = localStorage.getItem('dashboard_sync_token');
             if (!token) return;
-
-            const res = await fetch('/api/store', {
-              method: 'GET',
-              headers: { 'Authorization': `Bearer ${token}` },
-              signal: AbortSignal.timeout(5000)
+            
+            const localLastMod = getSyncLastModified() || 0;
+            const res = await fetch(`/api/store?t=${Date.now()}&localModified=${localLastMod}`, {
+              method: 'GET', headers: { 'Authorization': `Bearer ${token}` }, signal: AbortSignal.timeout(5000)
             });
             
             const json = await res.json();
+            if (json.upToDate) return; 
+
             if (res.ok && json.data?.state?.history) {
-              
               const clientOffset = new Date().getTimezoneOffset();
               const now = Date.now();
               const localMs = now - (clientOffset * 60 * 1000);
@@ -219,15 +160,11 @@ export const useDashboardStore = create<DashboardState>()(
               const dbToday = json.data.state.history[todayStr] || 0;
               const currentLocal = get().history[todayStr] || 0;
               
-              // Update local UI only if DB mismatched
               if (dbToday != currentLocal) {
-                set((state) => ({
-                  history: { ...state.history, [todayStr]: dbToday }
-                }));
+                set((state) => ({ history: { ...state.history, [todayStr]: dbToday } }));
               }
             }
-          } catch (e) {
-          }
+          } catch (e) {}
         },
       isHidden: false,
       _hasHydrated: false,
@@ -238,84 +175,69 @@ export const useDashboardStore = create<DashboardState>()(
       setUserGroups: (groups) => set({ userGroups: groups }),
       selectedGroupId: null,
       setSelectedGroupId: (id) => set({ selectedGroupId: id }),
-      setTheme: (theme) => set({ theme, notesThemeOverride: null, timetableThemeOverride: null }),
-      setNotesThemeOverride: (theme) => set({ notesThemeOverride: theme }),
-      setTimetableThemeOverride: (theme) => set({ timetableThemeOverride: theme }),
+      setTheme: (theme) => set((state) => {
+        queueSettingsAction({ 'generalSettings.theme': theme, 'generalSettings.notesThemeOverride': null, 'generalSettings.timetableThemeOverride': null });
+        return { theme, notesThemeOverride: null, timetableThemeOverride: null };
+      }),
+      setNotesThemeOverride: (theme) => set((state) => { queueSetting('notesThemeOverride', theme); return { notesThemeOverride: theme }; }),
+      setTimetableThemeOverride: (theme) => set((state) => { queueSetting('timetableThemeOverride', theme); return { timetableThemeOverride: theme }; }),
       setHasHydrated: (state) => set({ _hasHydrated: state }),
 
-      toggleLockWallpaper: () => set((state) => ({ lockedWallpaper: state.lockedWallpaper ? null : state.wallpaper })),
-      setLockedWallpaper: (filename) => set({ lockedWallpaper: filename }),
-      setWallpaper: (url) => set({ wallpaper: url }),
+      toggleLockWallpaper: () => set((state) => { const nextVal = state.lockedWallpaper ? null : state.wallpaper; queueSetting('lockedWallpaper', nextVal); return { lockedWallpaper: nextVal }; }),
+      setLockedWallpaper: (filename) => set((state) => { queueSetting('lockedWallpaper', filename); return { lockedWallpaper: filename }; }),
+      setWallpaper: (url) => set((state) => { queueSetting('wallpaper', url); return { wallpaper: url }; }),
       cycleBackground: () => set((state) => {
-        const BUILT_IN = [
-          "/wallpapers/naruto.webp",
-          "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg",
-          "https://images4.alphacoders.com/140/1402795.mp4",
-          "https://images4.alphacoders.com/476/thumb-1920-47698.png"
-        ];
+        const BUILT_IN = [ "/wallpapers/naruto.webp", "https://static.toiimg.com/photo/imgsize-23456,msid-122440968,resizemode-4/naruto-vs-sasuke.jpg", "https://images4.alphacoders.com/140/1402795.mp4", "https://images4.alphacoders.com/476/thumb-1920-47698.png" ];
         const nextIndex = (state.bgIndex + 1) % BUILT_IN.length;
+        queueSettingsAction({ 'generalSettings.lockedWallpaper': null, 'generalSettings.bgIndex': nextIndex, 'generalSettings.wallpaper': BUILT_IN[nextIndex] });
         return { lockedWallpaper: null, bgIndex: nextIndex, wallpaper: BUILT_IN[nextIndex] };
       }),
-      setCurrentBgType: (type) => set({ currentBgType: type }),
+      setCurrentBgType: (type) => set((state) => { queueSetting('currentBgType', type); return { currentBgType: type }; }),
       isVideoMuted: true,
       setIsVideoMuted: (muted) => set({ isVideoMuted: muted }),
       isVideoPlaying: true,
       setIsVideoPlaying: (playing) => set({ isVideoPlaying: playing }),
 
       customDesktopWallpapers: [],
-      setCustomDesktopWallpapers: (urls) => set({ customDesktopWallpapers: urls }),
+      setCustomDesktopWallpapers: (urls) => set((state) => { queueSetting('customDesktopWallpapers', urls); return { customDesktopWallpapers: urls }; }),
       activeDesktopCustomIndex: null,
-      setActiveDesktopCustomIndex: (index) => set({ activeDesktopCustomIndex: index }),
+      setActiveDesktopCustomIndex: (index) => set((state) => { queueSetting('activeDesktopCustomIndex', index); return { activeDesktopCustomIndex: index }; }),
 
       customMobileWallpapers: [],
-      setCustomMobileWallpapers: (urls) => set({ customMobileWallpapers: urls }),
+      setCustomMobileWallpapers: (urls) => set((state) => { queueSetting('customMobileWallpapers', urls); return { customMobileWallpapers: urls }; }),
       activeMobileCustomIndex: null,
-      setActiveMobileCustomIndex: (index) => set({ activeMobileCustomIndex: index }),
+      setActiveMobileCustomIndex: (index) => set((state) => { queueSetting('activeMobileCustomIndex', index); return { activeMobileCustomIndex: index }; }),
 
       showManifestationBoard: true,
-      setShowManifestationBoard: (show) => set({ showManifestationBoard: show }),
+      setShowManifestationBoard: (show) => set((state) => { queueSetting('showManifestationBoard', show); return { showManifestationBoard: show }; }),
       isManifestationOpen: false,
       setIsManifestationOpen: (open) => set({ isManifestationOpen: open }),
       toggleManifestationOpen: () => set((state) => ({ isManifestationOpen: !state.isManifestationOpen })),
 
       manifestationDesktopPhotos: [],
-      setManifestationDesktopPhotos: (urls) => set({ manifestationDesktopPhotos: urls }),
+      setManifestationDesktopPhotos: (urls) => set((state) => { queueSetting('manifestationDesktopPhotos', urls); return { manifestationDesktopPhotos: urls }; }),
       activeManifestationDesktopIndex: null,
-      setActiveManifestationDesktopIndex: (index) => set({ activeManifestationDesktopIndex: index }),
+      setActiveManifestationDesktopIndex: (index) => set((state) => { queueSetting('activeManifestationDesktopIndex', index); return { activeManifestationDesktopIndex: index }; }),
 
       manifestationMobilePhotos: [],
-      setManifestationMobilePhotos: (urls) => set({ manifestationMobilePhotos: urls }),
+      setManifestationMobilePhotos: (urls) => set((state) => { queueSetting('manifestationMobilePhotos', urls); return { manifestationMobilePhotos: urls }; }),
       activeManifestationMobileIndex: null,
-      setActiveManifestationMobileIndex: (index) => set({ activeManifestationMobileIndex: index }),
+      setActiveManifestationMobileIndex: (index) => set((state) => { queueSetting('activeManifestationMobileIndex', index); return { activeManifestationMobileIndex: index }; }),
 
         addMins: (dateKey, mins) => {
         set((state) => {
           const oldTotal = state.history[dateKey] || 0;
           const newTotal = oldTotal + mins;
-
-          if (typeof window !== 'undefined') {
-            pushStreakToDB(dateKey, mins);
-          }
+          if (typeof window !== 'undefined') { pushStreakToDB(dateKey, mins); }
           const existingWorkStarted = (state.dailyTimes[dateKey] || {}).workStartedTime;
           const newBedTime = Date.now();
 
-          // If this is the first focus session of the day, record the start time
-          if (!existingWorkStarted) {
-             queueDailyRoutineAction({ type: 'UPDATE_DAILY_TIME', dateKey, field: 'workStartedTime', timestamp: newBedTime });
-          }
-          // Always update the bedTime to the latest focus session end
+          if (!existingWorkStarted) { queueDailyRoutineAction({ type: 'UPDATE_DAILY_TIME', dateKey, field: 'workStartedTime', timestamp: newBedTime }); }
           queueDailyRoutineAction({ type: 'UPDATE_DAILY_TIME', dateKey, field: 'bedTime', timestamp: newBedTime });
 
           return {
             history: { ...state.history, [dateKey]: newTotal },
-            dailyTimes: {
-              ...state.dailyTimes,
-              [dateKey]: {
-                ...(state.dailyTimes[dateKey] || {}),
-                workStartedTime: existingWorkStarted || newBedTime,
-                bedTime: newBedTime
-              }
-            },
+            dailyTimes: { ...state.dailyTimes, [dateKey]: { ...(state.dailyTimes[dateKey] || {}), workStartedTime: existingWorkStarted || newBedTime, bedTime: newBedTime } },
             lastModified: Date.now()
           } as any;
         });
@@ -323,18 +245,14 @@ export const useDashboardStore = create<DashboardState>()(
 
       toggleHide: () => set((state) => {
         if (state.isPanicHidden) return {}; 
-        return { isHidden: !state.isHidden };
+        const nextVal = !state.isHidden; queueSetting('isHidden', nextVal);
+        return { isHidden: nextVal };
       }),
 
       isTaskManagerOpen: false,
       toggleTaskManager: () => set((state) => {
-        const next = !state.isTaskManagerOpen;
-        let extra = {};
-        if (next) {
-          const currentZ = state.widgetZIndices || {};
-          const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50;
-          extra = { widgetZIndices: { ...currentZ, tasks: maxZ + 1 } };
-        }
+        const next = !state.isTaskManagerOpen; let extra = {};
+        if (next) { const currentZ = state.widgetZIndices || {}; const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50; extra = { widgetZIndices: { ...currentZ, tasks: maxZ + 1 } }; }
         return { isTaskManagerOpen: next, ...extra };
       }),
 
@@ -343,13 +261,8 @@ export const useDashboardStore = create<DashboardState>()(
 
       isTimerOpen: false,
       toggleTimer: () => set((state) => {
-        const next = !state.isTimerOpen;
-        let extra = {};
-        if (next) {
-          const currentZ = state.widgetZIndices || {};
-          const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50;
-          extra = { widgetZIndices: { ...currentZ, timer: maxZ + 1 } };
-        }
+        const next = !state.isTimerOpen; let extra = {};
+        if (next) { const currentZ = state.widgetZIndices || {}; const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50; extra = { widgetZIndices: { ...currentZ, timer: maxZ + 1 } }; }
         return { isTimerOpen: next, ...extra };
       }),
 
@@ -357,70 +270,48 @@ export const useDashboardStore = create<DashboardState>()(
       isCalendarBusy: false,
       setIsCalendarBusy: (busy) => set({ isCalendarBusy: busy }),
       toggleCalendar: () => set((state) => {
-        const next = !state.isCalendarOpen;
-        let extra = {};
-        if (next) {
-          const currentZ = state.widgetZIndices || {};
-          const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50;
-          extra = { widgetZIndices: { ...currentZ, calendar: maxZ + 1 } };
-        }
+        const next = !state.isCalendarOpen; let extra = {};
+        if (next) { const currentZ = state.widgetZIndices || {}; const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50; extra = { widgetZIndices: { ...currentZ, calendar: maxZ + 1 } }; }
         return { isCalendarOpen: next, ...extra };
       }),
 
       isClockOpen: true,
       toggleClock: () => set((state) => {
-        const next = !state.isClockOpen;
-        let extra = {};
-        if (next) {
-          const currentZ = state.widgetZIndices || {};
-          const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50;
-          extra = { widgetZIndices: { ...currentZ, clock: maxZ + 1 } };
-        }
+        const next = !state.isClockOpen; let extra = {};
+        if (next) { const currentZ = state.widgetZIndices || {}; const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50; extra = { widgetZIndices: { ...currentZ, clock: maxZ + 1 } }; }
         return { isClockOpen: next, ...extra };
       }),
 
       isSettingsOpen: false,
       lastSeenNewsTime: 0,
       updateLastSeenNews: (timestamp) => set((state) => {
-          // Optional: send to your settings queue here if you sync this to settings DB!
+          queueSetting('lastSeenNewsTime', timestamp);
           return { lastSeenNewsTime: timestamp, lastModified: Date.now() };
       }),
       isNewsOpen: false,
       hasUnreadNews: true,
       toggleNews: () => set((state) => ({ isNewsOpen: !state.isNewsOpen })),
-      setHasUnreadNews: (val: boolean) => set(() => ({ hasUnreadNews: val })),
+      setHasUnreadNews: (val: boolean) => set((state) => { queueSetting('hasUnreadNews', val); return { hasUnreadNews: val }; }),
       settingsActiveTab: 'preferences',
       connectInitialTab: undefined,
 
       toggleSettings: () => set((state) => {
         const willClose = state.isSettingsOpen;
-        if (willClose && typeof window !== 'undefined') {
-          get().pushWallpapersToDB();
-          get().pushManifestationToDB();
-        }
+        if (willClose && typeof window !== 'undefined') { triggerInstantSave(); }
         return {
-          isSettingsOpen: !state.isSettingsOpen,
-          isAlarmPlaying: false,
-          isManifestationOpen: false,
-          ...(willClose
-            ? { connectInitialTab: undefined }
-            : {
-              settingsActiveTab: state.settingsActiveTab === 'connect' ? 'preferences' : state.settingsActiveTab,
-              connectInitialTab: undefined
-            }
-          )
+          isSettingsOpen: !state.isSettingsOpen, isAlarmPlaying: false, isManifestationOpen: false,
+          ...(willClose ? { connectInitialTab: undefined } : { settingsActiveTab: state.settingsActiveTab === 'connect' ? 'preferences' : state.settingsActiveTab, connectInitialTab: undefined })
         };
       }),
 
       setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
       setConnectInitialTab: (tab) => set({ connectInitialTab: tab }),
       hasSeenOnboarding: false,
-      setHasSeenOnboarding: (seen: boolean) => {
-        if (typeof window !== 'undefined' && seen) {
-          localStorage.setItem('grindboard_has_seen_onboarding', 'true');
-        }
-        set({ hasSeenOnboarding: seen });
-      },
+      setHasSeenOnboarding: (seen: boolean) => set((state) => {
+        if (typeof window !== 'undefined' && seen) { localStorage.setItem('grindboard_has_seen_onboarding', 'true'); }
+        queueSetting('hasSeenOnboarding', seen);
+        return { hasSeenOnboarding: seen };
+      }),
 
       isTourOpen: false,
       setIsTourOpen: (open) => set({ isTourOpen: open }),
@@ -431,103 +322,55 @@ export const useDashboardStore = create<DashboardState>()(
         const currentZ = state.widgetZIndices || {};
         const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50;
         return {
-          timerTrigger: { mins, ts: Date.now(), taskId, taskTitle },
-          showTimer: true,
-          isTimerOpen: true,
-          isHidden: false,
-          hideConfig: { ...state.hideConfig, timer: false },
-          mobileHideConfig: { ...state.mobileHideConfig, timer: false },
+          timerTrigger: { mins, ts: Date.now(), taskId, taskTitle }, showTimer: true, isTimerOpen: true, isHidden: false,
+          hideConfig: { ...state.hideConfig, timer: false }, mobileHideConfig: { ...state.mobileHideConfig, timer: false },
           widgetZIndices: { ...currentZ, timer: maxZ + 1 }
         };
       }),
 
       activeTaskId: null,
       activeTaskTitle: null,
-      setActiveTask: (id, title) => {
-        set({ activeTaskId: id, activeTaskTitle: title });
-        get().forceInstantSave();
-      },
-
+      setActiveTask: (id, title) => { set({ activeTaskId: id, activeTaskTitle: title }); triggerInstantSave(); },
       updateTaskDuration: (id, decreaseMins) => {
         set((state) => {
-          const newTasks = ((state as any).tasks || []).map((t: any) =>
-            t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins), timeSpent: (t.timeSpent || 0) + decreaseMins } : t
-          );
-          const newTomorrowTasks = ((state as any).tomorrowTasks || []).map((t: any) =>
-            t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins), timeSpent: (t.timeSpent || 0) + decreaseMins } : t
-          );
+          const newTasks = ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins), timeSpent: (t.timeSpent || 0) + decreaseMins } : t);
+          const newTomorrowTasks = ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, duration: Math.max(0, t.duration - decreaseMins), timeSpent: (t.timeSpent || 0) + decreaseMins } : t);
           return { tasks: newTasks, tomorrowTasks: newTomorrowTasks } as any;
         });
-        get().forceInstantSave();
+        triggerInstantSave();
       },
-
       editTaskDuration: (id, newDuration, tab = 'today') => {
-        set((state) => ({
-          ...(tab === 'today' && { tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, duration: newDuration } : t) }),
-          ...(tab === 'tomorrow' && { tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, duration: newDuration } : t) })
-        } as any));
-        get().forceInstantSave();
+        set((state) => ({ ...(tab === 'today' && { tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, duration: newDuration } : t) }), ...(tab === 'tomorrow' && { tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, duration: newDuration } : t) }) } as any));
+        triggerInstantSave();
       },
-
       incrementGroupTaskTimeSpent: (id, minsToSave) => {
         set((state) => {
           let updatedGroups = state.userGroups;
           if (updatedGroups) {
-            const todayStr = new Date().toLocaleDateString('en-CA');
-            const user = JSON.parse(localStorage.getItem('dashboard-auth-user') || '{}');
-            const userId = user._id || user.username;
-            if (!userId) return state;
-
+            const todayStr = new Date().toLocaleDateString('en-CA'); const user = JSON.parse(localStorage.getItem('dashboard-auth-user') || '{}');
+            const userId = user._id || user.username; if (!userId) return state;
             updatedGroups = updatedGroups.map(group => {
-              const hasTask = group.memberTasks?.[userId]?.some((t: any) => t.id === id);
-              if (!hasTask) return group;
-
-              const currentCompletions = group.completions?.[userId]?.[todayStr] || {};
-              const currentTaskComp = currentCompletions[id] || { completed: false, timeSpent: 0 };
-              const newCompletions = {
-                ...group.completions,
-                [userId]: {
-                  ...(group.completions?.[userId] || {}),
-                  [todayStr]: {
-                    ...currentCompletions,
-                    [id]: { ...currentTaskComp, timeSpent: (currentTaskComp.timeSpent || 0) + minsToSave }
-                  }
-                }
-              };
+              const hasTask = group.memberTasks?.[userId]?.some((t: any) => t.id === id); if (!hasTask) return group;
+              const currentCompletions = group.completions?.[userId]?.[todayStr] || {}; const currentTaskComp = currentCompletions[id] || { completed: false, timeSpent: 0 };
+              const newCompletions = { ...group.completions, [userId]: { ...(group.completions?.[userId] || {}), [todayStr]: { ...currentCompletions, [id]: { ...currentTaskComp, timeSpent: (currentTaskComp.timeSpent || 0) + minsToSave } } } };
               return { ...group, completions: newCompletions };
             });
           }
           return { userGroups: updatedGroups };
         });
-        get().forceInstantSave();
+        triggerInstantSave();
       },
-
       editTaskTimeSpent: (id, newTimeSpent, tab = 'today') => {
-        set((state) => ({
-          ...(tab === 'today' && { tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, timeSpent: newTimeSpent } : t) }),
-          ...(tab === 'tomorrow' && { tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, timeSpent: newTimeSpent } : t) })
-        } as any));
-        get().forceInstantSave();
+        set((state) => ({ ...(tab === 'today' && { tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, timeSpent: newTimeSpent } : t) }), ...(tab === 'tomorrow' && { tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, timeSpent: newTimeSpent } : t) }) } as any));
+        triggerInstantSave();
       },
-
       updateTaskTitle: (id, title, tab = 'today') => {
         set((state) => {
-          const isCurrentlyActive = state.activeTaskId === id;
-          const currentTasks = (state as any).tasks || [];
-          const currentTomorrow = (state as any).tomorrowTasks || [];
-
-          if (tab === 'today') {
-            return {
-              tasks: currentTasks.map((t: any) => t.id === id ? { ...t, title } : t),
-              ...(isCurrentlyActive && { activeTaskTitle: title }),
-            };
-          }
-          return {
-            tomorrowTasks: currentTomorrow.map((t: any) => t.id === id ? { ...t, title } : t),
-            ...(isCurrentlyActive && { activeTaskTitle: title }),
-          };
+          const isCurrentlyActive = state.activeTaskId === id; const currentTasks = (state as any).tasks || []; const currentTomorrow = (state as any).tomorrowTasks || [];
+          if (tab === 'today') { return { tasks: currentTasks.map((t: any) => t.id === id ? { ...t, title } : t), ...(isCurrentlyActive && { activeTaskTitle: title }), }; }
+          return { tomorrowTasks: currentTomorrow.map((t: any) => t.id === id ? { ...t, title } : t), ...(isCurrentlyActive && { activeTaskTitle: title }), };
         });
-        get().forceInstantSave();
+        triggerInstantSave();
       },
 
       timerEndAt: null,
@@ -545,14 +388,15 @@ export const useDashboardStore = create<DashboardState>()(
         const currentList = state.customAlarmSounds || [];
         if (currentList.length >= 3) return state;
         const newSound: CustomAlarmSound = { id: Date.now().toString(), name, url };
-        return { customAlarmSounds: [...currentList, newSound], alarmSound: url };
+        const updatedList = [...currentList, newSound];
+        queueSetting('customAlarmSounds', updatedList); queueSetting('alarmSound', url);
+        return { customAlarmSounds: updatedList, alarmSound: url };
       }),
-
       deleteCustomAlarmSound: (id) => set((state) => {
         const currentList = state.customAlarmSounds || [];
-        const soundToDelete = currentList.find(s => s.id === id);
-        const updatedList = currentList.filter(s => s.id !== id);
+        const soundToDelete = currentList.find(s => s.id === id); const updatedList = currentList.filter(s => s.id !== id);
         const activeSound = state.alarmSound === soundToDelete?.url ? '/ringtones/narutoBGM.mp3' : state.alarmSound;
+        queueSetting('customAlarmSounds', updatedList); queueSetting('alarmSound', activeSound);
         return { customAlarmSounds: updatedList, alarmSound: activeSound };
       }),
 
@@ -563,491 +407,169 @@ export const useDashboardStore = create<DashboardState>()(
       setTimerDeviceId: (id) => set({ timerDeviceId: id, timerLastUpdated: Date.now() }),
 
       clearTimerState: () => {
-        set({
-          timerEndAt: null,
-          timerPausedLeft: null,
-          timerInitialMins: null,
-          timerDeviceId: null,
-          timerLastSavedChunks: 0,
-          timerLastAlertedChunks: 0,
-          timerLastUpdated: Date.now(),
-          activeTaskId: null,
-          activeTaskTitle: null,
-        });
+        set({ timerEndAt: null, timerPausedLeft: null, timerInitialMins: null, timerDeviceId: null, timerLastSavedChunks: 0, timerLastAlertedChunks: 0, timerLastUpdated: Date.now(), activeTaskId: null, activeTaskTitle: null });
         forcePushTimerState();
       },
 
       setTimerLastSavedChunks: (chunks) => set({ timerLastSavedChunks: chunks }),
       setTimerLastAlertedChunks: (chunks) => set({ timerLastAlertedChunks: chunks }),
       setIsAlarmPlaying: (playing) => set({ isAlarmPlaying: playing }),
-      setAlarmSound: (sound) => set({ alarmSound: sound }),
+      
+      setAlarmSound: (sound) => set((state) => { queueSetting('alarmSound', sound); return { alarmSound: sound }; }),
       alarmDurationSecs: 60,
-      setAlarmDurationSecs: (secs) => set({ alarmDurationSecs: secs }),
-      setAlarmVolume: (vol) => set({ alarmVolume: vol }),
+      setAlarmDurationSecs: (secs) => set((state) => { queueSetting('alarmDurationSecs', secs); return { alarmDurationSecs: secs }; }),
+      setAlarmVolume: (vol) => set((state) => { queueSetting('alarmVolume', vol); return { alarmVolume: vol }; }),
       enableAlarmSound: true,
       enableAlarmVibration: true,
       enablePanicButton: true,
       panicButtonMode: 'hide',
       taskIntervalAlertMins: 10,
-      setEnableAlarmSound: (val) => set({ enableAlarmSound: val }),
-      setEnableAlarmVibration: (val) => set({ enableAlarmVibration: val }),
+      setEnableAlarmSound: (val) => set((state) => { queueSetting('enableAlarmSound', val); return { enableAlarmSound: val }; }),
+      setEnableAlarmVibration: (val) => set((state) => { queueSetting('enableAlarmVibration', val); return { enableAlarmVibration: val }; }),
       isTaskIntervalAlertEnabled: false,
-      setIsTaskIntervalAlertEnabled: (enabled) => set({ isTaskIntervalAlertEnabled: enabled }),
-      setTaskIntervalAlertMins: (mins) => set({ taskIntervalAlertMins: mins }),
+      setIsTaskIntervalAlertEnabled: (enabled) => set((state) => { queueSetting('isTaskIntervalAlertEnabled', enabled); return { isTaskIntervalAlertEnabled: enabled }; }),
+      setTaskIntervalAlertMins: (mins) => set((state) => { queueSetting('taskIntervalAlertMins', mins); return { taskIntervalAlertMins: mins }; }),
       taskIntervalRingSecs: 10,
-      setTaskIntervalRingSecs: (secs) => set({ taskIntervalRingSecs: secs }),
+      setTaskIntervalRingSecs: (secs) => set((state) => { queueSetting('taskIntervalRingSecs', secs); return { taskIntervalRingSecs: secs }; }),
 
       isTimerIntervalEnabled: false,
-      setIsTimerIntervalEnabled: (enabled) => set({ isTimerIntervalEnabled: enabled }),
+      setIsTimerIntervalEnabled: (enabled) => set((state) => { queueSetting('isTimerIntervalEnabled', enabled); return { isTimerIntervalEnabled: enabled }; }),
       timerIntervalMins: 5,
-      setTimerIntervalMins: (mins) => set({ timerIntervalMins: mins }),
+      setTimerIntervalMins: (mins) => set((state) => { queueSetting('timerIntervalMins', mins); return { timerIntervalMins: mins }; }),
 
       isStopwatchIntervalEnabled: false,
-      setIsStopwatchIntervalEnabled: (enabled) => set({ isStopwatchIntervalEnabled: enabled }),
+      setIsStopwatchIntervalEnabled: (enabled) => set((state) => { queueSetting('isStopwatchIntervalEnabled', enabled); return { isStopwatchIntervalEnabled: enabled }; }),
       stopwatchIntervalMins: 5,
-      setStopwatchIntervalMins: (mins) => set({ stopwatchIntervalMins: mins }),
-      setEnablePanicButton: (val) => set({ enablePanicButton: val }),
-      setPanicButtonMode: (val) => set({ panicButtonMode: val }),
+      setStopwatchIntervalMins: (mins) => set((state) => { queueSetting('stopwatchIntervalMins', mins); return { stopwatchIntervalMins: mins }; }),
+      setEnablePanicButton: (val) => set((state) => { queueSetting('enablePanicButton', val); return { enablePanicButton: val }; }),
+      setPanicButtonMode: (val) => set((state) => { queueSetting('panicButtonMode', val); return { panicButtonMode: val }; }),
 
       currentQuote: null,
       isQuotePopupOpen: false,
       showQuotePopup: (quote) => set({ currentQuote: quote, isQuotePopupOpen: true }),
       hideQuotePopup: () => set({ isQuotePopupOpen: false }),
       customQuotes: [],
-      setCustomQuotes: (quotes) => set({ customQuotes: quotes }),
+      setCustomQuotes: (quotes) => set((state) => { queueSetting('customQuotes', quotes); return { customQuotes: quotes }; }),
       useCustomQuotes: false,
-      setUseCustomQuotes: (useCustom) => set({ useCustomQuotes: useCustom }),
+      setUseCustomQuotes: (useCustom) => set((state) => { queueSetting('useCustomQuotes', useCustom); return { useCustomQuotes: useCustom }; }),
       manifestationCustomQuotes: [],
-      setManifestationCustomQuotes: (quotes) => set(() => {
-        return { manifestationCustomQuotes: (quotes || []).slice(0, 30) };
-      }),
-      addManifestationCustomQuote: (quote) => set((state) => {
-        const trimmed = quote.trim();
-        const current = state.manifestationCustomQuotes || [];
-        if (!trimmed || current.length >= 30) return state;
-        return { manifestationCustomQuotes: [...current, trimmed] };
-      }),
-      deleteManifestationCustomQuote: (index) => set((state) => {
-        return { manifestationCustomQuotes: (state.manifestationCustomQuotes || []).filter((_, i) => i !== index) };
-      }),
+      setManifestationCustomQuotes: (quotes) => set((state) => { const trimmedQuotes = (quotes || []).slice(0, 30); queueSetting('manifestationCustomQuotes', trimmedQuotes); return { manifestationCustomQuotes: trimmedQuotes }; }),
+      addManifestationCustomQuote: (quote) => set((state) => { const trimmed = quote.trim(); const current = state.manifestationCustomQuotes || []; if (!trimmed || current.length >= 30) return state; const newArr = [...current, trimmed]; queueSetting('manifestationCustomQuotes', newArr); return { manifestationCustomQuotes: newArr }; }),
+      deleteManifestationCustomQuote: (index) => set((state) => { const newArr = (state.manifestationCustomQuotes || []).filter((_, i) => i !== index); queueSetting('manifestationCustomQuotes', newArr); return { manifestationCustomQuotes: newArr }; }),
 
       isNotesOpen: false,
       toggleNotes: () => set((state) => ({ isNotesOpen: !state.isNotesOpen })),
 
       isTimetableOpen: false,
       setIsTimetableOpen: (isOpen) => set({ isTimetableOpen: isOpen }),
-      timetableGrid: {},
-      timetableColors: {},
-      weekdayTimes: [],
-      weekendTimes: [],
-      timetableStartTime: 540,
-      timetableWeekendStartTime: 540,
+      timetableGrid: {}, timetableColors: {}, weekdayTimes: [], weekendTimes: [], timetableStartTime: 540, timetableWeekendStartTime: 540,
 
       isStopwatchOpen: false,
-      toggleStopwatch: () => set((state) => {
-        const next = !state.isStopwatchOpen;
-        let extra = {};
-        if (next) {
-          const currentZ = state.widgetZIndices || {};
-          const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50;
-          extra = { widgetZIndices: { ...currentZ, stopwatch: maxZ + 1 } };
-        }
-        return { isStopwatchOpen: next, ...extra };
-      }),
-      stopwatchStartTime: null,
-      setStopwatchStartTime: (time) => set({ stopwatchStartTime: time }),
-      stopwatchDeviceId: null,
-      setStopwatchDeviceId: (id) => set({ stopwatchDeviceId: id }),
-      stopwatchLastSavedChunks: 0,
-      setStopwatchLastSavedChunks: (chunks) => set({ stopwatchLastSavedChunks: chunks }),
-      stopwatchAddToStats: true,
-      setStopwatchAddToStats: (val) => set({ stopwatchAddToStats: val }),
+      toggleStopwatch: () => set((state) => { const next = !state.isStopwatchOpen; let extra = {}; if (next) { const currentZ = state.widgetZIndices || {}; const maxZ = Object.values(currentZ).length > 0 ? Math.max(...Object.values(currentZ)) : 50; extra = { widgetZIndices: { ...currentZ, stopwatch: maxZ + 1 } }; } return { isStopwatchOpen: next, ...extra }; }),
+      stopwatchStartTime: null, setStopwatchStartTime: (time) => set({ stopwatchStartTime: time }),
+      stopwatchDeviceId: null, setStopwatchDeviceId: (id) => set({ stopwatchDeviceId: id }),
+      stopwatchLastSavedChunks: 0, setStopwatchLastSavedChunks: (chunks) => set({ stopwatchLastSavedChunks: chunks }),
+      stopwatchAddToStats: true, setStopwatchAddToStats: (val) => set((state) => { queueSetting('stopwatchAddToStats', val); return { stopwatchAddToStats: val }; }),
 
-      roadmaps: [
-        {
-          id: 'default-roadmap-id',
-          name: 'My Personal Goals',
-          targetDate: '2026-12-31',
-          nodes: [
-            {
-              id: 'node-seed-1',
-              title: 'Core Objective 1',
-              description: 'Primary milestone focus area',
-              status: 'in-progress',
-              subItems: [
-                { id: 'node-seed-1-1', title: 'Action Item A', status: 'completed' },
-                { id: 'node-seed-1-2', title: 'Action Item B', status: 'pending' }
-              ]
-            },
-            {
-              id: 'node-seed-2',
-              title: 'Core Objective 2',
-              description: 'Secondary milestone focus area',
-              status: 'pending',
-              subItems: [
-                { id: 'node-seed-2-1', title: 'Sub-task Alpha', status: 'pending' }
-              ]
-            }
-          ]
-        }
-      ],
-      setRoadmaps: (roadmaps) => set({ roadmaps }),
+      roadmaps: [{ id: 'default-roadmap-id', name: 'My Personal Goals', targetDate: '2026-12-31', nodes: [{ id: 'node-seed-1', title: 'Core Objective 1', description: 'Primary milestone focus area', status: 'in-progress', subItems: [{ id: 'node-seed-1-1', title: 'Action Item A', status: 'completed' }, { id: 'node-seed-1-2', title: 'Action Item B', status: 'pending' }] }, { id: 'node-seed-2', title: 'Core Objective 2', description: 'Secondary milestone focus area', status: 'pending', subItems: [{ id: 'node-seed-2-1', title: 'Sub-task Alpha', status: 'pending' }] }] }],
+      setRoadmaps: (roadmaps) => set((state) => { queueRoadmapAction({ type: 'REPLACE_ALL', roadmaps }); return { roadmaps }; }),
       syntheticDeadlines: {},
-      setSyntheticDeadline: (status, date) => set((state) => {
-        const payload = { syntheticDeadlines: { ...state.syntheticDeadlines, [status]: date } };
-        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: payload });
-        return payload;
-      }),
-      isPlansOpen: false,
-      togglePlans: () => set((state) => ({ isPlansOpen: !state.isPlansOpen })),
+      setSyntheticDeadline: (status, date) => set((state) => { const payload = { syntheticDeadlines: { ...state.syntheticDeadlines, [status]: date } }; queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: payload }); return payload; }),
+      isPlansOpen: false, togglePlans: () => set((state) => ({ isPlansOpen: !state.isPlansOpen })),
 
-      is24HourClock: false,
-      toggle24HourClock: () => set((state) => ({ is24HourClock: !state.is24HourClock })),
-      clockScale: 1,
-      setClockScale: (scale) => set({ clockScale: scale }),
-      dashboardScale: 1,
-      setDashboardScale: (scale) => set({ dashboardScale: scale }),
-      mobileDashboardScale: 1,
-      setMobileDashboardScale: (scale) => set({ mobileDashboardScale: scale }),
-      dockScale: 1,
-      setDockScale: (scale) => set({ dockScale: scale }),
-      dockOffset: 0,
-      setDockOffset: (offset) => set({ dockOffset: offset }),
+      is24HourClock: false, toggle24HourClock: () => set((state) => { const nextVal = !state.is24HourClock; queueSetting('is24HourClock', nextVal); return { is24HourClock: nextVal }; }),
+      clockScale: 1, setClockScale: (scale) => set((state) => { queueSetting('clockScale', scale); return { clockScale: scale }; }),
+      dashboardScale: 1, setDashboardScale: (scale) => set((state) => { queueSetting('dashboardScale', scale); return { dashboardScale: scale }; }),
+      mobileDashboardScale: 1, setMobileDashboardScale: (scale) => set((state) => { queueSetting('mobileDashboardScale', scale); return { mobileDashboardScale: scale }; }),
+      dockScale: 1, setDockScale: (scale) => set((state) => { queueSetting('dockScale', scale); return { dockScale: scale }; }),
+      dockOffset: 0, setDockOffset: (offset) => set((state) => { queueSetting('dockOffset', offset); return { dockOffset: offset }; }),
 
       countdowns: [],
-      autoOpenCountdowns: true,
-      setAutoOpenCountdowns: (enabled) => set({ autoOpenCountdowns: enabled }), // This is a display setting, it saves via your settings queue
-      
-      addCountdown: (title = 'New Target', endDate = null) => {
-        let newId = '';
-        set((state) => {
-          if (state.countdowns.length >= 5) return state;
-          newId = Date.now().toString();
-          const newCountdown = { id: newId, title, endDate };
-          
-          queueCountdownAction({ type: 'ADD_COUNTDOWN', countdown: newCountdown });
-          return { countdowns: [...state.countdowns, newCountdown] };
-        });
-        return newId;
-      },
-
-      updateCountdown: (id, title, endDate) => set((state) => {
-        queueCountdownAction({ type: 'UPDATE_COUNTDOWN', countdownId: id, updates: { title, endDate } });
-        return { countdowns: state.countdowns.map(c => c.id === id ? { ...c, title, endDate } : c) };
-      }),
-
-      deleteCountdown: (id) => set((state) => {
-        queueCountdownAction({ type: 'DELETE_COUNTDOWN', countdownId: id });
-        return { countdowns: state.countdowns.filter(c => c.id !== id) };
-      }),
+      autoOpenCountdowns: true, setAutoOpenCountdowns: (enabled) => set((state) => { queueSetting('autoOpenCountdowns', enabled); return { autoOpenCountdowns: enabled }; }), 
+      addCountdown: (title = 'New Target', endDate = null) => { let newId = ''; set((state) => { if (state.countdowns.length >= 5) return state; newId = Date.now().toString(); const newCountdown = { id: newId, title, endDate }; queueCountdownAction({ type: 'ADD_COUNTDOWN', countdown: newCountdown }); return { countdowns: [...state.countdowns, newCountdown] }; }); return newId; },
+      updateCountdown: (id, title, endDate) => set((state) => { queueCountdownAction({ type: 'UPDATE_COUNTDOWN', countdownId: id, updates: { title, endDate } }); return { countdowns: state.countdowns.map(c => c.id === id ? { ...c, title, endDate } : c) }; }),
+      deleteCountdown: (id) => set((state) => { queueCountdownAction({ type: 'DELETE_COUNTDOWN', countdownId: id }); return { countdowns: state.countdowns.filter(c => c.id !== id) }; }),
 
       deadlines: [],
-      addDeadline: (date, text) => {
-        const id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-        set((state) => {
-          const newDeadline = { id, date, text, isDone: false };
-          queueDeadlineAction({ type: 'ADD_DEADLINE', deadline: newDeadline });
-          return { deadlines: [...filterActiveDeadlines(state.deadlines), newDeadline] };
-        });
-        return id;
-      },
+      addDeadline: (date, text) => { const id = Date.now().toString() + Math.random().toString(36).substr(2, 5); set((state) => { const newDeadline = { id, date, text, isDone: false }; queueDeadlineAction({ type: 'ADD_DEADLINE', deadline: newDeadline }); return { deadlines: [...filterActiveDeadlines(state.deadlines), newDeadline] }; }); return id; },
       updateDeadline: (id, text) => {
-      // 1. Instantly update local UI
-      set((state) => ({
-        deadlines: state.deadlines.map(d => d.id === id ? { ...d, text } : d)
-      }));
+        set((state) => ({ deadlines: state.deadlines.map(d => d.id === id ? { ...d, text } : d) }));
+        if (deadlineTypingTimer) clearTimeout(deadlineTypingTimer);
+        if (!text || text.trim() === '') return;
+        deadlineTypingTimer = setTimeout(() => { const currentState = get(); const updatedDeadline = currentState.deadlines.find(d => d.id === id); if (updatedDeadline && updatedDeadline.text.trim() !== '') { queueDeadlineAction({ type: 'UPDATE_DEADLINE', deadlineId: id, updates: { text: updatedDeadline.text } }); } }, 3000);
+      },
+      deleteDeadline: (id) => set((state) => { queueDeadlineAction({ type: 'DELETE_DEADLINE', deadlineId: id }); return { deadlines: state.deadlines.filter(d => d.id !== id) }; }),
+      toggleDeadlineDone: (id) => set((state) => { const deadline = state.deadlines.find(d => d.id === id); if (deadline) { queueDeadlineAction({ type: 'UPDATE_DEADLINE', deadlineId: id, updates: { isDone: !deadline.isDone } }); } return { deadlines: state.deadlines.map(d => d.id === id ? { ...d, isDone: !d.isDone } : d) }; }),
+      deleteAllDeadlinesForDay: (date) => set((state) => { const newDeadlines = state.deadlines.filter(d => d.date !== date); queueDeadlineAction({ type: 'REPLACE_ALL', data: { deadlines: newDeadlines } }); return { deadlines: newDeadlines }; }),
+      deleteAllDeadlines: () => set(() => { queueDeadlineAction({ type: 'REPLACE_ALL', data: { deadlines: [] } }); return { deadlines: [] }; }),
+      cleanOldDeadlines: () => set((state) => { const filtered = filterActiveDeadlines(state.deadlines); const didChange = filtered.length !== state.deadlines.length; const isHydrated = useDashboardStore.getState()._hasHydrated; if (didChange && isHydrated && state.deadlines.length > 0) { queueDeadlineAction({ type: 'REPLACE_ALL', data: { deadlines: filtered } }); } return { deadlines: filtered }; }),
+      deadlineAlertDays: 0, setDeadlineAlertDays: (days) => set(() => { const val = Math.max(0, days); queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { deadlineAlertDays: val } }); return { deadlineAlertDays: val }; }),
+      dismissedDeadlineAlerts: [], dismissDeadlineAlert: (id) => set((state) => { const newAlerts = Array.from(new Set([...(state.dismissedDeadlineAlerts || []), id])); queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { dismissedDeadlineAlerts: newAlerts } }); return { dismissedDeadlineAlerts: newAlerts }; }),
+      disableDeadlineLockOnToday: false, setDisableDeadlineLockOnToday: (disabled) => set(() => { queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { disableDeadlineLockOnToday: disabled } }); return { disableDeadlineLockOnToday: disabled }; }),
+      hideYouInLeaderboard: false, setHideYouInLeaderboard: (hide) => set(() => { queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { hideYouInLeaderboard: hide } }); return { hideYouInLeaderboard: hide }; }),
 
-      if (deadlineTypingTimer) clearTimeout(deadlineTypingTimer);
-
-      // 2. Only queue and sync if there is actual text content!
-      if (!text || text.trim() === '') return;
-
-      deadlineTypingTimer = setTimeout(() => {
-        const currentState = get();
-        const updatedDeadline = currentState.deadlines.find(d => d.id === id);
-        
-        if (updatedDeadline && updatedDeadline.text.trim() !== '') {
-          queueDeadlineAction({ 
-            type: 'UPDATE_DEADLINE', 
-            deadlineId: id, 
-            updates: { text: updatedDeadline.text } 
-          });
-        }
-      }, 3000);
-    },
-      deleteDeadline: (id) => set((state) => {
-        queueDeadlineAction({ type: 'DELETE_DEADLINE', deadlineId: id });
-        return { deadlines: state.deadlines.filter(d => d.id !== id) };
-      }),
-      toggleDeadlineDone: (id) => set((state) => {
-        const deadline = state.deadlines.find(d => d.id === id);
-        if (deadline) {
-            queueDeadlineAction({ type: 'UPDATE_DEADLINE', deadlineId: id, updates: { isDone: !deadline.isDone } });
-        }
-        return { deadlines: state.deadlines.map(d => d.id === id ? { ...d, isDone: !d.isDone } : d) };
-      }),
-      deleteAllDeadlinesForDay: (date) => set((state) => {
-        const newDeadlines = state.deadlines.filter(d => d.date !== date);
-        queueDeadlineAction({ type: 'REPLACE_ALL', data: { deadlines: newDeadlines } });
-        return { deadlines: newDeadlines };
-      }),
-      deleteAllDeadlines: () => set(() => {
-        queueDeadlineAction({ type: 'REPLACE_ALL', data: { deadlines: [] } });
-        return { deadlines: [] };
-      }),
-      cleanOldDeadlines: () => set((state) => {
-        const filtered = filterActiveDeadlines(state.deadlines);
-        const didChange = filtered.length !== state.deadlines.length;
-        const isHydrated = useDashboardStore.getState()._hasHydrated;
-        if (didChange && isHydrated && state.deadlines.length > 0) {
-          queueDeadlineAction({ type: 'REPLACE_ALL', data: { deadlines: filtered } });
-        }
-        return { deadlines: filtered };
-      }),
-
-      deadlineAlertDays: 0,
-      setDeadlineAlertDays: (days) => set(() => {
-        const val = Math.max(0, days);
-        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { deadlineAlertDays: val } });
-        return { deadlineAlertDays: val };
-      }),
-      dismissedDeadlineAlerts: [],
-      dismissDeadlineAlert: (id) => set((state) => {
-        const newAlerts = Array.from(new Set([...(state.dismissedDeadlineAlerts || []), id]));
-        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { dismissedDeadlineAlerts: newAlerts } });
-        return { dismissedDeadlineAlerts: newAlerts };
-      }),
-      disableDeadlineLockOnToday: false,
-      setDisableDeadlineLockOnToday: (disabled) => set(() => {
-        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { disableDeadlineLockOnToday: disabled } });
-        return { disableDeadlineLockOnToday: disabled };
-      }),
-      hideYouInLeaderboard: false,
-      setHideYouInLeaderboard: (hide) => set(() => {
-        queueDeadlineAction({ type: 'UPDATE_SETTINGS', updates: { hideYouInLeaderboard: hide } });
-        return { hideYouInLeaderboard: hide };
-      }),
-
-      isDeadlinesCollapsed: false,
-      setIsDeadlinesCollapsed: (collapsed) => set({ isDeadlinesCollapsed: collapsed }),
-
-      viewingFriend: null,
-      setViewingFriend: (friend) => set({ viewingFriend: friend }),
-
-      dailyTimes: {},
-      isDayStartModalOpen: false,
-      toggleDayStartModal: () => set((state) => ({ isDayStartModalOpen: !state.isDayStartModalOpen })),
-      
+      isDeadlinesCollapsed: false, setIsDeadlinesCollapsed: (collapsed) => set({ isDeadlinesCollapsed: collapsed }),
+      viewingFriend: null, setViewingFriend: (friend) => set({ viewingFriend: friend }),
+      dailyTimes: {}, isDayStartModalOpen: false, toggleDayStartModal: () => set((state) => ({ isDayStartModalOpen: !state.isDayStartModalOpen })),
       updateDailyTime: (dateKey, field, timestamp) => {
         set((state) => {
-          const newData = { ...state.dailyTimes };
-          if (!newData[dateKey]) newData[dateKey] = {};
-          newData[dateKey] = { ...newData[dateKey], [field]: timestamp };
-          
-          // Surgically queue the exact timestamp that changed!
+          const newData = { ...state.dailyTimes }; if (!newData[dateKey]) newData[dateKey] = {}; newData[dateKey] = { ...newData[dateKey], [field]: timestamp };
           queueDailyRoutineAction({ type: 'UPDATE_DAILY_TIME', dateKey, field, timestamp });
-          
           return { dailyTimes: newData };
         });
       },
 
-      clockOffsets: {},
-      updateClockOffset: (bgSrc, x, y) => set((state) => ({
-        clockOffsets: { ...state.clockOffsets, [bgSrc]: { x, y } }
-      })),
-      resetClockOffset: (bgSrc) => set((state) => {
-        const newOffsets = { ...state.clockOffsets };
-        delete newOffsets[bgSrc];
-        return { clockOffsets: newOffsets };
-      }),
+      clockOffsets: {}, updateClockOffset: (bgSrc, x, y) => set((state) => { queueSettingsAction({ [`clockOffsets.${bgSrc}`]: { x, y } }); return { clockOffsets: { ...state.clockOffsets, [bgSrc]: { x, y } } }; }),
+      resetClockOffset: (bgSrc) => set((state) => { const newOffsets = { ...state.clockOffsets }; delete newOffsets[bgSrc]; queueSettingsAction({ clockOffsets: newOffsets }); return { clockOffsets: newOffsets }; }),
+      widgetOffsets: {}, updateWidgetOffset: (bgSrc, widgetId, x, y) => set((state) => { const currentBgOffsets = state.widgetOffsets[bgSrc] || {}; queueSettingsAction({ [`widgetOffsets.${bgSrc}`]: { ...currentBgOffsets, [widgetId]: { x, y } } }); return { widgetOffsets: { ...state.widgetOffsets, [bgSrc]: { ...currentBgOffsets, [widgetId]: { x, y } } } }; }),
+      resetWidgetOffset: (bgSrc, widgetId) => set((state) => { if (!state.widgetOffsets[bgSrc]) return state; const newBgOffsets = { ...state.widgetOffsets[bgSrc] }; delete newBgOffsets[widgetId]; queueSettingsAction({ [`widgetOffsets.${bgSrc}`]: newBgOffsets }); return { widgetOffsets: { ...state.widgetOffsets, [bgSrc]: newBgOffsets } }; }),
+      lockedWidgets: ['quote', 'countdowns', 'timer', 'stopwatch', 'toolbar'], toggleWidgetLock: (widgetId) => set((state) => { const newArr = state.lockedWidgets.includes(widgetId) ? state.lockedWidgets.filter(id => id !== widgetId) : [...state.lockedWidgets, widgetId]; queueSetting('lockedWidgets', newArr); return { lockedWidgets: newArr }; }),
+      widgetZIndices: {}, bringToFront: (widgetId) => set((state) => { const currentZIndices = state.widgetZIndices || {}; const values = Object.values(currentZIndices); const maxZ = values.length > 0 ? Math.max(...values) : 50; if (currentZIndices[widgetId] === maxZ && maxZ > 50) return state; return { widgetZIndices: { ...currentZIndices, [widgetId]: maxZ + 1 } }; }),
+      resetAllOffsets: (bgSrc) => set((state) => { const newClockOffsets = { ...state.clockOffsets }; delete newClockOffsets[bgSrc]; const newWidgetOffsets = { ...state.widgetOffsets }; delete newWidgetOffsets[bgSrc]; queueSettingsAction({ clockOffsets: newClockOffsets, widgetOffsets: newWidgetOffsets }); return { clockOffsets: newClockOffsets, widgetOffsets: newWidgetOffsets }; }),
+      
+      currentBgSrc: null, setCurrentBgSrc: (src) => set((state) => { queueSetting('currentBgSrc', src); return { currentBgSrc: src }; }),
+      hiddenWallpapers: [], toggleWallpaperVisibility: (filename) => set((state) => { const newArr = state.hiddenWallpapers.includes(filename) ? state.hiddenWallpapers.filter(name => name !== filename) : [...state.hiddenWallpapers, filename]; queueSetting('hiddenWallpapers', newArr); return { hiddenWallpapers: newArr }; }),
+      isSlideshowEnabled: false, setIsSlideshowEnabled: (enabled) => set((state) => { queueSetting('isSlideshowEnabled', enabled); return { isSlideshowEnabled: enabled }; }),
+      isMobileCountdownsVisible: true, setIsMobileCountdownsVisible: (visible) => set((state) => { queueSetting('isMobileCountdownsVisible', visible); return { isMobileCountdownsVisible: visible }; }),
+      slideshowIntervalMins: 10, setSlideshowIntervalMins: (mins) => set((state) => { queueSetting('slideshowIntervalMins', mins); return { slideshowIntervalMins: mins }; }),
+      upiId: '', setUpiId: (id) => set((state) => { queueSetting('upiId', id); return { upiId: id }; }),
 
-      widgetOffsets: {},
-      updateWidgetOffset: (bgSrc, widgetId, x, y) => set((state) => {
-        const currentBgOffsets = state.widgetOffsets[bgSrc] || {};
-        return {
-          widgetOffsets: {
-            ...state.widgetOffsets,
-            [bgSrc]: { ...currentBgOffsets, [widgetId]: { x, y } }
-          }
-        };
-      }),
-      resetWidgetOffset: (bgSrc, widgetId) => set((state) => {
-        if (!state.widgetOffsets[bgSrc]) return state;
-        const newBgOffsets = { ...state.widgetOffsets[bgSrc] };
-        delete newBgOffsets[widgetId];
-        return { widgetOffsets: { ...state.widgetOffsets, [bgSrc]: newBgOffsets } };
-      }),
-
-      lockedWidgets: ['quote', 'countdowns', 'timer', 'stopwatch', 'toolbar'],
-      toggleWidgetLock: (widgetId) => set((state) => ({
-        lockedWidgets: state.lockedWidgets.includes(widgetId)
-          ? state.lockedWidgets.filter(id => id !== widgetId)
-          : [...state.lockedWidgets, widgetId]
-      })),
-
-      widgetZIndices: {},
-      bringToFront: (widgetId) => set((state) => {
-        const currentZIndices = state.widgetZIndices || {};
-        const values = Object.values(currentZIndices);
-        const maxZ = values.length > 0 ? Math.max(...values) : 50;
-        if (currentZIndices[widgetId] === maxZ && maxZ > 50) return state;
-        return { widgetZIndices: { ...currentZIndices, [widgetId]: maxZ + 1 } };
-      }),
-
-      resetAllOffsets: (bgSrc) => set((state) => {
-        const newClockOffsets = { ...state.clockOffsets };
-        delete newClockOffsets[bgSrc];
-        const newWidgetOffsets = { ...state.widgetOffsets };
-        delete newWidgetOffsets[bgSrc];
-        return { clockOffsets: newClockOffsets, widgetOffsets: newWidgetOffsets };
-      }),
-
-      currentBgSrc: null,
-      setCurrentBgSrc: (src) => set({ currentBgSrc: src }),
-
-      hiddenWallpapers: [],
-      toggleWallpaperVisibility: (filename) => set((state) => ({
-        hiddenWallpapers: state.hiddenWallpapers.includes(filename)
-          ? state.hiddenWallpapers.filter(name => name !== filename)
-          : [...state.hiddenWallpapers, filename]
-      })),
-
-      isSlideshowEnabled: false,
-      setIsSlideshowEnabled: (enabled) => set({ isSlideshowEnabled: enabled }),
-      isMobileCountdownsVisible: true,
-      setIsMobileCountdownsVisible: (visible) => set({ isMobileCountdownsVisible: visible }),
-      slideshowIntervalMins: 10,
-      setSlideshowIntervalMins: (mins) => set({ slideshowIntervalMins: mins }),
-
-      upiId: '',
-      setUpiId: (id) => set({ upiId: id }),
-
-      showQuote: true,
-      showTimer: true,
-      showCountdowns: true,
-      showVideoControls: true,
-      showClock: true,
-      showTasks: true,
-      showCalendar: true,
-      showTodayWork: true,
-      showStats: true,
-      showPlans: true,
-      showNotes: true,
-      showTimetable: true,
-      showDock: true,
-      showDeadlineAlerts: true,
-      showBgSwitcher: true,
-      showSettingsBtn: true,
-      showStopwatch: true,
-      toggleVisibility: (key) => set((state) => {
-        return { [key]: !state[key] };
-      }),
-
+      showQuote: true, showTimer: true, showCountdowns: true, showVideoControls: true, showClock: true, showTasks: true, showCalendar: true, showTodayWork: true, showStats: true, showPlans: true, showNotes: true, showTimetable: true, showDock: true, showDeadlineAlerts: true, showBgSwitcher: true, showSettingsBtn: true, showStopwatch: true,
+      toggleVisibility: (key) => set((state) => { const nextVal = !state[key]; queueSetting(key, nextVal); return { [key]: nextVal }; }),
       hideConfig: { quote: true, timer: false, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true },
-      setHideConfig: (key, value) => set((state) => ({ hideConfig: { ...state.hideConfig, [key]: value } })),
-      setHideAll: (hide) => {
-        if (hide) {
-          set({ hideConfig: { quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true } });
-        } else {
-          set({ hideConfig: {} });
-        }
-      },
+      setHideConfig: (key, value) => set((state) => { queueSettingsAction({ [`hideConfig.${key}`]: value }); return { hideConfig: { ...state.hideConfig, [key]: value } }; }),
+      setHideAll: (hide) => set((state) => { const newConfig = (hide ? { quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true } : {}) as Record<string, boolean>; queueSettingsAction({ hideConfig: newConfig }); return { hideConfig: newConfig }; }),
 
       mobileHideConfig: { quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true },
-      setMobileHideConfig: (key, value) => set((state) => ({ mobileHideConfig: { ...state.mobileHideConfig, [key]: value } })),
-      setMobileHideAll: (hide) => {
-        if (hide) {
-          set({ mobileHideConfig: { quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true } });
-        } else {
-          set({ mobileHideConfig: {} });
-        }
-      },
+      setMobileHideConfig: (key, value) => set((state) => { queueSettingsAction({ [`mobileHideConfig.${key}`]: value }); return { mobileHideConfig: { ...state.mobileHideConfig, [key]: value } }; }),
+      setMobileHideAll: (hide) => set((state) => { const newConfig = (hide ? { quote: true, timer: true, countdowns: true, videoControls: true, clock: true, tasks: true, calendar: true, todayFocusPill: false, timerPill: false, stats: true, plans: true, notes: true, timetable: true, dock: true, deadlineAlerts: true, bgSwitcher: true, settingsBtn: true, stopwatch: true, manifestation: true } : {}) as Record<string, boolean>; queueSettingsAction({ mobileHideConfig: newConfig }); return { mobileHideConfig: newConfig }; }),
 
-      isPanicHidden: false,
-      togglePanicHide: () => set((state) => {
-        if (state.isHidden) return {}; // Exclusive with Focus Mode
-        return { isPanicHidden: !state.isPanicHidden };
-      }),
-      panicShortcutKey: 'ctrl+z',
-      setPanicShortcutKey: (key) => {
-        set({ panicShortcutKey: key.toLowerCase() });
-        get().forceInstantSave();
-      },
-      focusShortcutKey: 'ctrl+h',
-      setFocusShortcutKey: (key) => {
-        set({ focusShortcutKey: key.toLowerCase() });
-        get().forceInstantSave();
-      },
-      panicWallpaperSwitch: false,
-      setPanicWallpaperSwitch: (val) => {
-        set({ panicWallpaperSwitch: val });
-        get().forceInstantSave();
-      },
-      peekModeWallpaper: null,
-      setPeekModeWallpaper: (url) => {
-        set({ peekModeWallpaper: url });
-        get().forceInstantSave();
-      },
-      customPeekModeWallpapers: [],
-      setCustomPeekModeWallpapers: (urls) => set({ customPeekModeWallpapers: urls }),
-      activePeekModeCustomIndex: null,
-      setActivePeekModeCustomIndex: (index) => {
-        set({ activePeekModeCustomIndex: index });
-        get().forceInstantSave();
-      },
-
-      rightWidgetsOffset: 48,
-      setRightWidgetsOffset: (offset) => set({ rightWidgetsOffset: Math.max(0, offset) }),
-
-      dismissedBroadcasts: [],
-      dismissBroadcast: (id) => set((state) => {
-        if (!state.dismissedBroadcasts.includes(id)) {
-          return { dismissedBroadcasts: [...state.dismissedBroadcasts, id] };
-        }
-        return state;
-      }),
+      isPanicHidden: false, togglePanicHide: () => set((state) => { if (state.isHidden) return {}; const nextVal = !state.isPanicHidden; queueSetting('isPanicHidden', nextVal); return { isPanicHidden: nextVal }; }),
+      panicShortcutKey: 'ctrl+z', setPanicShortcutKey: (key) => set((state) => { const lowerKey = key.toLowerCase(); queueSetting('panicShortcutKey', lowerKey); return { panicShortcutKey: lowerKey }; }),
+      focusShortcutKey: 'ctrl+h', setFocusShortcutKey: (key) => set((state) => { const lowerKey = key.toLowerCase(); queueSetting('focusShortcutKey', lowerKey); return { focusShortcutKey: lowerKey }; }),
+      panicWallpaperSwitch: false, setPanicWallpaperSwitch: (val) => set((state) => { queueSetting('panicWallpaperSwitch', val); return { panicWallpaperSwitch: val }; }),
+      peekModeWallpaper: null, setPeekModeWallpaper: (url) => set((state) => { queueSetting('peekModeWallpaper', url); return { peekModeWallpaper: url }; }),
+      customPeekModeWallpapers: [], setCustomPeekModeWallpapers: (urls) => set((state) => { queueSetting('customPeekModeWallpapers', urls); return { customPeekModeWallpapers: urls }; }),
+      activePeekModeCustomIndex: null, setActivePeekModeCustomIndex: (index) => set((state) => { queueSetting('activePeekModeCustomIndex', index); return { activePeekModeCustomIndex: index }; }),
+      rightWidgetsOffset: 48, setRightWidgetsOffset: (offset) => set((state) => { const safeOffset = Math.max(0, offset); queueSetting('rightWidgetsOffset', safeOffset); return { rightWidgetsOffset: safeOffset }; }),
+      dismissedBroadcasts: [], dismissBroadcast: (id) => set((state) => { if (!state.dismissedBroadcasts.includes(id)) { const newArr = [...state.dismissedBroadcasts, id]; queueSetting('dismissedBroadcasts', newArr); return { dismissedBroadcasts: newArr }; } return state; }),
 
       clearOldData: async (days: number) => {
         try {
           await clearOldDataAPI(days);
           set((state) => {
-            const newHistory = { ...state.history };
-            const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - days);
+            const newHistory = { ...state.history }; const cutoffDate = new Date(); cutoffDate.setDate(cutoffDate.getDate() - days);
             const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
-
-            Object.keys(newHistory).forEach((key) => {
-              if (key < cutoffDateStr) delete newHistory[key];
-            });
-
+            Object.keys(newHistory).forEach((key) => { if (key < cutoffDateStr) delete newHistory[key]; });
             const newDailyTimes = { ...state.dailyTimes };
-            Object.keys(newDailyTimes).forEach((key) => {
-              if (key < cutoffDateStr) delete newDailyTimes[key];
-            });
-
+            Object.keys(newDailyTimes).forEach((key) => { if (key < cutoffDateStr) delete newDailyTimes[key]; });
             return { history: newHistory, dailyTimes: newDailyTimes };
           });
-        } catch (err) { console.error("Failed to clear old data", err); }
+        } catch (err) { }
       },
-
-      clearAllData: async () => {
-        try {
-          await clearAllDataAPI();
-          localStorage.removeItem('dashboard-storage');
-          window.location.reload();
-        } catch (err) { console.error("Failed to clear all data", err); }
-      },
-
-      clearAllTasksAndPlans: () => {
-        useTaskStore.setState({ tasks: [], tomorrowTasks: [] });
-        get().forceInstantSave();
-      },
-
-      resetTimetable: () => {
-        set({ timetableGrid: {}, timetableColors: {} });
-        get().forceInstantSave();
-      },
-
+      clearAllData: async () => { try { await clearAllDataAPI(); localStorage.removeItem('dashboard-storage'); window.location.reload(); } catch (err) { } },
+      clearAllTasksAndPlans: () => { useTaskStore.setState({ tasks: [], tomorrowTasks: [] }); triggerInstantSave(); },
+      resetTimetable: () => { queueSettingsAction({ timetableGrid: {}, timetableColors: {} }); set({ timetableGrid: {}, timetableColors: {} }); },
       forceInstantSave: () => { triggerInstantSave(); },
       pushManifestationToDB: () => { triggerInstantSave(); },
       pushWallpapersToDB: () => { triggerInstantSave(); },
@@ -1056,12 +578,7 @@ export const useDashboardStore = create<DashboardState>()(
       name: 'dashboard-storage',
       storage: fileStorage,
       version: 2,
-      migrate: (persistedState: any, version: number) => {
-        if (version < 2) {
-          if (!persistedState.hideConfig) persistedState.hideConfig = {};
-        }
-        return persistedState;
-      },
+      migrate: (persistedState: any, version: number) => { if (version < 2) { if (!persistedState.hideConfig) persistedState.hideConfig = {}; } return persistedState; },
       partialize: (state) => Object.fromEntries(
         Object.entries(state).filter(([key]) => ![
           'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
@@ -1072,62 +589,26 @@ export const useDashboardStore = create<DashboardState>()(
       ),
       merge: (persistedState: any, currentState: DashboardState) => {
         if (!persistedState) return currentState;
-
-        const transientKeys = [
-          'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger',
-          'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen',
-          'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated',
-          'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen', 'selectedGroupId'
-        ];
+        const transientKeys = [ 'isQuotePopupOpen', 'isTaskManagerOpen', 'isStatsOpen', 'timerTrigger', 'isNotesOpen', 'isPlansOpen', 'isTimetableOpen', 'isDayStartModalOpen', 'isVideoMuted', 'isVideoPlaying', 'isSettingsOpen', 'isStopwatchOpen', '_hasHydrated', 'isAlarmPlaying', 'isTourOpen', 'isNewsOpen', 'isManifestationOpen', 'selectedGroupId' ];
         transientKeys.forEach(key => { if (persistedState[key] !== undefined) delete persistedState[key]; });
-
-        if (persistedState.wallpaper === "/wallpapers/defaultWallpaper2.jpeg") {
-          persistedState.wallpaper = "/wallpapers/naruto.webp";
-        }
+        if (persistedState.wallpaper === "/wallpapers/defaultWallpaper2.jpeg") persistedState.wallpaper = "/wallpapers/naruto.webp";
         
         if (persistedState.timerEndAt && persistedState.timerEndAt < Date.now()) {
-          persistedState.timerEndAt = null;
-          persistedState.timerPausedLeft = null;
-          persistedState.timerInitialMins = null;
-          persistedState.timerDeviceId = null;
-          persistedState.timerLastSavedChunks = 0;
-          persistedState.timerLastAlertedChunks = 0;
-          persistedState.activeTaskId = null;
-          persistedState.activeTaskTitle = null;
+          persistedState.timerEndAt = null; persistedState.timerPausedLeft = null; persistedState.timerInitialMins = null; persistedState.timerDeviceId = null;
+          persistedState.timerLastSavedChunks = 0; persistedState.timerLastAlertedChunks = 0; persistedState.activeTaskId = null; persistedState.activeTaskTitle = null;
         } else if (!persistedState.timerEndAt && (persistedState.timerPausedLeft === null || persistedState.timerPausedLeft === undefined)) {
-          persistedState.timerInitialMins = null;
-          persistedState.timerDeviceId = null;
-          persistedState.timerLastSavedChunks = 0;
-          persistedState.timerLastAlertedChunks = 0;
-          persistedState.activeTaskId = null;
-          persistedState.activeTaskTitle = null;
+          persistedState.timerInitialMins = null; persistedState.timerDeviceId = null; persistedState.timerLastSavedChunks = 0; persistedState.timerLastAlertedChunks = 0; persistedState.activeTaskId = null; persistedState.activeTaskTitle = null;
         }
-
         persistedState.isAlarmPlaying = false;
-
-        if (persistedState.hideConfig && currentState.hideConfig) {
-          persistedState.hideConfig = { ...currentState.hideConfig, ...persistedState.hideConfig };
-        }
-        if (persistedState.mobileHideConfig && currentState.mobileHideConfig) {
-          persistedState.mobileHideConfig = { ...currentState.mobileHideConfig, ...persistedState.mobileHideConfig };
-        }
-
+        if (persistedState.hideConfig && currentState.hideConfig) persistedState.hideConfig = { ...currentState.hideConfig, ...persistedState.hideConfig };
+        if (persistedState.mobileHideConfig && currentState.mobileHideConfig) persistedState.mobileHideConfig = { ...currentState.mobileHideConfig, ...persistedState.mobileHideConfig };
         if (!persistedState._focusPillDefaultsUpdated) {
-          if (persistedState.hideConfig) {
-            persistedState.hideConfig.todayFocusPill = false;
-            persistedState.hideConfig.timerPill = false;
-          }
-          if (persistedState.mobileHideConfig) {
-            persistedState.mobileHideConfig.todayFocusPill = false;
-            persistedState.mobileHideConfig.timerPill = false;
-          }
+          if (persistedState.hideConfig) { persistedState.hideConfig.todayFocusPill = false; persistedState.hideConfig.timerPill = false; }
+          if (persistedState.mobileHideConfig) { persistedState.mobileHideConfig.todayFocusPill = false; persistedState.mobileHideConfig.timerPill = false; }
           persistedState._focusPillDefaultsUpdated = true;
         }
-
         if (!persistedState.customAlarmSounds) persistedState.customAlarmSounds = [];
-        if (persistedState.deadlines && Array.isArray(persistedState.deadlines)) {
-          persistedState.deadlines = filterActiveDeadlines(persistedState.deadlines);
-        }
+        if (persistedState.deadlines && Array.isArray(persistedState.deadlines)) persistedState.deadlines = filterActiveDeadlines(persistedState.deadlines);
         if (!persistedState.tomorrowTasks) persistedState.tomorrowTasks = [];
         if (!persistedState.tasksDate) persistedState.tasksDate = getLocalDateString();
 
@@ -1136,16 +617,10 @@ export const useDashboardStore = create<DashboardState>()(
         safeState.mobileDashboardScale = typeof persistedState.mobileDashboardScale === 'number' ? persistedState.mobileDashboardScale : 1;
         safeState.dockScale = typeof persistedState.dockScale === 'number' ? persistedState.dockScale : 1;
         safeState.dockOffset = typeof persistedState.dockOffset === 'number' ? persistedState.dockOffset : 0;
-
         safeState.roadmaps = Array.isArray(persistedState.roadmaps) ? persistedState.roadmaps : currentState.roadmaps;
         safeState.deadlines = filterActiveDeadlines(persistedState.deadlines || []);
-
-        if (persistedState.history && typeof persistedState.history === 'object') {
-          safeState.history = { ...currentState.history, ...persistedState.history };
-        }
-        if (persistedState.dailyTimes && typeof persistedState.dailyTimes === 'object') {
-          safeState.dailyTimes = mergeDailyTimes(currentState.dailyTimes || {}, persistedState.dailyTimes || {});
-        }
+        if (persistedState.history && typeof persistedState.history === 'object') safeState.history = { ...currentState.history, ...persistedState.history };
+        if (persistedState.dailyTimes && typeof persistedState.dailyTimes === 'object') safeState.dailyTimes = mergeDailyTimes(currentState.dailyTimes || {}, persistedState.dailyTimes || {});
         
         const hasSeenLocal = (typeof window !== 'undefined' && localStorage.getItem('grindboard_has_seen_onboarding') === 'true');
         safeState.hasSeenOnboarding = Boolean(persistedState?.hasSeenOnboarding || currentState?.hasSeenOnboarding || hasSeenLocal);
@@ -1154,23 +629,14 @@ export const useDashboardStore = create<DashboardState>()(
         if (persistedState.widgetOffsets && typeof persistedState.widgetOffsets === 'object') safeState.widgetOffsets = { ...currentState.widgetOffsets, ...persistedState.widgetOffsets };
         if (persistedState.hideConfig && typeof persistedState.hideConfig === 'object') safeState.hideConfig = { ...(currentState.hideConfig || {}), ...persistedState.hideConfig };
         if (persistedState.mobileHideConfig && typeof persistedState.mobileHideConfig === 'object') safeState.mobileHideConfig = { ...(currentState.mobileHideConfig || {}), ...persistedState.mobileHideConfig };
-
         return safeState;
       },
       onRehydrateStorage: () => (state, error) => {
         if (error) console.error("Hydration failed!", error);
-        Promise.resolve().then(() => {
-          if (state && typeof state.setHasHydrated === 'function') {
-            state.setHasHydrated(true);
-          } else {
-            useDashboardStore.getState().setHasHydrated(true);
-          }
-        });
+        Promise.resolve().then(() => { if (state && typeof state.setHasHydrated === 'function') state.setHasHydrated(true); else useDashboardStore.getState().setHasHydrated(true); });
       },
     }
   )
 );
-// Re-export external handlers so other components can import them directly from '@/store/dashboardStore'
-
 export * from './helpers';
 export * from './types';
