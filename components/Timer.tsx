@@ -23,7 +23,7 @@ const haltAudio = (audioEl: HTMLAudioElement | null) => {
 };
 
 // ----------------------------------------------------------------------------------
-//  THE ULTIMATE ATOMIC LOCK (Placed OUTSIDE React to prevent duplicate-mount bugs)
+//  ATOMIC LOCK (Placed OUTSIDE React to prevent duplicate-mount bugs)
 // ----------------------------------------------------------------------------------
 const processTimerChunks = (currentRemainingSecs: number, forceFinalize: boolean = false) => {
   if (typeof window === 'undefined') return;
@@ -41,7 +41,7 @@ const processTimerChunks = (currentRemainingSecs: number, forceFinalize: boolean
     ? Math.floor(elapsedSecs / 60)         
     : Math.floor(elapsedSecs / 300) * 5;   
 
-  // 2. ATOMIC READ: Get absolute latest saved chunks directly from the store (bypasses React)
+  // 2. ATOMIC READ: Get absolute latest saved chunks directly from the store
   const latestSavedChunks = storeState.timerLastSavedChunks || 0;
   const savedMinsSoFar = latestSavedChunks * 5;
   
@@ -49,19 +49,18 @@ const processTimerChunks = (currentRemainingSecs: number, forceFinalize: boolean
 
   // 3. SYNCHRONOUS LOCK: If there are unsaved minutes, lock them instantly
   if (diffMins > 0) {
-    //  Lock the new total in the global store immediately. 
     storeState.setTimerLastSavedChunks(totalMinsToSave / 5);
     
-    //  DEV PROOF: Check your console!
-    console.log(` TIMER EXTRACTED: Exactly ${diffMins} minutes.`);
-
     //  THE DUAL-WRITE FIX 
-    // We strictly use addMins. Calling pushStreakToDB() here created the double-counting!
     storeState.addMins(getLocalDateString(), diffMins);
 
     if (storeState.activeTaskId) {
       storeState.updateTaskDuration(storeState.activeTaskId, diffMins);
-      taskStoreState.updateTaskDuration(storeState.activeTaskId, diffMins);
+      // Ensure normal tasks save
+      if (taskStoreState && typeof taskStoreState.updateTaskDuration === 'function') {
+         taskStoreState.updateTaskDuration(storeState.activeTaskId, diffMins);
+      }
+      // Ensure group tasks save
       storeState.incrementGroupTaskTimeSpent(storeState.activeTaskId, diffMins);
     }
     
@@ -105,6 +104,21 @@ export default function Timer() {
 
   const deadmanTriggeredAtRef = useRef<number | null>(null); 
   const deadmanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // DEV CHEAT: Expose skip function to console
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).skipTime = (minsToSkip = 1) => {
+        const st = useDashboardStore.getState();
+        if (st.timerEndAt) {
+          st.setTimerEndAt(st.timerEndAt - (minsToSkip * 60 * 1000));
+          console.log(`⏩ Fast-forwarded ${minsToSkip} minute(s)!`);
+        } else {
+          console.log("No active timer to skip.");
+        }
+      };
+    }
+  }, []);
 
   useEffect(() => {
     const d = new Date();
@@ -154,8 +168,6 @@ export default function Timer() {
   const saveAndClearActiveTaskTimer = () => {
     if (store.timerInitialMins && (store.timerEndAt || store.timerPausedLeft !== null)) {
       const currentRemaining = store.timerEndAt ? Math.max(0, Math.floor((store.timerEndAt - Date.now()) / 1000)) : store.timerPausedLeft!;
-      
-      //  Runs through the global mathematical choke-point for perfect precision
       processTimerChunks(currentRemaining, true);
     }
     store.setActiveTask(null, null);
@@ -223,7 +235,6 @@ export default function Timer() {
               deadmanTimeoutRef.current = setTimeout(() => {
                 const currentSt = useDashboardStore.getState();
                 if (currentSt.timerInitialMins) {
-                  // Pass a hardcoded remaining time corresponding to exactly 180 minutes elapsed
                   const maxRemaining = (currentSt.timerInitialMins * 60) - (180 * 60);
                   processTimerChunks(maxRemaining, true);
                 }
@@ -239,13 +250,12 @@ export default function Timer() {
         }
 
         if (deadmanTriggeredAtRef && deadmanTriggeredAtRef.current && deadmanTriggeredAtRef.current !== -1) {
-        setLocalTimeLeft(remaining > 0 ? remaining : 0);
-        return;
-      }
+          setLocalTimeLeft(remaining > 0 ? remaining : 0);
+          return;
+        }
 
         // Normal 5-Minute Chunk Saving
         if (st.timerInitialMins) {
-          //  Instantly routed to our atomic calculator to check if 5 minutes have passed
           if (isOwner && remaining >= 0) {
             processTimerChunks(remaining, false);
           }
@@ -263,7 +273,9 @@ export default function Timer() {
                 if (isOwner) {
                   st.setTimerLastAlertedChunks(curChunk);
                   if (st.enableAlarmSound || st.enableAlarmVibration) {
-                    setIsIntervalRinging(true); isIntervalRingingRef.current = true; useDashboardStore.setState({ isTimerOpen: true });
+                    // Safely trigger interval ring WITHOUT forcing a DB wipe!
+                    setIsIntervalRinging(true); 
+                    isIntervalRingingRef.current = true; 
                     if (st.enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
                     setTimeout(() => { setIsIntervalRinging(false); isIntervalRingingRef.current = false; }, (st.taskIntervalRingSecs || 1.5) * 1000);
                   }
@@ -280,7 +292,6 @@ export default function Timer() {
           const currentSt = useDashboardStore.getState();
 
           if (currentSt.timerInitialMins && currentSt.timerInitialMins > 0 && isOwner) {
-            // End of timer, sync the final minute accurately!
             processTimerChunks(0, true);
             fetchQuote().then(q => currentSt.showQuotePopup(q));
           }
@@ -326,7 +337,6 @@ export default function Timer() {
           const currentSt = useDashboardStore.getState();
           if (currentSt.timerEndAt) {
             const remaining = Math.max(0, Math.floor((currentSt.timerEndAt - Date.now()) / 1000));
-            // Trigger final chunk sync before overriding state
             processTimerChunks(remaining, true);
           }
           
@@ -396,7 +406,8 @@ export default function Timer() {
   const getAlarmTitle = () => store.enableAlarmSound && store.enableAlarmVibration ? 'PWA_ALARM_RING_VIBRATE' : store.enableAlarmSound ? 'PWA_ALARM_RING' : store.enableAlarmVibration ? 'PWA_ALARM_VIBRATE' : 'PWA_ALARM_TRIGGER';
 
   const playAlarm = async () => {
-    store.setIsAlarmPlaying(true); useDashboardStore.setState({ isTimerOpen: true });
+    //  Safely trigger UI state WITHOUT forcing a DB wipe
+    store.setIsAlarmPlaying(true); 
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
         const opts = { body: 'Focus session ended.', icon: '/icon-192x192.png', vibrate: store.enableAlarmVibration ? [500,500,500,500,500] : undefined, silent: !store.enableAlarmSound, requireInteraction: true, tag: 'alarm-alert', renotify: true } as any;

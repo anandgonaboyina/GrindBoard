@@ -19,7 +19,7 @@ const haltAudio = (audioEl: HTMLAudioElement | null) => {
 };
 
 // ----------------------------------------------------------------------------------
-//  THE ULTIMATE ATOMIC LOCK (Placed OUTSIDE React to prevent duplicate-mount bugs)
+//  ATOMIC LOCK (Placed OUTSIDE React to prevent duplicate-mount bugs)
 // ----------------------------------------------------------------------------------
 
 const processStopwatchChunks = (currentElapsedSecs: number, forceFinalize: boolean = false) => {
@@ -45,11 +45,7 @@ const processStopwatchChunks = (currentElapsedSecs: number, forceFinalize: boole
     console.log(` STOPWATCH EXTRACTED: Exactly ${diffMins} minutes.`);
 
     // 2. THE DUAL-WRITE FIX 
-    // We only call addMins. If your store's addMins already updates the DB/Queue, 
-    // calling pushStreakToDB here was creating the instant '10'.
     storeState.addMins(getLocalDateString(), diffMins);
-    
-    // pushStreakToDB(getLocalDateString(), diffMins); // <-- REMOVED TO PREVENT DOUBLE COUNT
     
     forcePushTimerState();
   }
@@ -132,8 +128,6 @@ useEffect(() => {
 
         setElapsedSecs(currentElapsed);
         
-        // Removed the 3600-second 1-hour auto-pause logic completely!
-
         if (systemJustWoke) {
           if (store.isStopwatchIntervalEnabled && store.stopwatchIntervalMins > 0) stopwatchAlertedChunksRef.current = Math.floor(currentElapsed / (store.stopwatchIntervalMins * 60));
           return;
@@ -177,7 +171,8 @@ useEffect(() => {
           if (chunks > stopwatchAlertedChunksRef.current) {
             stopwatchAlertedChunksRef.current = chunks;
             if (isOwner && (store.enableAlarmSound || store.enableAlarmVibration)) {
-              setIsIntervalRinging(true); useDashboardStore.setState({ isStopwatchOpen: true });
+              // Safely trigger interval ring WITHOUT forcing a global DB wipe!
+              setIsIntervalRinging(true); 
               if (store.enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
               setTimeout(() => setIsIntervalRinging(false), (store.taskIntervalRingSecs || 1.5) * 1000);
             }
@@ -187,6 +182,7 @@ useEffect(() => {
     }
     return () => clearInterval(interval);
   }, [isRunning, store.stopwatchStartTime, store.stopwatchAddToStats, store.isStopwatchIntervalEnabled, store.stopwatchIntervalMins, store.enableAlarmSound, store.enableAlarmVibration, store.alarmVolume, store.taskIntervalRingSecs]);
+
   // Cross-device stopwatch sync
   useEffect(() => {
     if (!isRunning || !store.stopwatchStartTime) return;
@@ -241,7 +237,6 @@ const handleStart = (e?: React.MouseEvent) => {
       stopwatchAlertedChunksRef.current = 0; 
     }
     
-
     if (deadmanTriggeredAtRef) deadmanTriggeredAtRef.current = null;
 
     store.setStopwatchStartTime(Date.now() - elapsedSecs * 1000); store.setStopwatchDeviceId(getDeviceId()); setIsRunning(true);

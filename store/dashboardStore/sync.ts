@@ -343,7 +343,7 @@ export const performSave = async () => {
       lastModified, 
       modifiedCollections: ['DashboardStorage'], 
       modifiedKeys,
-      isFullSync: false // 🛑 HARDCODED FALSE: Kills the "First Load Nuke"
+      isFullSync: false // HARDCODED FALSE: Kills the "First Load Nuke"
     });
 
     const res = await fetch('/api/store', {
@@ -453,7 +453,6 @@ export const performSave = async () => {
 
 export const forcePushTimerState = () => {
   if (typeof window !== 'undefined') {
-    if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
     if (pendingValue) {
       if (!isSaving) { saveTimeout = setTimeout(performSave, 0); }
       const token = getSyncToken();
