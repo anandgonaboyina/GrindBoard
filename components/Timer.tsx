@@ -12,7 +12,6 @@ import { triggerInstantSave, checkTimerStillActiveInDB, forcePushTimerState, pus
 import Tooltip from './Tooltip';
 import ConfirmationModal from './ConfirmationModal';
 
-
 // Helper to safely stop audio and update OS media session state
 const haltAudio = (audioEl: HTMLAudioElement | null) => {
   if (!audioEl) return;
@@ -36,31 +35,24 @@ const processTimerChunks = (currentRemainingSecs: number, forceFinalize: boolean
   const elapsedSecs = (storeState.timerInitialMins * 60) - currentRemainingSecs;
   if (elapsedSecs <= 0) return;
 
-  // 1. Calculate exact total minutes that should be saved up to this point
   const totalMinsToSave = forceFinalize 
     ? Math.floor(elapsedSecs / 60)         
     : Math.floor(elapsedSecs / 300) * 5;   
 
-  // 2. ATOMIC READ: Get absolute latest saved chunks directly from the store
   const latestSavedChunks = storeState.timerLastSavedChunks || 0;
   const savedMinsSoFar = latestSavedChunks * 5;
   
   const diffMins = totalMinsToSave - savedMinsSoFar;
 
-  // 3. SYNCHRONOUS LOCK: If there are unsaved minutes, lock them instantly
   if (diffMins > 0) {
     storeState.setTimerLastSavedChunks(totalMinsToSave / 5);
-    
-    //  THE DUAL-WRITE FIX 
     storeState.addMins(getLocalDateString(), diffMins);
 
     if (storeState.activeTaskId) {
       storeState.updateTaskDuration(storeState.activeTaskId, diffMins);
-      // Ensure normal tasks save
       if (taskStoreState && typeof taskStoreState.updateTaskDuration === 'function') {
          taskStoreState.updateTaskDuration(storeState.activeTaskId, diffMins);
       }
-      // Ensure group tasks save
       storeState.incrementGroupTaskTimeSpent(storeState.activeTaskId, diffMins);
     }
     
@@ -69,7 +61,6 @@ const processTimerChunks = (currentRemainingSecs: number, forceFinalize: boolean
 };
 
 export default function Timer() {
-  
   const store = useDashboardStore();
   const resolvedAlarmUrl = useAudioUrl(store.alarmSound);
 
@@ -105,16 +96,12 @@ export default function Timer() {
   const deadmanTriggeredAtRef = useRef<number | null>(null); 
   const deadmanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // DEV CHEAT: Expose skip function to console
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).skipTime = (minsToSkip = 1) => {
         const st = useDashboardStore.getState();
         if (st.timerEndAt) {
           st.setTimerEndAt(st.timerEndAt - (minsToSkip * 60 * 1000));
-          console.log(`⏩ Fast-forwarded ${minsToSkip} minute(s)!`);
-        } else {
-          console.log("No active timer to skip.");
         }
       };
     }
@@ -223,10 +210,10 @@ export default function Timer() {
           if (actvMins > 0 && st.timerInitialMins) alertedChunksRef.current = Math.floor(Math.max(0, (st.timerInitialMins * 60) - remaining) / (actvMins * 60));
         }
 
-        // 3-HOUR DEADMAN SWITCH
+        // 3-Hour Deadman Switch
         if (st.timerInitialMins && isOwner && deadmanTriggeredAtRef && !deadmanTriggeredAtRef.current) {
           const elapsedSecs = (st.timerInitialMins * 60) - remaining;
-          if (elapsedSecs >= 180 * 60 && remaining > 0) { // Triggers after 3 hours
+          if (elapsedSecs >= 180 * 60 && remaining > 0) {
             deadmanTriggeredAtRef.current = now;
             playAlarm();
             if (typeof setShowStillWorkingPrompt === 'function') setShowStillWorkingPrompt(true);
@@ -254,7 +241,7 @@ export default function Timer() {
           return;
         }
 
-        // Normal 5-Minute Chunk Saving
+        // 5-Minute Chunk Saving
         if (st.timerInitialMins) {
           if (isOwner && remaining >= 0) {
             processTimerChunks(remaining, false);
@@ -273,7 +260,6 @@ export default function Timer() {
                 if (isOwner) {
                   st.setTimerLastAlertedChunks(curChunk);
                   if (st.enableAlarmSound || st.enableAlarmVibration) {
-                    // Safely trigger interval ring WITHOUT forcing a DB wipe!
                     setIsIntervalRinging(true); 
                     isIntervalRingingRef.current = true; 
                     if (st.enableAlarmVibration && typeof navigator !== 'undefined' && navigator.vibrate) try { navigator.vibrate([300, 200, 300, 200, 300]); } catch (e) {}
@@ -314,7 +300,6 @@ export default function Timer() {
   useEffect(() => {
     if (!store.timerEndAt || !store.timerInitialMins) return;
     const isOwner = store.timerDeviceId === getDeviceId();
-    if (!isOwner) return;
 
     const timerStartedAt = store.timerEndAt - (store.timerInitialMins * 60 * 1000);
     const elapsedMs = Date.now() - timerStartedAt;
@@ -333,6 +318,12 @@ export default function Timer() {
 
         const status = await checkTimerStillActiveInDB('timer');
         if (status === 'stopped') {
+          // If this device owns the timer and time is still left, re-push instead of stopping
+          if (isOwner && st.timerEndAt && st.timerEndAt > Date.now()) {
+            forcePushTimerState();
+            return;
+          }
+
           if (pollInterval) clearInterval(pollInterval);
           const currentSt = useDashboardStore.getState();
           if (currentSt.timerEndAt) {
@@ -363,6 +354,7 @@ export default function Timer() {
         store.setTimerEndAt(Date.now() + store.timerPausedLeft * 1000);
         store.setTimerPausedLeft(null);
         lastTickTimeRef.current = Date.now();
+        forcePushTimerState();
       } else {
         saveAndClearActiveTaskTimer();
         if (store.timerTrigger.taskId) store.setActiveTask(store.timerTrigger.taskId, store.timerTrigger.taskTitle || null);
@@ -394,10 +386,10 @@ export default function Timer() {
       if (isIntervalRinging && store.enableAlarmSound) {
         intervalAudioRef.current.muted = false; intervalAudioRef.current.volume = ((store.alarmVolume || 1) > 1 ? (store.alarmVolume || 1)/100 : (store.alarmVolume || 1)) * 0.4;
         intervalAudioRef.current.currentTime = 0;
-         intervalAudioRef.current.play().catch(error => {
-        if (error.name !== 'NotAllowedError') {
-         console.warn("Audio playback issue:", error);
-         }
+        intervalAudioRef.current.play().catch(error => {
+          if (error.name !== 'NotAllowedError') {
+            console.warn("Audio playback issue:", error);
+          }
         });
       } else haltAudio(intervalAudioRef.current);
     }
@@ -406,7 +398,6 @@ export default function Timer() {
   const getAlarmTitle = () => store.enableAlarmSound && store.enableAlarmVibration ? 'PWA_ALARM_RING_VIBRATE' : store.enableAlarmSound ? 'PWA_ALARM_RING' : store.enableAlarmVibration ? 'PWA_ALARM_VIBRATE' : 'PWA_ALARM_TRIGGER';
 
   const playAlarm = async () => {
-    //  Safely trigger UI state WITHOUT forcing a DB wipe
     store.setIsAlarmPlaying(true); 
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
@@ -418,19 +409,30 @@ export default function Timer() {
     setTimeout(() => useDashboardStore.getState().setIsAlarmPlaying(false), (store.alarmDurationSecs || 60) * 1000);
   };
 
-const startTimer = (seconds: number, isTask = false) => {
-  if (!isTask) saveAndClearActiveTaskTimer();
-  store.setTimerInitialMins(Math.round(seconds / 60)); store.setTimerPausedLeft(null); store.setTimerEndAt(Date.now() + seconds * 1000);
-  alertedChunksRef.current = 0; lastIntervalAlertMinsRef.current = 0; lastIsIntervalEnabledRef.current = false;
-  store.setTimerLastSavedChunks(0); store.setTimerLastAlertedChunks(0); store.setTimerDeviceId(getDeviceId()); lastTickTimeRef.current = Date.now();
-  stopAlarm(); updateInteraction();
-  if (deadmanTriggeredAtRef) deadmanTriggeredAtRef.current = null;
-  if (typeof window !== 'undefined' && window.innerWidth < 768) setTimeout(() => useDashboardStore.setState({ isTimerOpen: false }), 3000);
-  if (store.enableAlarmSound && typeof window !== 'undefined') {
-    try { const AudioCtx = window.AudioContext || (window as any).webkitAudioContext; if (AudioCtx) { const ctx = new AudioCtx(); if (ctx.state === 'suspended') ctx.resume(); ctx.createBufferSource().start(0); } } catch (e) {}
-  }
-  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') scheduleNotification(Date.now() + seconds * 1000);
-};
+  const startTimer = (seconds: number, isTask = false) => {
+    if (!isTask) saveAndClearActiveTaskTimer();
+    store.setTimerInitialMins(Math.round(seconds / 60)); 
+    store.setTimerPausedLeft(null); 
+    store.setTimerEndAt(Date.now() + seconds * 1000);
+    alertedChunksRef.current = 0; 
+    lastIntervalAlertMinsRef.current = 0; 
+    lastIsIntervalEnabledRef.current = false;
+    store.setTimerLastSavedChunks(0); 
+    store.setTimerLastAlertedChunks(0); 
+    store.setTimerDeviceId(getDeviceId()); 
+    lastTickTimeRef.current = Date.now();
+    stopAlarm(); 
+    updateInteraction();
+    if (deadmanTriggeredAtRef) deadmanTriggeredAtRef.current = null;
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setTimeout(() => useDashboardStore.setState({ isTimerOpen: false }), 3000);
+    if (store.enableAlarmSound && typeof window !== 'undefined') {
+      try { const AudioCtx = window.AudioContext || (window as any).webkitAudioContext; if (AudioCtx) { const ctx = new AudioCtx(); if (ctx.state === 'suspended') ctx.resume(); ctx.createBufferSource().start(0); } } catch (e) {}
+    }
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') scheduleNotification(Date.now() + seconds * 1000);
+
+    // Push state immediately so cross-device sync recognizes active session
+    forcePushTimerState();
+  };
 
   const scheduleNotification = async (targetTime: number) => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && (window as any).TimestampTrigger) {
@@ -440,26 +442,33 @@ const startTimer = (seconds: number, isTask = false) => {
 
   const togglePause = () => {
     if (store.timerEndAt) {
-      store.setTimerPausedLeft(localTimeLeft); store.setTimerEndAt(null); stopIntervalBeep();
+      store.setTimerPausedLeft(localTimeLeft); 
+      store.setTimerEndAt(null); 
+      stopIntervalBeep();
+      forcePushTimerState();
       if (typeof window !== 'undefined' && 'serviceWorker' in navigator) navigator.serviceWorker.ready.then(async r => { try { (await r.getNotifications({ tag: 'alarm-alert', includeTriggered: true } as any)).forEach(n => n.close()); } catch(e){} });
     } else if (store.timerPausedLeft !== null) {
       const newEndAt = Date.now() + store.timerPausedLeft * 1000;
-      store.setTimerEndAt(newEndAt); store.setTimerPausedLeft(null); store.setTimerDeviceId(getDeviceId()); lastTickTimeRef.current = Date.now();
+      store.setTimerEndAt(newEndAt); 
+      store.setTimerPausedLeft(null); 
+      store.setTimerDeviceId(getDeviceId()); 
+      lastTickTimeRef.current = Date.now();
+      forcePushTimerState();
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') scheduleNotification(newEndAt);
     }
   };
 
-const handleStopClick = async () => {
-  if (!store.timerInitialMins || typeof window === 'undefined') { saveAndClearActiveTaskTimer(); return stopAlarm(); }
-  saveAndClearActiveTaskTimer(); 
-  store.clearTimerState(); 
-  stopAlarm(); 
-  stopIntervalBeep();
+  const handleStopClick = async () => {
+    if (!store.timerInitialMins || typeof window === 'undefined') { saveAndClearActiveTaskTimer(); return stopAlarm(); }
+    saveAndClearActiveTaskTimer(); 
+    store.clearTimerState(); 
+    stopAlarm(); 
+    stopIntervalBeep();
 
-  if (typeof setShowStillWorkingPrompt === 'function') setShowStillWorkingPrompt(false);
-  if (deadmanTimeoutRef && deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
-  if (deadmanTriggeredAtRef) deadmanTriggeredAtRef.current = null;
-};
+    if (typeof setShowStillWorkingPrompt === 'function') setShowStillWorkingPrompt(false);
+    if (deadmanTimeoutRef && deadmanTimeoutRef.current) { clearTimeout(deadmanTimeoutRef.current); deadmanTimeoutRef.current = null; }
+    if (deadmanTriggeredAtRef) deadmanTriggeredAtRef.current = null;
+  };
 
   const handleCustomStart = () => {
     let m = parseInt(customMins);
@@ -489,7 +498,9 @@ const handleStopClick = async () => {
   const saveEditor = () => {
     const newRem = (parseInt(editHours) || 0) * 3600 + (parseInt(editMins) || 0) * 60;
     if (store.timerInitialMins) store.setTimerInitialMins(Math.max(0, Math.round((((store.timerInitialMins * 60) - localTimeLeft) + newRem) / 60)));
-    store.setTimerPausedLeft(newRem); setIsEditingTime(false);
+    store.setTimerPausedLeft(newRem); 
+    setIsEditingTime(false);
+    forcePushTimerState();
   };
 
   const updateTargetTime = (hStr: string, mStr: string, ampm: string) => {
@@ -623,7 +634,6 @@ const handleStopClick = async () => {
                     className="w-8 bg-black/50 border border-white/20 rounded px-1 py-0.5 text-[12px] text-center font-bold text-sky-300 outline-none focus:border-sky-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-inner" 
                     min="1" 
                   />
-
                     <span className="text-[12px] font-bold text-white/50 uppercase tracking-widest">Min</span>
                   </div>
                 ) : <span className="text-[12px] font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wide">Beep Off</span>}
@@ -644,7 +654,7 @@ const handleStopClick = async () => {
         title="Resume Session"
         message={<div className="flex flex-col gap-2"><p className="text-white/80">You were away for an extended period of time.</p><p className="text-white">Your session paused automatically at <strong className="text-blue-300">({pausedAtString || 'your last active time'})</strong>, <strong className="text-amber-400 font-bold">no extra hours added</strong> while away.</p><p className="text-white/80 mt-2">Do you want to continue your session from exactly where you left off?</p></div>}
         confirmText="Yes, Continue" cancelText="Cancel"
-        onConfirm={() => { setShowContinuePrompt(false); setShowResumeModal(false); if (store.timerPausedLeft !== null) { store.setTimerEndAt(Date.now() + store.timerPausedLeft * 1000); store.setTimerPausedLeft(null); store.setTimerDeviceId(getDeviceId()); updateInteraction(); } }}
+        onConfirm={() => { setShowContinuePrompt(false); setShowResumeModal(false); if (store.timerPausedLeft !== null) { store.setTimerEndAt(Date.now() + store.timerPausedLeft * 1000); store.setTimerPausedLeft(null); store.setTimerDeviceId(getDeviceId()); updateInteraction(); forcePushTimerState(); } }}
       />
 
       {/* 3-Hour Deadman Switch */}
@@ -672,7 +682,6 @@ const handleStopClick = async () => {
         </div>,
         document.body
       )}
-
     </>
   );
 }

@@ -346,19 +346,67 @@ export const useDashboardStore = create<DashboardState>()(
       incrementGroupTaskTimeSpent: (id, minsToSave) => {
         set((state) => {
           let updatedGroups = state.userGroups;
-          if (updatedGroups) {
-            const todayStr = new Date().toLocaleDateString('en-CA'); const user = JSON.parse(localStorage.getItem('dashboard-auth-user') || '{}');
-            const userId = user._id || user.username; if (!userId) return state;
+          if (updatedGroups && Array.isArray(updatedGroups)) {
+            const todayStr = getLocalDateString();
+            const token = getSyncToken();
+
             updatedGroups = updatedGroups.map(group => {
-              const hasTask = group.memberTasks?.[userId]?.some((t: any) => t.id === id); if (!hasTask) return group;
-              const currentCompletions = group.completions?.[userId]?.[todayStr] || {}; const currentTaskComp = currentCompletions[id] || { completed: false, timeSpent: 0 };
-              const newCompletions = { ...group.completions, [userId]: { ...(group.completions?.[userId] || {}), [todayStr]: { ...currentCompletions, [id]: { ...currentTaskComp, timeSpent: (currentTaskComp.timeSpent || 0) + minsToSave } } } };
+              if (!group) return group;
+              
+              // Automatically find the member who owns this task
+              let targetMemberId: string | null = null;
+              if (group.memberTasks) {
+                for (const mId in group.memberTasks) {
+                  if (Array.isArray(group.memberTasks[mId]) && group.memberTasks[mId].some((t: any) => t.id === id)) {
+                    targetMemberId = mId;
+                    break;
+                  }
+                }
+              }
+
+              // Fallback for admin tasks stored directly on the group
+              if (!targetMemberId && Array.isArray(group.tasks) && group.tasks.some((t: any) => t.id === id)) {
+                targetMemberId = group.adminId || group.members?.[0]?.userId || null;
+              }
+
+              if (!targetMemberId) return group;
+
+              const currentCompletions = group.completions?.[targetMemberId]?.[todayStr] || {};
+              const currentTaskComp = currentCompletions[id] || { completed: false, timeSpent: 0 };
+              const newTimeSpent = (currentTaskComp.timeSpent || 0) + minsToSave;
+
+              const newCompletions = {
+                ...group.completions,
+                [targetMemberId]: {
+                  ...(group.completions?.[targetMemberId] || {}),
+                  [todayStr]: {
+                    ...currentCompletions,
+                    [id]: { ...currentTaskComp, timeSpent: newTimeSpent }
+                  }
+                }
+              };
+
+              // Persist directly to the group endpoint
+              if (token && typeof window !== 'undefined') {
+                fetch(`/api/groups/${group._id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                  body: JSON.stringify({
+                    action: 'update_completion',
+                    dateStr: todayStr,
+                    taskId: id,
+                    completed: currentTaskComp.completed,
+                    timeSpent: newTimeSpent,
+                    targetUserId: targetMemberId
+                  })
+                }).catch(() => {});
+              }
+
               return { ...group, completions: newCompletions };
             });
           }
           return { userGroups: updatedGroups };
         });
-        triggerInstantSave();
       },
       editTaskTimeSpent: (id, newTimeSpent, tab = 'today') => {
         set((state) => ({ ...(tab === 'today' && { tasks: ((state as any).tasks || []).map((t: any) => t.id === id ? { ...t, timeSpent: newTimeSpent } : t) }), ...(tab === 'tomorrow' && { tomorrowTasks: ((state as any).tomorrowTasks || []).map((t: any) => t.id === id ? { ...t, timeSpent: newTimeSpent } : t) }) } as any));
