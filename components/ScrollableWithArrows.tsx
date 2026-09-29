@@ -16,6 +16,13 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
 
+  // Drag to scroll refs
+  const isDragging = useRef(false);
+  const hasMoved = useRef(false);
+  const startY = useRef(0);
+  const startScrollTop = useRef(0);
+  const dragMode = useRef<'content' | 'scrollbar'>('content');
+
   useEffect(() => {
     if (persistKey && scrollRef.current) {
       const saved = sessionStorage.getItem(persistKey);
@@ -94,22 +101,35 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
     stopArrowScroll();
   };
 
+  const releaseDragLocks = () => {
+    isDragging.current = false;
+    hasMoved.current = false;
+    if (scrollRef.current) {
+      scrollRef.current.style.cursor = '';
+      scrollRef.current.style.userSelect = '';
+    }
+  };
+
   useEffect(() => {
     const handleGlobalPointerUp = () => {
       stopArrowScroll();
+      releaseDragLocks();
     };
+    
+    // Globally catch releases to ensure neither arrows nor dragging gets stuck
     window.addEventListener('pointerup', handleGlobalPointerUp);
     window.addEventListener('pointercancel', handleGlobalPointerUp);
+    
     return () => {
       window.removeEventListener('pointerup', handleGlobalPointerUp);
       window.removeEventListener('pointercancel', handleGlobalPointerUp);
       stopArrowScroll();
+      releaseDragLocks();
     };
   }, []);
 
   useEffect(() => {
     const timeout = setTimeout(checkScroll, 100);
-    // Add resize listener in case container changes size
     window.addEventListener('resize', checkScroll);
     return () => {
       clearTimeout(timeout);
@@ -117,24 +137,17 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
     };
   }, [children]);
 
-  // Drag to scroll logic
-  const isDragging = useRef(false);
-  const hasMoved = useRef(false);
-  const startY = useRef(0);
-  const startScrollTop = useRef(0);
-  const dragMode = useRef<'content' | 'scrollbar'>('content');
-
   const handlePointerDown = (e: React.PointerEvent) => {
     stopArrowScroll();
     const target = e.target as HTMLElement;
     const currentTarget = e.currentTarget as HTMLElement;
 
-    // Don't interfere with inputs or textareas or buttons
     if (e.button !== 0 || target.tagName.toLowerCase() === 'input' || target.tagName.toLowerCase() === 'textarea' || target.closest('button')) return;
 
-    e.stopPropagation(); // Prevent outer scrollables from capturing
+    e.stopPropagation(); 
     isDragging.current = true;
     hasMoved.current = false;
+    
     if (scrollRef.current) {
       startY.current = e.pageY;
       startScrollTop.current = scrollRef.current.scrollTop;
@@ -147,7 +160,6 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
         } catch (err) { }
       } else {
         dragMode.current = 'content';
-        // Delay capture until actual movement to allow clicks to pass through!
       }
     }
   };
@@ -155,8 +167,15 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging.current || !scrollRef.current) return;
 
+    // FAILSAFE: If it is a mouse, but no buttons are actively held down, release the lock immediately!
+    // This catches the bug where you let go of the mouse outside the browser window.
+    if (e.pointerType === 'mouse' && e.buttons === 0) {
+      handlePointerUpOrLeave(e);
+      return;
+    }
+
     e.stopPropagation();
-    e.preventDefault(); // Stop native drag/selection immediately
+    e.preventDefault(); 
 
     const y = e.pageY;
     const walk = y - startY.current;
@@ -176,7 +195,6 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
       const ratio = scrollRef.current.scrollHeight / scrollRef.current.clientHeight;
       scrollRef.current.scrollTop = startScrollTop.current + (walk * ratio);
     } else {
-      // Natural panning: pull down to see top
       scrollRef.current.scrollTop = startScrollTop.current - (walk * 1.5);
     }
   };
@@ -185,20 +203,14 @@ export default function ScrollableWithArrows({ children, className = '', hideArr
     if (isDragging.current) {
       e.stopPropagation();
     }
-    isDragging.current = false;
-    hasMoved.current = false;
-    if (scrollRef.current) {
-      scrollRef.current.style.cursor = '';
-      scrollRef.current.style.userSelect = '';
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch (err) { }
-    }
+    releaseDragLocks();
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) { }
   };
 
   return (
     <div className="relative flex-1 overflow-hidden flex flex-col group/scrollable h-full">
-
 
       <div
         ref={scrollRef}

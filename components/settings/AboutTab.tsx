@@ -7,13 +7,7 @@ import { BadgeCheck, Send, Briefcase, Heart, Sparkles, Coffee } from 'lucide-rea
 export default memo(function AboutTab() {
   const upiId = 'gonaboyinaanandkumar@ybl';
   const [donationAmount, setDonationAmount] = useState<number | null>(100);
-  const [isWaving, setIsWaving] = useState(false);
 
-  const handleWave = () => {
-    if (isWaving) return;
-    setIsWaving(true);
-    setTimeout(() => setIsWaving(false), 2500);
-  };
 
   return (
     <div className="flex flex-col gap-3 pb-2 w-full">
@@ -64,7 +58,6 @@ export default memo(function AboutTab() {
           1. CREATOR PROFILE CARD
       ========================================= */}
       <div 
-        onClick={handleWave}
         className="relative rounded-2xl p-[1px] overflow-hidden shadow-[0_0_20px_rgba(59,130,246,0.15)] cursor-pointer group/creator"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 animate-gradient-xy opacity-50 group-hover/creator:opacity-100 transition-opacity duration-500" />
@@ -106,14 +99,11 @@ export default memo(function AboutTab() {
             </div>
 
             <div className="mt-3 bg-white/5 border border-white/10 rounded-xl p-2.5 backdrop-blur-sm relative">
-              <div className={`absolute -top-3 -right-2 text-xl drop-shadow-lg transition-transform ${isWaving ? 'animate-wave inline-block' : 'opacity-0'}`}>
+              <div className={`absolute -top-3 -right-2 text-xl drop-shadow-lg transition-transform animate-wave inline-block`}>
                 👋
               </div>
               <p className="text-[9.5px] md:text-[11px] text-white/80 leading-snug break-words font-medium">
                 <span className="text-white font-bold">Hey there!</span> I built this dashboard out of my own frustration with distractions. I wanted a clean, powerful workspace to lock in and get things done.
-              </p>
-              <p className="text-[8.5px] md:text-[9.5px] text-blue-300/80 mt-1.5 font-bold uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5" /> Tap card to say hi!
               </p>
             </div>
 
@@ -160,8 +150,8 @@ export default memo(function AboutTab() {
             <h3 className="text-[9px] font-black text-pink-300 uppercase tracking-widest">Support the App</h3>
           </div>
           
-          <p className="text-[9px] md:text-[10px] text-white/70 max-w-xs mx-auto mb-3.5 leading-snug break-words font-medium">
-            Built out of necessity, fueled by coffee. If this dashboard keeps you in the zone, consider dropping a tip to help me buy a short custom URL domain for the app and keep the updates flowing! <Heart className="w-2.5 h-2.5 inline text-pink-500 animate-pulse fill-pink-500" />
+          <p className="text-[12px] md:text-[15px] text-white/70 max-w-2xl mx-auto mb-3.5 leading-snug break-words font-medium">
+            Built over countless late nights and endless bug fixes to run flawlessly. If this dashboard keeps you in the zone, a small tip helps cover the server bills and keeps the project alive! <Heart className="w-2.5 h-2.5 inline text-pink-500 animate-pulse fill-pink-500" />
           </p>
 
           <div className="flex flex-wrap justify-center gap-1.5 mb-4">
@@ -241,7 +231,7 @@ export default memo(function AboutTab() {
             This dashboard was built on 99% caffeine, 1% sheer panic, and countless late nights wondering why a single missing comma broke the entire universe.
           </p>
           <p className="text-[8.5px] md:text-[9.5px] text-emerald-300/80 leading-snug italic font-bold break-words relative z-10">
-            "A massive shoutout to these two for happily reporting bugs and then peacefully going to sleep, leaving me to drive myself crazy trying to fix them at 4 AM!"
+            "A shoutout to these two for happily reporting bugs and then peacefully going to sleep for one month, leaving me to drive myself crazy trying to fix them at 4 AM!"
           </p>
         </div>
 
