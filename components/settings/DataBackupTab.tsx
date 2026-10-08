@@ -232,12 +232,12 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
     e.target.value = '';
   }, [showAlertModal]);
 
-  const handleBackupTimetable = useCallback(() => {
+const handleBackupTimetable = useCallback(() => {
     showBackupModal(
       'Backup Timetable',
       'timetable_backup.json',
       'Timetable Backup',
-      'Your weekly schedule, grid layout, times, and colors.',
+      'Your weekly schedule, grid layout, times, colors, and category rules.',
       () => {
         const state = useTimetableStore.getState();
         return {
@@ -247,6 +247,7 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
           weekendTimes: state.weekendTimes,
           timetableStartTime: state.timetableStartTime,
           timetableWeekendStartTime: state.timetableWeekendStartTime,
+          timetableCategories: state.timetableCategories || [], // <-- Added Categories
         };
       }
     );
@@ -270,12 +271,13 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
             weekendTimes: data.weekendTimes || [],
             timetableStartTime: data.timetableStartTime || 540,
             timetableWeekendStartTime: data.timetableWeekendStartTime || 540,
+            timetableCategories: data.timetableCategories || [], // <-- Added Categories
           };
 
           useTimetableStore.setState(restoredPayload);
           pushTimetableToDB(restoredPayload);
 
-          showAlertModal('Data Restored', 'Timetable restored successfully!');
+          showAlertModal('Data Restored', 'Timetable & Categories restored successfully!');
         } else {
           showAlertModal('Restore Failed', 'Invalid backup file format for Timetable.');
         }
@@ -412,7 +414,7 @@ export default React.memo(function DataBackupTab({ setInfoModalKey, showAlertMod
     { title: 'Plan Your Day', desc: 'Backup/Restore tasks & time intervals.', icon: UploadCloud, color: 'pink', onBackup: handleBackupPlanYourDay, onRestore: handleRestorePlanYourDay },
     { title: 'Quick Notes', desc: 'Backup/Restore all your text notes.', icon: UploadCloud, color: 'yellow', onBackup: handleBackupNotes, onRestore: handleRestoreNotes },
     { title: 'Settings', desc: 'Backup/Restore dashboard preferences.', icon: UploadCloud, color: 'blue', onBackup: handleBackupSettings, onRestore: handleRestoreSettings },
-    { title: 'Timetable', desc: 'Backup/Restore your weekly schedule.', icon: CalendarDays, color: 'violet', onBackup: handleBackupTimetable, onRestore: handleRestoreTimetable },
+    { title: 'Timetable', desc: 'Backup/Restore your Master Schedule.', icon: CalendarDays, color: 'violet', onBackup: handleBackupTimetable, onRestore: handleRestoreTimetable },
   ], [handleExportData, handleImportData, handleBackupPlanYourDay, handleRestorePlanYourDay, handleBackupNotes, handleRestoreNotes, handleBackupSettings, handleRestoreSettings, handleBackupTimetable, handleRestoreTimetable]);
 
   return (

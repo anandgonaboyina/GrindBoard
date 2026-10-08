@@ -40,7 +40,7 @@ function mergeArraysByIdServer(incoming: any[] = [], existing: any[] = []) {
   return Array.from(map.values());
 }
 
-const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime'];
+const TIMETABLE_KEYS = ['timetableGrid', 'timetableColors', 'weekdayTimes', 'weekendTimes', 'timetableStartTime', 'timetableWeekendStartTime', 'timetableCategories'];
 
 const SETTING_ARRAY_KEYS = [
   'customDesktopWallpapers', 'customMobileWallpapers', 'hiddenWallpapers',
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
       db.collection('Roadmaps').findOne({ userId: user.userId }, projectionOnlyLastModified),
       db.collection('Stats').findOne({ userId: user.userId }, projectionOnlyLastModified),
       db.collection('DailyRoutine').findOne({ userId: user.userId }, projectionOnlyLastModified),
-      db.collection('Timetable').findOne({ userId: user.userId }, projectionOnlyLastModified),
+      db.collection('timetables').findOne({ userId: user.userId }, projectionOnlyLastModified),
       db.collection('Deadlines').findOne({ userId: user.userId }, projectionOnlyLastModified),
       db.collection('Countdowns').findOne({ userId: user.userId }, projectionOnlyLastModified)
     ]);
@@ -137,7 +137,7 @@ export async function GET(request: Request) {
       db.collection('Roadmaps').findOne({ userId: user.userId }),
       db.collection('Stats').findOne({ userId: user.userId }),
       db.collection('DailyRoutine').findOne({ userId: user.userId }),
-      db.collection('Timetable').findOne({ userId: user.userId }),
+      db.collection('timetables').findOne({ userId: user.userId }),
       db.collection('Deadlines').findOne({ userId: user.userId }),
       db.collection('Countdowns').findOne({ userId: user.userId })
     ]);
@@ -214,7 +214,7 @@ export async function POST(request: Request) {
         db.collection('Roadmaps').deleteOne({ userId: user.userId }),
         db.collection('Stats').deleteOne({ userId: user.userId }),
         db.collection('DailyRoutine').deleteOne({ userId: user.userId }),
-        db.collection('Timetable').deleteOne({ userId: user.userId }),
+        db.collection('timetables').deleteOne({ userId: user.userId }),
         db.collection('Deadlines').deleteOne({ userId: user.userId })
       ]);
       return NextResponse.json({ success: true, message: 'All data cleared' });
@@ -246,7 +246,7 @@ export async function POST(request: Request) {
       (fetchAll || modifiedCollections.includes('DailyRoutine')) 
         ? db.collection('DailyRoutine').findOne({ userId: user.userId }) : Promise.resolve(null),
       (fetchAll || modifiedCollections.includes('Timetable')) 
-        ? db.collection('Timetable').findOne({ userId: user.userId }) : Promise.resolve(null),
+        ? db.collection('timetables').findOne({ userId: user.userId }) : Promise.resolve(null),
       (fetchAll || modifiedCollections.includes('Deadlines')) 
         ? db.collection('Deadlines').findOne({ userId: user.userId }) : Promise.resolve(null),
       (fetchAll || modifiedCollections.includes('Countdowns')) 

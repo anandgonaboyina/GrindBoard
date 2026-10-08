@@ -315,7 +315,7 @@ export const useTaskStore = create<TaskState>()(
                     queueTaskAction({ type: 'REPLACE_ALL', data: updates });
                     return { ...updates, lastModified: Date.now() };
                 }
-                return state; // Changed from {} to state to be completely safe
+                return state; 
             }),
 
             fetchTasks: async () => {
@@ -372,7 +372,7 @@ export const useTaskStore = create<TaskState>()(
                         }
                     }
                 } catch (e) {
-                    console.error("Failed to fetch tasks from DB, keeping local state completely intact:", e);
+                    console.warn("Failed to fetch tasks from DB, keeping local state completely intact:", e);
                 }
             },
         }),

@@ -32,7 +32,7 @@ export default function GlobalBroadcastPopup() {
           }
         }
       } catch (err) {
-        console.error('Failed to fetch broadcasts:', err);
+        console.warn('Failed to fetch broadcasts:', err);
       }
     };
     fetchLatestBroadcast();

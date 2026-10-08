@@ -98,6 +98,23 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
           useTaskStore.getState().fetchTasks(),
           useNoteStore.getState().fetchNotes()
         ]);
+        const token = localStorage.getItem('dashboard_sync_token');
+        if (token && navigator.onLine) {
+          fetch('/api/store', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ data: {}, modifiedCollections: [], incrementHistory: true })
+          })
+          .then(res => res.json())
+          .then(json => {
+            if (json.updatedHistory) {
+              useDashboardStore.setState((state: any) => ({ 
+                history: { ...state.history, ...json.updatedHistory } 
+              }));
+            }
+          })
+          .catch(() => {});
+        }
       } finally {
         setIsExtraDataFetched(true);
       }
@@ -121,7 +138,7 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
     };
   }, []);
 
-  // NEW: Listen for the moment the cloud data gets injected into the local state
+  // Listen for the moment the cloud data gets injected into the local state
   useEffect(() => {
     if (isAwaitingCloudInjection && _hasHydratedDashboard) {
       // If history exists, or if failedToLoadDB was flagged (meaning network failed), we are done waiting!
@@ -166,7 +183,7 @@ export default function LoadingScreen({ onFinished }: LoadingScreenProps) {
     setIsExtraDataFetched(true);
     setIsAwaitingCloudInjection(false);
 
-    // Yield short processing macro-tick before forcefully hydrating
+    // short processing macro-tick before forcefully hydrating
     setTimeout(() => {
       forceHydrateAllStores();
     }, 50);

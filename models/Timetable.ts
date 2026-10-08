@@ -10,6 +10,7 @@ export interface ITimetable extends Document {
     timetableWeekendStartTime: number;
     useTimetableRange: boolean;
     lastModified: number;
+    timetableCategories?: any[];
 }
 
 const TimetableSchema: Schema = new Schema({
@@ -21,7 +22,8 @@ const TimetableSchema: Schema = new Schema({
     timetableStartTime: { type: Number, default: 540 },
     timetableWeekendStartTime: { type: Number, default: 540 },
     useTimetableRange: { type: Boolean, default: true },
-    lastModified: { type: Number, default: Date.now }
+    lastModified: { type: Number, default: Date.now },
+    timetableCategories: [{ type: Schema.Types.Mixed }]
 }, { timestamps: true });
 
 export default mongoose.models.Timetable || mongoose.model<ITimetable>('Timetable', TimetableSchema);

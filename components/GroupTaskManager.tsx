@@ -207,7 +207,7 @@ export default function GroupTaskManager({
         window.addEventListener('pointercancel', handlePointerUp);
         window.addEventListener('touchend', handlePointerUp);
         window.addEventListener('touchcancel', handlePointerUp);
-
+        
         return () => {
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('touchmove', handlePointerMove);

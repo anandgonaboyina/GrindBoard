@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { useNoteStore } from '@/store/noteStore';
 import { Sun, Moon, Plus, X, StickyNote, Trash2, Undo, Redo, Bold, Italic, Underline, List, Download, ChevronLeft, ChevronRight, Calendar, Upload, GripVertical } from 'lucide-react';
-import ScrollableWithArrows from './ScrollableWithArrows';
+import ScrollableWithArrows from '@/components/ScrollableWithArrows';
 import ConfirmationModal from './ConfirmationModal';
 
 function EditorBlock({ isLight, date, initialHtml, onChange }: { isLight: boolean; date: string; initialHtml: string; onChange: (html: string) => void }) {

@@ -53,7 +53,7 @@ export const queueSettingsAction = (updates: Record<string, any>) => {
     localStorage.setItem('settings_offline_queue', JSON.stringify(queue));
     if (navigator.onLine) {
         if (syncSettingsTimeout) clearTimeout(syncSettingsTimeout);
-        syncSettingsTimeout = setTimeout(syncSettingsQueue, 1500);
+        syncSettingsTimeout = setTimeout(syncSettingsQueue, 3000);
     }
 };
 

@@ -464,7 +464,7 @@ export default function RoadmapManager() {
                     : 'bg-gradient-to-r from-blue-600 to-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
                 }`} 
                 style={{ width: `${overallProgress}%` }} 
-              > <p>{overallProgress}%</p> </div>
+              > <p>{overallProgress>0 ? overallProgress + '%' : ''}</p> </div>
             </div>
           </div>
 

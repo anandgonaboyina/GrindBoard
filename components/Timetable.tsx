@@ -1,16 +1,15 @@
 "use client";
-
-// 1. Separate the imports
 import { useDashboardStore } from "@/store/dashboardStore";
-import { useTimetableStore, pushTimetableToDB } from "@/store/timetableStore"; // Import your new store
+import { useTimetableStore, pushTimetableToDB } from "@/store/timetableStore";
+import TimetableStatsModal from '@/components/modals/timetable/TimetableStatsModal';
 import { CalendarDays, Edit2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Check, Settings, Plus, Trash, Clock, ArrowUp, ArrowDown, X, Sun, Moon, Copy, ClipboardPaste, Download, Upload, BarChart2, ArrowRightLeft } from "lucide-react";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo,  } from "react";
+import {createPortal} from 'react-dom';
 import ConfirmationModal from './ConfirmationModal';
 import Tooltip from './Tooltip';
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const WEEKENDS = ["Sat", "Sun"];
-
 const CELL_HEIGHT = 40;
 const CELL_GAP = 4;
 const TOTAL_HEIGHT = CELL_HEIGHT + CELL_GAP;
@@ -61,7 +60,6 @@ export default function Timetable() {
     viewingFriend,
     setViewingFriend
   } = useDashboardStore();
-
   // 3. Move ALL timetable data to the new store
   const {
     timetableGrid: myTimetableGrid,
@@ -70,6 +68,7 @@ export default function Timetable() {
     weekendTimes: myWeekendTimes,
     timetableStartTime: myTimetableStartTime,
     timetableWeekendStartTime: myTimetableWeekendStartTime,
+    timetableCategories: myTimetableCategories,
     setTimetableStartTime,
     setTimetableWeekendStartTime,
     updateTimetableCell,
@@ -175,7 +174,7 @@ export default function Timetable() {
       
       showToast("Timetable exported!");
     } catch (error) {
-      console.error("Export failed:", error);
+      console.warn("Export failed:", error);
       showToast("Failed to export image");
     } finally {
       setIsExporting(false);
@@ -210,7 +209,7 @@ export default function Timetable() {
     });
   };
 
-  useEffect(() => {
+useEffect(() => {
     if (viewingFriend) return;
     const fetchLiveTimetable = async () => {
       const token = localStorage.getItem('dashboard_sync_token');
@@ -231,11 +230,12 @@ export default function Timetable() {
             weekendTimes: (json.data.weekendTimes && json.data.weekendTimes.length > 0) ? json.data.weekendTimes : state.weekendTimes,
             timetableStartTime: json.data.timetableStartTime || state.timetableStartTime,
             timetableWeekendStartTime: json.data.timetableWeekendStartTime || state.timetableWeekendStartTime,
-            useTimetableRange: json.data.useTimetableRange !== undefined ? json.data.useTimetableRange : state.useTimetableRange
+            useTimetableRange: json.data.useTimetableRange !== undefined ? json.data.useTimetableRange : state.useTimetableRange,
+            timetableCategories: json.data.timetableCategories || state.timetableCategories
           }));
         }
       } catch (e) {
-        console.error("Failed to fetch live timetable", e);
+        console.warn("Failed to fetch live timetable", e);
       }
     };
     fetchLiveTimetable();
@@ -465,9 +465,9 @@ export default function Timetable() {
           weekendTimes: myWeekendTimes,
           timetableStartTime: myTimetableStartTime,
           timetableWeekendStartTime: myTimetableWeekendStartTime,
+          timetableCategories: myTimetableCategories || [], // <-- Added Categories
         };
 
-        // Check if we are running in Lively Wallpaper (WebView2)
         const isWebView2 = typeof window !== 'undefined' && ((window as any).chrome?.webview !== undefined || navigator.userAgent.includes('wv') || navigator.userAgent.includes('Lively'));
 
         if (isWebView2) {
@@ -487,7 +487,6 @@ export default function Timetable() {
               showToast("Failed to prepare download.");
             }
           }).catch(() => {
-            // Offline fallback
             const encoded = encodeURIComponent(JSON.stringify(backupData, null, 2));
             const url = new URL(window.location.origin + '/download.html');
             url.searchParams.set('data', encoded);
@@ -504,14 +503,12 @@ export default function Timetable() {
           document.body.appendChild(downloadAnchorNode);
           downloadAnchorNode.click();
           downloadAnchorNode.remove();
-          showToast("Backup download triggered!");
+          showToast("Backup downloading wait a few seconds it get download!");
         }
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
       }
     });
   };
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -531,13 +528,12 @@ export default function Timetable() {
             weekendTimes: parsed.weekendTimes || [],
             timetableStartTime: parsed.timetableStartTime || 540,
             timetableWeekendStartTime: parsed.timetableWeekendStartTime || 540,
+            timetableCategories: parsed.timetableCategories || [], // <-- Added Categories
           };
 
-          // 1. Update the local timetable state
           useTimetableStore.setState(restoredPayload);
-          // 2. Push directly to MongoDB using the function from your store
           pushTimetableToDB(restoredPayload);
-          showToast('Timetable imported successfully!');
+          showToast('Timetable & Categories imported successfully!');
 
         } else {
           showToast("Invalid backup file.");
@@ -553,6 +549,8 @@ export default function Timetable() {
       fileInputRef.current.value = "";
     }
   };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const handleUpdateDuration = (idx: number, newDur: number) => {
     let oldAccumulated = startTime;
     const oldTimesStrs: string[] = [];
@@ -666,6 +664,7 @@ export default function Timetable() {
     setEditingCell(null);
   };
 
+
   return (
     <div ref={timetableRef} suppressHydrationWarning className={` transition-colors duration-500 rounded-[20px] md:rounded-[24px] p-1.5 md:p-2.5 w-full max-w-[100vw] md:w-fit overflow-hidden md:overflow-visible relative mx-auto
         ${isDark ? 'bg-gradient-to-br from-[#12121a] to-[#0a0a0c] border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.4)] text-white/90'
@@ -676,116 +675,166 @@ export default function Timetable() {
         <StartTimeEditor currentMins={startTime} isDark={isDark} onSave={handleSetStartTime} onCancel={() => setIsEditingStartTime(false)} />
       )}
 
-      {/* Header Area */}
-      <div className={`flex items-center justify-between mb-1.5 md:mb-2 pb-1.5 border-b px-1 min-w-0 md:min-w-[400px] lg:min-w-[700px]  ${isDark ? 'border-white/5' : 'border-black/5'}`}>
-        <div className="flex items-center min-w-[40px]">
-          <Tooltip text="Previous view" position="top">
-            <button
-              onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
-              className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-800'}`}
-            >
-              <ChevronLeft size={24} strokeWidth={2.5} />
-            </button>
-          </Tooltip>
-        </div>
-
-        <div className="flex items-center gap-1 md:gap-1.5 relative" ref={settingsRef}>
-          <div className="flex flex-col md:flex-row-reverse items-center justify-center md:gap-2">
-            <div className="flex items-center gap-1 md:gap-1.5">
-              <CalendarDays className={`w-3.5 h-3.5 md:w-4 md:h-4 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} />
-              <span className={`font-bold tracking-widest uppercase text-[10px] md:text-[11px] text-center truncate ${isDark ? 'text-gray-100' : 'text-slate-800'}`}>
-                {viewMode === "weekdays" ? "Weekly Schedule" : "Weekend Schedule"}
-              </span>
+{/* Header Area */}
+      <div className={`relative flex flex-col md:flex-row md:items-center justify-between  border-b px-1 min-w-0 md:min-w-[500px] lg:min-w-[700px] ${isDark ? 'border-white/5' : 'border-black/5'}`}>
+        
+        {/* --- REUSABLE TAB SECTION --- */}
+        {(() => {
+          const tabSectionElement = (
+            <div className={`flex items-center p-0.5 rounded-lg border shadow-inner ${isDark ? 'bg-black/50 border-white/10' : 'bg-slate-200/60 border-black/5'}`}>
+              <div className="relative flex items-center gap-1 md:gap-0">
+                {/* Sliding Active Background */}
+                <div className={`absolute top-0 bottom-0 w-1/2 rounded-md transition-transform duration-300 ease-out shadow-sm ${viewMode === 'weekends' ? 'translate-x-full' : 'translate-x-0'} ${isDark ? 'bg-violet-600 shadow-[0_0_10px_rgba(139,92,246,0.4)]' : 'bg-white shadow-[0_2px_5px_rgba(0,0,0,0.05)]'}`} />
+                <button 
+                  onClick={() => setViewMode('weekdays')} 
+                  className={`relative z-10 px-2.5 sm:px-1 py-1.5 text-[8px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-colors w-16 sm:w-20 md:w-24 text-center ${viewMode === 'weekdays' ? (isDark ? 'text-white' : 'text-violet-700') : (isDark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600')}`}
+                >
+                  Weekdays
+                </button>
+                <button 
+                  onClick={() => setViewMode('weekends')} 
+                  className={`relative z-10 px-2.5 sm:px-1 py-1.5 text-[8px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-colors w-16 sm:w-20 md:w-24 text-center ${viewMode === 'weekends' ? (isDark ? 'text-white' : 'text-violet-700') : (isDark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600')}`}
+                >
+                  Weekends
+                </button>
+              </div>
             </div>
+          );
+
+          return (
+            <>
+              {/* Top Row for Mobile (Title + Tabs) / Left Side for Desktop */}
+              <div className="flex items-center justify-between w-full md:w-auto md:gap-2">
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className={`p-1.5 rounded-md ${isDark ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-100 text-violet-600'}`}>
+                    <CalendarDays className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className={`font-black tracking-widest uppercase text-[11px] md:text-sm leading-none drop-shadow-sm ${isDark ? 'text-gray-100 shadow-violet-500/20' : 'text-slate-800'}`}>
+                      Master Schedule
+                    </span>
+                    {!viewingFriend && (
+                      <span className={`text-[6.5px] md:text-[7.5px] uppercase tracking-wider font-bold mt-0.5 ${isDark ? 'text-white/40' : 'text-slate-400'}`}>
+                        Double click to edit cell
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mobile Tabs */}
+                <div className="md:hidden shrink-0 ml-2">
+                  {tabSectionElement}
+                </div>
+              </div>
+
+              {/* Desktop Tabs (Flexible Center) */}
+            <div className="hidden md:flex flex-1 justify-center">
+              {tabSectionElement}
+            </div>
+            </>
+          );
+        })()}
+
+        {/* Bottom Row for Mobile / Right Side for Desktop */}
+        <div className="flex items-center justify-between md:justify-end w-full md:w-auto mt-2 md:mt-0" ref={settingsRef}>
+          
+          <div className="flex items-center gap-1 md:gap-1.5">
+            {(isDeleteMode || isInsertMode) && !viewingFriend ? (
+              <button 
+                onClick={() => { setIsDeleteMode(false); setIsInsertMode(false); }} 
+                className={`px-3 py-1.5 text-[9px] md:text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm
+                  ${isDark ? 'bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/40' : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'}`}
+              >
+                Cancel Edit
+              </button>
+            ) : !viewingFriend && (
+              <div className="relative">
+                <Tooltip text="Row Settings" position="top">
+                  <button onClick={() => setShowSettings(!showSettings)} className={`p-1.5 md:p-2 rounded-lg transition-all border ${showSettings ? 'rotate-90' : ''} ${isDark ? (showSettings ? 'bg-white/10 text-white border-white/20' : 'bg-transparent border-transparent hover:bg-white/5 text-white/50 hover:text-white') : (showSettings ? 'bg-white text-slate-800 border-slate-200 shadow-sm' : 'bg-transparent border-transparent hover:bg-white text-slate-500 hover:text-slate-800')}`}>
+                    <Settings size={14} className="md:w-4 md:h-4" />
+                  </button>
+                </Tooltip>
+
+                {/* Floating Settings Dropdown */}
+                {showSettings && (
+                  <div className={`absolute top-[calc(100%+8px)] left-0 md:left-auto md:right-0 rounded-xl shadow-2xl py-1 z-50 flex flex-col min-w-[180px] animate-in slide-in-from-top-2 fade-in duration-200 backdrop-blur-xl border ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
+                    <div className={`px-3 py-1.5 text-[9px] uppercase tracking-wider font-bold border-b mb-1 ${isDark ? 'text-white/40 border-white/5' : 'text-slate-400 border-slate-100'}`}>Row Management</div>
+                    <button onClick={handleAddTopRow} className={`px-3 py-2 text-[11px] font-medium flex items-center gap-2 transition-colors w-full text-left ${isDark ? 'hover:bg-white/10 text-white/80' : 'hover:bg-slate-50 text-slate-700'}`}>
+                      <ArrowUp size={14} className={isDark ? "text-emerald-400" : "text-emerald-600"} /> Add Top Row
+                    </button>
+                    <button onClick={() => { addTimetableRow(isWeekendMode); setShowSettings(false); }} className={`px-3 py-2 text-[11px] font-medium flex items-center gap-2 transition-colors w-full text-left border-b pb-2 mb-1 ${isDark ? 'hover:bg-white/10 text-white/80 border-white/5' : 'hover:bg-slate-50 text-slate-700 border-slate-100'}`}>
+                      <ArrowDown size={14} className={isDark ? "text-sky-400" : "text-sky-600"} /> Add Bottom Row
+                    </button>
+                    <button onClick={() => { setIsInsertMode(!isInsertMode); setIsDeleteMode(false); setShowSettings(false); }} className={`px-3 py-2 text-[11px] font-medium flex items-center gap-2 transition-colors w-full text-left border-b pb-2 mb-1 ${isDark ? 'hover:bg-white/10 text-white/80 border-white/5' : 'hover:bg-slate-50 text-slate-700 border-slate-100'}`}>
+                      <Plus size={14} className={isDark ? "text-violet-400" : "text-violet-600"} /> Insert Specific Row...
+                    </button>
+                    <button onClick={() => { setIsDeleteMode(!isDeleteMode); setIsInsertMode(false); setShowSettings(false); }} className={`px-3 py-2 text-[11px] font-medium flex items-center gap-2 transition-colors w-full text-left pb-1 ${isDark ? 'hover:bg-white/10 text-white/80' : 'hover:bg-slate-50 text-slate-700'}`}>
+                      <Trash size={14} className={isDark ? "text-rose-400" : "text-rose-600"} /> Delete Specific Row...
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className={`hidden md:block w-[1px] h-6 mx-0.5 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+
+            {/* Desktop Stats Button*/}
+            <div className="hidden md:block">
+              <Tooltip text="Weekly Totals" position="top">
+                <button
+                  onClick={() => setShowStatsModal(true)}
+                  className={`flex items-center gap-1.5 px-2.5  py-1.5  md:p-1 active:scale-95 rounded-lg transition-all shrink-0 border font-bold text-[10px] uppercase tracking-wider ${isDark ? 'bg-violet-500/10 text-violet-300 border-violet-500/20 hover:bg-violet-500/20' : 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100'}`}
+                >
+                  <BarChart2 size={14} />
+                  <span>Weekly Totals</span>
+                </button>
+              </Tooltip>
+            </div>
+
             {!viewingFriend && (
-              <span className={`text-[6.5px] md:text-[7.5px] uppercase tracking-wider font-bold px-1.5 py-[1px] rounded mt-0.5 md:mt-0 ${isDark ? 'bg-red-500/20 text-red-300 border border-red-500/20' : 'bg-red-100 text-red-600 border border-red-200'}`}>
-                Double click cell/time to edit
-              </span>
+              <>
+                <Tooltip text="Swap Days" position="top">
+                  <button
+                    onClick={() => setShowSwapDaysModal(true)}
+                    className={`p-1.5 md:p-2 active:scale-95 rounded-lg transition-all shrink-0 border ${isDark ? 'border-transparent hover:bg-white/10 text-white/50 hover:text-white' : 'border-transparent hover:bg-white text-slate-500 hover:text-slate-800 hover:shadow-sm hover:border-slate-200'}`}
+                  >
+                    <ArrowRightLeft size={14} className="md:w-4 md:h-4" />
+                  </button>
+                </Tooltip>
+
+                <Tooltip text="Export Image" position="top">
+                  <button
+                    onClick={handleExportImage}
+                    disabled={isExporting}
+                    className={`p-1.5 md:p-2 active:scale-95 rounded-lg transition-all shrink-0 border ${isExporting ? 'opacity-50 cursor-not-allowed' : ''} ${isDark ? 'border-transparent hover:bg-white/10 text-white/50 hover:text-white' : 'border-transparent hover:bg-white text-slate-500 hover:text-slate-800 hover:shadow-sm hover:border-slate-200'}`}
+                  >
+                    <Download size={14} className={`md:w-4 md:h-4 ${isExporting ? "animate-bounce" : ""}`} />
+                  </button>
+                </Tooltip>
+
+                <Tooltip text="Toggle Theme" position="top">
+                  <button
+                    onClick={toggleTheme}
+                    className={`p-1.5 md:p-2 active:scale-95 rounded-lg transition-all shrink-0 border ${isDark ? 'border-transparent hover:bg-white/10 text-white/50 hover:text-white' : 'border-transparent hover:bg-white text-slate-500 hover:text-slate-800 hover:shadow-sm hover:border-slate-200'}`}
+                  >
+                    {isDark ? <Sun size={14} className="md:w-4 md:h-4" /> : <Moon size={14} className="md:w-4 md:h-4" />}
+                  </button>
+                </Tooltip>
+              </>
             )}
           </div>
-          {(isDeleteMode || isInsertMode) && !viewingFriend ? (
-            <button 
-              onClick={() => { setIsDeleteMode(false); setIsInsertMode(false); }} 
-              className={`ml-2 px-2 py-1 text-[9px] md:text-[10px] font-bold uppercase tracking-wider rounded-md transition-all 
-                ${isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/40' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
-            >
-              Cancel
-            </button>
-          ) : !viewingFriend && (
-            <button onClick={() => setShowSettings(!showSettings)} className={`p-0.5 md:p-1 rounded-md transition-all hover:rotate-90 ml-0.5 shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-900'}`}>
-              <Settings size={14} />
-            </button>
-          )}
 
-          <Tooltip text="Weekly Totals" position="top">
+          {/* Mobile Stats Button (Forced to far right) */}
+          <div className="md:hidden shrink-0 ml-2">
             <button
               onClick={() => setShowStatsModal(true)}
-              className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
+              className={`flex items-center gap-1.5 px-2 py-1.5 active:scale-95 rounded-lg transition-all border font-bold text-[9px] uppercase tracking-wider shadow-sm ${isDark ? 'bg-violet-500/10 text-violet-300 border-violet-500/20 active:bg-violet-500/30' : 'bg-violet-50 text-violet-700 border-violet-200 active:bg-violet-100'}`}
             >
-              <BarChart2 size={14} />
+              <BarChart2 size={12} />
+              <span>Stats</span>
             </button>
-          </Tooltip>
-
-          {!viewingFriend && (
-            <>
-              <Tooltip text="Swap Days" position="top">
-                <button
-                  onClick={() => setShowSwapDaysModal(true)}
-                  className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
-                >
-                  <ArrowRightLeft size={14} />
-                </button>
-              </Tooltip>
-
-              <Tooltip text="Export Image" position="top">
-                <button
-                  onClick={handleExportImage}
-                  disabled={isExporting}
-                  className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''} ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
-                >
-                  <Download size={14} className={isExporting ? "animate-bounce" : ""} />
-                </button>
-              </Tooltip>
-
-              <Tooltip text="Toggle Theme" position="top">
-                <button
-                  onClick={toggleTheme}
-                  className={`p-0.5 md:p-1 active:scale-95 rounded-md transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/50 hover:text-white' : 'hover:bg-black/5 text-slate-400 hover:text-slate-800'}`}
-                >
-                  {isDark ? <Sun size={14} /> : <Moon size={14} />}
-                </button>
-              </Tooltip>
-            </>
-          )}
-
-          {showSettings && (
-            <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 rounded-xl shadow-2xl py-1 z-50 flex flex-col min-w-[160px] animate-in slide-in-from-top-2 fade-in duration-200 backdrop-blur-xl border ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-black/10'}`}>
-              <div className={`px-2 py-1 text-[8px] uppercase tracking-wider font-bold border-b mb-0.5 ${isDark ? 'text-white/40 border-white/5' : 'text-slate-400 border-black/5'}`}>Row Management</div>
-              <button onClick={handleAddTopRow} className={`px-2 py-1.5 text-[10px] flex items-center justify-between transition-colors w-full text-left ${isDark ? 'hover:bg-white/10 text-white/80' : 'hover:bg-black/5 text-slate-700'}`}>
-                <span className="flex items-center gap-1.5"><ArrowUp size={12} className={isDark ? "text-emerald-400" : "text-emerald-600"} /> Add Top Row</span>
-              </button>
-              <button onClick={() => { addTimetableRow(isWeekendMode); setShowSettings(false); }} className={`px-2 py-1.5 text-[10px] flex items-center justify-between transition-colors w-full text-left border-b pb-2 mb-0.5 ${isDark ? 'hover:bg-white/10 text-white/80 border-white/5' : 'hover:bg-black/5 text-slate-700 border-black/5'}`}>
-                <span className="flex items-center gap-1.5"><ArrowDown size={12} className={isDark ? "text-sky-400" : "text-sky-600"} /> Add Bottom Row</span>
-              </button>
-              <button onClick={() => { setIsInsertMode(!isInsertMode); setIsDeleteMode(false); setShowSettings(false); }} className={`px-2 py-1.5 text-[10px] flex items-center justify-between transition-colors w-full text-left border-b pb-2 mb-0.5 ${isDark ? 'hover:bg-white/10 text-white/80 border-white/5' : 'hover:bg-black/5 text-slate-700 border-black/5'}`}>
-                <span className="flex items-center gap-1.5"><Plus size={12} className={isDark ? "text-violet-400" : "text-violet-600"} /> Insert Specific Row...</span>
-              </button>
-              <button onClick={() => { setIsDeleteMode(!isDeleteMode); setIsInsertMode(false); setShowSettings(false); }} className={`px-2 py-1.5 text-[10px] flex items-center justify-between transition-colors w-full text-left pb-1 ${isDark ? 'hover:bg-white/10 text-white/80' : 'hover:bg-black/5 text-slate-700'}`}>
-                <span className="flex items-center gap-1.5"><Trash size={12} className={isDark ? "text-rose-400" : "text-rose-600"} /> Delete Specific Row...</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center min-w-[40px] justify-end">
-          <Tooltip text="Next view" position="top">
-            <button
-              onClick={() => setViewMode(viewMode === "weekdays" ? "weekends" : "weekdays")}
-              className={`p-1 active:scale-95 rounded-lg transition-all shrink-0 ${isDark ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-black/5 text-slate-500 hover:text-slate-800'}`}
-            >
-              <ChevronRight size={24} strokeWidth={2.5} />
-            </button>
-          </Tooltip>
+          </div>
+          
         </div>
       </div>
 
@@ -1105,48 +1154,15 @@ export default function Timetable() {
         </div>
       </div>
 
-      {/* Weekly Subject Stats Modal */}
-      {showStatsModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowStatsModal(false)}>
-          <div className={`border rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-5 w-full max-w-[320px] flex flex-col gap-4 relative animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 backdrop-blur-xl border-white/10' : 'bg-white/95 backdrop-blur-xl border-black/10'}`} onClick={e => e.stopPropagation()}>
-            <button onClick={() => setShowStatsModal(false)} className={`absolute top-3 right-3 p-1.5 transition-all rounded-full active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-800 hover:bg-black/5'}`}>
-              <X size={16} />
-            </button>
-
-            <div className="text-center mt-1">
-              <h3 className={`font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 ${isDark ? 'text-gray-100' : 'text-slate-800'}`}>
-                <BarChart2 size={16} className={isDark ? "text-violet-400" : "text-violet-600"} /> Weekly Totals
-              </h3>
-              <p className={`text-[10px] mt-1 uppercase font-semibold tracking-wide ${isDark ? 'text-white/40' : 'text-slate-500'}`}>Total scheduled time</p>
-            </div>
-
-            <div className={`flex flex-col gap-2 max-h-[50vh] overflow-y-auto custom-scrollbar pr-1 ${subjectStats.length === 0 ? 'items-center justify-center py-4' : ''}`}>
-              {subjectStats.map(([subj, data]) => {
-                const colorObj = CELL_COLORS.find(c => c.name === data.colorName) || CELL_COLORS[0];
-                const hrs = Math.floor(data.mins / 60);
-                const mins = data.mins % 60;
-                const timeStr = hrs > 0 ? (mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`) : `${mins}m`;
-                
-                return (
-                  <div key={subj} className={`flex items-center justify-between px-3 py-2 rounded-xl border ${isDark ? colorObj.bg + ' border-white/5' : colorObj.lightBg + ' border-black/5'}`}>
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-2 h-2 rounded-full shadow-sm ${isDark ? colorObj.solidBg : colorObj.lightSolidBg}`} />
-                      <span className={`text-[12px] font-bold ${isDark ? colorObj.text : colorObj.lightText}`}>{subj}</span>
-                    </div>
-                    <span className={`text-[11px] font-bold opacity-90 ${isDark ? colorObj.text : colorObj.lightText}`}>{timeStr}</span>
-                  </div>
-                );
-              })}
-              {subjectStats.length === 0 && <span className={`text-xs italic ${isDark ? 'text-white/30' : 'text-slate-400'}`}>No subjects scheduled.</span>}
-            </div>
-            
-            <button onClick={() => setShowStatsModal(false)} className={`w-full py-2.5 mt-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-black/5 hover:bg-black/10 text-slate-800'}`}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
+      {/* Subject Stats Modal */}
+      {showStatsModal && createPortal(
+        <TimetableStatsModal
+          isOpen={showStatsModal} 
+          onClose={() => setShowStatsModal(false)} 
+          isDark={isDark} 
+          />
+          , document.body)}
+          
       {/* Centered Cell Editor Modal */}
       {editingCell && (
         <div className="fixed inset-0 z-[10000] overflow-hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={handleCloseEditor}>

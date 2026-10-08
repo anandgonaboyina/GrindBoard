@@ -30,7 +30,8 @@ interface TimetableState {
     timetableWeekendStartTime: number;
     useTimetableRange: boolean;
     isTimetableOpen: boolean;
-
+    timetableCategories: any[];
+    setTimetableCategories: (cats: any[]) => void;
     updateTimetableCell: (day: string, time: string, subject: string) => void;
     updateTimetableColor: (day: string, time: string, color: string) => void;
     setIsTimetableOpen: (isOpen: boolean) => void;
@@ -149,7 +150,7 @@ export const useTimetableStore = create<TimetableState>()(
             timetableWeekendStartTime: 540,
             useTimetableRange: true,
             isTimetableOpen: false,
-
+            timetableCategories: [],
             updateTimetableCell: (day, time, subject) => {
                 set((state) => {
                     const newGrid = { ...state.timetableGrid, [day]: { ...state.timetableGrid[day], [time]: subject } };
@@ -224,12 +225,18 @@ export const useTimetableStore = create<TimetableState>()(
                 set({ timetableStartTime: mins });
                 queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: { timetableStartTime: mins } });
             },
-
+            
             setTimetableWeekendStartTime: (mins) => {
                 set({ timetableWeekendStartTime: mins });
                 queueTimetableAction({ type: 'UPDATE_TIMETABLE', updates: { timetableWeekendStartTime: mins } });
             },
-
+            setTimetableCategories: (categories) => {
+                set({ timetableCategories: categories });
+                queueTimetableAction({ 
+                type: 'UPDATE_TIMETABLE', 
+                updates: { timetableCategories: categories } 
+                });
+            },
             updateTimetableTime: (isWeekend, index, newTime, keyMap) => set((state) => {
                 const targetArray = isWeekend ? state.weekendTimes : state.weekdayTimes;
                 const fallbackArray = ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"];
