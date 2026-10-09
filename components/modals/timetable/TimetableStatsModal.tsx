@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { X, Settings, Plus, Trash2, Calendar, ChevronDown, CheckCircle2, Flame, ChevronLeft, ChevronRight, BarChart2, Lock, Clock, TrendingUp, TrendingDown, Eye, EyeOff, Target, Info } from 'lucide-react';
+import { X, Settings, Plus, Trash2, Calendar, ChevronDown, CheckCircle2, Flame, ChevronLeft, ChevronRight, BarChart2, Lock, Clock, TrendingUp, TrendingDown, Eye, EyeOff, Target, Info, ListPlus, ListChecks } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, LineChart, Line, LabelList } from 'recharts';
 import { useTimetableStore } from '@/store/timetableStore';
 import { useDashboardStore } from '@/store/dashboardStore';
 import ScrollableWithArrows from '@/components/ScrollableWithArrows';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import TimetableMatchesModal, { PlanTabPickerModal } from './TimetableMatchesModal';
+import SettingsModal from './SettingsModal';
+import { usePlanYourDay, PlanDay } from './usePlanYourDay';
+import { Slot, formatDuration, formatTimeKey, formatClock, getLocalStr, getTodayIndex, getNowMinutes, makeCategoryMatcher } from './timetableStatsUtils';
 
 
 // Types and Interfaces
@@ -23,6 +27,13 @@ interface TaskLog {
   taskName: string;
   minutes: number;
   categoryId: string;
+  slots: Slot[];
+}
+
+interface BreakdownRow extends TaskLog {
+  remainingSlots: Slot[];
+  remainingMins: number;
+  isPassed: boolean; // every slot of this subject already ended
 }
 
 interface DailyLog {
@@ -49,32 +60,6 @@ const TypedLabelList = LabelList as any;
 // Global state to persist day selection across unmounts
 let savedDayIndex: number | null = null;
 
-// Helper Functions
-const formatDuration = (minutes: number) => {
-  if (!minutes || minutes == 0) return '0m';
-  if(minutes < 0) minutes *= -1;
-  const h = Math.floor(minutes / 60);
-  const m = Math.floor(minutes % 60);
-  if (h > 0 && m > 0) return `${h}h ${m}m`;
-  if (h > 0) return `${h}h`;
-  return `${m}m`;
-};
-
-// Maps durations to exact keys from your Timetable
-const formatTimeKey = (totalMins: number) => {
-  let h = Math.floor(totalMins / 60) % 24;
-  const m = totalMins % 60;
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12;
-  if (h === 0) h = 12;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
-};
-
-const getLocalStr = (d: Date) => {
-  const offset = d.getTimezoneOffset();
-  return new Date(d.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
-};
-
 const COLORS = [
   { name: 'Blue', hex: '#3b82f6' },
   { name: 'Emerald', hex: '#10b981' },
@@ -87,8 +72,14 @@ const COLORS = [
 
 const UNCATEGORIZED_COLOR = '#64748b';
 
+const BREAKDOWN_VIEWS = [
+  { label: 'All', title: 'Full schedule (default)' },
+  { label: 'Left', title: 'Not done yet: slots that already ended are ghosted and not counted' },
+  { label: 'Slots', title: 'Upcoming slots only, with each slot time and duration' },
+];
+
 // Keyword Input Component updated to Textarea
-const KeywordInput = ({ keywords, onUpdate, isDark, placeholder }: { keywords: string[], onUpdate: (kw: string[]) => void, isDark: boolean, placeholder: string }) => {
+export const KeywordInput = ({ keywords, onUpdate, isDark, placeholder }: { keywords: string[], onUpdate: (kw: string[]) => void, isDark: boolean, placeholder: string }) => {
   const [inputValue, setInputValue] = useState(keywords.join(', '));
 
   useEffect(() => {
@@ -97,7 +88,7 @@ const KeywordInput = ({ keywords, onUpdate, isDark, placeholder }: { keywords: s
 
   const handleBlurOrEnter = () => {
     // Filter out empty strings so it doesnt accidentally map everything
-    const parsed = inputValue.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    const parsed = inputValue.split(',').map((k:any) => k.trim()).filter((k:any) => k.length > 0);
     onUpdate(parsed);
     setInputValue(parsed.join(', '));
   };
@@ -147,7 +138,7 @@ const CustomDropdown = ({ value, onChange, options, isDark }: { value: number, o
       
       {isOpen && (
         <div className={`absolute top-full right-0 mt-1.5 w-40 rounded-xl shadow-xl border overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-black/10'}`}>
-          {options.map((opt) => (
+          {options.map((opt:any) => (
             <button
               key={opt.value}
               onClick={() => { onChange(opt.value); setIsOpen(false); }}
@@ -168,8 +159,15 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
   const [activeTab, setActiveTab] = useState(0);
   const [weekOffset, setWeekOffset] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
-  const [showAvailableTitles, setShowAvailableTitles] = useState<boolean>(false);
+  const [showDropDown, setshowDropDown] = useState<null | 1>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [showUncategorized, setShowUncategorized] = useState(false);
+  const [matchedCatId, setMatchedCatId] = useState<string | null>(null);
+  const [ignoreRequest, setIgnoreRequest] = useState<{ catId: string; subject: string } | null>(null);
+  const [breakdownView, setBreakdownView] = useState<0 | 1 | 2>(0);
+  const [planMode, setPlanMode] = useState(false);
+  const [nowMins, setNowMins] = useState(() => getNowMinutes());
+  const plan = usePlanYourDay();
   
   // Fetch Actual History
   const { history: myHistory, viewingFriend } = useDashboardStore();
@@ -188,6 +186,9 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
       setSelectedDayIndex(d === 0 ? 6 : d - 1);
       setWeekOffset(0);
       setActiveTab(0);
+      setBreakdownView(0);
+      setPlanMode(false);
+      setNowMins(getNowMinutes());
     }
   }, [isOpen]);
   
@@ -195,6 +196,13 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
   useEffect(() => {
     savedDayIndex = selectedDayIndex;
   }, [selectedDayIndex]);
+
+  // Keep "current time" fresh while the modal is open (drives the Left / Slots views)
+  useEffect(() => {
+    if (!isOpen) return;
+    const id = setInterval(() => setNowMins(getNowMinutes()), 30000);
+    return () => clearInterval(id);
+  }, [isOpen]);
   
   const { timetableCategories, setTimetableCategories, timetableGrid, weekdayTimes, weekendTimes, timetableStartTime, timetableWeekendStartTime } = useTimetableStore();
   
@@ -205,7 +213,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
       return [{ id: 'ignored', name: 'Sleep / Breaks', color: '#475569', keywords: ['sleep'], exceptions: [], isIgnored: true }, ...baseCats];
     }
     // Ensure all cats have exceptions array to avoid crashes
-    return baseCats.map(c => ({ ...c, exceptions: c.exceptions || [] }));
+    return baseCats.map((c:any) => ({ ...c, exceptions: c.exceptions || [] }));
   }, [timetableCategories]);
 
   const hasUserCategories = useMemo(() => {
@@ -222,6 +230,9 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
   const handleUpdateCategories = (newCats: Category[]) => {
     setTimetableCategories(newCats);
   };
+
+  // Shared smart matcher (used by the schedule parser and the matched / uncategorized modals)
+  const getCategoryId = useMemo(() => makeCategoryMatcher(categories), [categories]);
 
   // Extracts all unique subjects rigorously deduplicating case variations
   const uniqueSubjects = useMemo(() => {
@@ -247,50 +258,25 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
     return Array.from(subjectMap.values()).sort((a, b) => a.localeCompare(b));
   }, [timetableGrid]);
 
+  // Subjects bucketed by the category they actually match (same matcher as the charts)
+  const subjectsByCategory = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    uniqueSubjects.forEach(sub => {
+      const id = getCategoryId(sub);
+      (map[id] = map[id] || []).push(sub);
+    });
+    return map;
+  }, [uniqueSubjects, getCategoryId]);
+  const uncategorizedSubjects = subjectsByCategory['uncategorized'] || [];
+
   // Real Timetable Data Parser Scheduled Goals
   const currentWeekData = useMemo(() => {
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const parsedWeek: DailyLog[] = [];
     
-    const getDurs = (arr: any[]) => arr && arr.length > 0 ? arr.map(t => typeof t === 'number' ? t : (!isNaN(Number(t)) && t.trim() !== '' ? Number(t) : 60)) : Array(9).fill(60);
+    const getDurs = (arr: any[]) => arr && arr.length > 0 ? arr.map((t:any) => typeof t === 'number' ? t : (!isNaN(Number(t)) && t.trim() !== '' ? Number(t) : 60)) : Array(9).fill(60);
     const wdDurs = getDurs(weekdayTimes);
     const weDurs = getDurs(weekendTimes);
-
-    // Smart Matcher Exact matching and Word Boundaries and Exceptions
-    const getCategoryId = (subjName: string) => {
-      const nameL = subjName.trim().toLowerCase();
-      let bestMatchCatId = 'uncategorized';
-      let longestMatchLength = 0;
-
-      for (const cat of categories) {
-        // Check Exceptions first
-        const isExcepted = (cat.exceptions || []).some((exc:string) => {
-          const cleanedExc:string = exc.trim().toLowerCase();
-          if (cleanedExc.length === 0) return false;
-          const escapedExc = cleanedExc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const regex = new RegExp(`(?:^|\\W)${escapedExc}(?:\\W|$)`, 'i');
-          return regex.test(nameL) || nameL === cleanedExc;
-        });
-
-        if (isExcepted) continue; // Skip this category if it matches an exception
-
-        for (const kw of cat.keywords) {
-          const cleanedKw = kw.trim().toLowerCase();
-          if (cleanedKw.length > 0) {
-            const escapedKw = cleanedKw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`(?:^|\\W)${escapedKw}(?:\\W|$)`, 'i');
-
-            if (regex.test(nameL) || nameL === cleanedKw) {
-              if (cleanedKw.length > longestMatchLength) {
-                longestMatchLength = cleanedKw.length;
-                bestMatchCatId = cat.id;
-              }
-            }
-          }
-        }
-      }
-      return bestMatchCatId;
-    };
 
     days.forEach((day, dIdx) => {
       const isWeekend = dIdx >= 5;
@@ -304,7 +290,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
         gridForDay = timetableGrid?.[day] || {};
       }
 
-      const tasksMap: Record<string, { minutes: number, catId: string }> = {};
+      const tasksMap: Record<string, { minutes: number, catId: string, slots: Slot[] }> = {};
       let currentMins = startTime;
 
       durs.forEach((dur) => {
@@ -313,23 +299,25 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
         
         if (subject && subject.trim().toLowerCase() !== "free") {
           const s = subject.trim();
-          if (!tasksMap[s]) tasksMap[s] = { minutes: 0, catId: getCategoryId(s) };
+          if (!tasksMap[s]) tasksMap[s] = { minutes: 0, catId: getCategoryId(s), slots: [] };
           tasksMap[s].minutes += dur;
+          tasksMap[s].slots.push({ start: currentMins, end: currentMins + dur });
         }
         currentMins += dur;
       });
 
-      const dayItems: TaskLog[] = Object.keys(tasksMap).map(taskName => ({
+      const dayItems: TaskLog[] = Object.keys(tasksMap).map((taskName:any) => ({
         taskName,
         minutes: tasksMap[taskName].minutes,
-        categoryId: tasksMap[taskName].catId
+        categoryId: tasksMap[taskName].catId,
+        slots: tasksMap[taskName].slots
       }));
 
       parsedWeek.push({ dateStr: day, dayIndex: dIdx, items: dayItems });
     });
 
     return parsedWeek;
-  }, [timetableGrid, weekdayTimes, weekendTimes, timetableStartTime, timetableWeekendStartTime, categories]);
+  }, [timetableGrid, weekdayTimes, weekendTimes, timetableStartTime, timetableWeekendStartTime, categories, getCategoryId]);
 
   const currentDayData = currentWeekData[selectedDayIndex] || { items: [] };
 
@@ -353,7 +341,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
     currentDayData.items.forEach(item => {
       map[item.categoryId] = (map[item.categoryId] || 0) + item.minutes;
     });
-    return Object.keys(map).map(catId => {
+    return Object.keys(map).map((catId:any) => {
       const cat = categories.find(c => c.id === catId);
       return {
         name: cat ? cat.name : 'Uncategorized',
@@ -364,6 +352,60 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
     }).sort((a, b) => b.value - a.value);
   }, [currentDayData, categories]);
 
+  // ---- Category Breakdown views (0 = All, 1 = Left, 2 = Slots)
+  const todayIdx = getTodayIndex();
+  const isLiveDay = weekOffset === 0 && selectedDayIndex === todayIdx;
+  // Slots ending at/before this minute are "done". Ongoing slots (start < now < end) still count in full.
+  const passedCutoff = weekOffset > 0 || selectedDayIndex < todayIdx
+    ? Infinity
+    : selectedDayIndex === todayIdx ? nowMins : -Infinity;
+
+  const breakdownCards = useMemo(() => {
+    const byCat: Record<string, BreakdownRow[]> = {};
+    currentDayData.items.forEach(item => {
+      const remainingSlots = item.slots.filter((sl:any) => sl.end > passedCutoff);
+      const remainingMins = remainingSlots.reduce((a, sl) => a + (sl.end - sl.start), 0);
+      (byCat[item.categoryId] = byCat[item.categoryId] || []).push({ ...item, remainingSlots, remainingMins, isPassed: remainingMins === 0 });
+    });
+
+    const cards = Object.keys(byCat).map((catId:any) => {
+      const cat = categories.find(c => c.id === catId);
+      const allRows = byCat[catId];
+      const rows = breakdownView === 2 ? allRows.filter((r:any) => !r.isPassed) : allRows;
+      const value = rows.reduce((a, r) => a + (breakdownView === 0 ? r.minutes : r.remainingMins), 0);
+      return {
+        id: catId,
+        name: cat ? cat.name : 'Uncategorized',
+        color: cat ? cat.color : UNCATEGORIZED_COLOR,
+        rows,
+        value,
+        allPassed: allRows.length > 0 && allRows.every(r => r.isPassed),
+      };
+    }).filter((c:any) => breakdownView !== 2 || c.rows.length > 0);
+
+    return cards.sort((a, b) => b.value - a.value);
+  }, [currentDayData, categories, breakdownView, passedCutoff]);
+
+  // Add to "Plan your Day": selected weekday == tomorrow's weekday (current week) goes to Tomorrow, everything else to Today
+  const planDay: PlanDay = weekOffset === 0 && selectedDayIndex === (todayIdx + 1) % 7 ? 'tomorrow' : 'today';
+  const planMinsOf = (r: BreakdownRow) => (breakdownView === 0 ? r.minutes : r.remainingMins);
+  // Matched modal -> "Ignore": adds the subject to that category's "Exceptions to Ignore" list
+  const confirmIgnoreSubject = () => {
+    if (!ignoreRequest) return;
+    const { catId, subject } = ignoreRequest;
+    setIgnoreRequest(null);
+    const newCats = categories.map((c:any) => {
+      if (c.id !== catId) return c;
+      const exc = c.exceptions || [];
+      if (exc.some((e:string) => e.trim().toLowerCase() === subject.trim().toLowerCase())) return c;
+      return { ...c, exceptions: [...exc, subject] };
+    });
+    handleUpdateCategories(newCats);
+  };
+
+  const addRowsToPlan = (rows: BreakdownRow[]) =>
+    plan.requestAdd(rows.map((r:any) => ({ title: r.taskName, duration: planMinsOf(r) })).filter(x => x.duration > 0), planDay);
+
   const todayScheduledMins = currentDayData.items
     .filter(item => !isCatIgnored(item.categoryId))
     .reduce((acc, curr) => acc + curr.minutes, 0);
@@ -371,12 +413,18 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
   const diffTodayMins = actualTodayMins - todayScheduledMins;
   const isTodayPositive = diffTodayMins > 0;
 
+  // Planned box: whole day in "All", only the hours still left in "Left" / "Slots"
+  const todayLeftMins = currentDayData.items
+    .filter(item => !isCatIgnored(item.categoryId))
+    .reduce((acc, item) => acc + item.slots.filter(sl => sl.end > passedCutoff).reduce((x, sl) => x + (sl.end - sl.start), 0), 0);
+  const plannedShownMins = breakdownView === 0 ? todayScheduledMins : todayLeftMins;
+
   // Weekly Aggregation
   const weeklyAggregates = useMemo(() => {
     const catMap: Record<string, number> = {};
-    const barData = currentWeekData.map(day => {
+    const barData = currentWeekData.map((day:any) => {
       const dayData: any = { day: day.dateStr };
-      day.items.forEach(item => {
+      day.items.forEach((item:any) => {
         if (isCatIgnored(item.categoryId)) return; 
         const cat = categories.find(c => c.id === item.categoryId);
         const name = cat ? cat.name : 'Uncategorized';
@@ -386,7 +434,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
       return dayData;
     });
 
-    const donutData = Object.keys(catMap).map(catId => {
+    const donutData = Object.keys(catMap).map((catId:any) => {
       const cat = categories.find(c => c.id === catId);
       return {
         name: cat ? cat.name : 'Uncategorized',
@@ -496,7 +544,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
               <BarChart2 size={18} strokeWidth={2.5} />
             </div>
             <div>
-              <h2 className={`font-bold text-[13px] md:text-base tracking-wide leading-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>Timetable Analytics</h2>
+              <h2 className={`font-bold text-[13px] md:text-base tracking-wide leading-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>MASTER SCHEDULE Analytics</h2>
               <p className={`text-[9px] md:text-xs font-medium ${isDark ? 'text-white/40' : 'text-slate-500'}`}>Visualize your scheduled and actual effort</p>
             </div>
           </div>
@@ -526,186 +574,25 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
         {/* Main Content Area */}
         <div className="flex flex-col flex-1 overflow-hidden relative">
           
-          {/* Settings Slide Over */}
-          <div className={`absolute inset-0 z-50 transition-transform duration-300 flex flex-col  ${showSettings ? 'translate-x-0' : 'translate-x-full'} ${isDark ? 'bg-[#0f0f13]' : 'bg-slate-50'}`}>
-          
-            <div className={`flex items-center gap-2.5 md:gap-3 px-3 md:px-6 py-3 md:py-4 border-b shrink-0 ${isDark ? 'border-white/10 bg-black/20' : 'border-black/5 bg-white/50'}`}>
-              <button onClick={() => setShowSettings(false)} className={`p-1.5 md:p-2 rounded-xl transition-all active:scale-95 ${isDark ? 'bg-white/5 hover:bg-white/10 text-white/70' : 'bg-white shadow-sm border border-black/5 hover:bg-slate-50 text-slate-600'}`}>
-                <ChevronLeft size={18} strokeWidth={2.5} />
-              </button>
-              <div>
-                <h3 className={`font-bold text-[13px] md:text-base ${isDark ? 'text-white' : 'text-slate-800'}`}>Category Rules & Auto-Tagging</h3>
-                <p className={`text-[9px] md:text-xs ${isDark ? 'text-white/40' : 'text-slate-500'}`}>Map timetable subjects to overarching categories</p>
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-3 md:p-6 custom-scrollbar">
-              <ScrollableWithArrows>
-              <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
-                
-                <div className={`p-4 md:p-5 rounded-2xl md:rounded-3xl border text-[11px] md:text-sm leading-relaxed flex flex-col gap-3 shadow-sm ${isDark ? 'bg-sky-500/5 border-sky-500/20 text-sky-200' : 'bg-sky-50/50 border-sky-200 text-sky-800'}`}>
-                  <div className="flex items-center gap-2">
-                    <Calendar size={18} className="shrink-0" />
-                    <strong className="text-sm">How auto-tagging works:</strong>
-                  </div>
-                  <ul className="list-disc pl-5 space-y-2 opacity-90">
-                    <li>Create categories and assign comma-separated keywords.</li>
-                    <li>If a timetable block contains a keyword (e.g. "DSA"), its time is mapped to that category.</li>
-                    <li><strong>Exceptions:</strong> Add words to prevent false matching (e.g., Exception "PE" stops it from matching if you meant to catch "PE Study").</li>
-                    <li><strong>Specifics Win:</strong> If multiple categories match, the <em>longest keyword</em> wins (e.g., "PE Study" beats "PE").</li>
-                    <li><strong>Exclusions:</strong> Click the <EyeOff size={14} className="inline mx-1 align-sub" /> icon to mark a category as ignored. Ignored categories won't count towards your <em>Planned</em> or <em>Time Done</em> tracking targets.</li>
-                  </ul>
-                </div>
-
-                {/* DISTINCT SUBJECTS DROPDOWN GRID */}
-                {uniqueSubjects.length > 0 && (
-                  <div className={`rounded-2xl md:rounded-3xl border overflow-hidden transition-all shadow-sm ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-black/10'}`}>
-                    <button 
-                      onClick={() => setShowAvailableTitles(!showAvailableTitles)}
-                      className={`w-full flex items-center justify-between p-4 focus:outline-none transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
-                    >
-                      <h4 className={`text-[10px] md:text-xs uppercase tracking-widest font-bold ${isDark ? 'text-white/50' : 'text-slate-500'}`}>Available Timetable Subjects</h4>
-                      <ChevronDown size={16} className={`transition-transform duration-200 ${showAvailableTitles ? 'rotate-180' : ''} ${isDark ? 'text-white/50' : 'text-slate-500'}`} />
-                    </button>
-                    
-                    {showAvailableTitles && (
-                      <div className="p-4 pt-0 flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2">
-                        {uniqueSubjects.map(sub => {
-                          const isMapped = categories.some((c: Category) => c.keywords.some((kw: string) => kw.trim().length > 0 && sub.toLowerCase().includes(kw.trim().toLowerCase())));
-                          return (
-                            <span key={sub} className={`text-[10px] md:text-xs px-2.5 py-1.5 rounded-lg font-semibold border shadow-sm ${isMapped ? (isDark ? 'bg-violet-500/20 border-violet-500/30 text-violet-300' : 'bg-violet-100 border-violet-200 text-violet-700') : (isDark ? 'bg-black/40 border-white/10 text-white/60' : 'bg-white border-black/10 text-slate-600')}`}>
-                              {sub}
-                            </span>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  {categories.map((cat, idx) => {
-                    const isIgnoredCat = cat.id === 'ignored';
-
-                    return (
-                      <div key={cat.id} className={`p-4 md:p-5 rounded-2xl md:rounded-3xl border flex flex-col gap-4 transition-all hover:shadow-md ${isDark ? 'bg-white/[0.03] border-white/10 hover:bg-white/[0.05]' : 'bg-white border-black/10 shadow-sm hover:border-black/20'}`}>
-                        <div className="flex items-center justify-between gap-3 w-full">
-                          <div className="flex items-center gap-3">
-                            <div className="relative shrink-0">
-                              {!isIgnoredCat && (
-                                <select 
-                                  value={cat.color}
-                                  onChange={(e) => {
-                                    const newCats = [...categories];
-                                    newCats[idx].color = e.target.value;
-                                    handleUpdateCategories(newCats);
-                                  }}
-                                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                >
-                                  {COLORS.map(c => <option key={c.hex} value={c.hex}>{c.name}</option>)}
-                                </select>
-                              )}
-                              <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white/20 shadow-md ${!isIgnoredCat ? 'transition-transform hover:scale-110 cursor-pointer' : 'opacity-80'}`} style={{ backgroundColor: cat.color }} />
-                            </div>
-                            <input 
-                              type="text" 
-                              value={cat.name}
-                              placeholder="e.g. Academics"
-                              disabled={isIgnoredCat}
-                              onChange={(e) => {
-                                if (isIgnoredCat) return;
-                                const newCats = [...categories];
-                                newCats[idx].name = e.target.value;
-                                handleUpdateCategories(newCats);
-                              }}
-                              className={`font-bold text-sm md:text-lg outline-none bg-transparent w-full md:w-48 border-b-2 transition-colors pb-1 ${isDark ? 'border-white/20 text-white focus:border-violet-400' : 'border-black/10 text-slate-800 focus:border-violet-500'} ${isIgnoredCat ? 'opacity-80 border-transparent focus:border-transparent' : ''}`}
-                            />
-                          </div>
-                          
-                          {/* Ignore Toggle and Delete Buttons */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button 
-                              disabled={isIgnoredCat}
-                              onClick={() => {
-                                if (isIgnoredCat) return; 
-                                const newCats = [...categories];
-                                newCats[idx].isIgnored = !newCats[idx].isIgnored;
-                                handleUpdateCategories(newCats);
-                              }} 
-                              className={`p-2 rounded-xl transition-all ${isIgnoredCat ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'} ${cat.isIgnored ? (isDark ? 'text-amber-400 bg-amber-500/10 hover:bg-amber-500/20' : 'text-amber-600 bg-amber-100 hover:bg-amber-200') : (isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-800 hover:bg-black/5')}`}
-                              title={isIgnoredCat ? "This default category is permanently ignored" : (cat.isIgnored ? "Currently excluded from tracking targets" : "Include in tracking targets")}
-                            >
-                              {cat.isIgnored ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
-
-                            {isIgnoredCat ? (
-                              <div className={`p-2 opacity-40 ${isDark ? 'text-white' : 'text-slate-500'}`} title="This default category cannot be deleted.">
-                                <Lock size={16} />
-                              </div>
-                            ) : (
-                              <button onClick={() => setCategoryToDelete(cat.id)} className={`p-2 rounded-xl transition-all shrink-0 active:scale-95 ${isDark ? 'text-rose-400 hover:bg-rose-500/20' : 'text-rose-600 hover:bg-rose-100 bg-rose-50'}`}>
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 w-full">
-                          <div className="flex flex-col gap-1 w-full relative">
-                            <span className={`text-[10px] uppercase font-bold tracking-wider ml-1 ${isDark ? 'text-white/40' : 'text-slate-500'}`}>Keywords to Match</span>
-                            <KeywordInput 
-                              keywords={cat.keywords} 
-                              isDark={isDark}
-                              placeholder="e.g. Math, DSA, Code..."
-                              onUpdate={(newKeywords) => {
-                                const newCats = [...categories];
-                                newCats[idx].keywords = newKeywords;
-                                // Remove duplicates from other categories to prevent clashes
-                                newCats.forEach((c, i) => {
-                                  if (i !== idx) {
-                                    c.keywords = c.keywords.filter((k:any) => !newKeywords.some((nk:string) => nk.toLowerCase() === k.toLowerCase()));
-                                  }
-                                });
-                                handleUpdateCategories(newCats);
-                              }} 
-                            />
-                          </div>
-                          
-                          <div className="flex flex-col gap-1 w-full relative">
-                            <span className={`text-[10px] uppercase font-bold tracking-wider ml-1 ${isDark ? 'text-white/40' : 'text-slate-500'}`}>Exceptions to Ignore</span>
-                            <KeywordInput 
-                              keywords={cat.exceptions || []} 
-                              isDark={isDark} 
-                              placeholder="e.g. Free, Break..."
-                              onUpdate={(newExceptions) => {
-                                const newCats = [...categories];
-                                newCats[idx].exceptions = newExceptions;
-                                handleUpdateCategories(newCats);
-                              }} 
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <button 
-                  onClick={() => handleUpdateCategories([...categories, { id: Date.now().toString(), name: '', color: COLORS[0].hex, keywords: [], exceptions: [] }])}
-                  className={`w-full py-4 rounded-2xl md:rounded-3xl border-2 border-dashed bg-blue-600 text-white flex items-center justify-center gap-2 text-sm font-bold transition-all active:scale-95 mt-4 ${isDark ? 'border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5' : 'border-black/10 text-slate-500 hover:text-slate-800 hover:border-black/30 hover:bg-black/5'}`}
-                >
-                  <Plus size={18} strokeWidth={2.5} /> Add Category
-                </button>
-              </div>
-              </ScrollableWithArrows>
-            </div>
-          </div>
+          {/* Settings Modal */}
+          <SettingsModal 
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+            isDark={isDark}
+            uniqueSubjects={uniqueSubjects}
+            uncategorizedSubjects={uncategorizedSubjects}
+            setShowUncategorized={setShowUncategorized}
+            categories={categories}
+            handleUpdateCategories={handleUpdateCategories}
+            COLORS={COLORS}
+            setMatchedCatId={setMatchedCatId}
+            subjectsByCategory={subjectsByCategory}
+            setCategoryToDelete={setCategoryToDelete}
+          />
 
           {/* Floating Fixed Pill Navigation */}
-          <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-[60] w-[95%] sm:w-[85%] md:w-[70%] max-w-2xl pointer-events-none">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[60] w-[95%] sm:w-[85%] md:w-[70%] max-w-2xl pointer-events-none">
             <div className={`pointer-events-auto relative flex h-12 md:h-14 p-1.5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] border backdrop-blur-xl ${isDark ? 'bg-[#0f0f13]/80 border-blue-500' : 'bg-white/80 border-blue-600/80'}`}>
-              
-              {/* Animated Background Pill */}
               <div 
                 className="absolute top-1.5 bottom-1.5 w-[33.33%] transition-transform duration-300 ease-out" 
                 style={{ transform: `translateX(${activeTab * 100}%)`, padding: '0 4px' }}
@@ -713,7 +600,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
                 <div className={`w-full h-full rounded-full shadow-md ${isDark ? 'bg-violet-600' : 'bg-white border border-blue-600'}`} />
               </div>
               
-              {TABS.map((tab, idx) => (
+              {TABS.map((tab:string, idx:number) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(idx)}
@@ -726,7 +613,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
           </div>
 
           {/* Tab Content Scroll Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-5 mb-[50px]">
             
             {/* If no custom categories exist, display the helpful hint box everywhere */}
             {!hasUserCategories ? (
@@ -754,7 +641,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
                     
                     {/* Day Switcher */}
                     <div className={`flex justify-between p-1 rounded-xl md:rounded-2xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-black/10 shadow-inner'}`}>
-                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, idx) => (
+                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day:any, idx:number) => (
                         <button
                           key={day}
                           onClick={() => setSelectedDayIndex(idx)}
@@ -769,10 +656,10 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
                       {/* Planned Metric Box */}
                       <div className={`p-2 rounded-2xl md:rounded-3xl border flex flex-col items-center justify-center gap-1 transition-all hover:shadow-lg ${isDark ? 'bg-gradient-to-br from-white/5 to-white/[0.01] border-white/10' : 'bg-gradient-to-br from-white to-slate-50 border-black/10 shadow-sm'}`}>
                         <span className={`text-[10px] md:text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 whitespace-nowrap ${isDark ? 'text-white/50' : 'text-slate-500'}`}>
-                          <Calendar size={14} /> Planned Hours
+                          <Calendar size={14} /> {breakdownView === 0 ? 'Planned Hours' : 'Hours Left'}
                         </span>
                         <div className="flex items-center justify-center gap-2 mt-auto">
-                          <span className={`text-2xl md:text-4xl font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>{formatDuration(todayScheduledMins)}</span>
+                          <span className={`text-2xl md:text-4xl font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>{formatDuration(plannedShownMins)}</span>
                         </div>
                       </div>
 
@@ -799,39 +686,113 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
 
                     {/* Itemized Row Cards */}
                     <div className={`p-4 md:p-6 rounded-2xl md:rounded-3xl border flex flex-col w-full min-h-[300px] md:min-h-[400px] ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10 shadow-sm'}`}>
-                      <h3 className={`font-bold text-[10px] md:text-xs uppercase tracking-widest mb-3 md:mb-4 flex items-center gap-2 ${isDark ? 'text-white/60' : 'text-slate-500'}`}>
-                        <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-violet-500" /> Category Breakdown
-                      </h3>
-                      
+                      <div className="flex items-center justify-between flex-wrap gap-x-2 gap-y-2 mb-3 md:mb-4">
+                        <h3 className={`font-bold text-[10px] md:text-xs uppercase tracking-widest flex items-center gap-2 ${isDark ? 'text-white/60' : 'text-slate-500'}`}>
+                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-violet-500" /> Category Breakdown
+                        </h3>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* 3-way view switch */}
+                          <div className={`flex p-0.5 rounded-lg border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-black/10 shadow-inner'}`}>
+                            {BREAKDOWN_VIEWS.map((v:any, i:number) => (
+                              <button
+                                key={v.label}
+                                title={v.title}
+                                onClick={() => setBreakdownView(i as 0 | 1 | 2)}
+                                className={`px-2 py-1 md:px-2.5 text-[9px] md:text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${breakdownView === i ? (isDark ? 'bg-violet-500 text-white shadow' : 'bg-white text-violet-800 shadow border border-black/5') : (isDark ? 'text-white/50 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}
+                              >
+                                {v.label}
+                              </button>
+                            ))}
+                          </div>
+                          {/* Show / hide the add-to-plan buttons */}
+                          <button
+                            onClick={() => setPlanMode(p => !p)}
+                            className={`flex items-center gap-1 px-2 py-1.5 whitespace-nowrap text-[9px] md:text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-all active:scale-95 ${planMode ? (isDark ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-emerald-100 border-emerald-300 text-emerald-700') : (isDark ? 'bg-white/5 border-white/10 text-white/60 hover:text-white' : 'bg-white border-black/10 text-slate-500 hover:text-slate-800')}`}
+                          >
+                            <ListPlus size={14} /> <span>{planMode ? 'Hide add' : 'Add to tasks'}</span>
+                          </button>
+                        </div>
+                      </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 pb-2">
                           {/* Render Active Cards first, then Ignored card at the end */}
-                          {[...todayDonutData.filter(c => !isCatIgnored(c.id)), ...todayDonutData.filter(c => isCatIgnored(c.id))].map(cat => {
-                            const items = currentDayData.items.filter(i => (i.categoryId === cat.id) || (cat.id === 'uncategorized' && i.categoryId === 'uncategorized'));
+                          {[...breakdownCards.filter((c:any) => !isCatIgnored(c.id)), ...breakdownCards.filter((c:any) => isCatIgnored(c.id))].map((cat:any) => {
                             const isIgnoredCard = isCatIgnored(cat.id);
+                            const canPlan = planMode && !isIgnoredCard;
+                            const ghostCard = breakdownView === 1 && cat.allPassed;
+                            const ghostText = isDark ? 'text-white/25' : 'text-slate-300';
 
                             return (
                               <div key={cat.id} className={`p-1 md:p-2 rounded-xl md:rounded-2xl border border-blue-300 transition-all hover:scale-[1.02] flex flex-col ${isIgnoredCard ? (isDark ? 'bg-black/40 border-white/5 opacity-70' : 'bg-slate-100 border-black/5 opacity-80') : (isDark ? 'bg-black/20 border-white/5 hover:border-white/10' : 'bg-slate-50 border-black/5 hover:border-black/10 hover:shadow-md')}`}>
                                 <div className="flex justify-between items-center mb-2 md:mb-3">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full shadow-sm" style={{ backgroundColor: cat.color }} />
-                                    <span className={`text-xs md:text-sm font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>{cat.name}</span>
+                                    <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full shadow-sm" style={{ backgroundColor: cat.color, opacity: ghostCard ? 0.35 : 1 }} />
+                                    <span className={`text-xs md:text-sm font-bold ${ghostCard ? ghostText : (isDark ? 'text-white' : 'text-slate-800')}`}>{cat.name}</span>
                                   </div>
-                                  <span className={`text-[10px] md:text-xs px-1.5 py-0.5 md:px-2 md:py-1 rounded-md font-black ${isDark ? 'bg-white/10 text-white' : 'bg-white shadow-sm border border-black/5 text-slate-700'}`}>{formatDuration(cat.value)}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    {canPlan && (
+                                      <button
+                                        onClick={() => addRowsToPlan(cat.rows)}
+                                        disabled={cat.value === 0}
+                                        className={`flex items-center gap-1 px-1.5 py-1 rounded-md border text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${isDark ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-100 border-emerald-300 text-emerald-700 hover:bg-emerald-200'}`}
+                                      >
+                                        <Plus size={12} strokeWidth={3} /> <span>Add all</span>
+                                      </button>
+                                    )}
+                                    <span className={`text-[10px] md:text-xs px-1.5 py-0.5 md:px-2 md:py-1 rounded-md font-black ${ghostCard ? (isDark ? 'bg-white/5 text-white/25' : 'bg-white text-slate-300 border border-black/5') : (isDark ? 'bg-white/10 text-white' : 'bg-white shadow-sm border border-black/5 text-slate-700')}`}>{formatDuration(cat.value)}</span>
+                                  </div>
                                 </div>
                                 <ul className="flex flex-col gap-1.5 md:gap-2 pl-4 md:pl-5 border-l-2 border-dashed ml-1 md:ml-1.5 flex-1" style={{ borderColor: `${cat.color}40` }}>
-                                  {items.map((item, idx) => (
-                                    <li key={idx} className="flex justify-between text-[10px] md:text-xs font-semibold relative before:content-[''] before:absolute before:-left-[19px] md:before:-left-[23px] before:top-1.5 before:w-1.5 before:h-1.5 before:rounded-full" style={{ '--tw-before-bg': cat.color } as any}>
-                                      <span className={isDark ? 'text-white/70' : 'text-slate-600'}>{item.taskName}</span>
-                                      <span className={isDark ? 'text-white/40' : 'text-slate-400'}>{formatDuration(item.minutes)}</span>
-                                    </li>
-                                  ))}
-                                  {items.length === 0 && <span className="text-[9px] md:text-[10px] opacity-40 italic">No tasks mapped.</span>}
+                                  {cat.rows.map((item:any, idx:any) => {
+                                    const ghost = breakdownView === 1 && item.isPassed;
+                                    const partial = breakdownView === 1 && !item.isPassed && item.remainingMins < item.minutes;
+                                    const shownMins = breakdownView === 0 || ghost ? item.minutes : item.remainingMins;
+                                    return (
+                                      <li key={idx} className="flex justify-between text-[10px] md:text-xs font-semibold relative before:content-[''] before:absolute before:-left-[19px] md:before:-left-[23px] before:top-1.5 before:w-1.5 before:h-1.5 before:rounded-full" style={{ '--tw-before-bg': cat.color } as any}>
+                                        <span className={ghost ? ghostText : (isDark ? 'text-white/70' : 'text-slate-600')}>{item.taskName}</span>
+                                        <span className="flex items-center justify-end flex-wrap gap-1 pl-2">
+                                          {breakdownView === 2 ? (
+                                            item.remainingSlots.map((sl:any, si:any) => {
+                                              const live = isLiveDay && sl.start <= nowMins && nowMins < sl.end;
+                                              return (
+                                                <span key={si} className={`px-1.5 py-0.5 rounded-md border text-[9px] md:text-[10px] font-bold whitespace-nowrap ${live ? (isDark ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-emerald-100 border-emerald-300 text-emerald-700') : (isDark ? 'bg-white/5 border-white/10 text-white/60' : 'bg-white border-black/10 text-slate-500')}`}>
+                                                  {formatClock(sl.start)}–{formatClock(sl.end)} · {formatDuration(sl.end - sl.start)}
+                                                </span>
+                                              );
+                                            })
+                                          ) : (
+                                            <span className={ghost ? ghostText : (isDark ? 'text-white/40' : 'text-slate-400')}>
+                                              {formatDuration(shownMins)}
+                                              {partial && <span className="opacity-60"> / {formatDuration(item.minutes)}</span>}
+                                            </span>
+                                          )}
+                                          {canPlan && (
+                                            <button
+                                              onClick={() => addRowsToPlan([item])}
+                                              disabled={planMinsOf(item) === 0}
+                                              className={`flex items-center gap-0.5 px-1 py-0.5 rounded border text-[9px] font-bold uppercase whitespace-nowrap transition-all active:scale-95 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed ${isDark ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-100 border-emerald-300 text-emerald-700 hover:bg-emerald-200'}`}
+                                            >
+                                              <Plus size={11} strokeWidth={3} /> <span>Add</span>
+                                            </button>
+                                          )}
+                                        </span>
+                                      </li>
+                                    );
+                                  })}
+                                  {cat.rows.length === 0 && <span className="text-[9px] md:text-[10px] opacity-40 italic">No tasks mapped.</span>}
                                 </ul>
                               </div>
                             );
                           })}
                         </div>
-                        
+
+                        {breakdownView === 2 && todayDonutData.length > 0 && breakdownCards.length === 0 && (
+                          <div className="w-full flex flex-col items-center justify-center opacity-50 gap-2 py-8 md:py-10">
+                            <CheckCircle2 size={20} className="opacity-50" />
+                            <span className="text-[10px] md:text-xs font-semibold">Nothing left in the timetable for this day.</span>
+                          </div>
+                        )}
+
                         {todayDonutData.length === 0 && (
                           <div className="w-full flex flex-col items-center justify-center opacity-50 gap-2 py-8 md:py-10">
                             <Calendar size={20} className="opacity-50" />
@@ -868,7 +829,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
                           <TypedXAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }} dy={10} />
                           <TypedYAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
                           <RechartsTooltip cursor={{ fill: isDark ? '#ffffff10' : '#00000005' }} content={<CustomTooltip />} />
-                          {categories.filter(c => !isCatIgnored(c.id)).map(cat => (
+                          {categories.filter(c => !isCatIgnored(c.id)).map((cat:any) => (
                             <TypedBar key={cat.id} dataKey={cat.name} stackId="a" fill={cat.color} radius={[0, 0, 0, 0]} maxBarSize={60} />
                           ))}
                           <TypedBar dataKey="Uncategorized" stackId="a" fill={UNCATEGORIZED_COLOR} radius={[6, 6, 0, 0]} maxBarSize={60} />
@@ -887,7 +848,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
                       ) : (
                         <ScrollableWithArrows>
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 md:pr-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3 items-start content-start">
-                          {weeklyAggregates.donutData.map((cat, idx) => (
+                          {weeklyAggregates.donutData.map((cat:any, idx:number) => (
                             <div key={idx} className={`flex items-center justify-between py-0.5 px-1  rounded-xl border transition-all hover:scale-[1.02] ${isDark ? 'bg-black/20 border-white/5 hover:border-white/10' : 'bg-slate-50 border-black/5 hover:border-black/10 hover:shadow-sm'}`}>
                               <div className="flex items-center gap-0.5 md:gap-1 no-truncate pr-2">
                                 <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full shadow-sm shrink-0" style={{ backgroundColor: cat.color }} />
@@ -955,7 +916,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
                     <div className={`p-4 md:p-6 rounded-2xl md:rounded-3xl border flex flex-col gap-3 md:gap-4 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10 shadow-sm'}`}>
                       <h4 className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-white/50' : 'text-slate-500'}`}>Weekly Summary</h4>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                        {trendsData.map((d, i) => (
+                        {trendsData.map((d:any, i:number) => (
                           <div key={i} className={`flex flex-col p-3 md:p-4 rounded-xl items-center text-center shadow-inner border ${isDark ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-black/5'}`}>
                             <span className={`text-[10px] font-bold uppercase ${isDark ? 'text-white/60' : 'text-slate-400'}`}>{d.week}</span>
                             <span className={`text-sm md:text-lg font-black mt-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>
@@ -975,6 +936,84 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
         </div>
       </div>
 
+      {/* Uncategorized subjects */}
+      <TimetableMatchesModal
+        isOpen={showUncategorized}
+        onClose={() => setShowUncategorized(false)}
+        title="Uncategorized Subjects"
+        subtitle={`${uncategorizedSubjects.length} timetable subject${uncategorizedSubjects.length === 1 ? '' : 's'} not matching any category`}
+        color={UNCATEGORIZED_COLOR}
+        subjects={uncategorizedSubjects}
+        isDark={isDark}
+        emptyText="Every timetable subject is matched to a category."
+        showCopy
+      />
+
+      {/* Matched subjects of one category */}
+      <TimetableMatchesModal
+        isOpen={!!matchedCatId}
+        onClose={() => setMatchedCatId(null)}
+        title={`${categories.find(c => c.id === matchedCatId)?.name || 'Category'} · Matched`}
+        color={categories.find(c => c.id === matchedCatId)?.color}
+        subjects={matchedCatId ? (subjectsByCategory[matchedCatId] || []) : []}
+        isDark={isDark}
+        emptyText="No timetable subjects match this category yet."
+        actionLabel="Ignore"
+        onAction={(sub) => matchedCatId && setIgnoreRequest({ catId: matchedCatId, subject: sub })}
+      />
+
+      {/* Move a matched subject to the category's ignore list */}
+      <ConfirmationModal
+        isOpen={!!ignoreRequest}
+        onClose={() => setIgnoreRequest(null)}
+        onCancel={() => setIgnoreRequest(null)}
+        onConfirm={confirmIgnoreSubject}
+        title="Move to ignore list"
+        message={`Add “${ignoreRequest?.subject ?? ''}” to the ignore list (Exceptions) of “${categories.find(c => c.id === ignoreRequest?.catId)?.name || 'this category'}”? It will stop matching this category and may show up under Uncategorized.`}
+        confirmText="Move to ignore list"
+        cancelText="Cancel"
+      />
+
+      {/* Add to Plan your Day: which tab? */}
+      <PlanTabPickerModal
+        isOpen={!!plan.tabPick}
+        isDark={isDark}
+        tabNames={plan.tabNames}
+        count={plan.tabPick?.items.length || 0}
+        dayLabel={plan.tabPick?.day === 'tomorrow' ? 'Tomorrow' : 'Today'}
+        onPick={plan.chooseTab}
+        onClose={plan.cancelPick}
+      />
+
+      {/* Add to Plan your Day: duplicate confirmation (Replace or Skip) */}
+      <ConfirmationModal
+        isOpen={!!plan.pending}
+        onClose={() => plan.resolve('skip')}
+        onCancel={() => plan.resolve('skip')}
+        onConfirm={() => plan.resolve('replace')}
+        title="Already in Plan your Day"
+        message={
+          <div className="flex flex-col gap-2 text-sm">
+            <p>These tasks already exist{plan.pending && plan.pending.fresh.length > 0 ? ` (${plan.pending.fresh.length} new one${plan.pending.fresh.length > 1 ? 's' : ''} will still be added to “${plan.pending.tabName}”)` : ''}:</p>
+            <ul className="list-disc list-inside text-[12px] opacity-90 max-h-40 overflow-y-auto">
+              {plan.pending?.conflicts.map((c:any, i:number) => (
+                <li key={i}><strong>{c.item.title}</strong> ({c.existingTabName}): {formatDuration((c.existing.duration || 0) + (c.existing.timeSpent || 0))} → {formatDuration(c.item.duration)}</li>
+              ))}
+            </ul>
+            <p className="text-[12px] opacity-70"><strong>Replace</strong> makes them fresh: full duration back, done time reset to zero, moved to “{plan.pending?.tabName}”. <strong>Skip</strong> leaves them untouched.</p>
+          </div>
+        }
+        confirmText="Replace"
+        cancelText="Skip"
+      />
+
+      {/* Add-to-plan result notice */}
+      {plan.notice && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100001] px-4 py-2 rounded-xl bg-emerald-500 text-black text-xs font-bold shadow-2xl animate-in fade-in slide-in-from-top-2 max-w-[92vw] text-center">
+          {plan.notice}
+        </div>
+      )}
+
       {/* Global Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={!!categoryToDelete}
@@ -982,7 +1021,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
         onCancel={() => setCategoryToDelete(null)}
         onConfirm={() => {
           if (categoryToDelete) {
-            handleUpdateCategories(categories.filter(c => c.id !== categoryToDelete));
+            handleUpdateCategories(categories.filter((c:any) => c.id !== categoryToDelete));
             setCategoryToDelete(null);
           }
         }}

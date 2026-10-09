@@ -33,13 +33,15 @@ export default function DayStartModal() {
     setMounted(true);
   }, []);
 
-  // 1. SINGLE KEY LOCAL STORAGE & CLOUD CHECK
+// 1. SINGLE KEY LOCAL STORAGE & CLOUD CHECK
   useEffect(() => {
+    // WAIT for Hydration AND ensure we actually have data for today before checking
     if (!_hasHydrated) return;
 
-    let timeoutId: NodeJS.Timeout; // Store timeout at the top level for proper cleanup!
+    let timeoutId: NodeJS.Timeout;
 
-    const checkAndOpenModal = () => {
+    // Small delay to ensure the master LoadingScreen has finished injecting cloud data
+    const syncDelay = setTimeout(() => {
       const storeState = useDashboardStore.getState();
       const currentDailyTimes = storeState.dailyTimes?.[today] || dailyTimes[today] || {};
       const hasCloudWakeup = !!currentDailyTimes.wakeupTime;
@@ -58,8 +60,9 @@ export default function DayStartModal() {
           localStorage.removeItem('grindboard_wakeup_date');
         }
 
-        // C. CLOUD & LOCAL SYNC OVERRIDE
+        // C. CLOUD & LOCAL SYNC OVERRIDE (This is the magic!)
         if (hasCloudWakeup || localStorage.getItem('grindboard_wakeup_date') === today) {
+          // If the cloud has it, force the local storage key to match so it never asks again!
           localStorage.setItem('grindboard_wakeup_date', today);
           if (storeState.isDayStartModalOpen || isDayStartModalOpen) {
             useDashboardStore.setState({ isDayStartModalOpen: false });
@@ -94,22 +97,19 @@ export default function DayStartModal() {
           }
         }
       }
-
-      // Passed all checks? Cloud is empty, local key is gone, no snooze. OPEN MODAL!
+      // Passed all checks Cloud is empty, local key is gone, no snooze. OPEN MODAL!
       if (!storeState.isDayStartModalOpen && !isDayStartModalOpen) {
         useDashboardStore.setState({ isDayStartModalOpen: true });
       }
-    };
+    }, 5000); // 500ms delay gives LoadingScreen time to finish the cloud injection
 
-    checkAndOpenModal();
-
-    // PERFECT CLEANUP: Prevents multiple 2-hour timers from stacking!
     return () => {
+        clearTimeout(syncDelay);
         if (timeoutId) clearTimeout(timeoutId);
     };
   }, [_hasHydrated, today, dailyTimes]);
 
-  // 2. STRICT CUSTOM QUOTES ENGINE (No Hardcoded, No APIs)
+  // 2. CUSTOM QUOTES ENGINE
   useEffect(() => {
     if (!isDayStartModalOpen) return;
 

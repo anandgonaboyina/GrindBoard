@@ -6,7 +6,6 @@ import ScrollableWithArrows from '@/components/ScrollableWithArrows';
 import { useDashboardStore } from '@/store/dashboardStore';
 import { getLocalDateString } from '@/utils/date';
 import {LeaderboardInfo} from '@/components/modals/info/LeaderboardInfo'
-// Sub-components for the Public Stats Modal
 import PublicStatsModal from '@/components/stats/PublicStatsModal';
 import ConfirmationModal from '@/components/ConfirmationModal'
 
