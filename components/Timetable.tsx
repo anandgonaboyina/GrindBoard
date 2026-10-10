@@ -779,17 +779,18 @@ useEffect(() => {
             <div className={`hidden md:block w-[1px] h-6 mx-0.5 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
 
             {/* Desktop Stats Button*/}
-            <div className="hidden md:block">
+            {!viewingFriend && (<div className="hidden md:block">
               <Tooltip text="Weekly Totals" position="top">
                 <button
                   onClick={() => setShowStatsModal(true)}
-                  className={`flex items-center gap-1.5 px-2.5  py-1.5  md:p-1 active:scale-95 rounded-lg transition-all shrink-0 border font-bold text-[10px] uppercase tracking-wider ${isDark ? 'bg-violet-500/10 text-violet-300 border-violet-500/20 hover:bg-violet-500/20' : 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100'}`}
+                  className={`flex items-center gap-1.5 px-2  py-1.5  md:p-1 active:scale-95 rounded-lg transition-all shrink-0 border font-bold text-[10px] uppercase tracking-wider ${isDark ? 'bg-violet-500/10 text-violet-300 border-violet-500/20 hover:bg-violet-500/20' : 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100'}`}
                 >
                   <BarChart2 size={14} />
-                  <span>Weekly Totals</span>
+                  <span>Stats</span>
                 </button>
               </Tooltip>
-            </div>
+            </div>)
+            }
 
             {!viewingFriend && (
               <>
@@ -825,7 +826,7 @@ useEffect(() => {
           </div>
 
           {/* Mobile Stats Button (Forced to far right) */}
-          <div className="md:hidden shrink-0 ml-2">
+          { !viewingFriend &&  (<div className="md:hidden shrink-0 ml-2">
             <button
               onClick={() => setShowStatsModal(true)}
               className={`flex items-center gap-1.5 px-2 py-1.5 active:scale-95 rounded-lg transition-all border font-bold text-[9px] uppercase tracking-wider shadow-sm ${isDark ? 'bg-violet-500/10 text-violet-300 border-violet-500/20 active:bg-violet-500/30' : 'bg-violet-50 text-violet-700 border-violet-200 active:bg-violet-100'}`}
@@ -833,7 +834,7 @@ useEffect(() => {
               <BarChart2 size={12} />
               <span>Stats</span>
             </button>
-          </div>
+          </div>)}
           
         </div>
       </div>
@@ -1165,7 +1166,7 @@ useEffect(() => {
           
       {/* Centered Cell Editor Modal */}
       {editingCell && (
-        <div className="fixed inset-0 z-[10000] overflow-hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={handleCloseEditor}>
+        <div className="fixed inset-0 z-[10000] overflow-hidden flex items-center justify-center p-4 animate-in fade-in duration-100" onClick={handleCloseEditor}>
           <div className={`border rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-4 w-full max-w-[260px] flex flex-col gap-3 relative animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 backdrop-blur-xl border-white/10' : 'bg-white/95 backdrop-blur-xl border-black/10'}`} onClick={e => e.stopPropagation()}>
             <button onClick={handleCloseEditor} className={`absolute top-2.5 right-2.5 p-1 transition-all rounded-full active:scale-95 ${isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-slate-800 hover:bg-black/5'}`}><X size={14} /></button>
 
@@ -1317,7 +1318,7 @@ function StartTimeEditor({ currentMins, isDark, onSave, onCancel }: { currentMin
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
       <div
         className={`backdrop-blur-xl border rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.6)] p-5 flex flex-col items-center gap-4 w-full max-w-[220px] animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-black/10'}`}
         onClick={(e) => e.stopPropagation()}
@@ -1462,7 +1463,7 @@ function SwapDaysEditor({ isDark, onSave, onCancel }: { isDark: boolean, onSave:
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
       <div
         className={`backdrop-blur-xl border rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.6)] p-5 flex flex-col items-center gap-4 w-full max-w-[240px] animate-in zoom-in-95 duration-200 ${isDark ? 'bg-gray-900/95 border-white/10' : 'bg-white/95 border-black/10'}`}
         onClick={(e) => e.stopPropagation()}

@@ -379,7 +379,8 @@ export default React.memo(function LeaderboardTab({ setSelectedImageOverlay, isA
         </div>
 
         {showInfoModal && (
-          <LeaderboardInfo close= {()=>setShowInfoModal(false)} />
+          <LeaderboardInfo 
+          close = {()=>setShowInfoModal(false)} />
         )}
       {/* THE GRIND WALL MODAL */}
       <ConfirmationModal

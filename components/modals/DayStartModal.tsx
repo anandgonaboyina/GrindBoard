@@ -101,7 +101,7 @@ export default function DayStartModal() {
       if (!storeState.isDayStartModalOpen && !isDayStartModalOpen) {
         useDashboardStore.setState({ isDayStartModalOpen: true });
       }
-    }, 5000); // 500ms delay gives LoadingScreen time to finish the cloud injection
+    }, 500); //delay gives LoadingScreen time to finish the cloud injection
 
     return () => {
         clearTimeout(syncDelay);

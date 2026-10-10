@@ -56,7 +56,7 @@ export default function SettingsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-black/60 backdrop-blur-sm transition-opacity duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 transition-opacity duration-300">
       <div className={`w-full h-full md:h-auto md:max-h-[90vh] md:max-w-4xl flex flex-col relative transition-transform duration-300 transform scale-100 shadow-2xl ${isDark ? 'bg-[#0f0f13]' : 'bg-slate-50'} md:rounded-3xl overflow-hidden`}>
         
         {/* Header - Very compact on mobile */}

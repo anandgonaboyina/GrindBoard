@@ -288,7 +288,7 @@ export default function StatsModal() {
       </div>
       {/* FRIEND TIMETABLE OVERLAY */}
       {showFriendTimetable && viewingFriend && (
-        <div className="fixed inset-0 z-[10005] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in" onClick={() => setShowFriendTimetable(false)}>
+        <div className="fixed inset-0 z-[10005] flex flex-col items-center justify-center p-2 sm:p-4 animate-in fade-in" onClick={() => setShowFriendTimetable(false)}>
           <div className="w-full max-w-4xl relative animate-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setShowFriendTimetable(false)} className={`absolute -top-12 right-0 p-2 rounded-xl transition-colors border ${isLight ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'}`}>
               <X className="w-5 h-5" />

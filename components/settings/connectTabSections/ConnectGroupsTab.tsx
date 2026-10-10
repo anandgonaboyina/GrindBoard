@@ -2314,7 +2314,7 @@ export default React.memo(function ConnectGroupsTab() {
       />
 
       {isInfoOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in" onClick={() => setIsInfoOpen(false)}>
+        <div className="fixed inset-0  flex items-center justify-center z-[100] p-4 animate-in fade-in" onClick={() => setIsInfoOpen(false)}>
           <div className="bg-[#111] border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/5">
               <h3 className="text-sm font-bold flex items-center gap-2 text-white">

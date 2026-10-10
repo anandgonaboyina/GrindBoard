@@ -46,7 +46,7 @@ export default function TimetableMatchesModal({ isOpen, onClose, title, subtitle
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150" onClick={onClose}>
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 animate-in fade-in duration-150" onClick={onClose}>
       <div
         className={`w-full max-w-md max-h-[70vh] flex flex-col rounded-2xl md:rounded-3xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 ${isDark ? 'bg-[#0f0f13] border-white/10' : 'bg-white border-black/10'}`}
         onClick={e => e.stopPropagation()}
@@ -119,7 +119,7 @@ interface PlanTabPickerModalProps {
 export function PlanTabPickerModal({ isOpen, isDark, tabNames, count, dayLabel, onPick, onClose }: PlanTabPickerModalProps) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 animate-in fade-in duration-150" onClick={onClose}>
       <div
         className={`w-full max-w-sm flex flex-col rounded-2xl md:rounded-3xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 ${isDark ? 'bg-[#0f0f13] border-white/10' : 'bg-white border-black/10'}`}
         onClick={e => e.stopPropagation()}

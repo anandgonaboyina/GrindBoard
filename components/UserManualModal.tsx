@@ -13,7 +13,7 @@ export default function UserManualModal({ isOpen, onClose }: { isOpen: boolean; 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 pointer-events-auto">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300 pointer-events-auto">
             <div className="absolute inset-0" onClick={onClose} />
 
             <div className="relative w-full max-w-6xl h-[80vh] md:h-[75vh] flex flex-col md:flex-row rounded-2xl md:rounded-3xl bg-slate-950 shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-100/20 font-sans">

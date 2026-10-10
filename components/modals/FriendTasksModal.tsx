@@ -58,7 +58,7 @@ export default function FriendTasksModal({ isOpen, onClose }: FriendTasksModalPr
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+      className="fixed inset-0 z-[10005] flex items-center justify-center p-4 animate-in fade-in duration-300"
       onClick={onClose}
     >
       <div

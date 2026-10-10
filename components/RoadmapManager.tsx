@@ -377,10 +377,8 @@ export default function RoadmapManager() {
   const toggleStatus = (item: RoadmapItem, e: React.MouseEvent) => { e.stopPropagation(); handleSaveNode({ ...item, status: item.status === 'pending' ? 'in-progress' : item.status === 'in-progress' ? 'completed' : 'pending' }); };
 
   return (
-    <div className={`fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-2 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 pointer-events-auto ${isLight ? 'text-slate-800' : 'text-white'}`}>
-      <div className="absolute inset-0" onClick={togglePlans} />
-
-      <div className={`relative w-full h-full sm:h-[95vh] max-w-4xl flex flex-col sm:rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans ${isLight ? 'bg-slate-50' : 'bg-[#090e17] sm:border sm:border-slate-800'}`}>
+    <div className={`fixed w-[98vw] h-[90vh] md:w-[60vw] left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 z-[1000] flex items-center justify-center p-0 sm:p-2 animate-in fade-in duration-200 pointer-events-auto ${isLight ? 'text-slate-800' : 'text-white'}`}>
+      <div className={`relative w-full h-full sm:h-[95vh] max-w-4xl flex flex-col rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans ${isLight ? 'bg-slate-50' : 'bg-[#090e17] sm:border sm:border-slate-800'}`}>
 
         {/* --- HEADER --- */}
         <div className={`px-3 sm:px-5 py-2.5 sm:py-3 border-b shrink-0 flex justify-between items-center gap-2 relative z-50 ${isLight ? 'border-slate-200 bg-white' : 'border-slate-800 bg-[#0f172a]'}`}>
@@ -452,23 +450,9 @@ export default function RoadmapManager() {
         {/* --- MAIN SCROLLABLE AREA --- */}
         <div className="relative flex-1 flex overflow-hidden">
           <ScrollableWithArrows>
-          {/* --- OVERALL PROGRESS BAR (Below Header) --- */}
-          <div className="mt-2 flex justify-center w-full px-10 shrink-0 z-[60]">
-            {/* Track (Outer Container) */}
-            <div className="w-full max-w-[89%] h-5 sm:h-6 bg-slate-200 dark:bg-slate-800/50 rounded-full overflow-hidden">
-              {/* Progress Fill */}
-              <div 
-                className={`h-full rounded-full flex font-bold justify-center transition-all duration-700 ${
-                  overallProgress === 100 
-                    ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]' 
-                    : 'bg-gradient-to-r from-blue-600 to-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
-                }`} 
-                style={{ width: `${overallProgress}%` }} 
-              > <p>{overallProgress>0 ? overallProgress + '%' : ''}</p> </div>
-            </div>
-          </div>
 
-            <div ref={scrollRef} className={`relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-6 md:px-6 flex flex-col items-center ${isDragging ? 'cursor-grabbing select-none' : ''}`} onClick={() => setActiveMenuId(null)} onMouseDown={handleMouseDown} onMouseLeave={() => setIsDragging(false)} onMouseUp={() => setIsDragging(false)} onMouseMove={handleMouseMove}>
+
+            <div ref={scrollRef} className={`relative flex-1 overflow-y-auto overflow-x-hidden px-1 md:px-3 py-2 flex flex-col items-center ${isDragging ? 'cursor-grabbing select-none' : ''}`} onClick={() => setActiveMenuId(null)} onMouseDown={handleMouseDown} onMouseLeave={() => setIsDragging(false)} onMouseUp={() => setIsDragging(false)} onMouseMove={handleMouseMove}>
 
               {/* Top Controls (Filters / Expand) */}
               <div className="w-full max-w-3xl flex flex-wrap justify-center items-center gap-2 mb-6 relative z-50">
@@ -481,12 +465,28 @@ export default function RoadmapManager() {
                   {expandedNodes.size > 0 ? <><FoldVertical className="w-3.5 h-3.5"/> Collapse</> : <><UnfoldVertical className="w-3.5 h-3.5"/> Expand</>}
                 </button>
               </div>
+          {/* --- OVERALL PROGRESS BAR (Below Header) --- */}
+          <div className="mb-2 flex flex-col justify-center w-full px-10 shrink-0 z-[60]">
+            {/* Track (Outer Container) */}
+             <p> overallProgress : {overallProgress>0 ? overallProgress + '%' : ''}</p> 
+            <div className="w-full max-w-[100%] h-5 sm:h-6 bg-slate-200 dark:bg-slate-800/50 rounded-full overflow-hidden">
+              {/* Progress Fill */}
+              <div 
+                className={`h-full rounded-full flex font-bold justify-center transition-all duration-700 ${
+                  overallProgress === 100 
+                    ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]' 
+                    : 'bg-gradient-to-r from-blue-600 to-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+                }`} 
+                style={{ width: `${overallProgress}%` }} 
+              ></div>
+            </div>
+          </div>
 
               {/* Timeline Root & Target Date Bubble */}
               <div className="w-full max-w-3xl relative px-1 pb-24">
                 
                 {!statusFilter && !searchQuery && (
-                  <div className="flex flex-col items-start ml-2 mb-2">
+                  <div className="flex flex-col items-start -ml-3 ">
                     <div className={`relative flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-sm border cursor-pointer transition-transform hover:scale-105 active:scale-95 z-20 ${isLight ? 'bg-white border-blue-200 text-blue-600' : 'bg-slate-900 border-blue-500/30 text-blue-400'}`}>
                       <Target className="w-4 h-4 sm:w-4 sm:h-4 text-blue-500" />
                       <span>{daysLeft !== null ? `${daysLeft} Left` : 'Set Deadline'}</span>
@@ -544,7 +544,7 @@ export default function RoadmapManager() {
 
       {/* --- POLISHED SWITCHER MODAL --- */}
       {isRoadmapSwitcherOpen && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-3 bg-black/60 backdrop-blur-sm" onClick={() => setIsRoadmapSwitcherOpen(false)}>
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-3" onClick={() => setIsRoadmapSwitcherOpen(false)}>
           <div className={`rounded-2xl p-4 sm:p-5 w-full max-w-md shadow-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-700'}`} onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 className={`text-sm sm:text-base font-black uppercase tracking-wider ${isLight ? 'text-slate-800' : 'text-white'}`}>Your Plans</h2>
@@ -580,7 +580,7 @@ export default function RoadmapManager() {
 
       {/* --- EDIT TITLE MODAL --- */}
       {editingNode && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-3 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-3">
           <div className={`rounded-2xl p-5 w-full max-w-sm shadow-2xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-700'}`}>
             <h2 className={`text-base font-black mb-4 ${isLight ? 'text-slate-800' : 'text-white'}`}>Edit Title</h2>
             <input 

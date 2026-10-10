@@ -193,16 +193,8 @@ export default function SettingsModal() {
   if (!isSettingsOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-1.5 sm:p-4 pointer-events-auto">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity"
-        onClick={() => {
-          toggleSettings();
-          setIsMobileDetailView(false); // Reset to menu on close
-        }}
-      />
-
-      <div className={`relative w-full max-w-3xl flex flex-col bg-slate-900/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl md:rounded-3xl overflow-hidden text-white animate-in zoom-in-95 duration-200 ${!isMobileDetailView ? 'h-fit max-h-[85vh] md:h-[80vh]' : 'h-[85vh] md:h-[80vh]'}`}>
+    <div className="fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 h-[90vh] w-[98vw] md:w-[60vw] md:h-[90dvh] rounded-xl z-[9999] flex items-center justify-center p-1.5 sm:p-4 pointer-events-auto duration-100 animate-slide-up animate-slide-bottom">
+      <div className={`relative w-full max-w-3xl flex flex-col bg-slate-900 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl md:rounded-3xl overflow-hidden text-white animate-in zoom-in-95 duration-200 ${!isMobileDetailView ? 'h-fit max-h-[85vh] md:h-[80vh]' : 'h-[85vh] md:h-[80vh]'}`}>
         <style dangerouslySetInnerHTML={{
           __html: `
           @keyframes continuous-glass-sweep {
@@ -443,7 +435,7 @@ export default function SettingsModal() {
       
       {/* Info Modal */}
       {infoModalKey && SETTINGS_INFO[infoModalKey] && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="bg-slate-50 dark:bg-[#1a1a1a] border border-gray-300 dark:border-white/10 rounded-2xl w-full max-w-sm flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-4 border-b border-gray-300 dark:border-white/5 bg-gray-200/50 dark:bg-black/20">
               <h3 className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2">

@@ -113,6 +113,7 @@ export default function Dashboard() {
   const showBgSwitcher = useDashboardStore((state) => state.showBgSwitcher);
   const showManifestationBoard = useDashboardStore((state) => state.showManifestationBoard);
   const showSettingsBtn = useDashboardStore((state) => state.showSettingsBtn);
+  const  isTourOpen = useDashboardStore((state)=>state.isTourOpen);
 
   const [showDemoRegisterBtn, setShowDemoRegisterBtn] = useState(false);
   const [isRedirectingToRegister, setIsRedirectingToRegister] = useState(false);
@@ -325,10 +326,9 @@ export default function Dashboard() {
             </>
           )}
 
-          <div className={(!isHidden || !hideConfig.settingsBtn) ? 'block' : 'hidden'}>
-
+          { !isTourOpen && _hasHydrated && (<div className={(!isHidden || !hideConfig.settingsBtn) ? 'block' : 'hidden'}>
             <NewsModal />
-          </div>
+          </div>)}
 
           {/* Center Display Components */}
           <div className={(showClock || showTodayWork || showTimer || showStopwatch) ? 'block' : 'hidden'}>

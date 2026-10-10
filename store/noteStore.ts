@@ -233,7 +233,7 @@ export const useNoteStore = create<NoteState>()(
                         }
                     }
                 } catch (e) {
-                    console.error("Failed to fetch notes from DB", e);
+                    console.warn("Failed to fetch notes from DB", e);
                 }
             },
         }),

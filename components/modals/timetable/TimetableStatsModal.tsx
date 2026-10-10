@@ -130,7 +130,7 @@ const CustomDropdown = ({ value, onChange, options, isDark }: { value: number, o
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 p-0 md:px-2 md:py-1.5 text-[9px] md:text-xs font-bold rounded-lg outline-none border transition-all active:scale-95 ${isDark ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'}`}
+        className={`flex items-center gap-1 px-1 md:px-2 md:py-1.5 text-[12px] md:text-xs font-bold rounded-lg outline-none border transition-all active:scale-95 ${isDark ? 'bg-white/5 border-white/10 text-white hover:bg-blue-600/90' : 'bg-blue-600/80 border-black/90 text-white hover:bg-blue-600/90'}`}
       >
         <span>{selectedOption?.label}</span>
         <ChevronDown size={14} className={`transition-transform duration-200 opacity-70 ${isOpen ? 'rotate-180' : ''}`} />
@@ -534,7 +534,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
   const TABS = ["Today's Schedule", "Weekly Overview", "Target vs Time Done"];
 
   return (
-    <div className="fixed inset-x-0.5 inset-y-4 md:inset-y-0 md:inset-0 h-[90dvh] md:h-[100dvh] rounded-xl overflow-hidden z-[99999] flex items-center justify-center p-0 sm:p-4 bg-transparent backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed mt-1 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 h-[90dvh] w-[98vw] md:w-[60vw] md:h-[90dvh] rounded-xl overflow-hidden z-[99999] flex items-center justify-center p-0 sm:p-4 bg-transparent animate-in fade-in duration-200">
       <div className={`w-full max-w-5xl h-[90dvh] sm:h-[90vh] md:h-[85vh] flex flex-col sm:rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border-0 sm:border ${isDark ? 'bg-[#0f0f13] sm:border-white/10' : 'bg-slate-50 sm:border-black/10'}`} onClick={e => e.stopPropagation()}>
         
         {/* Header */}
@@ -549,8 +549,17 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
             </div>
           </div>
 
-          <div className="flex items-center gap-1 md:gap-3">
-            <CustomDropdown 
+          <div className="flex flex-col items-end md:flex-row items-center gap-1 md:gap-3 whitespace-nowrap">
+            <div className='order-1 md:order-2 flex gap-1'>
+            <button onClick={() => setShowSettings(true)} className={`p-1.5 md:p-2 rounded-xl transition-all border active:scale-95 ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white/70 hover:text-white' : 'bg-white border-black/10 hover:bg-slate-50 text-slate-500 hover:text-slate-800 shadow-sm'}`}>
+              <Settings size={16} />
+            </button>
+            <button onClick={onClose} className={`p-1.5 md:p-2 rounded-xl transition-all border active:scale-95 ${isDark ? 'bg-rose-500/10 border-rose-500/20 hover:bg-rose-500/20 text-rose-400' : 'bg-rose-50 border-rose-200 hover:bg-rose-100 text-rose-600 shadow-sm'}`}>
+              <X size={16} strokeWidth={2.5} />
+            </button>
+            </div>
+            <div className='order-2 md:order-1'>
+              <CustomDropdown 
               value={weekOffset}
               onChange={setWeekOffset}
               options={[
@@ -560,14 +569,8 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
                 { label: '3 Weeks Ago', value: 3 }
               ]}
               isDark={isDark}
-            />
-
-            <button onClick={() => setShowSettings(true)} className={`p-1.5 md:p-2 rounded-xl transition-all border active:scale-95 ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white/70 hover:text-white' : 'bg-white border-black/10 hover:bg-slate-50 text-slate-500 hover:text-slate-800 shadow-sm'}`}>
-              <Settings size={16} />
-            </button>
-            <button onClick={onClose} className={`p-1.5 md:p-2 rounded-xl transition-all border active:scale-95 ${isDark ? 'bg-rose-500/10 border-rose-500/20 hover:bg-rose-500/20 text-rose-400' : 'bg-rose-50 border-rose-200 hover:bg-rose-100 text-rose-600 shadow-sm'}`}>
-              <X size={16} strokeWidth={2.5} />
-            </button>
+              />
+              </div>
           </div>
         </div>
 
@@ -591,7 +594,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
           />
 
           {/* Floating Fixed Pill Navigation */}
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[60] w-[95%] sm:w-[85%] md:w-[70%] max-w-2xl pointer-events-none">
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[60] w-[95%] sm:w-[85%] md:w-[70%] max-w-2xl pointer-events-none">
             <div className={`pointer-events-auto relative flex h-12 md:h-14 p-1.5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] border backdrop-blur-xl ${isDark ? 'bg-[#0f0f13]/80 border-blue-500' : 'bg-white/80 border-blue-600/80'}`}>
               <div 
                 className="absolute top-1.5 bottom-1.5 w-[33.33%] transition-transform duration-300 ease-out" 
@@ -613,7 +616,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
           </div>
 
           {/* Tab Content Scroll Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-5 mb-[50px]">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-5 mt-[50px] mb-[10px]">
             
             {/* If no custom categories exist, display the helpful hint box everywhere */}
             {!hasUserCategories ? (
@@ -637,7 +640,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
                 {/* --- TAB 1: TODAY --- */}
               <ScrollableWithArrows >
                 {activeTab === 0 && (
-                  <div className="max-w-6xl mx-auto flex flex-col gap-4 md:gap-6 animate-in fade-in">
+                  <div className="max-w-full  flex flex-col gap-4 md:gap-6 animate-in fade-in">
                     
                     {/* Day Switcher */}
                     <div className={`flex justify-between p-1 rounded-xl md:rounded-2xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-black/10 shadow-inner'}`}>
@@ -868,7 +871,7 @@ export default function TimetableStatsModal({ isOpen, onClose, isDark = true }: 
 
                 {/* --- TAB 3: TRENDS (Scheduled vs Actual) --- */}
                 {activeTab === 2 && (
-                  <div className="max-w-6xl mx-auto flex flex-col gap-4 md:gap-6 animate-in fade-in">
+                  <div className="max-w-full mx-auto flex flex-col gap-4 md:gap-6 animate-in fade-in">
                     
                     <div className={`p-4 md:p-6 rounded-2xl md:rounded-3xl border flex flex-col h-[350px] md:h-[450px] ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10 shadow-sm'}`}>
                       <h3 className={`font-bold text-[10px] md:text-xs uppercase tracking-widest mb-1 md:mb-2 flex flex-col sm:flex-row sm:justify-between ${isDark ? 'text-white/50' : 'text-slate-500'}`}>

@@ -1,8 +1,9 @@
 import {useState} from "react";
 import {Clock, ShieldAlert, Flame, X, Info} from 'lucide-react'
-export function LeaderboardInfo(close:any)
+
+export function LeaderboardInfo({close}: { close: () => void })
 {
-    return (<div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4">
+    return (<div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="bg-gray-900 border border-white/10 p-5 rounded-xl w-full max-w-sm flex flex-col gap-3 relative max-h-[80vh] overflow-y-auto shadow-2xl">
                 <button onClick={() => close()} className="absolute top-3 right-3 text-white/40 hover:text-white p-1 bg-white/5 hover:bg-white/10 rounded-full transition-colors">
                 <X className="w-4 h-4" />
